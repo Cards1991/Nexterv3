@@ -1,0 +1,10 @@
+# Ignorar arquivos de configuração sensíveis
+# É MUITO IMPORTANTE que este arquivo não seja enviado para o GitHub,
+# pois ele contém suas chaves de API do Firebase.
+js/firebase-config.js
+
+# Ignorar diretórios de backup
+bkp/
+
+# Outros arquivos comuns a serem ignorados
+.DS_Store

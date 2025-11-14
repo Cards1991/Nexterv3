@@ -1,0 +1,111 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Função auxiliar para verificar se o usuário está autenticado
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Função auxiliar para obter as permissões do usuário logado
+    function getPermissions() {
+      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permissoes;
+    }
+
+    // Função auxiliar para verificar se o usuário é administrador
+    function isAdmin() {
+      return isAuthenticated() && getPermissions().isAdmin == true;
+    }
+
+    // Função auxiliar para verificar se o usuário tem acesso a uma seção específica
+    function hasAccessToSection(section) {
+      return isAdmin() || (isAuthenticated() && getPermissions().secoesPermitidas.hasAny([section]));
+    }
+
+    // Função auxiliar para verificar restrição de setor
+    function isRestrictedToSector(sector) {
+      return isAuthenticated() && getPermissions().restricaoSetor == sector;
+    }
+
+    // Regras para a coleção 'usuarios'
+    match /usuarios/{userId} {
+      // Usuário pode ler seus próprios dados
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      // Usuário pode atualizar seus próprios dados (ex: nome), mas não permissões
+      allow update: if isAuthenticated() && request.auth.uid == userId && request.resource.data.keys().hasOnly(['nome', 'email']);
+      // Apenas administradores podem criar ou listar outros usuários
+      allow create, list: if isAdmin();
+    }
+
+    // Regras para a coleção 'empresas'
+    match /empresas/{empresaId} {
+      allow read: if hasAccessToSection('empresas');
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'funcionarios'
+    match /funcionarios/{funcionarioId} {
+      allow read: if hasAccessToSection('funcionarios') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'movimentacoes'
+    match /movimentacoes/{movimentacaoId} {
+      allow read: if hasAccessToSection('movimentacoes') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'afastamentos'
+    match /afastamentos/{afastamentoId} {
+      allow read: if hasAccessToSection('afastamentos') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'atestados'
+    match /atestados/{atestadoId} {
+      allow read: if hasAccessToSection('atestados') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'faltas'
+    match /faltas/{faltaId} {
+      allow read: if hasAccessToSection('faltas') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'alteracoes_funcao'
+    match /alteracoes_funcao/{alteracaoId} {
+      allow read: if hasAccessToSection('alteracao-funcao') && 
+                     (isAdmin() || !isRestrictedToSector(resource.data.setorOrigem) || isRestrictedToSector(resource.data.setorOrigem));
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'lancamentos_financeiros'
+    match /lancamentos_financeiros/{lancamentoId} {
+      allow read: if hasAccessToSection('financeiro');
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'entrevistas_demissionais'
+    match /entrevistas_demissionais/{entrevistaId} {
+      allow read: if hasAccessToSection('analise-rescisao');
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para as coleções 'reposicoes' e 'contratacoes'
+    match /{collection=reposicoes|contratacoes}/{docId} {
+      allow read: if hasAccessToSection('dashboard'); // Podem ser lidas pelo dashboard
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regra padrão para negar acesso a coleções não explicitamente permitidas
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
