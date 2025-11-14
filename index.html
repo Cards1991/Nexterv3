@@ -31,6 +31,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="movimentacoes">Movimentações</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="alteracao-funcao">Alteração de Função</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-calculos">Cálculos</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-disciplinar">Controle Disciplinar</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -1179,6 +1180,35 @@
                     <div class="card"><div class="card-body"><p>Conteúdo para a seção de Cálculos.</p></div></div>
                 </section>
 
+                <!-- Seção Departamento Pessoal: Controle Disciplinar -->
+                <section id="controle-disciplinar" class="content-section d-none">
+                    <h2 class="page-title">Controle Disciplinar</h2>
+                    <div class="d-flex justify-content-end mb-3">
+                        <button class="btn btn-primary" id="btn-novo-registro-disciplinar">
+                            <i class="fas fa-plus-circle"></i> Novo Registro
+                        </button>
+                    </div>
+                    <div class="card">
+                        <div class="card-header">Registros Disciplinares</div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Funcionário</th>
+                                            <th>Data</th>
+                                            <th>Ocorrência</th>
+                                            <th>Medida Aplicada</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-controle-disciplinar"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Seção Dashboard de Manutenção -->
                 <section id="dashboard-manutencao" class="content-section d-none">
                     <h2 class="page-title">Dashboard de Análise de Manutenção</h2>
@@ -1746,6 +1776,55 @@
         </div>
     </div>
 
+    <!-- Modal Novo Registro Disciplinar -->
+    <div class="modal fade" id="registroDisciplinarModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registroDisciplinarModalTitle">Novo Registro Disciplinar</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-registro-disciplinar">
+                        <input type="hidden" id="registro-disciplinar-id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label for="disciplinar-funcionario" class="form-label">Funcionário</label>
+                                <select class="form-select" id="disciplinar-funcionario" required>
+                                    <option value="">Selecione o funcionário</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="disciplinar-data" class="form-label">Data da Ocorrência</label>
+                                <input type="date" class="form-control" id="disciplinar-data" required>
+                            </div>
+                            <div class="col-md-12">
+                                <label for="disciplinar-tipo" class="form-label">Medida Aplicada</label>
+                                <select class="form-select" id="disciplinar-tipo" required>
+                                    <option value="">Selecione a medida</option>
+                                    <option value="Advertência Verbal">Advertência Verbal</option>
+                                    <option value="Advertência Escrita">Advertência Escrita</option>
+                                    <option value="Suspensão 1 dia">Suspensão 1 dia</option>
+                                    <option value="Suspensão 2 dias">Suspensão 2 dias</option>
+                                    <option value="Suspensão 3 dias">Suspensão 3 dias</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label for="disciplinar-ocorrencia" class="form-label">Descrição da Ocorrência</e>
+                                <textarea class="form-control" id="disciplinar-ocorrencia" rows="4" placeholder="Descreva detalhadamente o que aconteceu..." required></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarRegistroDisciplinar()">Salvar Registro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
@@ -1764,6 +1843,7 @@
     <script src="js/atestados.js"></script>
     <script src="js/alteracao-funcao.js"></script>
     <script src="js/dp-calculos.js"></script>
+    <script src="js/controle-disciplinar.js"></script>
     <script src="js/solicitacoes.js"></script>
     <script src="js/financeiro.js"></script>
     <script src="js/admin.js"></script>

@@ -6,7 +6,7 @@
 const TODAS_SECOES = [ 
     'dashboard', 'empresas', 'funcionarios', 'afastamentos', 'atestados', 
     'faltas', 'movimentacoes', 'alteracao-funcao', 'dp-calculos', 'relatorios', 'financeiro', 
-    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot',
+    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot', 'controle-disciplinar',
     'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras'
 ];
 
@@ -151,6 +151,11 @@ async function carregarDadosSecao(sectionName) {
             case 'iso-swot':
                 if (typeof inicializarSwot === 'function') {
                     await inicializarSwot();
+                }
+                break;
+            case 'controle-disciplinar':
+                if (typeof carregarDadosDisciplinares === 'function') {
+                    await carregarDadosDisciplinares();
                 }
                 break;
             case 'iso-temperatura-injetoras':
