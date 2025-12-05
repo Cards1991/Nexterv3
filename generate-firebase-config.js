@@ -1,10 +1,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// Caminho para o arquivo de configuração do Firebase na pasta 'js'
-const configPath = path.join(__dirname, 'js', 'firebase-config.js');
+// --- PASSO 1: DEFINIR DIRETÓRIOS ---
+const outputDir = path.join(__dirname, 'public');
+const configPath = path.join(outputDir, 'js', 'firebase-config.js');
 
-// Conteúdo do arquivo que será gerado, usando as variáveis de ambiente
+// --- PASSO 2: GERAR O ARQUIVO DE CONFIGURAÇÃO DO FIREBASE ---
 const firebaseConfigContent = `
 // Este arquivo é gerado automaticamente durante o build. NÃO EDITE MANUALMENTE.
 const firebaseConfig = {
@@ -30,11 +31,53 @@ const timestamp = firebase.firestore.FieldValue.serverTimestamp;
 console.log('Firebase configurado com sucesso a partir das variáveis de ambiente.');
 `;
 
-// Escreve o conteúdo no arquivo
+// --- PASSO 3: CRIAR A PASTA 'public' E COPIAR OS ARQUIVOS ---
 try {
+    // Cria a pasta 'public' se não existir
+    if (!fs.existsSync(outputDir)) {
+        fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    // Lista de arquivos e pastas a serem copiados para 'public'
+    const filesToCopy = [
+        'index.html',
+        'login.html',
+        'manutencao-mobile.html',
+        'css',
+        'js',
+        'assets'
+    ];
+
+    // Função para copiar recursivamente
+    const copyRecursiveSync = (src, dest) => {
+        const exists = fs.existsSync(src);
+        const stats = exists && fs.statSync(src);
+        const isDirectory = exists && stats.isDirectory();
+        if (isDirectory) {
+            if (!fs.existsSync(dest)) {
+                fs.mkdirSync(dest, { recursive: true });
+            }
+            fs.readdirSync(src).forEach(childItemName => {
+                // Ignora o próprio script de build e o firebase-config.js original
+                if (childItemName !== 'generate-firebase-config.js' && childItemName !== 'firebase-config.js') {
+                    copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
+                }
+            });
+        } else {
+            fs.copyFileSync(src, dest);
+        }
+    };
+
+    console.log("Iniciando cópia de arquivos para o diretório 'public'...");
+    filesToCopy.forEach(item => {
+        copyRecursiveSync(path.join(__dirname, item), path.join(outputDir, item));
+    });
+    console.log("Arquivos do projeto copiados com sucesso.");
+
+    // Escreve o arquivo de configuração do Firebase DENTRO da pasta 'public/js'
     fs.writeFileSync(configPath, firebaseConfigContent.trim());
-    console.log('Arquivo firebase-config.js gerado com sucesso!');
+    console.log('Arquivo firebase-config.js gerado com sucesso dentro de public/js!');
 } catch (error) {
-    console.error('Erro ao gerar o arquivo firebase-config.js:', error);
+    console.error('Erro durante o processo de build:', error);
     process.exit(1); // Encerra o processo com erro
 }
