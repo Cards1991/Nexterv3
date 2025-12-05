@@ -4,5 +4,8 @@
   "description": "Sistema de RH da Crival",
   "scripts": {
     "vercel-build": "node generate-firebase-config.js"
+  },
+  "dependencies": {
+    "firebase": "^9.17.1"
   }
 }
