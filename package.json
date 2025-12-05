@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Sistema de RH da Crival",
   "scripts": {
-    "vercel-build": "node generate-firebase-config.js",
-    "build": "node generate-firebase-config.js"
+    "build": "node generate-firebase-config.js",
+    "vercel-build": "node generate-firebase-config.js"
   },
   "dependencies": {
     "firebase": "^9.17.1"

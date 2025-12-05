@@ -8,7 +8,7 @@ const firebaseConfig = {
     projectId: process.env.VITE_FIREBASE_PROJECT_ID,
     storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET || `${process.env.VITE_FIREBASE_PROJECT_ID}.appspot.com`,
     messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.VITE_FIREBASE_APP_ID,
+    appId: process.env.VITE_FIREBASE_APP_ID, 
     measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
@@ -22,7 +22,7 @@ if (missingVars.length > 0) {
 }
 
 const configContent = `
-// firebase-config.js - GERADO AUTOMATICAMENTE PELO VERCEL
+// firebase-config.js - GERADO AUTOMATICAMENTE PELO VERCEL 
 // ======================================================
 
 const firebaseConfig = ${JSON.stringify(firebaseConfig, null, 2)};
@@ -32,7 +32,7 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-// Instâncias dos serviços (disponibilizadas globalmente para compatibilidade)
+// Instâncias dos serviços (disponibilizadas globalmente para compatibilidade) 
 window.db = firebase.firestore();
 window.auth = firebase.auth();
 window.timestamp = firebase.firestore.FieldValue.serverTimestamp;
@@ -40,7 +40,7 @@ window.timestamp = firebase.firestore.FieldValue.serverTimestamp;
 // Habilitar persistência offline
 if (window.db) {
     window.db.enablePersistence()
-        .then(() => console.log('✅ Persistência offline habilitada (Produção)'))
+        .then(() => console.log('✅ Persistência offline habilitada (Produção)')) 
         .catch(err => {
             if (err.code === 'failed-precondition') {
                 console.warn('⚠️ Persistência já ativa em outra aba (Produção)');
@@ -55,9 +55,9 @@ if (window.db) {
 console.log('🚀 Firebase configurado para produção');
 `;
 
-// Escreve o arquivo
+// Escreve o arquivo 
 fs.writeFileSync(
-    path.join(__dirname, 'firebase-config.js'),
+    path.join(__dirname, 'js', 'firebase-config.js'),
     configContent.trim()
 );
 
