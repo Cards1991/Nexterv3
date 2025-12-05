@@ -1,5 +1,4 @@
 // Gerenciamento de Alteração de Função
-
 let __alteracao_funcionarios_cache = [];
 let __alteracao_empresas_cache = [];
 
@@ -159,9 +158,17 @@ async function carregarHistoricoAlteracoes() {
         return `
             <tr>
                 <td>${formatarData(alt.dataAlteracao.toDate())}</td>
-                <td>${alt.funcionarioNome}</td>
+                <td>${alt.funcionarioNome || 'N/A'}</td>
                 <td><small>${alt.setorOrigem} / ${alt.cargoOrigem}</small></td>
                 <td><small>${alt.setorDestino} / ${alt.cargoDestino}</small></td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info" onclick="visualizarAlteracao('${doc.id}')" title="Visualizar"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-outline-primary" onclick="editarAlteracao('${doc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-outline-secondary" onclick="reimprimirTermo('${doc.id}')" title="Reimprimir"><i class="fas fa-print"></i></button>
+                        <button class="btn btn-outline-danger" onclick="excluirAlteracao('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
             </tr>
         `;
     }).join('');
@@ -192,14 +199,128 @@ function gerarTermoAlteracao(data) {
         </html>
     `;
 
-    let printFrame = document.getElementById('print-frame');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'print-frame';
-        printFrame.style.display = 'none';
-        document.body.appendChild(printFrame);
+    openPrintWindow(conteudo, { autoPrint: true, name: '_blank' });
+}
+
+async function visualizarAlteracao(id) {
+    try {
+        const doc = await db.collection('alteracoes_funcao').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Registro de alteração não encontrado.", "error");
+            return;
+        }
+        const alt = doc.data();
+        const corpoModal = `
+            <p><strong>Funcionário:</strong> ${alt.funcionarioNome}</p>
+            <p><strong>Data da Alteração:</strong> ${formatarData(alt.dataAlteracao.toDate())}</p>
+            <hr>
+            <p><strong>De:</strong></p>
+            <ul>
+                <li><strong>Empresa:</strong> ${alt.empresaNomeOrigem}</li>
+                <li><strong>Setor:</strong> ${alt.setorOrigem}</li>
+                <li><strong>Cargo:</strong> ${alt.cargoOrigem}</li>
+            </ul>
+            <p><strong>Para:</strong></p>
+            <ul>
+                <li><strong>Empresa:</strong> ${alt.empresaNomeDestino}</li>
+                <li><strong>Setor:</strong> ${alt.setorDestino}</li>
+                <li><strong>Cargo:</strong> ${alt.cargoDestino}</li>
+            </ul>
+            <hr>
+            <p><strong>Motivo:</strong> ${alt.motivo || 'Não informado'}</p>
+        `;
+        abrirModalGenerico("Detalhes da Alteração de Função", corpoModal);
+    } catch (error) {
+        console.error("Erro ao visualizar alteração:", error);
+        mostrarMensagem("Falha ao carregar detalhes da alteração.", "error");
     }
-    printFrame.contentDocument.write(conteudo);
-    printFrame.contentDocument.close();
-    printFrame.contentWindow.print();
+}
+
+async function editarAlteracao(id) {
+    try {
+        const doc = await db.collection('alteracoes_funcao').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Registro de alteração não encontrado.", "error");
+            return;
+        }
+        const alt = doc.data();
+
+        // Preenche o formulário com os dados
+        document.getElementById('alt-funcionario').value = alt.funcionarioId;
+        document.getElementById('alt-funcionario').dispatchEvent(new Event('change')); // Força a atualização dos dados do funcionário
+        document.getElementById('alt-data').value = alt.dataAlteracao.toDate().toISOString().split('T')[0];
+        document.getElementById('alt-motivo').value = alt.motivo || '';
+
+        // Aguarda um pouco para os selects serem populados e então seleciona os valores
+        setTimeout(() => {
+            const setorSelect = document.getElementById('alt-novo-setor');
+            const cargoSelect = document.getElementById('alt-novo-cargo');
+            setorSelect.value = alt.setorDestino;
+            cargoSelect.value = alt.cargoDestino;
+        }, 500);
+
+        // Altera o botão para o modo de atualização
+        const btnSalvar = document.querySelector('#form-alteracao-funcao button');
+        btnSalvar.innerHTML = '<i class="fas fa-save"></i> Atualizar Registro';
+        btnSalvar.onclick = () => atualizarAlteracao(id);
+
+        window.scrollTo({ top: 0, behavior: 'smooth' }); // Rola para o topo para ver o formulário
+
+    } catch (error) {
+        console.error("Erro ao carregar dados para edição:", error);
+        mostrarMensagem("Falha ao carregar dados para edição.", "error");
+    }
+}
+
+async function atualizarAlteracao(id) {
+    const dadosAtualizados = {
+        dataAlteracao: new Date(document.getElementById('alt-data').value.replace(/-/g, '\/')),
+        setorDestino: document.getElementById('alt-novo-setor').value,
+        cargoDestino: document.getElementById('alt-novo-cargo').value,
+        motivo: document.getElementById('alt-motivo').value,
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    try {
+        await db.collection('alteracoes_funcao').doc(id).update(dadosAtualizados);
+        mostrarMensagem("Alteração atualizada com sucesso!", "success");
+        
+        // Restaura o botão para o estado original
+        const btnSalvar = document.querySelector('#form-alteracao-funcao button');
+        btnSalvar.innerHTML = '<i class="fas fa-print"></i> Registrar e Imprimir Termo';
+        btnSalvar.onclick = registrarAlteracaoFuncao;
+
+        document.getElementById('form-alteracao-funcao').reset();
+        await carregarHistoricoAlteracoes();
+
+    } catch (error) {
+        console.error("Erro ao atualizar alteração:", error);
+        mostrarMensagem("Falha ao atualizar o registro.", "error");
+    }
+}
+
+async function excluirAlteracao(id) {
+    if (!confirm("Tem certeza que deseja excluir este registro de alteração?")) return;
+    try {
+        await db.collection('alteracoes_funcao').doc(id).delete();
+        mostrarMensagem("Registro de alteração excluído com sucesso.", "success");
+        await carregarHistoricoAlteracoes();
+    } catch (error) {
+        console.error("Erro ao excluir alteração:", error);
+        mostrarMensagem("Falha ao excluir o registro.", "error");
+    }
+}
+
+async function reimprimirTermo(id) {
+    try {
+        const doc = await db.collection('alteracoes_funcao').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Registro não encontrado para reimpressão.", "error");
+            return;
+        }
+        gerarTermoAlteracao(doc.data());
+    } catch (error) {
+        console.error("Erro ao reimprimir termo:", error);
+        mostrarMensagem("Falha ao gerar o termo para reimpressão.", "error");
+    }
 }

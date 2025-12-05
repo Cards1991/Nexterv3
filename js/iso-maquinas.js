@@ -1,5 +1,4 @@
 // Gerenciamento do Cadastro de Máquinas - ISO 9001
-
 // URL fixa para o ambiente de desenvolvimento/teste via DevTunnels.
 const URL_BASE_QRCODE = 'https://9whrmc68-5500.usw3.devtunnels.ms';
 
@@ -131,7 +130,7 @@ async function abrirModalMaquina(maquinaId = null) {
         document.getElementById('maquina-critica').checked = data.isCritica || false;
     }
 
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 }
 

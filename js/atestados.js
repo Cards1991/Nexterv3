@@ -1,41 +1,212 @@
 // Atestados - integração com Firestore + filtros e métricas
 let __atestados_cache = [];
+let __empresasCache = null;
+let __initializedAtestados = false;
+let __filterTimeout;
+
+const CID_BODY_MAP_CONSOLIDADO = {
+    'M54': 'back',      // Dorsalgia
+    'M51': 'back',      // Outras dorsopatias
+    'M75': 'shoulder',  // Lesões do ombro
+    'M25.5': 'arm',     // Dor no braço
+    'S80-S89': 'leg',   // Fratura da perna
+    'S90-S99': 'foot',  // Fratura do pé
+    'S60-S69': 'hand',  // Fratura da mão
+    'S50-S59': 'arm',   // Fratura do antebraço
+    'R51': 'head',      // Cefaleia    'J00-J06': 'head',  // Resfriado    'J09-J18': 'torso', // Influenza
+    'K29': 'torso',     // Gastrite
+    'I10': 'torso',     // Hipertensão
+    'M17': 'leg',       // Osteoartrose joelho
+    'M19': 'hand',      // Outras artroses
+    'M79.6': 'arm',     // Dor membro superior
+    'S13': 'neck',      // Lesão pescoço
+    'S23': 'torso',     // Lesão tórax
+};
 
 // Inicializar atestados
 async function inicializarAtestados() {
+    if (__initializedAtestados) return;
+
     try {
+        adicionarEstilosCorpoHumano();
+        configurarEventListenersAtestados();
         await carregarAtestadosDb();
-        await carregarAlertasPericia(); // Carrega o novo dashboard de alertas
         await preencherFiltroEmpresasAtestados();
         await renderizarAtestados();
-        atualizarMetricasAtestados();
+        await atualizarMetricasAtestados();
         
-        const btnFiltrar = document.getElementById('btn-filtrar-atestados');
-        if (btnFiltrar && !btnFiltrar.__bound) {
-            btnFiltrar.addEventListener('click', () => { 
-                renderizarAtestados(); 
-                atualizarMetricasAtestados(); 
-            });
-            btnFiltrar.__bound = true;
-        }
-        
-        const btnNovo = document.getElementById('btn-novo-atestado');
-        if (btnNovo && !btnNovo.__bound) {
-            btnNovo.addEventListener('click', abrirModalNovoAtestado);
-            btnNovo.__bound = true;
-        }
+        __initializedAtestados = true;
     } catch (e) { 
         console.error('Erro ao inicializar atestados:', e); 
+        mostrarMensagem('Erro ao carregar atestados', 'error');
     }
+}
+
+function configurarEventListenersAtestados() {
+    // Usar event delegation para os botões principais
+    try {
+        document.addEventListener('click', (e) => {
+            try {
+                if (e.target.closest('#btn-novo-atestado')) {
+                    abrirModalNovoAtestado();
+                }
+                if (e.target.closest('#btn-rotate-body')) {
+                    toggleBodyView();
+                }
+            } catch (error) { console.error('Erro no event listener de clique:', error); }
+        });
+    } catch (error) { console.error('Erro ao configurar event listener de clique:', error); }
+
+    // Debounce para filtros
+    const filtros = ['#filtro-empresa-atestados', '#filtro-tipo-atestados', '#filtro-status-atestados', '#filtro-data-inicio-atestados', '#filtro-data-fim-atestados'];
+    filtros.forEach(selector => {
+        const filtroEl = document.querySelector(selector);
+        if (filtroEl) {
+            filtroEl.addEventListener('change', () => {
+                clearTimeout(__filterTimeout);
+                __filterTimeout = setTimeout(async () => {
+                    try {
+                        await renderizarAtestados();
+                        await atualizarMetricasAtestados();
+                    } catch (error) { console.error('Erro ao aplicar filtros com debounce:', error); }
+                }, 300);
+            });
+        }
+    });
+}
+
+function parseDateSafe(dateInput) {
+    if (!dateInput) return null;
+    // Se for um objeto Timestamp do Firestore
+    if (dateInput.toDate && typeof dateInput.toDate === 'function') {
+        return dateInput.toDate();
+    }
+    // Se for uma string ou número
+    const date = new Date(dateInput);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+async function getEmpresasCache() {
+    if (!__empresasCache) {
+        const empSnap = await db.collection('empresas').get();
+        __empresasCache = {};
+        empSnap.forEach(d => __empresasCache[d.id] = d.data().nome);
+    }
+    return __empresasCache;
+}
+
+// Função para invalidar o cache quando empresas são adicionadas/editadas
+function invalidarCacheEmpresas() {
+    __empresasCache = null;
+}
+
+// Adicionar CSS dinâmico para melhorar o visual
+function adicionarEstilosCorpoHumano() {
+    const styleId = 'body-map-styles';
+    if (!document.getElementById(styleId)) {
+        const styles = `
+            .body-map-container {
+                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+                border-radius: 12px;
+                padding: 20px;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                border: 1px solid #dee2e6;
+            }
+            
+            .body-part {
+                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            }
+            
+            .body-part:hover {
+                transform: scale(1.02);
+                filter: brightness(1.1) !important;
+            }
+            
+            .legend-item {
+                transition: all 0.2s ease;
+                cursor: pointer;
+            }
+            
+            .legend-item:hover {
+                transform: translateX(4px);
+                background-color: rgba(0, 0, 0, 0.05) !important;
+            }
+            
+            .body-map-controls {
+                background: white;
+                border-radius: 8px;
+                padding: 10px;
+                margin-bottom: 15px;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            }
+            
+            #body-front-view, #body-back-view {
+                transition: opacity 0.3s ease;
+            }
+            
+            .body-map-section {
+                background: white;
+                border-radius: 10px;
+                padding: 15px;
+                margin-bottom: 20px;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            }
+        `;
+        
+        const styleSheet = document.createElement('style');
+        styleSheet.id = styleId;
+        styleSheet.textContent = styles;
+        document.head.appendChild(styleSheet);
+    }
+}
+
+function toggleBodyView() {
+    const frontView = document.getElementById('body-front-view');
+    const backView = document.getElementById('body-back-view');
+    const btnRotate = document.getElementById('btn-rotate-body');
+    const isFrontVisible = frontView.style.display !== 'none';
+
+    // Animação de transição
+    frontView.style.opacity = '0';
+    backView.style.opacity = '0';
+    
+    setTimeout(() => {
+        frontView.style.display = isFrontVisible ? 'none' : 'block';
+        backView.style.display = isFrontVisible ? 'block' : 'none';
+        
+        setTimeout(() => {
+            frontView.style.opacity = '1';
+            backView.style.opacity = '1';
+            
+            // Atualizar ícone do botão
+            if (btnRotate) {
+                btnRotate.innerHTML = isFrontVisible ? 
+                    '<i class="fas fa-user"></i> Vista Frontal' : 
+                    '<i class="fas fa-user-alt"></i> Vista Posterior';
+            }
+        }, 50);
+    }, 200);
 }
 
 // Carregar atestados do banco
 async function carregarAtestadosDb() {
     try {
-        const snap = await db.collection('atestados').orderBy('data_atestado', 'desc').get();
-        __atestados_cache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const snap = await db.collection('atestados')
+            .orderBy('data_atestado', 'desc')
+            .get();
+            
+        __atestados_cache = snap.docs.map(d => {
+            const data = d.data();
+            return {
+                id: d.id,
+                ...data,
+                // Garantir que data_atestado seja um objeto Date
+                data_atestado: parseDateSafe(data.data_atestado)
+            };
+        }).filter(atestado => atestado.data_atestado); // Remover inválidos
     } catch (e) {
         console.error('Erro ao carregar atestados do banco:', e);
+        mostrarMensagem('Erro ao carregar atestados do banco', 'error');
         throw e;
     }
 }
@@ -46,7 +217,7 @@ async function preencherFiltroEmpresasAtestados() {
         const select = document.getElementById('filtro-empresa-atestados');
         if (!select) return;
         
-        const empSnap = await db.collection('empresas').get();
+        const empSnap = await db.collection('empresas').orderBy('nome').get();
         select.innerHTML = '<option value="">Todas as empresas</option>';
         
         empSnap.forEach(doc => {
@@ -68,13 +239,19 @@ function aplicarFiltrosAtestados(lista) {
     const dataInicio = document.getElementById('filtro-data-inicio-atestados')?.value;
     const dataFim = document.getElementById('filtro-data-fim-atestados')?.value;
     
-    return lista.filter(a => (
-        (!emp || a.empresaId === emp) &&
-        (!tipo || a.tipo === tipo) &&
-        (!status || a.status === status) &&
-        (!dataInicio || a.data_atestado.toDate() >= new Date(dataInicio)) &&
-        (!dataFim || a.data_atestado.toDate() <= new Date(new Date(dataFim).setHours(23, 59, 59, 999)))
-    ));
+    return lista.filter(a => {
+        const dataAtestado = parseDateSafe(a.data_atestado);
+        if (!dataAtestado) return false;
+
+        const dataInicioObj = parseDateSafe(dataInicio);
+        const dataFimAjustada = dataFim ? new Date(new Date(dataFim).setHours(23, 59, 59, 999)) : null;
+
+        return (!emp || a.empresaId === emp) &&
+               (!tipo || a.tipo === tipo) &&
+               (!status || a.status === status) &&
+               (!dataInicioObj || dataAtestado >= dataInicioObj) &&
+               (!dataFimAjustada || dataAtestado <= dataFimAjustada);
+    });
 }
 
 // Renderizar atestados na tabela
@@ -85,54 +262,285 @@ async function renderizarAtestados() {
         
         if (!tbody) return;
         
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center"><div class="spinner-border"></div></td></tr>';
+
         const filtrados = aplicarFiltrosAtestados(__atestados_cache);
         
         if (filtrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum atestado encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Nenhum atestado encontrado</td></tr>';
             if (totalEl) totalEl.textContent = '0 registros';
+            atualizarGraficoSilhueta(filtrados); // Limpa o gráfico
             return;
         }
         
-        // Obter nomes de empresas
-        const empSnap = await db.collection('empresas').get();
-        const empMap = {};
-        empSnap.forEach(d => empMap[d.id] = d.data().nome);
+        // Atualizar UI em paralelo
+        await Promise.all([
+            atualizarTabelaAtestados(filtrados),
+            atualizarGraficoSilhueta(filtrados)
+        ]);
         
-        tbody.innerHTML = filtrados.map(a => {
-            let acoesHTML = `
-                <button class="btn btn-outline-primary" onclick="verDetalhesAtestado('${a.id}')"><i class="fas fa-eye"></i></button>
-                <button class="btn btn-outline-secondary" onclick="editarAtestado('${a.id}')"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-outline-danger" onclick="excluirAtestado('${a.id}')"><i class="fas fa-trash"></i></button>
-            `;
+        if (totalEl) totalEl.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'registro' : 'registros'}`;
 
-            // Se o atestado gerou um encaminhamento, adiciona o botão para ver os detalhes
-            if (a.encaminhadoINSS && a.afastamentoId) {
-                acoesHTML += `<button class="btn btn-outline-warning" title="Ver Encaminhamento ao INSS" onclick="visualizarEncaminhamentoINSS('${a.afastamentoId}')"><i class="fas fa-notes-medical"></i></button>`;
-            }
-
-            return `
-            <tr class="${a.encaminhadoINSS ? 'table-warning' : ''}">
-                <td>${a.colaborador_nome}</td>
-                <td><span class="badge bg-light text-dark">${empMap[a.empresaId] || '-'}</span></td>
-                <td>${formatarData(a.data_atestado)}</td>
-                <td><span class="badge ${a.dias > 3 ? 'bg-warning' : 'bg-info'}">${a.dias}</span></td>
-                <td><span class="badge ${classeTipo(a.tipo)}">${a.tipo}</span></td>
-                <td>${a.cid || '-'}</td>
-                <td><small>${a.medico || '-'}</small></td>
-                <td><span class="badge ${classeStatus(a.status)}">${a.status}</span></td>
-                <td class="text-end text-nowrap">
-                    <div class="btn-group btn-group-sm">
-                        ${acoesHTML}
-                    </div>
-                </td>
-            </tr>
-            `;
-        }).join('');
-        
-        if (totalEl) totalEl.textContent = `${filtrados.length} registros`;
     } catch (e) {
         console.error('Erro ao renderizar atestados:', e);
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados</td></tr>';
     }
+}
+
+async function atualizarTabelaAtestados(filtrados) {
+    const tbody = document.getElementById('atestados-container');
+    const empMap = await getEmpresasCache();
+
+    tbody.innerHTML = filtrados.map(a => {
+        let acoesHTML = `
+            <button class="btn btn-outline-primary" onclick="verDetalhesAtestado('${a.id}')"><i class="fas fa-eye"></i></button>
+            <button class="btn btn-outline-secondary" onclick="editarAtestado('${a.id}')"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-outline-danger" onclick="excluirAtestado('${a.id}')"><i class="fas fa-trash"></i></button>
+        `;
+
+        if (a.encaminhadoINSS && a.afastamentoId) {
+            acoesHTML += `<button class="btn btn-outline-warning" title="Ver Encaminhamento ao INSS" onclick="visualizarEncaminhamentoINSS('${a.afastamentoId}')"><i class="fas fa-notes-medical"></i></button>`;
+        }
+
+        return `
+        <tr class="${a.encaminhadoINSS ? 'table-warning' : ''}">
+            <td>${a.colaborador_nome}</td>
+            <td><span class="badge bg-light text-dark">${empMap[a.empresaId] || '-'}</span></td>
+            <td>${formatarData(a.data_atestado)}</td>
+            <td><span class="badge ${a.dias > 3 ? 'bg-warning' : 'bg-info'}">${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'}</span></td>
+            <td><span class="badge ${classeTipo(a.tipo)}">${a.tipo}</span></td>
+            <td>${a.cid || '-'}</td>
+            <td><small>${a.medico || '-'}</small></td>
+            <td><span class="badge ${classeStatus(a.status)}">${a.status}</span></td>
+            <td class="text-end text-nowrap">
+                <div class="btn-group btn-group-sm">${acoesHTML}</div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+function getParteDoCorpoPorCID(cid) {
+    if (!cid) return null;
+    
+    const cidUpper = cid.toUpperCase().trim();
+    
+    // 1. Buscar match exato
+    if (CID_BODY_MAP_CONSOLIDADO[cidUpper]) {
+        return CID_BODY_MAP_CONSOLIDADO[cidUpper];
+    }
+    
+    // Buscar por range (ex: S80-S89)
+    for (const [range, bodyPart] of Object.entries(CID_BODY_MAP_CONSOLIDADO)) {
+        if (range.includes('-')) {
+            const [start, end] = range.split('-');
+            if (cidUpper >= start && cidUpper <= end) {
+                return bodyPart;
+            }
+        }
+    }
+
+    // 3. Buscar por prefixo (para CIDs mais genéricos)
+    for (const [prefix, bodyPart] of Object.entries(CID_BODY_MAP_CONSOLIDADO)) {
+        if (!prefix.includes('-') && cidUpper.startsWith(prefix)) {
+            return bodyPart;
+        }
+    }
+    
+    return null;
+}
+
+// FUNÇÃO PRINCIPAL MELHORADA - Atualizar gráfico da silhueta
+function atualizarGraficoSilhueta(atestados) {
+    const legendContainer = document.getElementById('body-map-legend');
+    const frontView = document.getElementById('body-front-view');
+    const backView = document.getElementById('body-back-view');
+    
+    // Reset para estilo padrão melhorado
+    document.querySelectorAll('.body-part').forEach(part => {
+        part.style.fill = '#e9ecef';
+        part.style.stroke = '#adb5bd';
+        part.style.strokeWidth = '1.5';
+        part.style.transition = 'all 0.3s ease';
+        part.style.cursor = 'pointer';
+    });
+
+    if (!legendContainer) return;
+
+    const partCounts = {};
+    atestados.forEach(atestado => {
+        const bodyPart = getParteDoCorpoPorCID(atestado.cid);
+        if (bodyPart) {
+            partCounts[bodyPart] = (partCounts[bodyPart] || 0) + 1;
+        }
+    });
+
+    // Header da legenda melhorado
+    legendContainer.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <h6 class="mb-0"><i class="fas fa-notes-medical text-primary"></i> Incidência por Região</h6>
+            <small class="text-muted">${atestados.length} atestados</small>
+        </div>
+    `;
+    
+    if (Object.keys(partCounts).length === 0) {
+        legendContainer.innerHTML += `
+            <div class="text-center py-3">
+                <i class="fas fa-info-circle text-muted fa-2x mb-2"></i>
+                <p class="text-muted small mb-0">Nenhum CID mapeado no período</p>
+            </div>
+        `;
+        return;
+    }
+
+    const sortedParts = Object.entries(partCounts).sort(([, a], [, b]) => b - a);
+    const maxCount = sortedParts.length > 0 ? sortedParts[0][1] : 1;
+
+    // Aplicar cores às partes do corpo
+    sortedParts.forEach(([part, count]) => {
+        const intensity = count / maxCount;
+        const color = getColorForIntensity(intensity);
+        const opacity = 0.6 + (intensity * 0.4); // Varia opacidade baseada na intensidade
+
+        // Selecionar todas as variações da parte do corpo
+        const selectors = [
+            `#front-${part}`, `#back-${part}`,
+            `#front-${part}-left`, `#front-${part}-right`,
+            `#back-${part}-left`, `#back-${part}-right`
+        ];
+
+        selectors.forEach(selector => {
+            const elements = document.querySelectorAll(selector);
+            elements.forEach(el => {
+                if (el) {
+                    el.style.fill = color;
+                    el.style.fillOpacity = opacity;
+                    el.style.stroke = darkenColor(color, 20);
+                    el.style.strokeWidth = '2';
+                    el.style.filter = `drop-shadow(0 2px 4px ${color}40)`;
+                    
+                    // Adicionar tooltip
+                    el.setAttribute('title', `${formatarNomeParte(part)}: ${count} ocorrência(s)`);
+                }
+            });
+        });
+
+        // Adicionar item na legenda com estilo melhorado
+        const percentage = ((count / atestados.length) * 100).toFixed(1);
+        legendContainer.innerHTML += `
+            <div class="legend-item d-flex justify-content-between align-items-center py-1 px-2 rounded mb-1" 
+                 style="background-color: ${color}15; border-left: 3px solid ${color};"
+                 onmouseover="highlightBodyPart('${part}')"
+                 onmouseout="resetBodyPart('${part}')">
+                <div class="d-flex align-items-center">
+                    <div class="color-indicator me-2" style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%;"></div>
+                    <span class="small">${formatarNomeParte(part)}</span>
+                </div>
+                <div class="d-flex align-items-center">
+                    <span class="badge rounded-pill me-2" style="background-color: ${color}; font-size: 0.7em;">${count}</span>
+                    <small class="text-muted">${percentage}%</small>
+                </div>
+            </div>
+        `;
+    });
+
+    // Adicionar estatísticas resumidas
+    const totalRegioes = Object.keys(partCounts).length;
+    const regiaoMaisAfetada = sortedParts[0];
+    
+    if (regiaoMaisAfetada) {
+        legendContainer.innerHTML += `
+            <div class="mt-3 p-2 bg-light rounded">
+                <small class="text-muted d-block">
+                    <i class="fas fa-chart-line me-1"></i>
+                    Região mais afetada: <strong>${formatarNomeParte(regiaoMaisAfetada[0])}</strong>
+                </small>
+                <small class="text-muted">
+                    <i class="fas fa-map-marked-alt me-1"></i>
+                    ${totalRegioes} região(ões) mapeada(s)
+                </small>
+            </div>
+        `;
+    }
+}
+
+// Funções auxiliares para efeitos de hover
+function highlightBodyPart(part) {
+    const selectors = [
+        `#front-${part}`, `#back-${part}`,
+        `#front-${part}-left`, `#front-${part}-right`,
+        `#back-${part}-left`, `#back-${part}-right`
+    ];
+
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            if (el) {
+                el.style.strokeWidth = '3';
+                el.style.stroke = '#000';
+                el.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))';
+            }
+        });
+    });
+}
+
+function resetBodyPart(part) {
+    const selectors = [
+        `#front-${part}`, `#back-${part}`,
+        `#front-${part}-left`, `#front-${part}-right`,
+        `#back-${part}-left`, `#back-${part}-right`
+    ];
+
+    selectors.forEach(selector => {
+        const elements = document.querySelectorAll(selector);
+        elements.forEach(el => {
+            if (el) {
+                el.style.strokeWidth = '2';
+                el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))';
+                // A cor do stroke será resetada quando o mapa for atualizado
+            }
+        });
+    });
+}
+
+// Função para escurecer cor (para contornos)
+function darkenColor(color, percent) {
+    const num = parseInt(color.replace("#", ""), 16);
+    const amt = Math.round(2.55 * percent);
+    const R = (num >> 16) - amt;
+    const G = (num >> 8 & 0x00FF) - amt;
+    const B = (num & 0x0000FF) - amt;
+    return "#" + (
+        0x1000000 +
+        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
+        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
+        (B < 255 ? (B < 1 ? 0 : B) : 255)
+    ).toString(16).slice(1);
+}
+
+// Melhorar a função de cores para gradiente mais suave
+function getColorForIntensity(intensity) {
+    if (intensity < 0.2) return '#4CAF50'; // Verde claro - baixa incidência
+    if (intensity < 0.4) return '#8BC34A'; // Verde
+    if (intensity < 0.6) return '#FFC107'; // Amarelo
+    if (intensity < 0.8) return '#FF9800'; // Laranja
+    return '#F44336'; // Vermelho - alta incidência
+}
+
+// Melhorar formatação de nomes das partes
+function formatarNomeParte(partName) {
+    const names = {
+        head: 'Cabeça',
+        neck: 'Pescoço',
+        torso: 'Torso/Abdômen',
+        back: 'Costas/Coluna',
+        shoulder: 'Ombros',
+        arm: 'Braços',
+        hand: 'Mãos/Pulsos',
+        leg: 'Pernas',
+        foot: 'Pés/Tornozelos'
+    };
+    return names[partName] || partName;
 }
 
 async function carregarAlertasPericia() {
@@ -203,62 +611,72 @@ function calcularDiasUteis(data1, data2) {
 
 // Atualizar métricas de atestados
 async function atualizarMetricasAtestados() {
+    const filtrados = aplicarFiltrosAtestados(__atestados_cache);
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    const atestMes = filtrados.filter(a => {
+        const dataAtestado = parseDateSafe(a.data_atestado);
+        return dataAtestado && dataAtestado >= inicioMes;
+    }).length;
+    
+    const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
+    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(1) : 0;
+    
+    const custoTotal = await calcularCustoAtestados(filtrados);
+    // Calcula a taxa de absenteísmo (simplificado)
+    const totalFuncionariosAtivos = (await db.collection('funcionarios').where('status', '==', 'Ativo').get()).size;
+    const taxaAbsenteismo = totalFuncionariosAtivos > 0 ? ((totalDias / (totalFuncionariosAtivos * 22)) * 100).toFixed(1) : 0;
+    
+    const totalAtestadosMes = document.getElementById('total-atestados-mes');
+    const totalDiasAtestados = document.getElementById('total-dias-atestados');
+    const mediaDiasAtestado = document.getElementById('media-dias-atestado');
+    const custoTotalAtestados = document.getElementById('custo-total-atestados');
+    
+    if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
+    if (totalDiasAtestados) totalDiasAtestados.textContent = totalDias;
+    if (mediaDiasAtestado) mediaDiasAtestado.textContent = media;
+    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
+    
+    const percentualAfastamento = document.getElementById('percentual-afastamento');
+    if (percentualAfastamento) {
+        percentualAfastamento.textContent = `${taxaAbsenteismo}%`;
+    }
+}
+
+async function calcularCustoAtestados(atestados) {
+    if (!atestados.length) return 0;
+    
     try {
-        const filtrados = aplicarFiltrosAtestados(__atestados_cache);
-        const hoje = new Date();
-        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const funcionariosSnap = await db.collection('funcionarios').get();
+        const salariosMap = new Map();
         
-        const atestMes = filtrados.filter(a => {
-            const dataAtestado = a.data_atestado?.toDate ? a.data_atestado.toDate() : a.data_atestado;
-            return dataAtestado >= inicioMes;
-        }).length;
-        
-        const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
-        const media = filtrados.length ? (totalDias / filtrados.length).toFixed(1) : 0;
-        
-        // --- NOVO CÁLCULO DE CUSTO ---
-        let custoTotal = 0;
-        if (filtrados.length > 0) {
-            // 1. Criar um mapa de funcionários e seus salários para consulta rápida
-            const funcionariosSnap = await db.collection('funcionarios').get();
-            const salariosMap = new Map();
-            funcionariosSnap.forEach(doc => {
-                const data = doc.data();
-                if (data.salario) {
-                    salariosMap.set(doc.id, data.salario);
-                }
-            });
+        funcionariosSnap.forEach(doc => {
+            const data = doc.data();
+            const salario = typeof data.salario === 'string' 
+                ? parseFloat(data.salario.replace(/[^\d,]/g, '').replace(',', '.'))
+                : data.salario;
+                
+            if (salario && !isNaN(salario)) {
+                salariosMap.set(doc.id, salario);
+            }
+        });
 
-            // 2. Calcular o custo para cada atestado
-            custoTotal = filtrados.reduce((total, atestado) => {
-                const salario = salariosMap.get(atestado.funcionarioId);
-                if (salario && atestado.dias) {
-                    const valorHora = salario / 220;
-                    const horasAtestado = atestado.dias * 8; // Assumindo 8 horas por dia
-                    return total + (valorHora * horasAtestado);
-                }
-                return total;
-            }, 0);
-        }
-        // --- FIM DO NOVO CÁLCULO ---
+        return atestados.reduce((total, atestado) => {
+            const salario = salariosMap.get(atestado.funcionarioId);
+            if (salario && atestado.dias) {
+                // Converte horas para dias se necessário (8h = 1 dia)
+                const diasDeAtestado = atestado.duracaoTipo === 'horas' ? (atestado.duracaoValor / 8) : atestado.dias;
 
-        const totalAtestadosMes = document.getElementById('total-atestados-mes');
-        const totalDiasAtestados = document.getElementById('total-dias-atestados');
-        const mediaDiasAtestado = document.getElementById('media-dias-atestado');
-        const custoTotalAtestados = document.getElementById('custo-total-atestados');
-        
-        if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
-        if (totalDiasAtestados) totalDiasAtestados.textContent = totalDias;
-        if (mediaDiasAtestado) mediaDiasAtestado.textContent = media;
-        if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
-        
-        // Percentual de afastamento (simplificado)
-        const percentualAfastamento = document.getElementById('percentual-afastamento');
-        if (percentualAfastamento) {
-            percentualAfastamento.textContent = filtrados.length > 0 ? '—' : '0%';
-        }
-    } catch (e) {
-        console.error('Erro ao atualizar métricas de atestados:', e);
+                const valorHora = salario / 220;
+                const horasAtestado = diasDeAtestado * 8;
+                return total + (valorHora * horasAtestado);
+            }
+            return total;
+        }, 0);
+    } catch (error) {
+        console.error('Erro ao calcular custo:', error);
+        return 0;
     }
 }
 
@@ -310,16 +728,33 @@ function abrirModalNovoAtestado() {
                                 <label class="form-label">Empresa</label>
                                 <select class="form-select" id="at_empresa" required>
                                     <option value="">Selecione</option>
-                                </select>
+                                </select> 
                             </div>
                             <div class="row g-2">
+                                <div class="col-12 mb-2">
+                                    <label class="form-label">Duração</label>
+                                    <div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="duracaoTipo" id="duracao_dias" value="dias" checked>
+                                            <label class="form-check-label" for="duracao_dias">Dias</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="duracaoTipo" id="duracao_horas" value="horas">
+                                            <label class="form-check-label" for="duracao_horas">Horas</label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6" id="container-dias">
+                                    <label class="form-label">Dias</label>
+                                    <input type="number" min="1" class="form-control" id="at_dias">
+                                </div>
+                                <div class="col-6 d-none" id="container-horas">
+                                    <label class="form-label">Horas</label>
+                                    <input type="number" min="1" max="24" class="form-control" id="at_horas">
+                                </div>
                                 <div class="col-6">
                                     <label class="form-label">Data</label>
                                     <input type="date" class="form-control" id="at_data" required>
-                                </div>
-                                <div class="col-6">
-                                    <label class="form-label">Dias</label>
-                                    <input type="number" min="1" class="form-control" id="at_dias" required>
                                 </div>
                             </div>
                             <div class="row g-2 mt-1">
@@ -354,18 +789,36 @@ function abrirModalNovoAtestado() {
         document.body.appendChild(modalEl);
     }
     
+    document.getElementById('form-atestado').reset();
+
+    // Adicionar listeners para os radio buttons de duração
+    document.getElementById('duracao_dias').addEventListener('change', () => {
+        document.getElementById('container-dias').classList.remove('d-none');
+        document.getElementById('container-horas').classList.add('d-none');
+        document.getElementById('at_dias').required = true;
+        document.getElementById('at_horas').required = false;
+    });
+    document.getElementById('duracao_horas').addEventListener('change', () => {
+        document.getElementById('container-dias').classList.add('d-none');
+        document.getElementById('container-horas').classList.remove('d-none');
+        document.getElementById('at_dias').required = false;
+        document.getElementById('at_horas').required = true;
+    });
+
+    const empresaSelect = document.getElementById('at_empresa');
+    empresaSelect.disabled = false; // Garante que o campo esteja habilitado ao abrir
+
     // Popular empresas no select do modal
     (async () => {
-        const select = document.getElementById('at_empresa');
-        if (select) {
-            select.innerHTML = '<option value="">Selecione</option>';
+        if (empresaSelect) {
+            empresaSelect.innerHTML = '<option value="">Selecione</option>';
             const empSnap = await db.collection('empresas').get();
             
             empSnap.forEach(doc => {
                 const opt = document.createElement('option');
                 opt.value = doc.id;
                 opt.textContent = doc.data().nome;
-                select.appendChild(opt);
+                empresaSelect.appendChild(opt);
             });
         }
         
@@ -376,6 +829,7 @@ function abrirModalNovoAtestado() {
         // Popular funcionários
         const funcSelect = document.getElementById('at_colab');
         if (funcSelect) {
+            funcSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa antes de popular
             const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
             funcSnap.forEach(doc => {
                 const opt = document.createElement('option');
@@ -384,11 +838,21 @@ function abrirModalNovoAtestado() {
                 opt.textContent = doc.data().nome;
                 funcSelect.appendChild(opt);
             });
+
+            // Adiciona o listener para preencher a empresa automaticamente
+            funcSelect.addEventListener('change', function() {
+                const selectedOption = this.options[this.selectedIndex];
+                const empresaId = selectedOption.dataset.empresaId;
+                
+                empresaSelect.value = empresaId;
+                // Desabilita o campo de empresa se um funcionário for selecionado
+                empresaSelect.disabled = !!empresaId;
+            });
         }
         
     })();
     
-    new bootstrap.Modal(modalEl).show();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 // Salvar novo atestado
@@ -398,22 +862,34 @@ async function salvarNovoAtestado() {
         const colabNome = colabSelect.options[colabSelect.selectedIndex].text;
         const empId = document.getElementById('at_empresa').value;
         const data = document.getElementById('at_data').value;
-        const dias = parseInt(document.getElementById('at_dias').value, 10);
+        const duracaoTipo = document.querySelector('input[name="duracaoTipo"]:checked').value;
+        const duracaoValor = duracaoTipo === 'dias' ? parseInt(document.getElementById('at_dias').value, 10) : parseInt(document.getElementById('at_horas').value, 10);
+        const dias = duracaoTipo === 'dias' ? duracaoValor : (duracaoValor / 8); // Converte horas para dias para os cálculos
         const tipo = document.getElementById('at_tipo').value;
         const cid = document.getElementById('at_cid').value.trim();
         const medico = document.getElementById('at_medico').value.trim();
         
-        if (!colabSelect.value || !empId || !data || !dias || !tipo) { 
-            mostrarMensagem('Preencha os campos obrigatórios', 'warning'); 
-            return; 
+        const formData = {
+            funcionarioId: colabSelect.value,
+            empresaId: empId,
+            data_atestado: data,
+            duracaoTipo: duracaoTipo,
+            duracaoValor: duracaoValor,
+            tipo: tipo,
+            cid: cid,
+            medico: medico
+        };
+
+        const errors = validarAtestado(formData);
+        if (errors.length > 0) {
+            mostrarMensagem(errors.join('<br>'), 'warning'); 
+            return;
         }
         
         let afastamentoId = null;
 
-        // =====================================================================
-        // NOVA LÓGICA: VERIFICAR SE O ATESTADO DEVE VIRAR AFASTAMENTO (INSS)
-        // =====================================================================
-        const sessentaDiasAtras = new Date(data);
+        const dataAtestadoObj = parseDateSafe(data);
+        const sessentaDiasAtras = new Date(dataAtestadoObj);
         sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
 
         // Buscar todos os atestados anteriores para este funcionário nos últimos 60 dias
@@ -426,7 +902,7 @@ async function salvarNovoAtestado() {
         let diasAcumuladosMesmoCID = dias; // Soma de dias para o CID atual
 
         atestadosAnterioresSnap.forEach(doc => {
-            const atestadoAnterior = doc.data();
+            const atestadoAnterior = { ...doc.data(), data_atestado: parseDateSafe(doc.data().data_atestado) };
             diasAcumuladosTotal += atestadoAnterior.dias || 0;
 
             // Se o atestado anterior tiver o mesmo CID que o atual (e o CID não for vazio)
@@ -454,8 +930,8 @@ async function salvarNovoAtestado() {
             const afastamentoRef = await db.collection('afastamentos').add({
                 colaborador_nome: colabNome,
                 funcionarioId: colabSelect.value,                
-                empresaId: empId,                
-                data_inicio: new Date(data.replace(/-/g, '\/')),
+                empresaId: empId,
+                data_inicio: dataAtestadoObj,
                 data_termino_prevista: null, // Fica em aberto até a perícia
                 dias_atestado_inicial: dias,
                 tipo_afastamento: 'Doença (Enc. INSS)',
@@ -471,8 +947,10 @@ async function salvarNovoAtestado() {
         await db.collection('atestados').add({
             colaborador_nome: colabNome,
             funcionarioId: colabSelect.value,
-            empresaId: empId,
-            data_atestado: new Date(data.replace(/-/g, '\/')),
+            empresaId: empId,            
+            data_atestado: dataAtestadoObj,            
+            duracaoTipo: duracaoTipo,
+            duracaoValor: duracaoValor,
             dias: dias,
             tipo: tipo,
             cid: cid || '',
@@ -489,7 +967,7 @@ async function salvarNovoAtestado() {
         if (modal) modal.hide();
         
         await carregarAtestadosDb();
-        await carregarAlertasPericia();
+        // await carregarAlertasPericia(); // Chamada removida para evitar loops
         renderizarAtestados();
         atualizarMetricasAtestados();
         mostrarMensagem('Atestado cadastrado com sucesso!');
@@ -499,26 +977,39 @@ async function salvarNovoAtestado() {
     }
 }
 
-// Ver detalhes do atestado
-function verDetalhesAtestado(id) {
-    const a = __atestados_cache.find(x => x.id === id);
-    if (!a) return;
+function validarAtestado(formData) {
+    const errors = [];
     
-    // Carregar nome da empresa
-    let empresaNome = 'Empresa não encontrada';
-    if (a.empresaId) {
-        db.collection('empresas').doc(a.empresaId).get()
-            .then(doc => {
-                if (doc.exists) {
-                    empresaNome = doc.data().nome;
-                }
-                exibirDetalhesAtestado(a, empresaNome);
-            })
-            .catch(() => {
-                exibirDetalhesAtestado(a, empresaNome);
-            });
-    } else {
+    if (!formData.funcionarioId) errors.push('Colaborador é obrigatório');
+    if (!formData.empresaId) errors.push('Empresa é obrigatória');
+    if (!formData.data_atestado) errors.push('Data é obrigatória');
+    if (!formData.duracaoValor || formData.duracaoValor < 1) errors.push('A duração (dias ou horas) deve ser maior que 0.');
+    if (!formData.tipo) errors.push('Tipo é obrigatório');
+    
+    // Regex melhorado para CID (letra, 2 dígitos, opcionalmente ponto e mais 1-2 dígitos)
+    if (formData.cid && !/^[A-Z]\d{2}(\.\d{1,2})?$/i.test(formData.cid)) {
+        errors.push('Formato de CID inválido. Ex: A01 ou J06.9');
+    }
+    
+    return errors;
+}
+
+// Ver detalhes do atestado
+async function verDetalhesAtestado(id) {
+    try {
+        const a = __atestados_cache.find(x => x.id === id);
+        if (!a) {
+            mostrarMensagem('Atestado não encontrado', 'warning');
+            return;
+        }
+        
+        let empresaNome = 'N/A';
+        const empMap = await getEmpresasCache();
+        empresaNome = empMap[a.empresaId] || 'Empresa não encontrada';
         exibirDetalhesAtestado(a, empresaNome);
+    } catch (error) {
+        console.error('Erro ao ver detalhes do atestado:', error);
+        mostrarMensagem('Erro ao carregar detalhes', 'error');
     }
 }
 
@@ -532,7 +1023,7 @@ function exibirDetalhesAtestado(a, empresaNome) {
                 <p><strong>Data:</strong> ${formatarData(a.data_atestado)}</p>
             </div>
             <div class="col-md-6">
-                <p><strong>Dias:</strong> ${a.dias}</p>
+                <p><strong>Duração:</strong> ${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'}</p>
                 <p><strong>Tipo:</strong> ${a.tipo}</p>
                 <p><strong>CID:</strong> ${a.cid || '-'}</p>
                 <p><strong>Médico:</strong> ${a.medico || '-'}</p>
@@ -564,7 +1055,7 @@ function exibirDetalhesAtestado(a, empresaNome) {
     }
     
     document.getElementById('detAtestadoBody').innerHTML = body;
-    new bootstrap.Modal(modalEl).show();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 // Editar atestado
@@ -646,7 +1137,7 @@ async function editarAtestado(id) {
                 await db.collection('atestados').doc(id).update({
                     colaborador_nome: document.getElementById('ed_colab').value.trim(),
                     dias: parseInt(document.getElementById('ed_dias').value, 10),
-                    tipo: document.getElementById('ed_tipo').value,
+                    tipo: document.getElementById('ed_tipo').value,                    
                     cid: document.getElementById('ed_cid').value.trim(),
                     medico: document.getElementById('ed_medico').value.trim(),
                     status: document.getElementById('ed_status').value,
@@ -667,7 +1158,7 @@ async function editarAtestado(id) {
         };
     }
     
-    new bootstrap.Modal(modalEl).show();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 // Excluir atestado
@@ -684,4 +1175,11 @@ async function excluirAtestado(id) {
         console.error('Erro ao excluir atestado:', e); 
         mostrarMensagem('Erro ao excluir atestado', 'error'); 
     }
+}
+
+// Função auxiliar para visualizar encaminhamento INSS (se necessário)
+function visualizarEncaminhamentoINSS(afastamentoId) {
+    // Implementação para visualizar detalhes do encaminhamento ao INSS
+    console.log('Visualizar encaminhamento INSS:', afastamentoId);
+    mostrarMensagem('Funcionalidade de visualização de encaminhamento INSS', 'info');
 }

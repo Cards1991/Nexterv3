@@ -1,0 +1,127 @@
+/* ======================================== */
+/* Estilização Global de Modais             */
+/* ======================================== */
+
+/* Animação de entrada do modal */
+@keyframes slideInDown {
+    from {
+        transform: translateY(-30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.modal.fade .modal-dialog {
+    transition: transform .3s ease-out;
+    transform: translateY(-50px);
+}
+
+.modal.show .modal-dialog {
+    transform: none;
+}
+
+.modal-content {
+    border-radius: 12px;
+    border: none;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    overflow: hidden; /* Garante que o conteúdo respeite as bordas arredondadas */
+}
+
+/* Cabeçalho do Modal */
+.modal-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 1px solid #dee2e6;
+    padding: 1rem 1.5rem;
+    align-items: center;
+}
+
+.modal-title {
+    font-weight: 600;
+    font-size: 1.25rem;
+    color: #343a40;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.modal-header .btn-close {
+    background-color: #ced4da;
+    border-radius: 50%;
+    padding: 0.5rem;
+    opacity: 0.8;
+}
+
+/* Corpo do Modal */
+.modal-body {
+    padding: 1.5rem;
+}
+
+/* Abas dentro do modal */
+.modal-body .nav-pills .nav-link,
+.modal-body .nav-tabs .nav-link {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.2s ease-in-out;
+}
+
+.modal-body .nav-pills .nav-link.active,
+.modal-body .nav-tabs .nav-link.active {
+    background-color: #0d6efd;
+    color: white;
+    box-shadow: 0 2px 8px rgba(13, 110, 253, 0.3);
+}
+
+.modal-body .tab-content {
+    padding-top: 1rem;
+}
+
+/* Formulários dentro do modal */
+.modal-body .form-label {
+    font-weight: 500;
+    color: #495057;
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.modal-body .form-control,
+.modal-body .form-select {
+    border-radius: 8px;
+    border: 1px solid #ced4da;
+    transition: border-color .15s ease-in-out, box-shadow .15s ease-in-out;
+}
+
+.modal-body .form-control:focus,
+.modal-body .form-select:focus {
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+/* Rodapé do Modal */
+.modal-footer {
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+    padding: 0.75rem 1.5rem;
+    display: flex;
+    justify-content: flex-end;
+}
+
+.modal-footer .btn {
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 0.5rem 1.25rem;
+}
+
+/* Estilo para modais de confirmação/perigo */
+.modal-header.bg-danger,
+.modal-header.bg-warning {
+    color: white;
+}
+
+.modal-header.bg-danger .modal-title,
+.modal-header.bg-warning .modal-title,
+.modal-header.bg-primary .modal-title {
+    color: white;
+}

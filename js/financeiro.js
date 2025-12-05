@@ -1,5 +1,4 @@
 // Gerenciamento do Painel Financeiro
-
 const subdivisoesPorOrigem = {
     'FOPAG': ['Folha', 'Rescisões', 'Férias', 'Adiantamento', 'Bônus', 'Horas P.F.'],
     'IMPOSTOS': ['FGTS', 'Darf', 'Multa Rescisória'],
@@ -51,8 +50,16 @@ async function carregarLancamentosFinanceiros() {
 
         if (origem) query = query.where('origem', '==', origem);
         if (subdivisao) query = query.where('subdivisao', '==', subdivisao);
-        if (inicio) query = query.where('dataVencimento', '>=', new Date(inicio));
-        if (fim) query = query.where('dataVencimento', '<=', new Date(fim));
+        if (inicio) {
+            // Garante que a data de início comece à meia-noite
+            query = query.where('dataVencimento', '>=', new Date(inicio.replace(/-/g, '\/')));
+        }
+        if (fim) {
+            // Garante que a data de fim inclua o dia inteiro
+            const dataFim = new Date(fim.replace(/-/g, '\/'));
+            dataFim.setHours(23, 59, 59, 999);
+            query = query.where('dataVencimento', '<=', dataFim);
+        }
 
         const snapshot = await query.orderBy('dataVencimento', 'desc').get();
 
@@ -80,12 +87,12 @@ async function carregarLancamentosFinanceiros() {
             hoje.setHours(0,0,0,0);
             
             let statusBadge;
-            if (lancamento.status === 'Pago') {
+            if (lancamento.status === 'Pago' || lancamento.status === 'pago') {
                 statusBadge = '<span class="badge bg-success">Pago</span>';
             } else if (vencimento < hoje) {
                 statusBadge = '<span class="badge bg-danger">Vencido</span>';
             } else {
-                statusBadge = '<span class="badge bg-warning">Pendente</span>';
+                statusBadge = '<span class="badge bg-warning text-dark">Pendente</span>';
             }
 
             const nomeEmpresa = empresasMap[lancamento.empresaId] || 'N/A';
@@ -98,10 +105,11 @@ async function carregarLancamentosFinanceiros() {
                     <td>${lancamento.funcionarioNome || 'N/A'}</td>
                     <td>${lancamento.origem}</td>
                     <td>${lancamento.subdivisao}</td>
-                    <td>${(lancamento.valor || 0).toFixed(2).replace('.', ',')}</td>
+                    <td class="text-end">${(lancamento.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td class="text-truncate" style="max-width: 150px;" title="${lancamento.motivo || ''}">${lancamento.motivo || '-'}</td>
                     <td>${statusBadge}</td>
                     <td class="text-end">
+                        <button class="btn btn-sm btn-outline-info" onclick="abrirModalLancamentoFinanceiro('${doc.id}', null, true)"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalLancamentoFinanceiro('${doc.id}')"><i class="fas fa-edit"></i></button>
                         <button class="btn btn-sm btn-outline-danger" onclick="excluirLancamentoFinanceiro('${doc.id}')"><i class="fas fa-trash"></i></button>
                     </td>
@@ -118,7 +126,7 @@ async function carregarLancamentosFinanceiros() {
     }
 }
 
-async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao = {}) {
+async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao = {}, readOnly = false) {
     const modalId = 'lancamentoFinanceiroModal';
     let modalEl = document.getElementById(modalId);
 
@@ -139,18 +147,24 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
                             <div class="row">
                                 <div class="col-md-6 mb-3"><label class="form-label">Empresa</label><select class="form-select" id="fin-empresa" required></select></div>
                                 <div class="col-md-6 mb-3"><label class="form-label">Funcionário (Opcional)</label><select class="form-select" id="fin-funcionario"></select></div>
+                                <div class="col-md-6 mb-3"><label class="form-label">Setor</label><select class="form-select" id="fin-setor" required></select></div>
                                 <div class="col-md-6 mb-3"><label class="form-label">Origem</label><select class="form-select" id="fin-origem" required></select></div>
                                 <div class="col-md-6 mb-3"><label class="form-label">Subdivisão</label><select class="form-select" id="fin-subdivisao" required></select></div>
                                 <div class="col-md-6 mb-3"><label class="form-label">Data de Envio</label><input type="date" class="form-control" id="fin-data-envio" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label">Data de Vencimento</label><input type="date" class="form-control" id="fin-data-vencimento" required></div>
-                                <div class="col-md-6 mb-3"><label class="form-label">Valor (R$)</label><input type="number" step="0.01" class="form-control" id="fin-valor" required></div>
+                                <div class="col-md-4 mb-3"><label class="form-label">Valor Total (R$)</label><input type="number" step="0.01" class="form-control" id="fin-valor" required></div>
+                                <div class="col-md-2 mb-3"><label class="form-label">Parcelas</label><input type="number" min="1" value="1" class="form-control" id="fin-parcelas" oninput="gerarCamposVencimento(this.value, true)"></div>
                                 <div class="col-md-6 mb-3"><label class="form-label">Status</label><select class="form-select" id="fin-status"><option>Pendente</option><option>Pago</option></select></div>
+                                <!-- Container para os vencimentos dinâmicos -->
+                                <div id="vencimentos-container" class="row g-3 p-2"></div>
                                 <div class="col-12 mb-3"><label class="form-label">Motivo/Observação</label><textarea class="form-control" id="fin-motivo" rows="2"></textarea></div>
                             </div>
                         </form>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-info" id="btn-imprimir-programacao" style="display: none;">
+                            <i class="fas fa-print"></i> Imprimir Programação
+                        </button>
                         <button type="button" class="btn btn-primary" onclick="salvarLancamentoFinanceiro()">Salvar</button>
                     </div>
                 </div>
@@ -163,12 +177,14 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
     form.reset();
     document.getElementById('lancamento-id').value = lancamentoId || '';
 
+    const empresaSelect = document.getElementById('fin-empresa');
     // Popular selects
     await carregarSelectEmpresas('fin-empresa');
     await carregarSelectFuncionariosAtivos('fin-funcionario', true); // Incluir inativos
 
     const origemSelect = document.getElementById('fin-origem');
     const subdivisaoSelect = document.getElementById('fin-subdivisao');
+    const funcionarioSelect = document.getElementById('fin-funcionario');
     origemSelect.innerHTML = '<option value="">Selecione</option>';
     Object.keys(subdivisoesPorOrigem).forEach(o => origemSelect.innerHTML += `<option>${o}</option>`);
 
@@ -180,32 +196,112 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
         }
     };
 
+    // Evento para filtrar funcionários e setores ao selecionar uma empresa
+    empresaSelect.onchange = async () => {
+        const empresaId = empresaSelect.value;
+        await carregarSelectFuncionariosAtivos('fin-funcionario', true, empresaId); // Filtra funcionários
+        await carregarSetoresPorEmpresa(empresaId, 'fin-setor'); // Carrega setores
+        document.getElementById('fin-setor').disabled = false;
+    };
+
+    // Evento para preencher setor ao selecionar funcionário
+    funcionarioSelect.onchange = async () => {
+        const funcId = funcionarioSelect.value;
+        const setorSelect = document.getElementById('fin-setor'); // O select de setores
+
+        if (funcId) {
+            // Se um funcionário é selecionado, preenche e desabilita os campos
+            try {
+                const funcDoc = await db.collection('funcionarios').doc(funcId).get();
+                if (funcDoc.exists) {
+                    const funcData = funcDoc.data();
+                    
+                    // 1. Define o valor da empresa e desabilita
+                    empresaSelect.value = funcData.empresaId;
+                    empresaSelect.disabled = true;
+
+                    // 2. Carrega os setores DAQUELA empresa
+                    await carregarSetoresPorEmpresa(funcData.empresaId, 'fin-setor');
+
+                    // 3. Define o valor do setor e desabilita
+                    setorSelect.value = funcData.setor;
+                    setorSelect.disabled = true;
+                }
+
+            } catch (error) {
+                console.error("Erro ao buscar dados do funcionário:", error);
+            }
+        } else {
+            // Se nenhum funcionário é selecionado, habilita os campos para preenchimento manual
+            empresaSelect.disabled = false;
+            setorSelect.disabled = false;
+            // Recarrega os setores com base na empresa que estiver selecionada
+            await carregarSetoresPorEmpresa('fin-setor', empresaSelect.value);
+            setorSelect.value = ''; // Limpa a seleção do setor
+        }
+    };
+
     if (lancamentoId) {
         const doc = await db.collection('lancamentos_financeiros').doc(lancamentoId).get();
         const data = doc.data();
         document.getElementById('fin-empresa').value = data.empresaId;
         document.getElementById('fin-funcionario').value = data.funcionarioId;
-        document.getElementById('fin-origem').value = data.origem;
-        await origemSelect.onchange(); // Trigger change to populate subdivision
-        document.getElementById('fin-subdivisao').value = data.subdivisao;
         document.getElementById('fin-data-envio').valueAsDate = data.dataEnvio.toDate();
-        document.getElementById('fin-data-vencimento').valueAsDate = data.dataVencimento.toDate();
         document.getElementById('fin-valor').value = data.valor;
         document.getElementById('fin-status').value = data.status;
+        document.getElementById('fin-parcelas').value = 1; // Edição não suporta alterar parcelamento
+        document.getElementById('fin-parcelas').disabled = true;
         document.getElementById('fin-motivo').value = data.motivo;
+
+        await carregarSetoresPorEmpresa('fin-setor', data.empresaId);
+        document.getElementById('fin-setor').value = data.setor;
+        document.getElementById('fin-origem').value = data.origem;
+        await origemSelect.onchange();
+        document.getElementById('fin-subdivisao').value = data.subdivisao;
     } else {
         // Preencher com dados padrão (ex: vindo de uma demissão)
+        document.getElementById('fin-parcelas').value = 1;
         document.getElementById('fin-empresa').value = dadosPadrao.empresaId || '';
         document.getElementById('fin-funcionario').value = dadosPadrao.funcionarioId || '';
         document.getElementById('fin-motivo').value = dadosPadrao.motivo || '';
         document.getElementById('fin-origem').value = dadosPadrao.origem || '';
         origemSelect.dispatchEvent(new Event('change'));
         setTimeout(() => {
-             document.getElementById('fin-subdivisao').value = dadosPadrao.subdivisao || '';
+            document.getElementById('fin-subdivisao').value = dadosPadrao.subdivisao || '';
         }, 100);
         document.getElementById('fin-data-envio').valueAsDate = new Date();
-        document.getElementById('fin-data-vencimento').valueAsDate = new Date();
+        document.getElementById('fin-parcelas').disabled = false;
     }
+
+    // Lógica para modo somente leitura
+    const formFields = form.querySelectorAll('input, select, textarea');
+    const saveButton = modalEl.querySelector('.modal-footer .btn-primary');
+    const printButton = modalEl.querySelector('#btn-imprimir-programacao');
+
+    if (readOnly) {
+        modalEl.querySelector('.modal-title').textContent = 'Visualizar Lançamento';
+        formFields.forEach(field => field.disabled = true);
+        saveButton.style.display = 'none';
+        printButton.style.display = 'inline-block';
+
+        // Adiciona o evento de clique para impressão
+        printButton.onclick = async () => {
+            const doc = await db.collection('lancamentos_financeiros').doc(lancamentoId).get();
+            const empresaDoc = await db.collection('empresas').doc(doc.data().empresaId).get();
+            const nomeEmpresa = empresaDoc.exists ? empresaDoc.data().nome : 'N/A';
+            imprimirProgramacaoFinanceira({ ...doc.data(), id: doc.id, nomeEmpresa });
+        };
+    } else {
+        modalEl.querySelector('.modal-title').textContent = lancamentoId ? 'Editar Lançamento' : 'Novo Lançamento';
+        formFields.forEach(field => field.disabled = false);
+        // Garante que o campo de parcelas esteja habilitado para novos lançamentos
+        document.getElementById('fin-parcelas').disabled = !!lancamentoId;
+        saveButton.style.display = 'inline-block';
+        printButton.style.display = 'none';
+    }
+
+    // Gera o campo de vencimento inicial
+    gerarCamposVencimento(document.getElementById('fin-parcelas').value);
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
@@ -214,15 +310,16 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
 async function salvarLancamentoFinanceiro() {
     const lancamentoId = document.getElementById('lancamento-id').value;
     const funcionarioSelect = document.getElementById('fin-funcionario');
+    const parcelas = parseInt(document.getElementById('fin-parcelas').value) || 1;
 
     const data = {
         empresaId: document.getElementById('fin-empresa').value,
         funcionarioId: funcionarioSelect.value,
         funcionarioNome: funcionarioSelect.value ? funcionarioSelect.options[funcionarioSelect.selectedIndex].text : null,
         origem: document.getElementById('fin-origem').value,
+        setor: document.getElementById('fin-setor').value,
         subdivisao: document.getElementById('fin-subdivisao').value,
         dataEnvio: new Date(document.getElementById('fin-data-envio').value.replace(/-/g, '\/')),
-        dataVencimento: new Date(document.getElementById('fin-data-vencimento').value.replace(/-/g, '\/')),
         valor: parseFloat(document.getElementById('fin-valor').value),
         status: document.getElementById('fin-status').value,
         motivo: document.getElementById('fin-motivo').value,
@@ -236,13 +333,51 @@ async function salvarLancamentoFinanceiro() {
 
     try {
         if (lancamentoId) {
+            // Modo de edição: atualiza apenas o lançamento único, sem lógica de parcelamento.
             await db.collection('lancamentos_financeiros').doc(lancamentoId).update(data);
             mostrarMensagem("Lançamento atualizado com sucesso!", "success");
         } else {
-            data.createdAt = firebase.firestore.FieldValue.serverTimestamp();            
-            const docRef = await db.collection('lancamentos_financeiros').add(data);
-            mostrarMensagem("Lançamento salvo com sucesso!", "success");
-            abrirModalProgramacaoFinanceira({ ...data, id: docRef.id }); // Abre o novo modal
+            // Modo de criação: lida com parcelas.
+            const valorParcela = data.valor / parcelas;
+            const motivoOriginal = data.motivo;
+
+            const batch = db.batch();
+            const todasAsParcelas = []; // Array para guardar os dados de todas as parcelas
+
+
+            for (let i = 0; i < parcelas; i++) {
+                const vencimentoInput = document.getElementById(`vencimento-parcela-${i + 1}`);
+                if (!vencimentoInput || !vencimentoInput.value) {
+                    throw new Error(`A data de vencimento da parcela ${i + 1} não foi informada.`);
+                }
+
+                const docRef = db.collection('lancamentos_financeiros').doc(); // Cria uma referência com ID automático
+                const dadosParcela = { ...data };
+
+                // Ajusta os dados para a parcela atual
+                const dataVencimentoParcela = new Date(vencimentoInput.value.replace(/-/g, '\/'));
+
+                dadosParcela.valor = parseFloat(valorParcela.toFixed(2));
+                dadosParcela.dataVencimento = dataVencimentoParcela;
+                dadosParcela.motivo = parcelas > 1 ? `${motivoOriginal} (${i + 1}/${parcelas})` : motivoOriginal;
+                dadosParcela.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                
+                // Adiciona os dados da parcela (com seu ID) ao array
+                todasAsParcelas.push({ ...dadosParcela, id: docRef.id });
+                batch.set(docRef, dadosParcela);
+            }
+
+            await batch.commit();
+
+            const mensagem = parcelas > 1 ? `${parcelas} parcelas foram salvas com sucesso!` : "Lançamento salvo com sucesso!";
+            mostrarMensagem(mensagem, "success");
+
+            // Itera sobre todas as parcelas salvas e gera um relatório para cada uma
+            for (const parcela of todasAsParcelas) {
+                const empresaDoc = await db.collection('empresas').doc(parcela.empresaId).get();
+                const nomeEmpresa = empresaDoc.exists ? empresaDoc.data().nome : 'N/A';
+                imprimirProgramacaoFinanceira({ ...parcela, nomeEmpresa });
+            }
         }
 
         bootstrap.Modal.getInstance(document.getElementById('lancamentoFinanceiroModal')).hide();
@@ -250,11 +385,45 @@ async function salvarLancamentoFinanceiro() {
             await carregarLancamentosFinanceiros();
         }
 
+        // Atualiza o painel de análise de custos
+        if (typeof inicializarAnaliseCustos === 'function') {
+            await inicializarAnaliseCustos();
+        }
+
     } catch (error) {
         console.error("Erro ao salvar lançamento:", error);
         mostrarMensagem("Erro ao salvar lançamento.", "error");
     }
 }
+
+function gerarCamposVencimento(numeroDeParcelas, sugerirData = false) {
+    const container = document.getElementById('vencimentos-container');
+    if (!container) return;
+
+    const parcelas = parseInt(numeroDeParcelas) || 1;
+    container.innerHTML = ''; // Limpa o container
+
+    const dataBase = new Date();
+
+    for (let i = 1; i <= parcelas; i++) {
+        let dataFormatada = '';
+        if (sugerirData) {
+            const dataSugerida = new Date(dataBase);
+            dataSugerida.setMonth(dataBase.getMonth() + (i - 1));
+            dataFormatada = dataSugerida.toISOString().split('T')[0];
+        }
+
+        const col = document.createElement('div');
+        col.className = 'col-md-4';
+        col.innerHTML = `
+            <label class="form-label">Venc. Parcela ${i}</label>
+            <input type="date" class="form-control form-control-sm" id="vencimento-parcela-${i}" value="${dataFormatada}" required>
+        `;
+        container.appendChild(col);
+    }
+}
+
+
 
 async function excluirLancamentoFinanceiro(lancamentoId) {
     if (!confirm('Tem certeza que deseja excluir este lançamento financeiro?')) {
@@ -370,16 +539,7 @@ async function imprimirRelatorioFinanceiro() {
             </html>
         `;
 
-        let printFrame = document.getElementById('print-frame');
-        if (!printFrame) {
-            printFrame = document.createElement('iframe');
-            printFrame.id = 'print-frame';
-            printFrame.style.display = 'none';
-            document.body.appendChild(printFrame);
-        }
-        printFrame.contentDocument.write(conteudo);
-        printFrame.contentDocument.close();
-        printFrame.contentWindow.print();
+        openPrintWindow(conteudo, { autoPrint: true, name: '_blank' });
     } catch (error) {
         console.error("Erro ao gerar relatório financeiro:", error);
         mostrarMensagem('Erro ao gerar relatório para impressão.', 'error');
@@ -453,37 +613,47 @@ async function abrirModalProgramacaoFinanceira(dados) {
     modal.show();
 }
 
-function imprimirProgramacaoFinanceira() {
-    const conteudo = document.getElementById('programacao-financeira-printable').innerHTML;
-    const titulo = "Programação Financeira";
+function imprimirProgramacaoFinanceira(dados) {
+    const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
-    const win = window.open('', '_blank');
-    const conteudoCompleto = `
+    // Garante que a data seja um objeto Date do Javascript antes de formatar
+    const dataVencimentoJS = dados.dataVencimento?.toDate ? dados.dataVencimento.toDate() : new Date(dados.dataVencimento);
+    const dataVencFormatada = formatarData(dataVencimentoJS).replace(/\//g, '-');
+    // Cria um título dinâmico para o documento
+    const titulo = `Prog. Pagamento - ${dados.nomeEmpresa || 'Empresa'} - ${dataVencFormatada}`;
+
+    const conteudoHtml = `
         <html>
             <head>
                 <title>${titulo}</title>
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
                 <style> 
-                    @page { size: A5 landscape; margin: 0; }
-                    body { padding: 30px; } 
+                    @page { size: A5 portrait; margin: 1.5cm; } /* Define margens da página */
+                    body { font-family: 'Segoe UI', system-ui, sans-serif; width: 100%; height: 100%; display: flex; flex-direction: column; }
+                    .header-print { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; }
+                    .header-print h3 { font-weight: 700; color: #0d6efd; }
+                    .field-group { margin-bottom: 1rem; }
+                    .field-label { font-size: 0.8rem; color: #6c757d; font-weight: 600; display: block; margin-bottom: 0.25rem; text-transform: uppercase; }
+                    .field-value { font-size: 1.1rem; background-color: #f8f9fa; padding: 0.5rem 1rem; border-radius: 8px; border: 1px solid #e9ecef; }
+                    .assinatura { margin-top: auto; padding-top: 80px; text-align: center; } /* Empurra a assinatura para o final da página */
+                    .assinatura p { margin: 0; }
                 </style>
             </head>
             <body>
-                <h2 class="mb-4">${titulo}</h2>
-                ${conteudo}
+                <div class="header-print"><h3>${titulo}</h3></div>
+                <div class="row">
+                    <div class="col-12 field-group"><div class="field-label">Empresa</div><div class="field-value">${dados.nomeEmpresa || 'N/A'}</div></div>
+                    <div class="col-6 field-group"><div class="field-label">Origem</div><div class="field-value">${dados.origem || 'N/A'}</div></div>
+                    <div class="col-6 field-group"><div class="field-label">Subdivisão</div><div class="field-value">${dados.subdivisao || 'N/A'}</div></div>
+                    <div class="col-6 field-group"><div class="field-label">Data de Vencimento</div><div class="field-value">${formatarData(dataVencimentoJS)}</div></div>
+                    <div class="col-6 field-group"><div class="field-label">Valor</div><div class="field-value">R$ ${dados.valor.toFixed(2).replace('.', ',')}</div></div>
+                    <div class="col-12 field-group"><div class="field-label">Motivo / Observação</div><div class="field-value">${dados.motivo || 'Nenhuma observação.'}</div></div>
+                </div>
+                <div class="assinatura">
+                    <p>_________________________________________</p>
+                    <p><strong>Recursos Humanos</strong></p>
+                </div>
             </body>
         </html>`;
-    
-    let printFrame = document.getElementById('print-frame');
-    if (!printFrame) {
-        printFrame = document.createElement('iframe');
-        printFrame.id = 'print-frame';
-        printFrame.style.display = 'none';
-        document.body.appendChild(printFrame);
-    }
-    printFrame.contentDocument.write(conteudoCompleto);
-    printFrame.contentDocument.close();
-    win.document.close();
-    win.focus();
-    setTimeout(() => { win.print(); }, 500);
+    openPrintWindow(conteudoHtml, { autoPrint: true, name: '' });
 }

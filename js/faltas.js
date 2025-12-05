@@ -1,5 +1,39 @@
 // Faltas Diárias - Manhã/Tarde
 let __faltas_cache = [];
+let __faltas_empresas_cache = null;
+
+/**
+ * Obtém os nomes das empresas, usando um cache para evitar múltiplas leituras do Firestore.
+ * @returns {Promise<Object>} Um objeto mapeando IDs de empresas para seus nomes.
+ */
+async function getEmpresasFaltas() {
+    if (!__faltas_empresas_cache) {
+        const snap = await db.collection('empresas').get();
+        __faltas_empresas_cache = {};
+        snap.forEach(d => __faltas_empresas_cache[d.id] = d.data().nome);
+    }
+    return __faltas_empresas_cache;
+}
+
+/**
+ * Converte uma string de data (YYYY-MM-DD) para um objeto Date.
+ * @param {string} dateStr - A string da data.
+ * @returns {Date} O objeto Date.
+ */
+function parseDate(dateStr) {
+    if (!dateStr) return new Date(); // Retorna a data atual se a string for vazia ou nula
+    // Garante que a data é válida antes de retornar
+    const date = new Date(dateStr + 'T00:00:00');
+    if (isNaN(date.getTime())) {
+        // Fallback para formato YYYY-MM-DD se 'T00:00:00' não funcionar em todos os casos
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        }
+        return new Date(); // Retorna hoje se a data for inválida
+    }
+    return date;
+}
 
 // Inicializar faltas
 async function inicializarFaltas() {
@@ -43,7 +77,10 @@ async function preencherFiltrosFaltas() {
         
         // Data padrão hoje
         const d = document.getElementById('falta-filtro-data');
-        if (d && !d.value) d.valueAsDate = new Date();
+        if (d && !d.value) {
+            // valueAsDate espera um objeto Date. new Date() é mais direto e seguro aqui.
+            d.valueAsDate = new Date();
+        }
         
         // Popular setores quando empresa mudar
         if (empSel && setSel) {
@@ -104,11 +141,11 @@ async function carregarFaltas() {
         
         // Filtro por data (aplicado para todos)
         if (dataStr) {
-            const ini = new Date(dataStr.replace(/-/g, '\/'));
+            const ini = parseDate(dataStr);
             ini.setHours(0, 0, 0, 0);
-            const fim = new Date(dataStr.replace(/-/g, '\/'));
+            const fim = parseDate(dataStr);
             fim.setHours(23, 59, 59, 999);
-            query = query.where('data', '>=', ini).where('data', '<=', fim);
+            query = query.where('data', '>=', ini).where('data', '<=', fim); // Requer índice composto (data, setor) ou (data, empresaId, periodo)
         }
         
         // Filtros adicionais
@@ -118,9 +155,7 @@ async function carregarFaltas() {
         const snap = await query.get();
         const registros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
-        const empSnap = await db.collection('empresas').get(); 
-        const empMap = {}; 
-        empSnap.forEach(d => empMap[d.id] = d.data().nome);
+        const empMap = await getEmpresasFaltas();
         
         if (registros.length === 0) { 
             tbody.innerHTML = '<tr><td colspan="6" class="text-center">Sem faltas para os filtros</td></tr>'; 
@@ -129,24 +164,61 @@ async function carregarFaltas() {
         
         tbody.innerHTML = '';
         registros.forEach(f => {
-            const dataObj = f.data?.toDate ? f.data.toDate() : f.data;
+            // CORREÇÃO: Garante que dataObj seja um objeto Date válido, mesmo se f.data for uma string.
+            const dataObj = f.data?.toDate ? f.data.toDate() :
+                          (f.data instanceof Date ? f.data : new Date(f.data || Date.now())); // Fallback para data atual se f.data for nulo
             const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td>${formatarData(dataObj)}</td>
-                <td>${f.funcionarioNome || '-'}</td>
-                <td>${empMap[f.empresaId] || '-'} / ${f.setor || '-'}</td>
-                <td><span class="badge ${f.periodo === 'manha' ? 'bg-info' : 'bg-primary'}">${f.periodo === 'manha' ? 'Manhã' : 'Tarde'}</span></td>
-                <td>${f.justificativa || '-'}</td>
-                <td class="text-end">
-                    <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-danger" onclick="excluirFalta('${f.id}')"><i class="fas fa-trash"></i></button>
-                    </div>
-                </td>`;
+            
+            // Cria células manualmente para evitar XSS
+            const tdData = document.createElement('td');
+            tdData.textContent = formatarData(dataObj);
+            
+            const tdNome = document.createElement('td');
+            tdNome.textContent = f.funcionarioNome || '-';
+            
+            const tdEmpresaSetor = document.createElement('td');
+            tdEmpresaSetor.textContent = (empMap[f.empresaId] || '-') + ' / ' + (f.setor || '-');
+            
+            const tdPeriodo = document.createElement('td');
+            const badge = document.createElement('span');
+            badge.className = 'badge ' + (f.periodo === 'manha' ? 'bg-info' : 'bg-primary');
+            badge.textContent = f.periodo === 'manha' ? 'Manhã' : 'Tarde';
+            tdPeriodo.appendChild(badge);
+            
+            const tdJustificativa = document.createElement('td');
+            tdJustificativa.textContent = f.justificativa || '-';
+            
+            const tdAcoes = document.createElement('td');
+            tdAcoes.className = 'text-end';
+            const btnGroup = document.createElement('div');
+            btnGroup.className = 'btn-group btn-group-sm';
+            const btnExcluir = document.createElement('button');
+            btnExcluir.className = 'btn btn-outline-danger';
+            btnExcluir.innerHTML = '<i class="fas fa-trash"></i>';
+            btnExcluir.onclick = () => excluirFalta(f.id);
+            btnGroup.appendChild(btnExcluir);
+            tdAcoes.appendChild(btnGroup);
+            
+            tr.appendChild(tdData);
+            tr.appendChild(tdNome);
+            tr.appendChild(tdEmpresaSetor);
+            tr.appendChild(tdPeriodo);
+            tr.appendChild(tdJustificativa);
+            tr.appendChild(tdAcoes);
+            
             tbody.appendChild(tr);
         });
+
+        // Após carregar a tabela principal, verifica as faltas recorrentes
+        await verificarFaltasRecorrentes();
     } catch (e) { 
-        console.error('Erro ao carregar faltas:', e); 
-        mostrarMensagem('Erro ao carregar faltas', 'error'); 
+        console.error('Erro ao carregar faltas:', e);
+        mostrarMensagem('Erro ao carregar faltas', 'error');
+        
+        // Verifica se é um erro comum de falta de índice no Firestore
+        if (e.message && e.message.includes('index')) {
+            mostrarMensagem('Índice composto ausente no Firestore. Verifique o console para o link de criação do índice.', 'warning');
+        }
     }
 }
 
@@ -222,8 +294,9 @@ function abrirModalNovaFalta() {
         });
         
         const d = document.getElementById('falta_data'); 
-        if (d) d.valueAsDate = new Date();
-        
+        if (d) {
+            d.value = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
+        }
         const btnSalvar = document.getElementById('btn-salvar-falta');
         if (btnSalvar) {
             btnSalvar.onclick = salvarFalta;
@@ -235,8 +308,7 @@ function abrirModalNovaFalta() {
 
 // Salvar falta
 async function salvarFalta() {
-    try {
-        const timestamp = firebase.firestore.FieldValue.serverTimestamp;
+    try {        
         const funcId = document.getElementById('falta_func').value;
         const dataStr = document.getElementById('falta_data').value;
         const periodo = document.getElementById('falta_periodo').value;
@@ -255,13 +327,16 @@ async function salvarFalta() {
             funcionarioNome: f?.nome || null,
             empresaId: f?.empresaId || null,
             setor: f?.setor || null,
-            data: new Date(dataStr.replace(/-/g, '\/')),
+            data: parseDate(dataStr),
             periodo: periodo,
             justificativa: justificativa || null,
-            criado_em: timestamp(),
+            criado_em: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: firebase.auth().currentUser?.uid || null
         });
         
+        // Invalida cache de empresas após salvar falta
+        __faltas_empresas_cache = null;
+
         const modalEl = document.getElementById('faltaModal');
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
@@ -279,6 +354,9 @@ async function excluirFalta(id) {
     if (!confirm('Confirma excluir a falta?')) return;
     
     try { 
+        // Invalida cache de empresas antes de excluir falta
+        __faltas_empresas_cache = null;
+
         await db.collection('faltas').doc(id).delete(); 
         await carregarFaltas(); 
         mostrarMensagem('Falta excluída com sucesso!'); 
@@ -309,11 +387,11 @@ async function imprimirRelatorioFaltas() {
         if (tipoRel === 'diario') {
             tipoRelatorio = 'Diário';
             if (dataStr) {
-                const data = new Date(dataStr);
+                const data = parseDate(dataStr);
                 periodoTexto = `Data: ${data.toLocaleDateString('pt-BR')}`;
-                const ini = new Date(dataStr); 
+                const ini = parseDate(dataStr); 
                 ini.setHours(0,0,0,0);
-                const fim = new Date(dataStr); 
+                const fim = parseDate(dataStr); 
                 fim.setHours(23,59,59,999);
                 query = query.where('data', '>=', ini).where('data', '<=', fim);
             } else {
@@ -362,15 +440,13 @@ async function imprimirRelatorioFaltas() {
         let registros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
         // Aplicar filtro de setor no cliente se necessário
-        if (setor && tipoRel !== 'setor' && !(currentUserPermissions.restricaoSetor && !currentUserPermissions.isAdmin)) {
+        if (setor && !(currentUserPermissions.restricaoSetor && !currentUserPermissions.isAdmin)) {
             registros = registros.filter(r => (r.setor || '') === setor);
         }
         
         // Obter nomes de empresas
-        const empSnap = await db.collection('empresas').get();
-        const empMap = {};
-        empSnap.forEach(d => empMap[d.id] = d.data().nome);
-        
+        const empMap = await getEmpresasFaltas();
+
         // Agrupar por setor se tipo for "setor"
         const agruparPorSetor = (tipoRel === 'setor');
         let dadosAgrupados = {};
@@ -402,7 +478,7 @@ async function imprimirRelatorioFaltas() {
         if (setor) html += ' | Setor: ' + setor;
         if (periodo) html += ' | Período: ' + (periodo === 'manha' ? 'Manhã' : 'Tarde');
         
-        html += '</small></div>' +
+        html += '</small></div>' +  // FECHA A STRING CORRETAMENTE
             '<small class="text-muted">Gerado em: ' + new Date().toLocaleString('pt-BR') + '</small>' +
             '</div>';
         
@@ -450,17 +526,8 @@ async function imprimirRelatorioFaltas() {
         
         html += '</body></html>';
         
-        // Abrir janela de impressão
-        let printFrame = document.getElementById('print-frame');
-        if (!printFrame) {
-            printFrame = document.createElement('iframe');
-            printFrame.id = 'print-frame';
-            printFrame.style.display = 'none';
-            document.body.appendChild(printFrame);
-        }
-        printFrame.contentDocument.write(html);
-        printFrame.contentDocument.close();
-        printFrame.contentWindow.print();
+        // Abrir janela de impressão via utilitário
+        openPrintWindow(html, { autoPrint: true, name: '_blank' });
         
     } catch (e) {
         console.error('Erro ao gerar relatório de faltas:', e);
@@ -468,9 +535,63 @@ async function imprimirRelatorioFaltas() {
     }
 }
 
-// Função auxiliar para formatar data (caso não exista)
-function formatarData(data) {
-    if (!data) return '—';
-    const dataObj = data instanceof Date ? data : data.toDate();
-    return dataObj.toLocaleDateString('pt-BR');
+/**
+ * Verifica e exibe um alerta para funcionários com mais de 2 faltas nos últimos 30 dias.
+ */
+async function verificarFaltasRecorrentes() {
+    const alertaContainer = document.getElementById('alerta-faltas-recorrentes');
+    const detalhesContainer = document.getElementById('faltas-recorrentes-container');
+
+    if (!alertaContainer || !detalhesContainer) {
+        console.warn('Elementos do dashboard de alerta de faltas não encontrados.');
+        return;
+    }
+
+    try {
+        const hoje = new Date();
+        const trintaDiasAtras = new Date();
+        trintaDiasAtras.setDate(hoje.getDate() - 30);
+
+        let query = db.collection('faltas').where('data', '>=', trintaDiasAtras);
+
+        // Aplica restrição de setor se o usuário não for admin
+        if (currentUserPermissions.restricaoSetor && !currentUserPermissions.isAdmin) {
+            query = query.where('setor', '==', currentUserPermissions.restricaoSetor);
+        }
+
+        const snap = await query.get();
+        const faltas = snap.docs.map(doc => doc.data());
+
+        const contagemPorFuncionario = faltas.reduce((acc, falta) => {
+            if (falta.funcionarioId) {
+                if (!acc[falta.funcionarioId]) {
+                    acc[falta.funcionarioId] = { nome: falta.funcionarioNome, count: 0 };
+                }
+                acc[falta.funcionarioId].count++;
+            }
+            return acc;
+        }, {});
+
+        const recorrentes = Object.values(contagemPorFuncionario).filter(f => f.count > 2);
+
+        if (recorrentes.length > 0) {
+            detalhesContainer.innerHTML = recorrentes
+                .sort((a, b) => b.count - a.count) // Ordena por quem tem mais faltas
+                .map(func => `
+                    <div class="alert alert-light p-2 mb-2 d-flex justify-content-between align-items-center">
+                        <span><i class="fas fa-user-circle me-2"></i>${func.nome}</span>
+                        <span class="badge bg-danger">${func.count} faltas</span>
+                    </div>
+                `).join('');
+            alertaContainer.style.display = 'block';
+        } else {
+            detalhesContainer.innerHTML = '<p class="text-muted">Nenhum funcionário com mais de 2 faltas no período.</p>';
+            alertaContainer.style.display = 'none';
+        }
+
+    } catch (error) {
+        console.error("Erro ao verificar faltas recorrentes:", error);
+        detalhesContainer.innerHTML = '<p class="text-danger">Erro ao carregar dados de alerta.</p>';
+        alertaContainer.style.display = 'block';
+    }
 }

@@ -209,14 +209,7 @@ async function imprimirOrganograma() {
         </html>
     `;
 
-    const win = window.open('', '_blank');
-    win.document.write(htmlParaImprimir);
-    win.document.close();
-    win.onload = () => {
-        win.focus();
-        win.print();
-        win.close();
-    };
+    openPrintWindow(htmlParaImprimir, { autoPrint: true, name: '_blank' });
 }
 
 // Funções de controle do organograma
@@ -600,11 +593,23 @@ const organogramaCSS = `
 
 /* Scrollbar personalizada */
 .organograma-container::-webkit-scrollbar {
-    display: none; /* Esconde a barra de rolagem no Chrome/Safari */
+    display: block;
+    height: 12px;
+}
+
+.organograma-container::-webkit-scrollbar-track {
+    background: #e9ecef;
+    border-radius: 10px;
+}
+
+.organograma-container::-webkit-scrollbar-thumb {
+    background-color: #adb5bd;
+    border-radius: 10px;
+    border: 3px solid #e9ecef;
 }
 .organograma-container {
-    -ms-overflow-style: none;  /* Esconde a barra de rolagem no IE/Edge */
-    scrollbar-width: none;  /* Esconde a barra de rolagem no Firefox */
+    scrollbar-width: thin;
+    scrollbar-color: #adb5bd #e9ecef;
 }
 
 /* Animações */
@@ -682,7 +687,7 @@ async function abrirModalMembroOrganograma(membroId = null) {
         document.getElementById('organograma-parent').value = data.parentId || '';
     }
 
-    new bootstrap.Modal(modalEl).show();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 async function salvarMembroOrganograma() {

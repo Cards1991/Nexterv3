@@ -312,7 +312,7 @@ async function abrirModalFatorSwot(tipo, fatorId = null) {
         modalTitle.textContent = `Adicionar Fator de ${tipoCapitalizado}`;
     }
 
-    const modal = new bootstrap.Modal(modalEl);
+    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
 }
 
@@ -426,7 +426,7 @@ async function abrirModalEdicaoHistorico(ano) {
         document.getElementById('hist-oportunidade').value = data.detalhes.oportunidade.toFixed(2);
         document.getElementById('hist-ameaca').value = data.detalhes.ameaca.toFixed(2);
 
-        const modal = new bootstrap.Modal(modalEl);
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
 
     } catch (error) {

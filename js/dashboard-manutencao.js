@@ -1,5 +1,4 @@
 // Gerenciamento do Dashboard de Análise de Manutenção
-
 let chartRankingMaquinas = null;
 let chartTiposManutencao = null;
 

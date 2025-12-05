@@ -1,6 +1,79 @@
 // Gerenciamento de funcionários
 let funcionarios = [];
 
+document.addEventListener('DOMContentLoaded', () => {
+    const filtroEmpresa = document.getElementById('filtro-empresa-funcionarios');
+    if (filtroEmpresa) {
+        filtroEmpresa.addEventListener('change', carregarFuncionarios);
+    }
+    const filtroNome = document.getElementById('filtro-nome-funcionarios');
+    if (filtroNome) {
+        filtroNome.addEventListener('input', carregarFuncionarios);
+    }
+});
+
+// Carregar empresas para selects
+async function carregarSelectEmpresas(selectId) {
+    try {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Selecione uma empresa</option>';
+
+        const empresasSnapshot = await db.collection('empresas')
+            .orderBy('nome')
+            .get();
+
+        empresasSnapshot.forEach(doc => {
+            const empresa = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = empresa.nome;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao carregar empresas:', error);
+    }
+}
+
+// Carregar líderes para selects
+async function carregarSelectLideres(selectId, funcionarioIdExcluir = null) {
+    try {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        // Salvar valor atual se existir
+        const valorAtual = select.value;
+        
+        select.innerHTML = '<option value="">Sem líder</option>';
+
+        const funcionariosSnapshot = await db.collection('funcionarios')
+            .where('status', '==', 'Ativo')
+            .orderBy('nome')
+            .get();
+
+        funcionariosSnapshot.forEach(doc => {
+            // Não incluir o próprio funcionário se estiver editando
+            if (funcionarioIdExcluir && doc.id === funcionarioIdExcluir) {
+                return;
+            }
+
+            const func = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = func.nome;
+            select.appendChild(option);
+        });
+
+        // Restaurar valor anterior se ainda existir
+        if (valorAtual) {
+            select.value = valorAtual;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar líderes:', error);
+    }
+}
+
 // Carregar funcionários
 async function carregarFuncionarios() {
     try {
@@ -9,6 +82,7 @@ async function carregarFuncionarios() {
         
         tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
+        await preencherFiltroEmpresaFuncionarios();
         const funcionariosSnapshot = await db.collection('funcionarios')
             .orderBy('nome')
             .get();
@@ -27,31 +101,32 @@ async function carregarFuncionarios() {
             empresasMap[doc.id] = doc.data().nome;
         });
 
+        // Popula o array de funcionários primeiro
+        funcionarios = funcionariosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+        // Aplicar filtros
+        const filtroEmpresaId = document.getElementById('filtro-empresa-funcionarios').value;
+        const filtroNome = document.getElementById('filtro-nome-funcionarios').value.toLowerCase();
+
+        let funcionariosFiltrados = funcionarios;
+
+        if (filtroEmpresaId) {
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => f.empresaId === filtroEmpresaId);
+        }
+        if (filtroNome) {
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => f.nome.toLowerCase().includes(filtroNome));
+        }
+
+        if (funcionariosFiltrados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
+            return;
+        }
+
         tbody.innerHTML = '';
-        for (const doc of funcionariosSnapshot.docs) {
-            const funcionario = { id: doc.id, ...doc.data() };
-            funcionarios.push(funcionario);
-
-            // Determinar status
-            let status = funcionario.status || 'Ativo';
-            let statusClass = status === 'Inativo' ? 'status-inativo' : 'status-ativo';
-
-            // Verificar movimentações se não tiver status definido
-            if (!funcionario.status) {
-                const movimentacoesSnapshot = await db.collection('movimentacoes')
-                    .where('funcionarioId', '==', doc.id)
-                    .orderBy('data', 'desc')
-                    .limit(1)
-                    .get();
-                    
-                if (!movimentacoesSnapshot.empty) {
-                    const ultimaMov = movimentacoesSnapshot.docs[0].data();
-                    if (ultimaMov.tipo === 'demissao') {
-                        status = 'Inativo';
-                        statusClass = 'status-inativo';
-                    }
-                }
-            }
+        for (const funcionario of funcionariosFiltrados) {
+            const docId = funcionario.id;
+            const status = funcionario.status || 'Ativo';
+            const statusClass = status === 'Inativo' ? 'bg-danger' : 'bg-success';
 
             const nomeEmpresa = empresasMap[funcionario.empresaId] || 'Empresa não encontrada';
             const tempoDeEmpresa = funcionario.dataAdmissao ? calcularTempoDeEmpresa(funcionario.dataAdmissao.toDate()) : 'N/A';
@@ -68,13 +143,13 @@ async function carregarFuncionarios() {
                 <td><small>${tempoDeEmpresa}</small></td>
                 <td><span class="badge ${statusClass}">${status}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editarFuncionario('${doc.id}')">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editarFuncionario('${docId}')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" onclick="verDetalhesFuncionario('${doc.id}')">
+                    <button class="btn btn-sm btn-outline-info" onclick="verDetalhesFuncionario('${docId}')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario('${doc.id}', '${funcionario.nome}')">
+                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario('${docId}', '${funcionario.nome}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -87,24 +162,77 @@ async function carregarFuncionarios() {
     }
 }
 
+async function preencherFiltroEmpresaFuncionarios() {
+    try {
+        const select = document.getElementById('filtro-empresa-funcionarios');
+        if (!select || select.options.length > 1) return; // Não recarrega se já estiver preenchido
+        if (!select) {
+            console.warn("Elemento 'filtro-empresa-funcionarios' não encontrado.");
+            return;
+        }
+
+        // Sempre limpa as opções existentes e adiciona a opção padrão
+        select.innerHTML = '<option value="">Filtrar por Empresa...</option>';
+
+        const empresasSnapshot = await db.collection('empresas')
+            .orderBy('nome')
+            .get();
+
+        empresasSnapshot.forEach(doc => {
+            const empresa = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = empresa.nome;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Erro ao preencher filtro de empresas:', error);
+    }
+}
+
 // Salvar funcionário
 async function salvarFuncionario() {
     try {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-funcionario').value;
+        const matricula = document.getElementById('matricula-funcionario').value;
         const cpf = document.getElementById('cpf-funcionario').value;
+        const rg = document.getElementById('rg-funcionario').value;
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
-        const empresaId = document.getElementById('empresa-funcionario').value;
-        const setor = document.getElementById('setor-funcionario').value;
-        const salario = parseFloat(document.getElementById('salario-funcionario').value) || 0;
-        const cargo = document.getElementById('cargo-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
+
+        const empresaId = document.getElementById('empresa-funcionario').value;
+        const setor = document.getElementById('setor-funcionario').value;
+        const cargo = document.getElementById('cargo-funcionario').value;
+        const liderId = document.getElementById('lider-funcionario').value;
         const dataAdmissao = document.getElementById('admissao-funcionario').value;
+        const salario = parseFloat(document.getElementById('salario-funcionario').value) || 0;
+        const salarioPorFora = parseFloat(document.getElementById('salario-por-fora-funcionario').value) || 0;
+        const jornada = document.getElementById('jornada-funcionario').value;
+        const tipoContrato = document.getElementById('contrato-funcionario').value;
+        const regimeTrabalho = document.getElementById('regime-funcionario').value;
+
+        const escolaridade = document.getElementById('escolaridade-funcionario').value;
+        const idiomas = document.getElementById('idiomas-funcionario').value;
+        const certificacoes = document.getElementById('certificacoes-funcionario').value;
+        const cursos = document.getElementById('cursos-funcionario').value;
+
+        const avaliacaoDesempenho = parseFloat(document.getElementById('desempenho-avaliacao').value) || null;
+        const dataAvaliacao = document.getElementById('desempenho-data-avaliacao').value;
+        const metas = document.getElementById('desempenho-metas').value;
+        const feedback = document.getElementById('desempenho-feedback').value;
+
+        const temPlanoSaude = document.getElementById('beneficio-plano-saude').checked;
+        const temValeTransporte = document.getElementById('beneficio-vale-transporte').checked;
+        const temValeAlimentacao = document.getElementById('beneficio-vale-alimentacao').checked;
+        const temSeguroVida = document.getElementById('beneficio-seguro-vida').checked;
+        const outrosBeneficios = document.getElementById('beneficio-outros').value;
 
         if (!nome || !cpf || !empresaId || !setor || !cargo || !dataAdmissao || !dataNascimento || !sexo) {
-            mostrarMensagem('Preencha todos os campos obrigatórios', 'warning');
+            new bootstrap.Tab(document.getElementById('identificacao-tab')).show();
+            mostrarMensagem('Preencha todos os campos obrigatórios nas abas.', 'warning');
             return;
         }
 
@@ -139,16 +267,45 @@ async function salvarFuncionario() {
         const user = firebase.auth().currentUser;
         const funcionarioData = {
             nome: nome,
+            matricula: matricula,
             cpf: cpf,
+            rg: rg,
             email: email,
             telefone: telefone,
+            sexo: sexo,
+            dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
+
             empresaId: empresaId,
             setor: setor,
             cargo: cargo,
-            salario: salario,
-            sexo: sexo,
-            dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
+            liderId: liderId || null,
             dataAdmissao: dataAdmissaoValida,
+            salario: salario,
+            salarioPorFora: salarioPorFora,
+            jornada: jornada,
+            tipoContrato: tipoContrato,
+            regimeTrabalho: regimeTrabalho,
+
+            escolaridade: escolaridade,
+            idiomas: idiomas,
+            certificacoes: certificacoes,
+            cursos: cursos,
+
+            desempenho: {
+                ultimaAvaliacao: avaliacaoDesempenho,
+                dataUltimaAvaliacao: dataAvaliacao ? new Date(dataAvaliacao.replace(/-/g, '\/')) : null,
+                metas: metas,
+                feedbackPDI: feedback
+            },
+
+            beneficios: {
+                planoSaude: temPlanoSaude,
+                valeTransporte: temValeTransporte,
+                valeAlimentacao: temValeAlimentacao,
+                seguroVida: temSeguroVida,
+                outros: outrosBeneficios
+            },
+
             status: 'Ativo',
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),            
             createdByUid: user ? user.uid : null
@@ -156,7 +313,7 @@ async function salvarFuncionario() {
 
         const docRef = await db.collection('funcionarios').add(funcionarioData);
         // Passa o ID do novo documento para a função de cálculo de custo
-        await atualizarCustoTotal(docRef.id, salario, empresaId);
+        await atualizarCustoTotal(docRef.id, salario, empresaId, salarioPorFora);
 
         const modal = bootstrap.Modal.getInstance(document.getElementById('funcionarioModal'));
         modal.hide();
@@ -251,18 +408,46 @@ async function editarFuncionario(funcionarioId) {
         
         document.querySelector('#funcionarioModal .modal-title').textContent = 'Editar Funcionário';
         document.getElementById('nome-funcionario').value = funcionario.nome;
+        document.getElementById('matricula-funcionario').value = funcionario.matricula || '';
         document.getElementById('cpf-funcionario').value = funcionario.cpf;
+        document.getElementById('rg-funcionario').value = funcionario.rg || '';
         document.getElementById('email-funcionario').value = funcionario.email;
         document.getElementById('telefone-funcionario').value = funcionario.telefone || '';
-        document.getElementById('cargo-funcionario').value = funcionario.cargo;
-        document.getElementById('salario-funcionario').value = funcionario.salario || '';        
         document.getElementById('sexo-funcionario').value = funcionario.sexo || '';
         document.getElementById('nascimento-funcionario').value = funcionario.dataNascimento ? formatarDataParaInput(funcionario.dataNascimento) : '';
+
+        document.getElementById('lider-funcionario').value = funcionario.liderId || '';
         document.getElementById('admissao-funcionario').value = funcionario.dataAdmissao ? formatarDataParaInput(funcionario.dataAdmissao) : '';
+        document.getElementById('salario-funcionario').value = funcionario.salario || '';
+        document.getElementById('salario-por-fora-funcionario').value = funcionario.salarioPorFora || '';
+        document.getElementById('jornada-funcionario').value = funcionario.jornada || '';
+        document.getElementById('contrato-funcionario').value = funcionario.tipoContrato || 'CLT';
+        document.getElementById('regime-funcionario').value = funcionario.regimeTrabalho || 'Presencial';
+
+        document.getElementById('escolaridade-funcionario').value = funcionario.escolaridade || '';
+        document.getElementById('idiomas-funcionario').value = funcionario.idiomas || '';
+        document.getElementById('certificacoes-funcionario').value = funcionario.certificacoes || '';
+        document.getElementById('cursos-funcionario').value = funcionario.cursos || '';
+
+        document.getElementById('desempenho-avaliacao').value = funcionario.desempenho?.ultimaAvaliacao || '';
+        document.getElementById('desempenho-data-avaliacao').value = funcionario.desempenho?.dataUltimaAvaliacao ? formatarDataParaInput(funcionario.desempenho.dataUltimaAvaliacao) : '';
+        document.getElementById('desempenho-metas').value = funcionario.desempenho?.metas || '';
+        document.getElementById('desempenho-feedback').value = funcionario.desempenho?.feedbackPDI || '';
+
+        document.getElementById('beneficio-plano-saude').checked = funcionario.beneficios?.planoSaude || false;
+        document.getElementById('beneficio-vale-transporte').checked = funcionario.beneficios?.valeTransporte || false;
+        document.getElementById('beneficio-vale-alimentacao').checked = funcionario.beneficios?.valeAlimentacao || false;
+        document.getElementById('beneficio-seguro-vida').checked = funcionario.beneficios?.seguroVida || false;
+        document.getElementById('beneficio-outros').value = funcionario.beneficios?.outros || '';
 
         // Carregar e selecionar empresa e setor
         const empresaSelect = document.getElementById('empresa-funcionario');
         await carregarSelectEmpresas('empresa-funcionario'); // Garante que as empresas estão carregadas
+        
+        // Carregar líderes excluindo o próprio funcionário
+        if (document.getElementById('lider-funcionario')) {
+            await carregarSelectLideres('lider-funcionario', funcionarioId);
+        }
         
         empresaSelect.value = funcionario.empresaId;
         
@@ -288,19 +473,45 @@ async function atualizarFuncionario(funcionarioId) {
     try {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-funcionario').value;
+        const matricula = document.getElementById('matricula-funcionario').value;
         const cpf = document.getElementById('cpf-funcionario').value;
+        const rg = document.getElementById('rg-funcionario').value;
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
-        const empresaId = document.getElementById('empresa-funcionario').value;
-        const setor = document.getElementById('setor-funcionario').value;
-        const salario = parseFloat(document.getElementById('salario-funcionario').value) || 0;
-        const cargo = document.getElementById('cargo-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
+
+        const empresaId = document.getElementById('empresa-funcionario').value;
+        const setor = document.getElementById('setor-funcionario').value;
+        const cargo = document.getElementById('cargo-funcionario').value;
+        const liderId = document.getElementById('lider-funcionario').value;
         const dataAdmissao = document.getElementById('admissao-funcionario').value;
+        const salario = parseFloat(document.getElementById('salario-funcionario').value) || 0;
+        const salarioPorFora = parseFloat(document.getElementById('salario-por-fora-funcionario').value) || 0;
+        const jornada = document.getElementById('jornada-funcionario').value;
+        const tipoContrato = document.getElementById('contrato-funcionario').value;
+        const regimeTrabalho = document.getElementById('regime-funcionario').value;
+
+        const escolaridade = document.getElementById('escolaridade-funcionario').value;
+        const idiomas = document.getElementById('idiomas-funcionario').value;
+        const certificacoes = document.getElementById('certificacoes-funcionario').value;
+        const cursos = document.getElementById('cursos-funcionario').value;
+
+        const avaliacaoDesempenho = parseFloat(document.getElementById('desempenho-avaliacao').value) || null;
+        const dataAvaliacao = document.getElementById('desempenho-data-avaliacao').value;
+        const metas = document.getElementById('desempenho-metas').value;
+        const feedback = document.getElementById('desempenho-feedback').value;
+
+        const temPlanoSaude = document.getElementById('beneficio-plano-saude').checked;
+        const temValeTransporte = document.getElementById('beneficio-vale-transporte').checked;
+        const temValeAlimentacao = document.getElementById('beneficio-vale-alimentacao').checked;
+        const temSeguroVida = document.getElementById('beneficio-seguro-vida').checked;
+        const outrosBeneficios = document.getElementById('beneficio-outros').value;
 
         if (!nome || !cpf || !empresaId || !setor || !cargo || !dataAdmissao || !dataNascimento || !sexo) {
-            mostrarMensagem('Preencha todos os campos obrigatórios', 'warning');
+            // Navega para a primeira aba se houver erro de validação
+            new bootstrap.Tab(document.getElementById('identificacao-tab')).show();
+            mostrarMensagem('Preencha todos os campos obrigatórios nas abas.', 'warning');
             return;
         }
 
@@ -322,23 +533,52 @@ async function atualizarFuncionario(funcionarioId) {
         const user = firebase.auth().currentUser;
         const updateData = {
             nome: nome,
+            matricula: matricula,
             cpf: cpf,
+            rg: rg,
             email: email,
             telefone: telefone,
+            sexo: sexo,
+            dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
+
             empresaId: empresaId,
             setor: setor,
             cargo: cargo,
-            salario: salario,
-            sexo: sexo,
-            dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
+            liderId: liderId || null,
             dataAdmissao: dataAdmissaoValida,
+            salario: salario,
+            salarioPorFora: salarioPorFora,
+            jornada: jornada,
+            tipoContrato: tipoContrato,
+            regimeTrabalho: regimeTrabalho,
+
+            escolaridade: escolaridade,
+            idiomas: idiomas,
+            certificacoes: certificacoes,
+            cursos: cursos,
+
+            desempenho: {
+                ultimaAvaliacao: avaliacaoDesempenho,
+                dataUltimaAvaliacao: dataAvaliacao ? new Date(dataAvaliacao.replace(/-/g, '\/')) : null,
+                metas: metas,
+                feedbackPDI: feedback
+            },
+
+            beneficios: {
+                planoSaude: temPlanoSaude,
+                valeTransporte: temValeTransporte,
+                valeAlimentacao: temValeAlimentacao,
+                seguroVida: temSeguroVida,
+                outros: outrosBeneficios
+            },
+
             updatedAt: timestamp(),
             updatedByUid: user ? user.uid : null
         };
 
         await db.collection('funcionarios').doc(funcionarioId).update(updateData);
 
-        await atualizarCustoTotal(funcionarioId, salario, empresaId);
+        await atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPorFora);
 
         // Resetar e fechar o modal
         const modal = bootstrap.Modal.getInstance(document.getElementById('funcionarioModal'));
@@ -357,31 +597,57 @@ async function atualizarFuncionario(funcionarioId) {
     }
 }
 
-async function atualizarCustoTotal(funcionarioId, salario, empresaId) {
+async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPorFora = 0) {
     try {
-        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
-        if (!empresaDoc.exists) {
-            console.warn(`Empresa ${empresaId} não encontrada para calcular o custo total.`);
-            return;
-        }
-
-        const pagaFGTS = empresaDoc.data().pagaFGTS === true;
-        const pagaSindicato = empresaDoc.data().pagaSindicato === true;
-
-        // --- NOVA LÓGICA DE CÁLCULO ---
-        const provisaoDecimoTerceiro = salario / 12;
+        // Lógica de cálculo simplificada conforme solicitado.
+        // Custo = Salário + 8% de FGTS + Provisão de Férias (1/12) + Terço de Férias + FGTS s/ Férias + Provisão 13º + FGTS s/ 13º + Sindicato + Patronal + RAT + INCRA + VR.
+        const fgts = salario * 0.08;
         const provisaoFerias = salario / 12;
         const tercoFerias = provisaoFerias / 3;
-        
-        // Base de cálculo para FGTS e Sindicato
-        const baseCalculo = salario + provisaoDecimoTerceiro;
+        const fgtsSobreFerias = provisaoFerias * 0.08;
+        const provisao13 = salario / 12;
+        const fgtsSobre13 = provisao13 * 0.08;
 
-        // Cálculo dos encargos
-        const totalFGTS = pagaFGTS ? (salario + provisaoDecimoTerceiro + provisaoFerias) * 0.08 : 0;
-        const custoSindicato = pagaSindicato ? (baseCalculo * 0.008) : 0; // 0.8% = 0.008
+        let custoSindicato = 0;
+        let custoPatronal = 0;
+        let custoRat = 0;
+        let custoIncra = 0;
+        let custoValeRefeicao = 0;
 
-        // Soma de todos os custos
-        const custoTotal = salario + provisaoDecimoTerceiro + provisaoFerias + tercoFerias + totalFGTS + custoSindicato;
+        // Busca dados da empresa e do funcionário em paralelo
+        const [empresaDoc, funcionarioDoc] = await Promise.all([
+            db.collection('empresas').doc(empresaId).get(),
+            db.collection('funcionarios').doc(funcionarioId).get()
+        ]);
+
+        if (empresaDoc.exists) {
+            const empresaData = empresaDoc.data();
+            const baseCalculoContribuicoes = salario + provisaoFerias + provisao13;
+
+            if (empresaData.pagaSindicato === true) {
+                custoSindicato = baseCalculoContribuicoes * 0.008; // 0.8%
+            }
+            if (empresaData.pagaContribuicaoPatronal === true) {
+                custoPatronal = baseCalculoContribuicoes * 0.20; // 20%
+
+                // Calcula o RAT apenas se a contribuição patronal estiver ativa
+                if (empresaData.rat && empresaData.rat > 0) {
+                    const percentualRat = (empresaData.rat * 2) / 100;
+                    custoRat = salario * percentualRat;
+                }
+
+                // Calcula o INCRA (0.2%) apenas se a contribuição patronal estiver ativa
+                custoIncra = salario * 0.002;
+            }
+        }
+
+        if (funcionarioDoc.exists && funcionarioDoc.data().beneficios?.valeAlimentacao === true) {
+            custoValeRefeicao = 260.00;
+        }
+
+        const custoTotal = salario + fgts + provisaoFerias + tercoFerias + fgtsSobreFerias + provisao13 + fgtsSobre13 + 
+                           custoSindicato + custoPatronal + custoRat + custoIncra + custoValeRefeicao + 
+                           salarioPorFora; // Adiciona o salário por fora ao custo final
 
         await db.collection('funcionarios').doc(funcionarioId).update({
             custoTotal: parseFloat(custoTotal.toFixed(2))
@@ -457,6 +723,44 @@ async function verDetalhesFuncionario(funcionarioId) {
             historicoHTML += '</ul>';
         }
 
+        // Histórico de Aumentos
+        historicoHTML += '<h6 class="mt-4">Histórico de Aumentos:</h6>';
+        if (Array.isArray(funcionario.historicoAumentos) && funcionario.historicoAumentos.length > 0) {
+            historicoHTML += '<ul class="list-group list-group-flush" id="historico-aumentos-lista">';
+            funcionario.historicoAumentos.forEach((aumento, index) => {
+                historicoHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <strong>${formatarData(aumento.data)}:</strong> Aumento de R$ ${aumento.valor.toFixed(2)} (${aumento.tipo === 'folha' ? 'Em Folha' : 'Por Fora'})
+                            <br><small class="text-muted">Motivo: ${aumento.motivo} | Assinado por: ${aumento.assinatura}</small>
+                        </div>
+                        <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-primary" onclick="editarAumentoSalario('${funcionarioId}', ${index})"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-outline-danger" onclick="excluirAumentoSalario('${funcionarioId}', ${index})"><i class="fas fa-trash"></i></button>
+                            <button class="btn btn-outline-secondary" onclick="visualizarTermoAumento('${funcionarioId}', ${index})"><i class="fas fa-print"></i></button>
+                        </div>
+                    </li>`;
+            });
+            historicoHTML += '</ul>';
+        } else {
+            historicoHTML += '<p class="text-muted">Nenhum aumento salarial registrado.</p>';
+        }
+
+        // Buscar a última avaliação de desempenho
+        const avaliacoesSnap = await db.collection('avaliacoes_colaboradores')
+            .where('funcionarioId', '==', funcionarioId)
+            .orderBy('dataAvaliacao', 'desc')
+            .limit(1)
+            .get();
+
+        let ultimaAvaliacao = null;
+        let dataUltimaAvaliacao = null;
+        if (!avaliacoesSnap.empty) {
+            const avaliacao = avaliacoesSnap.docs[0].data();
+            ultimaAvaliacao = avaliacao.nota;
+            dataUltimaAvaliacao = avaliacao.dataAvaliacao.toDate();
+        }
+
         // Carregar nome da empresa
         let nomeEmpresa = 'Empresa não encontrada';
         if (funcionario.empresaId) {
@@ -498,11 +802,26 @@ async function verDetalhesFuncionario(funcionarioId) {
                 <div class="col-md-6 detail-item"><div class="detail-label">Custo Total (Estimado)</div><div class="detail-value"><i class="fas fa-calculator"></i> ${funcionario.custoTotal ? 'R$ ' + funcionario.custoTotal.toFixed(2) : 'Não calculado'}</div></div>
             </div>
 
+            <h5 class="section-title mt-3">Desempenho</h5>
+            <div class="row">
+                <div class="col-md-6 detail-item">
+                    <div class="detail-label">Última Avaliação</div>
+                    <div class="detail-value"><i class="fas fa-star"></i> ${ultimaAvaliacao ? ultimaAvaliacao.toFixed(1) + ' / 5' : 'N/A'}</div>
+                </div>
+                <div class="col-md-6 detail-item">
+                    <div class="detail-label">Data da Avaliação</div>
+                    <div class="detail-value"><i class="fas fa-calendar-check"></i> ${dataUltimaAvaliacao ? formatarData(dataUltimaAvaliacao) : 'N/A'}</div>
+                </div>
+            </div>
+
             <div class="mt-4">${historicoHTML}</div>
         `;
 
+        const modalId = `detalhes-modal-${funcionarioId}`;
         const modalDiv = document.createElement('div');
         modalDiv.className = 'modal fade';
+        modalDiv.id = modalId;
+
         modalDiv.innerHTML = `
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
@@ -515,6 +834,9 @@ async function verDetalhesFuncionario(funcionarioId) {
                     </div>
                     <div class="modal-body">${detalhesHTML}</div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-success" onclick="abrirModalAumento('${funcionarioId}', '${funcionario.nome}', '${modalId}')">
+                            <i class="fas fa-dollar-sign"></i> Aumentar Salário
+                        </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                     </div>
                 </div>
@@ -696,57 +1018,42 @@ function inicializarModalFuncionario() {
 
 // Inicializar quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
-    inicializarModalFuncionario();
-    carregarSelectEmpresas('empresa-funcionario');
-});
-
-/**
- * Função para parsear linhas CSV corretamente, lidando com campos entre aspas
- */
-function parseCSVLine(line) {
-    const result = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for (let i = 0; i < line.length; i++) {
-        const char = line[i];
+    try {
+        inicializarModalFuncionario();
         
-        if (char === '"') {
-            inQuotes = !inQuotes;
-        } else if (char === ',' && !inQuotes) {
-            result.push(current.trim());
-            current = '';
-        } else {
-            current += char;
+        // Carregar empresas
+        if (document.getElementById('empresa-funcionario')) {
+            carregarSelectEmpresas('empresa-funcionario');
         }
+        
+        // Carregar líderes
+        if (document.getElementById('lider-funcionario')) {
+            carregarSelectLideres('lider-funcionario');
+        }
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
     }
-    
-    // Adicionar o último campo
-    result.push(current.trim());
-    
-    // Remover aspas dos campos
-    return result.map(field => field.replace(/^"(.*)"$/, '$1'));
-}
+});
 
 /**
  * Exporta um arquivo CSV com os cabeçalhos para servir de modelo.
  */
 function exportarModeloCSV() {
     const headers = [
-        "nome", "cpf", "dataNascimento (YYYY-MM-DD)", "sexo", "email", "telefone", 
-        "empresaNome", "setor", "cargo", "salario", "dataAdmissao (YYYY-MM-DD)"
+        "Nome Completo", "CPF", "Data de Nascimento (YYYY-MM-DD)", "Sexo", "Email", "Telefone", 
+        "Nome da Empresa", "Setor", "Cargo", "Salário", "Data de Admissão (YYYY-MM-DD)"
     ];
     const exemplo = [
-        '"João Silva"', "123.456.789-00", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999", 
+        '"João da Silva"', "537.418.338-49", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999", 
         "Empresa Exemplo", "TI", "Desenvolvedor", "5000.00", "2024-01-15"
     ];
     const exemplo2 = [
-        '"Maria Santos"', "987.654.321-00", "maria@email.com", "(11) 88888-8888", 
-        "Empresa Exemplo", "RH", "Analista", "4500.00", "20240110"
+        '"Maria Santos"', "842.765.908-52", "1992-08-10", "Feminino", "maria@email.com", "(11) 88888-8888", 
+        "Empresa Exemplo", "RH", "Analista", "4500.00", "2024-01-10"
     ];
     const exemplo3 = [
-        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "08194639905", "charles.santos17101991@gmail.com", "(42)991190590", 
-        "Calcados Crival Ltda", "Gerente De RH", "Gerente De RH", "5600.00", "2022-01-10"
+        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "081.946.399-05", "1991-10-17", "Masculino", "charles.santos17101991@gmail.com", "(42)991190590", 
+        "Calcados Crival Ltda", "RH", "Gerente De RH", "5600.00", "2022-01-10"
     ];
     
     const csvContent = "data:text/csv;charset=utf-8," + 
@@ -789,176 +1096,152 @@ async function processarArquivoCSV() {
     const file = fileInput.files[0];
     const reader = new FileReader();
 
-    reader.onload = async function(event) {
-        const csvData = event.target.result;
-        const lines = csvData.split(/\r\n|\n/).filter(line => line.trim() !== '');
-        
-        if (lines.length < 2) {
-            resumoDiv.innerHTML = `<div class="alert alert-danger">O arquivo CSV está vazio ou contém apenas cabeçalhos.</div>`;
-            btnImportar.disabled = false;
-            btnImportar.innerHTML = 'Iniciar Importação';
-            return;
-        }
+    Papa.parse(file, {
+        header: true,
+        skipEmptyLines: true,
+        complete: async function(results) {
+            const data = results.data;
 
-        const headers = parseCSVLine(lines[0]);
-
-        // Validação básica do cabeçalho
-        const expectedHeaders = [
-            "nome", "cpf", "dataNascimento (YYYY-MM-DD)", "sexo", "email", "telefone", 
-            "empresaNome", "setor", "cargo", "salario", "dataAdmissao (YYYY-MM-DD)"
-        ];
-        if (JSON.stringify(headers) !== JSON.stringify(expectedHeaders)) {
-            resumoDiv.innerHTML = `<div class="alert alert-danger">O cabeçalho do arquivo CSV é inválido. Use o modelo exportado.</div>`;
-            btnImportar.disabled = false;
-            btnImportar.innerHTML = 'Iniciar Importação';
-            return;
-        }
-
-        let sucessoCount = 0;
-        let erroCount = 0;
-
-        // Cache de empresas e CPFs para otimizar a validação
-        const empresasSnap = await db.collection('empresas').get();
-        const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.data().nome.toLowerCase(), {id: doc.id, setores: doc.data().setores || []}]));
-        
-        const funcionariosSnap = await db.collection('funcionarios').get();
-        const cpfsExistentes = new Set(funcionariosSnap.docs.map(doc => doc.data().cpf));
-
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i];
-            if (!line.trim()) continue;
-
-            const values = parseCSVLine(line);
-            
-            // Verificar se temos o número correto de colunas
-            if (values.length !== expectedHeaders.length) {
-                erroCount++;
-                errosLista.innerHTML += `<li class="list-group-item list-group-item-danger">Linha ${i + 1}: Número incorreto de colunas. Esperado: ${expectedHeaders.length}, Encontrado: ${values.length}. Verifique se os campos com vírgulas estão entre aspas.</li>`;
-                continue;
+            if (data.length === 0) {
+                resumoDiv.innerHTML = `<div class="alert alert-danger">O arquivo CSV está vazio ou em formato inválido.</div>`;
+                btnImportar.disabled = false;
+                btnImportar.innerHTML = 'Iniciar Importação';
+                return;
             }
 
-            const funcionario = {
-                nome: values[0]?.trim(),
-                cpf: values[1]?.trim().replace(/\D/g, ''),
-                dataNascimento: values[2]?.trim(),
-                sexo: values[3]?.trim(),
-                email: values[4]?.trim(),
-                telefone: values[5]?.trim(),
-                empresaNome: values[6]?.trim(),
-                setor: values[7]?.trim(),
-                cargo: values[8]?.trim(),
-                salario: parseFloat(values[9]?.trim().replace(',', '.')) || 0,
-                dataAdmissao: values[10]?.trim()
-            };
+            let sucessoCount = 0;
+            let erroCount = 0;
+            const erros = [];
 
-            console.log('Funcionário processado:', funcionario); // Debug
-
-            // Validações
-            let erroMsg = '';
+            // Cache de empresas e CPFs para otimizar a validação
+            const empresasSnap = await db.collection('empresas').get();
+            const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.data().nome.toLowerCase(), {id: doc.id, setores: doc.data().setores || [], funcoes: doc.data().funcoes || []}]));
             
-            // Validar campos obrigatórios
-            if (!funcionario.nome) erroMsg = 'O campo "nome" é obrigatório.';
-            else if (!funcionario.cpf) erroMsg = 'O campo "cpf" é obrigatório.';
-            else if (!funcionario.dataNascimento) erroMsg = 'O campo "dataNascimento" é obrigatório.';
-            else if (!funcionario.sexo) erroMsg = 'O campo "sexo" é obrigatório.';
-            else if (!funcionario.empresaNome) erroMsg = 'O campo "empresaNome" é obrigatório.';
-            else if (!funcionario.setor) erroMsg = 'O campo "setor" é obrigatório.';
-            else if (!funcionario.cargo) erroMsg = 'O campo "cargo" é obrigatório.';
-            else if (!funcionario.dataAdmissao) erroMsg = 'O campo "dataAdmissao" é obrigatório.';
-            
-            if (!erroMsg && !validarCPF(funcionario.cpf)) {
-                erroMsg = `CPF inválido: ${funcionario.cpf}`;
-            } else if (!erroMsg && cpfsExistentes.has(funcionario.cpf)) {
-                erroMsg = `CPF já cadastrado no sistema: ${funcionario.cpf}`;
-            } else if (!erroMsg && !empresasMap.has(funcionario.empresaNome.toLowerCase())) {
-                erroMsg = `Empresa '${funcionario.empresaNome}' não encontrada.`;
-            } else if (!erroMsg && !empresasMap.get(funcionario.empresaNome.toLowerCase()).setores.map(s => s.toLowerCase()).includes(funcionario.setor.toLowerCase())) {
-                erroMsg = `Setor '${funcionario.setor}' não encontrado na empresa '${funcionario.empresaNome}'.`;
-            }
+            const funcionariosSnap = await db.collection('funcionarios').get();
+            const cpfsExistentes = new Set(funcionariosSnap.docs.map(doc => doc.data().cpf));
 
-            // Validar e converter datas
-            let dataAdmissaoValida = null;
-            let dataNascimentoValida = null;
+            for (const [index, row] of data.entries()) {
+                const linhaNum = index + 2; // +1 para o índice base 1, +1 para o cabeçalho
+                
+                const funcionario = {
+                    nome: row['Nome Completo']?.trim(),
+                    cpf: row['CPF']?.trim().replace(/\D/g, ''),
+                    dataNascimento: row['Data de Nascimento (YYYY-MM-DD)']?.trim(),
+                    sexo: row['Sexo']?.trim(),
+                    email: row['Email']?.trim(),
+                    telefone: row['Telefone']?.trim(),
+                    empresaNome: row['Nome da Empresa']?.trim(),
+                    setor: row['Setor']?.trim(),
+                    cargo: row['Cargo']?.trim(),
+                    salario: parseFloat(row['Salário']?.trim().replace(',', '.')) || 0,
+                    dataAdmissao: row['Data de Admissão (YYYY-MM-DD)']?.trim()
+                };
 
-            const validarFormatoData = (dataStr, nomeCampo) => {
-                if (!dataStr) return { data: null, erro: `O campo "${nomeCampo}" é obrigatório.` };
-                try {
-                    let dataValida;
-                    const dataLimpa = dataStr.replace(/['"]/g, '').trim();
-                    const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-                    if (!dateRegex.test(dataLimpa)) {
-                        return { data: null, erro: `Formato de data inválido para "${nomeCampo}": ${dataLimpa}. Use YYYY-MM-DD.` };
+                let erroMsg = '';
+                
+                // Validar campos obrigatórios
+                if (!funcionario.nome) erroMsg = 'O campo "Nome Completo" é obrigatório.';
+                else if (!funcionario.cpf) erroMsg = 'O campo "CPF" é obrigatório.';
+                else if (!funcionario.dataNascimento) erroMsg = 'O campo "Data de Nascimento" é obrigatório.';
+                else if (!funcionario.sexo) erroMsg = 'O campo "Sexo" é obrigatório.';
+                else if (!funcionario.empresaNome) erroMsg = 'O campo "Nome da Empresa" é obrigatório.';
+                else if (!funcionario.setor) erroMsg = 'O campo "Setor" é obrigatório.';
+                else if (!funcionario.cargo) erroMsg = 'O campo "Cargo" é obrigatório.';
+                else if (!funcionario.dataAdmissao) erroMsg = 'O campo "Data de Admissão" é obrigatório.';
+                
+                if (!erroMsg && !validarCPF(funcionario.cpf)) {
+                    erroMsg = `CPF inválido: ${funcionario.cpf}`;
+                } else if (!erroMsg && cpfsExistentes.has(funcionario.cpf)) {
+                    erroMsg = `CPF já cadastrado no sistema: ${funcionario.cpf}`;
+                } else if (!erroMsg && !empresasMap.has(funcionario.empresaNome.toLowerCase())) {
+                    erroMsg = `Empresa '${funcionario.empresaNome}' não encontrada.`;
+                }
+
+                // Validar e converter datas
+                let dataAdmissaoValida = null;
+                let dataNascimentoValida = null;
+
+                const validarFormatoData = (dataStr, nomeCampo) => {
+                    if (!dataStr) return { data: null, erro: `O campo "${nomeCampo}" é obrigatório.` };
+                    try {
+                        let dataValida;
+                        const dataLimpa = dataStr.replace(/['"]/g, '').trim();
+                        const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+                        if (!dateRegex.test(dataLimpa)) {
+                            return { data: null, erro: `Formato de data inválido para "${nomeCampo}": ${dataLimpa}. Use YYYY-MM-DD.` };
+                        }
+                        
+                        const [year, month, day] = dataLimpa.split('-').map(Number);
+                        dataValida = new Date(year, month - 1, day);
+
+                        if (isNaN(dataValida.getTime())) {
+                            return { data: null, erro: `Data inválida para "${nomeCampo}": ${dataLimpa}` };
+                        }
+                        return { data: dataValida, erro: null };
+                    } catch (e) {
+                        return { data: null, erro: `Erro ao processar data para "${nomeCampo}": ${dataStr}` };
                     }
-                    
-                    const [year, month, day] = dataLimpa.split('-').map(Number);
-                    dataValida = new Date(year, month - 1, day);
+                };
 
-                    if (isNaN(dataValida.getTime())) {
-                        return { data: null, erro: `Data inválida para "${nomeCampo}": ${dataLimpa}` };
+                if (!erroMsg) {
+                    const resultadoAdmissao = validarFormatoData(funcionario.dataAdmissao, 'Data de Admissão');
+                    if (resultadoAdmissao.erro) {
+                        erroMsg = resultadoAdmissao.erro;
+                    } else {
+                        dataAdmissaoValida = resultadoAdmissao.data;
                     }
-                    return { data: dataValida, erro: null };
-                } catch (e) {
-                    return { data: null, erro: `Erro ao processar data para "${nomeCampo}": ${dataStr}` };
                 }
-            };
 
-            if (!erroMsg) {
-                const resultadoAdmissao = validarFormatoData(funcionario.dataAdmissao, 'dataAdmissao');
-                if (resultadoAdmissao.erro) {
-                    erroMsg = resultadoAdmissao.erro;
-                } else {
-                    dataAdmissaoValida = resultadoAdmissao.data;
+                if (!erroMsg) {
+                    const resultadoNascimento = validarFormatoData(funcionario.dataNascimento, 'Data de Nascimento');
+                    if (resultadoNascimento.erro) {
+                        erroMsg = resultadoNascimento.erro;
+                    } else {
+                        dataNascimentoValida = resultadoNascimento.data;
+                    }
                 }
-            }
 
-            if (!erroMsg) {
-                const resultadoNascimento = validarFormatoData(funcionario.dataNascimento, 'dataNascimento');
-                if (resultadoNascimento.erro) {
-                    erroMsg = resultadoNascimento.erro;
-                } else {
-                    dataNascimentoValida = resultadoNascimento.data;
-                }
-            }
-
-            if (erroMsg) {
-                erroCount++;
-                errosLista.innerHTML += `<li class="list-group-item list-group-item-danger">Linha ${i + 1} (${funcionario.nome || 'Sem nome'}): ${erroMsg}</li>`;
-            } else {
-                try {
-                    const empresaData = empresasMap.get(funcionario.empresaNome.toLowerCase());
-                    const novoFuncionario = {
-                        nome: funcionario.nome,
-                        cpf: funcionario.cpf,
-                        email: funcionario.email,
-                        telefone: funcionario.telefone,
-                        empresaId: empresaData.id,
-                        sexo: funcionario.sexo,                        
-                        dataNascimento: dataNascimentoValida,
-                        setor: funcionario.setor,
-                        cargo: funcionario.cargo,
-                        salario: funcionario.salario,
-                        dataAdmissao: dataAdmissaoValida,
-                        status: 'Ativo',
-                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                        createdByUid: firebase.auth().currentUser?.uid
-                    };
-                    
-                    await db.collection('funcionarios').add(novoFuncionario);
-                    cpfsExistentes.add(novoFuncionario.cpf);
-                    sucessoCount++;
-                } catch (dbError) {
-                    console.error(`Erro detalhado ao salvar linha ${i + 1}:`, dbError);
+                if (erroMsg) {
                     erroCount++;
-                    errosLista.innerHTML += `<li class="list-group-item list-group-item-danger">Linha ${i + 1} (${funcionario.nome}): Erro ao salvar no banco de dados: ${dbError.message}</li>`;
+                    erros.push(`<li class="list-group-item list-group-item-danger">Linha ${linhaNum} (${funcionario.nome || 'Sem nome'}): ${erroMsg}</li>`);
+                } else {
+                    try {
+                        const empresaData = empresasMap.get(funcionario.empresaNome.toLowerCase());
+                        const novoFuncionario = {
+                            nome: funcionario.nome,
+                            cpf: funcionario.cpf,
+                            email: funcionario.email,
+                            telefone: funcionario.telefone,
+                            empresaId: empresaData.id,
+                            sexo: funcionario.sexo,                        
+                            dataNascimento: dataNascimentoValida,
+                            setor: funcionario.setor,
+                            cargo: funcionario.cargo,
+                            salario: funcionario.salario,
+                            dataAdmissao: dataAdmissaoValida,
+                            status: 'Ativo',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            createdByUid: firebase.auth().currentUser?.uid
+                        };
+                        
+                        await db.collection('funcionarios').add(novoFuncionario);
+                        cpfsExistentes.add(novoFuncionario.cpf);
+                        sucessoCount++;
+                    } catch (dbError) {
+                        console.error(`Erro detalhado ao salvar linha ${linhaNum}:`, dbError);
+                        erroCount++;
+                        erros.push(`<li class="list-group-item list-group-item-danger">Linha ${linhaNum} (${funcionario.nome}): Erro ao salvar no banco de dados: ${dbError.message}</li>`);
+                    }
                 }
             }
-        }
 
-        resumoDiv.innerHTML = `<div class="alert alert-info">Importação concluída! Sucesso: ${sucessoCount}, Falhas: ${erroCount}.</div>`;
-        btnImportar.disabled = false;
-        btnImportar.innerHTML = 'Iniciar Importação';
-        carregarFuncionarios();
-    };
+            resumoDiv.innerHTML = `<div class="alert alert-info">Importação concluída! Sucesso: ${sucessoCount}, Falhas: ${erroCount}.</div>`;
+            errosLista.innerHTML = erros.join('');
+            btnImportar.disabled = false;
+            btnImportar.innerHTML = 'Iniciar Importação';
+            carregarFuncionarios();
+        }
+    });
 
     reader.onerror = function() {
         resumoDiv.innerHTML = `<div class="alert alert-danger">Erro ao ler o arquivo.</div>`;
@@ -966,7 +1249,7 @@ async function processarArquivoCSV() {
         btnImportar.innerHTML = 'Iniciar Importação';
     };
 
-    reader.readAsText(file);
+    reader.readAsText(file, 'UTF-8');
 }
 
 // Funções auxiliares para formatação de data
@@ -983,4 +1266,367 @@ function formatarData(data) {
     if (!data) return 'N/A';
     const dateObj = data.toDate ? data.toDate() : new Date(data);
     return dateObj.toLocaleDateString('pt-BR');
+}
+
+// Funções para Aumento Salarial
+
+function abrirModalAumento(funcionarioId, nomeFuncionario, detalhesModalId) {
+    const detalhesModalEl = document.getElementById(detalhesModalId);
+    const modalAumentoEl = document.getElementById('aumentoSalarioModal');
+    const modalAumento = bootstrap.Modal.getOrCreateInstance(modalAumentoEl);
+
+    // Função para abrir o modal de aumento
+    const showAumentoModal = () => {
+        document.getElementById('form-aumento-salario').reset();
+        document.getElementById('aumento-funcionario-id').value = funcionarioId;
+        document.getElementById('aumento-funcionario-nome').value = nomeFuncionario;
+        document.getElementById('aumento-data').valueAsDate = new Date();
+        modalAumento.show();
+    };
+
+    // Adiciona um listener para abrir o segundo modal APÓS o primeiro ser completamente fechado
+    detalhesModalEl.addEventListener('hidden.bs.modal', showAumentoModal, { once: true });
+
+    // Inicia o processo de fechar o primeiro modal
+    bootstrap.Modal.getInstance(detalhesModalEl).hide();
+}
+
+async function salvarAumentoSalario() {
+    const funcionarioId = document.getElementById('aumento-funcionario-id').value;
+    const valorAumento = parseFloat(document.getElementById('aumento-valor').value);
+    const dataAumento = document.getElementById('aumento-data').value;
+    const motivoAumento = document.getElementById('aumento-motivo').value;
+    const assinatura = document.getElementById('aumento-assinatura').value;
+    const tipoAumento = document.querySelector('input[name="tipo-aumento"]:checked').value;
+
+    if (!funcionarioId || !valorAumento || !dataAumento || !motivoAumento || !assinatura) {
+        mostrarMensagem("Preencha todos os campos para registrar o aumento.", "warning");
+        return;
+    }
+
+    try {
+        const funcRef = db.collection('funcionarios').doc(funcionarioId);
+        const funcDoc = await funcRef.get();
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado.", "error");
+            return;
+        }
+
+        const dadosFuncionario = funcDoc.data();
+        let novoSalario = dadosFuncionario.salario || 0;
+        let novoSalarioPorFora = dadosFuncionario.salarioPorFora || 0;
+
+        if (tipoAumento === 'folha') {
+            novoSalario += valorAumento;
+        } else {
+            novoSalarioPorFora += valorAumento;
+        }
+
+        const registroAumento = {
+            data: new Date(dataAumento.replace(/-/g, '\/')),
+            valor: valorAumento,
+            motivo: motivoAumento,
+            assinatura: assinatura,
+            tipo: tipoAumento, // 'folha' ou 'por_fora'
+            salarioAnterior: dadosFuncionario.salario || 0,
+            salarioPorForaAnterior: dadosFuncionario.salarioPorFora || 0,
+            novoSalario: novoSalario
+        };
+
+        await funcRef.update({
+            salario: novoSalario,
+            salarioPorFora: novoSalarioPorFora,
+            historicoAumentos: firebase.firestore.FieldValue.arrayUnion(registroAumento)
+        });
+
+        await atualizarCustoTotal(funcionarioId, novoSalario, dadosFuncionario.empresaId, novoSalarioPorFora);
+
+        bootstrap.Modal.getInstance(document.getElementById('aumentoSalarioModal')).hide();
+        mostrarMensagem("Aumento salarial registrado e aplicado com sucesso!", "success");
+        await carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro ao salvar aumento salarial:", error);
+        mostrarMensagem("Falha ao registrar o aumento.", "error");
+    }
+}
+
+async function imprimirAumentoSalario() {
+    const funcionarioId = document.getElementById('aumento-funcionario-id').value;
+    const nomeFuncionario = document.getElementById('aumento-funcionario-nome').value;
+    const valorAumento = parseFloat(document.getElementById('aumento-valor').value) || 0;
+    const dataAumento = document.getElementById('aumento-data').value;
+    const motivoAumento = document.getElementById('aumento-motivo').value;
+    const assinatura = document.getElementById('aumento-assinatura').value;
+    const tipoAumento = document.querySelector('input[name="tipo-aumento"]:checked').value;
+
+    const dataFormatada = new Date(dataAumento).toLocaleDateString('pt-BR');
+    const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const tipoTexto = tipoAumento === 'folha' ? 'Salário em Folha' : 'Salário por Fora';
+
+    const conteudo = `
+        <html>
+        <head>
+            <title>Autorização de Aumento Salarial</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+            <style>
+                body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; }
+                .termo-container { max-width: 800px; margin: auto; border: 1px solid #dee2e6; padding: 2.5rem; border-radius: 15px; }
+                .termo-header { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; }
+                .termo-header h2 { font-weight: 700; color: #0d6efd; }
+                .termo-body p { font-size: 1.1rem; line-height: 1.8; text-align: justify; }
+                .assinatura { margin-top: 80px; text-align: center; }
+            </style>
+        </head>
+        <body>
+            <div class="termo-container">
+                <div class="termo-header">
+                    <h2><i class="fas fa-award"></i> AUTORIZAÇÃO DE AUMENTO SALARIAL</h2>
+                </div>
+                <div class="termo-body">
+                    <p>Eu, <strong>${assinatura}</strong>, na qualidade de diretor(a), autorizo a alteração salarial para o(a) colaborador(a) <strong>${nomeFuncionario}</strong>, conforme os detalhes abaixo:</p>
+                    <p><strong>Tipo de Aumento:</strong> ${tipoTexto}<br>
+                       <strong>Valor do Aumento:</strong> R$ ${valorAumento.toFixed(2)}<br>
+                       <strong>Motivo:</strong> ${motivoAumento}
+                    </p>
+                    <p style="text-align: right; margin-top: 40px;">${hojeFormatado}.</p>
+                </div>
+                <div class="assinatura">
+                    <p>_________________________________________</p>
+                    <p><strong>${assinatura}</strong><br>Diretor(a)</p>
+                </div>
+                 <div class="assinatura">
+                    <p>_________________________________________</p>
+                    <p><strong>${nomeFuncionario}</strong><br>Colaborador(a)</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    openPrintWindow(conteudo, { autoPrint: true, name: '_blank' });
+}
+
+async function visualizarTermoAumento(funcionarioId, historicoIndex) {
+    try {
+        const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado.", "error");
+            return;
+        }
+
+        const funcionario = funcDoc.data();
+        const aumento = funcionario.historicoAumentos[historicoIndex];
+
+        if (!aumento) {
+            mostrarMensagem("Registro de aumento não encontrado.", "error");
+            return;
+        }
+
+        const dataFormatada = formatarData(aumento.data);
+        const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+        const tipoTexto = aumento.tipo === 'folha' ? 'Salário em Folha' : 'Salário por Fora';
+
+        const conteudo = `
+            <html>
+            <head>
+                <title>Autorização de Aumento Salarial</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+                <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+                <style>
+                    body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; }
+                    .termo-container { max-width: 800px; margin: auto; border: 1px solid #dee2e6; padding: 2.5rem; border-radius: 15px; }
+                    .termo-header { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; }
+                    .termo-header h2 { font-weight: 700; color: #0d6efd; }
+                    .termo-body p { font-size: 1.1rem; line-height: 1.8; text-align: justify; }
+                    .assinatura { margin-top: 80px; text-align: center; }
+                </style>
+            </head>
+            <body>
+                <div class="termo-container">
+                    <div class="termo-header"><h2><i class="fas fa-award"></i> AUTORIZAÇÃO DE AUMENTO SALARIAL</h2></div>
+                    <div class="termo-body">
+                    <p>Eu, <strong>${aumento.assinatura}</strong>, na qualidade de diretor(a), autorizei a alteração salarial para o(a) colaborador(a) <strong>${funcionario.nome}</strong>, conforme os detalhes abaixo:</p>
+                    <p><strong>Tipo de Aumento:</strong> ${tipoTexto}<br>
+                       <strong>Valor do Aumento:</strong> R$ ${parseFloat(aumento.valor).toFixed(2)}<br>
+                       <strong>Motivo:</strong> ${aumento.motivo}
+                    </p>
+                        <p style="text-align: right; margin-top: 40px;">${hojeFormatado}.</p>
+                    </div>
+                    <div class="assinatura"><p>_________________________________________</p><p><strong>${aumento.assinatura}</strong><br>Diretor(a)</p></div>
+                    <div class="assinatura"><p>_________________________________________</p><p><strong>${funcionario.nome}</strong><br>Colaborador(a)</p></div>
+                </div>
+            </body>
+            </html>`;
+
+        openPrintWindow(conteudo, { autoPrint: true, name: '_blank' });
+
+    } catch (error) {
+        console.error("Erro ao visualizar termo de aumento:", error);
+        mostrarMensagem("Falha ao gerar o termo para visualização.", "error");
+    }
+}
+
+// Funções auxiliares para editar e excluir aumentos salariais
+async function editarAumentoSalario(funcionarioId, historicoIndex) {
+    try {
+        const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado.", "error");
+            return;
+        }
+
+        const funcionario = funcDoc.data();
+        const aumento = funcionario.historicoAumentos[historicoIndex];
+
+        if (!aumento) {
+            mostrarMensagem("Registro de aumento não encontrado.", "error");
+            return;
+        }
+
+        // Preencher o modal de aumento com os dados existentes
+        document.getElementById('aumento-funcionario-id').value = funcionarioId;
+        document.getElementById('aumento-funcionario-nome').value = funcionario.nome;
+        document.getElementById('aumento-valor').value = aumento.valor;
+        document.getElementById('aumento-data').value = formatarDataParaInput(aumento.data);
+        document.getElementById('aumento-motivo').value = aumento.motivo;
+        document.getElementById('aumento-assinatura').value = aumento.assinatura;
+        
+        // Selecionar o tipo de aumento correto
+        const tipoAumentoRadio = document.querySelector(`input[name="tipo-aumento"][value="${aumento.tipo}"]`);
+        if (tipoAumentoRadio) {
+            tipoAumentoRadio.checked = true;
+        }
+
+        // Alterar o comportamento do botão salvar para edição
+        const salvarBtn = document.querySelector('#aumentoSalarioModal .btn-primary');
+        salvarBtn.textContent = 'Atualizar Aumento';
+        salvarBtn.onclick = function() { atualizarAumentoExistente(funcionarioId, historicoIndex); };
+
+        // Mostrar o modal
+        const modalAumento = new bootstrap.Modal(document.getElementById('aumentoSalarioModal'));
+        modalAumento.show();
+
+    } catch (error) {
+        console.error("Erro ao editar aumento salarial:", error);
+        mostrarMensagem("Falha ao carregar dados do aumento.", "error");
+    }
+}
+
+async function atualizarAumentoExistente(funcionarioId, historicoIndex) {
+    try {
+        const valorAumento = parseFloat(document.getElementById('aumento-valor').value);
+        const dataAumento = document.getElementById('aumento-data').value;
+        const motivoAumento = document.getElementById('aumento-motivo').value;
+        const assinatura = document.getElementById('aumento-assinatura').value;
+        const tipoAumento = document.querySelector('input[name="tipo-aumento"]:checked').value;
+
+        if (!valorAumento || !dataAumento || !motivoAumento || !assinatura) {
+            mostrarMensagem("Preencha todos os campos para atualizar o aumento.", "warning");
+            return;
+        }
+
+        const funcRef = db.collection('funcionarios').doc(funcionarioId);
+        const funcDoc = await funcRef.get();
+        
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado.", "error");
+            return;
+        }
+
+        const funcionario = funcDoc.data();
+        const aumentoAtual = funcionario.historicoAumentos[historicoIndex];
+
+        if (!aumentoAtual) {
+            mostrarMensagem("Registro de aumento não encontrado.", "error");
+            return;
+        }
+
+        // Criar novo registro de aumento
+        const novoRegistroAumento = {
+            data: new Date(dataAumento.replace(/-/g, '\/')),
+            valor: valorAumento,
+            motivo: motivoAumento,
+            assinatura: assinatura,
+            tipo: tipoAumento,
+            salarioAnterior: aumentoAtual.salarioAnterior,
+            salarioPorForaAnterior: aumentoAtual.salarioPorForaAnterior,
+            novoSalario: aumentoAtual.novoSalario // Mantém o mesmo para não afetar cálculos existentes
+        };
+
+        // Atualizar o array de histórico
+        const historicoAtualizado = [...funcionario.historicoAumentos];
+        historicoAtualizado[historicoIndex] = novoRegistroAumento;
+
+        await funcRef.update({
+            historicoAumentos: historicoAtualizado
+        });
+
+        bootstrap.Modal.getInstance(document.getElementById('aumentoSalarioModal')).hide();
+        mostrarMensagem("Aumento salarial atualizado com sucesso!", "success");
+        
+        // Recarregar os detalhes do funcionário se estiverem abertos
+        await carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro ao atualizar aumento salarial:", error);
+        mostrarMensagem("Falha ao atualizar o aumento.", "error");
+    }
+}
+
+async function excluirAumentoSalario(funcionarioId, historicoIndex) {
+    if (!confirm("Tem certeza que deseja excluir este registro de aumento salarial?")) {
+        return;
+    }
+
+    try {
+        const funcRef = db.collection('funcionarios').doc(funcionarioId);
+        const funcDoc = await funcRef.get();
+        
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado.", "error");
+            return;
+        }
+
+        const funcionario = funcDoc.data();
+        
+        if (!funcionario.historicoAumentos || historicoIndex >= funcionario.historicoAumentos.length) {
+            mostrarMensagem("Registro de aumento não encontrado.", "error");
+            return;
+        }
+
+        // Remover o item do array
+        const historicoAtualizado = [...funcionario.historicoAumentos];
+        historicoAtualizado.splice(historicoIndex, 1);
+
+        await funcRef.update({
+            historicoAumentos: historicoAtualizado
+        });
+
+        mostrarMensagem("Registro de aumento excluído com sucesso!", "success");
+        
+        // Recarregar os detalhes do funcionário se estiverem abertos
+        await carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro ao excluir aumento salarial:", error);
+        mostrarMensagem("Falha ao excluir o registro de aumento.", "error");
+    }
+}
+
+// Função auxiliar para abrir janela de impressão
+function openPrintWindow(content, options = {}) {
+    const { autoPrint = false, name = '_blank', specs = 'width=800,height=600' } = options;
+    
+    const printWindow = window.open('', name, specs);
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+
+    if (autoPrint) {
+        printWindow.focus();
+        printWindow.print();
+        // printWindow.close(); // Descomente se quiser fechar automaticamente após imprimir
+    }
 }

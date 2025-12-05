@@ -1,6 +1,47 @@
 // Gerenciamento de empresas
 let empresas = [];
 
+document.addEventListener('DOMContentLoaded', () => {
+    // Modal de empresa
+    const empresaModal = document.getElementById('empresaModal');
+    if (empresaModal) {
+        empresaModal.addEventListener('show.bs.modal', function(event) {
+            // Verifica se o modal foi acionado pelo botão "Nova Empresa"
+            const relatedTarget = event.relatedTarget;
+            if (relatedTarget && relatedTarget.getAttribute('data-bs-target') === '#empresaModal') {
+                document.getElementById('form-empresa').reset();
+                document.querySelector('#empresaModal .modal-title').textContent = 'Nova Empresa';
+                const salvarBtn = this.querySelector('.btn-primary');
+                salvarBtn.textContent = 'Salvar Empresa';
+                salvarBtn.onclick = salvarEmpresa;
+            }
+        });
+    }
+});
+
+
+// Adiciona listener para o input de arquivo do logo
+document.addEventListener('DOMContentLoaded', () => {
+    const logoFileInput = document.getElementById('logo-file-empresa');
+    const logoPreview = document.getElementById('logo-preview-empresa');
+    const logoUrlInput = document.getElementById('logo-url-empresa');
+
+    if (logoFileInput && logoPreview && logoUrlInput) {
+        logoFileInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    logoPreview.src = e.target.result;
+                    logoPreview.style.display = 'block';
+                }
+                reader.readAsDataURL(file);
+                logoUrlInput.value = file.name; // Salva o nome do arquivo para a lógica existente
+            }
+        });
+    }
+});
+
 // Carregar empresas
 async function carregarEmpresas() {
     try {
@@ -65,11 +106,12 @@ async function carregarEmpresas() {
 async function salvarEmpresa() {
     try {
         const nome = document.getElementById('nome-empresa').value;
-        const cnpj = document.getElementById('cnpj-empresa').value;
+        const cnpj = document.getElementById('cnpj-empresa')?.value || ''; // Garante que seja uma string vazia se não encontrado
         const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
-        const pagaFGTS = document.getElementById('paga-fgts-empresa').checked;
+        const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         const pagaSindicato = document.getElementById('paga-sindicato-empresa').checked;
+        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa').checked;
 
         if (!nome) {
             mostrarMensagem('Preencha o nome da empresa', 'warning');
@@ -83,8 +125,9 @@ async function salvarEmpresa() {
         const empresaData = {
             nome: nome,
             cnpj: cnpj,
-            pagaFGTS: pagaFGTS,
+            rat: rat,
             pagaSindicato: pagaSindicato,
+            pagaContribuicaoPatronal: pagaContribuicaoPatronal,
             setores: setores,
             funcoes: funcoes,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),            
@@ -116,8 +159,9 @@ async function editarEmpresa(empresaId) {
         document.getElementById('cnpj-empresa').value = empresa.cnpj || '';
         document.getElementById('setores-empresa').value = Array.isArray(empresa.setores) ? empresa.setores.join(', ') : '';
         document.getElementById('funcoes-empresa').value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
-        document.getElementById('paga-fgts-empresa').checked = empresa.pagaFGTS === true;
+        document.getElementById('rat-empresa').value = empresa.rat || '';
         document.getElementById('paga-sindicato-empresa').checked = empresa.pagaSindicato === true;
+        document.getElementById('paga-contribuicao-patronal-empresa').checked = empresa.pagaContribuicaoPatronal === true;
 
         // Garante que o título do modal esteja correto para edição
         const modalTitle = document.querySelector('#empresaModal .modal-title');
@@ -142,8 +186,9 @@ async function atualizarEmpresa(empresaId) {
         const cnpj = document.getElementById('cnpj-empresa').value;
         const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
-        const pagaFGTS = document.getElementById('paga-fgts-empresa').checked;
+        const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         const pagaSindicato = document.getElementById('paga-sindicato-empresa').checked;
+        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa').checked;
         const setores = setoresText.split(',').map(s => s.trim()).filter(s => s);
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
@@ -152,9 +197,10 @@ async function atualizarEmpresa(empresaId) {
             nome: nome,
             cnpj: cnpj,
             setores: setores,
-            funcoes: funcoes,
-            pagaFGTS: pagaFGTS,
+            funcoes: funcoes,            
+            rat: rat,
             pagaSindicato: pagaSindicato,
+            pagaContribuicaoPatronal: pagaContribuicaoPatronal,
             updatedAt: timestamp(),
             updatedByUid: user ? user.uid : null
         };
@@ -225,4 +271,124 @@ async function carregarSelectEmpresas(selectId) {
     } catch (error) {
         console.error('Erro ao carregar empresas no select:', error);
     }
+}
+
+/**
+ * Exporta um arquivo CSV com os cabeçalhos para servir de modelo para empresas.
+ */
+function exportarModeloEmpresasCSV() {
+    const headers = [
+        "nome", "cnpj", "setores (separados por vírgula)", "funcoes (separados por vírgula)"
+    ];
+    const exemplo = [
+        '"Empresa Exemplo SA"', '"00.111.222/0001-33"', '"RH,TI,Financeiro,Produção"', '"Analista,Gerente,Operador"'
+    ];
+    
+    const csvContent = "data:text/csv;charset=utf-8," + 
+        headers.join(",") + "\n" + 
+        exemplo.join(",");
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "modelo_empresas.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    mostrarMensagem("Modelo CSV para empresas exportado com sucesso!", "success");
+}
+
+/**
+ * Processa o arquivo CSV selecionado pelo usuário para importar empresas.
+ */
+async function processarArquivoEmpresasCSV() {
+    const fileInput = document.getElementById('csv-empresas-file-input');
+    const btnImportar = document.getElementById('btn-iniciar-importacao-empresas');
+    const resultadoDiv = document.getElementById('importacao-empresas-resultado');
+    const resumoDiv = document.getElementById('importacao-empresas-resumo');
+    const errosLista = document.getElementById('importacao-empresas-erros-lista');
+
+    if (fileInput.files.length === 0) {
+        mostrarMensagem("Por favor, selecione um arquivo CSV.", "warning");
+        return;
+    }
+
+    btnImportar.disabled = true;
+    btnImportar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Importando...';
+    resultadoDiv.style.display = 'block';
+    resumoDiv.innerHTML = '';
+    errosLista.innerHTML = '';
+
+    const file = fileInput.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async function(event) {
+        const csvData = event.target.result;
+        const lines = csvData.split(/\r\n|\n/).filter(line => line.trim() !== '');
+        
+        if (lines.length < 2) {
+            resumoDiv.innerHTML = `<div class="alert alert-danger">O arquivo CSV está vazio ou contém apenas cabeçalhos.</div>`;
+            btnImportar.disabled = false;
+            btnImportar.innerHTML = 'Iniciar Importação';
+            return;
+        }
+
+        const headers = parseCSVLine(lines[0]);
+        let sucessoCount = 0;
+        let erroCount = 0;
+
+        // Cache de empresas existentes para evitar duplicatas
+        const empresasSnap = await db.collection('empresas').get();
+        const nomesExistentes = new Set(empresasSnap.docs.map(doc => doc.data().nome.toLowerCase()));
+
+        for (let i = 1; i < lines.length; i++) {
+            const line = lines[i];
+            if (!line.trim()) continue;
+
+            const values = parseCSVLine(line);
+            const empresa = {
+                nome: values[0]?.trim(),
+                cnpj: values[1]?.trim(),
+                setores: values[2]?.split(',').map(s => s.trim()).filter(Boolean),
+                funcoes: values[3]?.split(',').map(f => f.trim()).filter(Boolean)
+            };
+
+            let erroMsg = '';
+            if (!empresa.nome) {
+                erroMsg = 'O campo "nome" da empresa é obrigatório.';
+            } else if (nomesExistentes.has(empresa.nome.toLowerCase())) {
+                erroMsg = `A empresa "${empresa.nome}" já existe e será ignorada.`;
+            }
+
+            if (erroMsg) {
+                erroCount++;
+                errosLista.innerHTML += `<li class="list-group-item list-group-item-warning">Linha ${i + 1}: ${erroMsg}</li>`;
+            } else {
+                try {
+                    const empresaData = {
+                        nome: empresa.nome,
+                        cnpj: empresa.cnpj || '',
+                        setores: empresa.setores || [],
+                        funcoes: empresa.funcoes || [],
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                        createdByUid: firebase.auth().currentUser?.uid
+                    };
+                    
+                    await db.collection('empresas').add(empresaData);
+                    nomesExistentes.add(empresaData.nome.toLowerCase()); // Adiciona ao cache para a mesma importação
+                    sucessoCount++;
+                } catch (dbError) {
+                    erroCount++;
+                    errosLista.innerHTML += `<li class="list-group-item list-group-item-danger">Linha ${i + 1} (${empresa.nome}): Erro ao salvar no banco de dados: ${dbError.message}</li>`;
+                }
+            }
+        }
+
+        resumoDiv.innerHTML = `<div class="alert alert-info">Importação concluída! Sucesso: ${sucessoCount}, Falhas/Ignorados: ${erroCount}.</div>`;
+        btnImportar.disabled = false;
+        btnImportar.innerHTML = 'Iniciar Importação';
+        carregarEmpresas(); // Atualiza a tabela de empresas na tela
+    };
+
+    reader.readAsText(file);
 }
