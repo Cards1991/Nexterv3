@@ -14,8 +14,10 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
 
-    <!-- Configuração do Firebase (carregado logo após os scripts) -->
-    <script src="js/firebase-config.js"></script>
+    <!-- Carregador de variáveis de ambiente para DESENVOLVIMENTO LOCAL -->
+    <script src="js/dotenv-loader.js"></script>
+    <!-- Configuração do Firebase (lê as variáveis carregadas acima) -->
+    <script src="js/firebase-config.js" defer></script>
     <!-- Chart.js (carregado antes dos scripts que o utilizam) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js" defer></script>
     <!-- PapaParse para processamento de CSV -->
