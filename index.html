@@ -767,8 +767,96 @@
 
                 <!-- Seção Custos: Análise de Custos por Funcionário -->
                 <section id="analise-custos" class="content-section d-none">
-                    <h2 class="page-title">Financeiro - Análise de Custos</h2>
-                    <div class="card"><div class="card-body"><p>Em breve, esta seção permitirá a análise detalhada dos custos por funcionário.</p></div></div>
+                    <h2 class="page-title">Dashboard Financeiro de Custos</h2>
+                
+                    <!-- Formulário de Filtro -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <form id="custos-filter-form">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-md-3"><label for="custos-filtro-inicio" class="form-label">Data Início:</label><input type="date" id="custos-filtro-inicio" class="form-control" required></div>
+                                    <div class="col-md-3"><label for="custos-filtro-fim" class="form-label">Data Fim:</label><input type="date" id="custos-filtro-fim" class="form-control" required></div>
+                                    <div class="col-md-3"><label for="custos-filtro-setor" class="form-label">Setor:</label><select id="custos-filtro-setor" class="form-select"></select></div>
+                                    <div class="col-md-3"><label for="custos-filtro-processo" class="form-label">Processo:</label><select id="custos-filtro-processo" class="form-select"></select></div>
+                                    <div class="col-md-3"><label for="custos-filtro-empresa" class="form-label">Empresa:</label><select id="custos-filtro-empresa" class="form-select"></select></div>
+                                    <div class="col-md-3 d-flex align-items-end"><button type="submit" class="btn btn-primary w-100" id="btn-custos-aplicar-filtros"><i class="fas fa-filter me-2"></i>Filtrar</button></div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                
+                    <!-- Dashboard de KPIs -->
+                    <div class="row mb-4">
+                        <div class="col"><div class="card stat-card"><div class="card-body"><h3 class="label">Total a Pagar (Mês)</h3><p id="custos-kpi-total-pagar" class="number text-danger">R$ 0,00</p></div></div></div>
+                        <div class="col"><div class="card stat-card"><div class="card-body"><h3 class="label">Total de Juros</h3><p id="custos-kpi-total-juros" class="number">R$ 0,00</p></div></div></div>
+                        <div class="col"><div class="card stat-card"><div class="card-body"><h3 class="label">Despesas de RH</h3><p id="custos-kpi-despesas-rh" class="number text-primary">R$ 0,00</p></div></div></div>
+                        <div class="col"><div class="card stat-card"><div class="card-body"><h3 class="label">Projeção Próx. Mês</h3><p id="custos-kpi-projecao" class="number">R$ 0,00</p></div></div></div>
+                        <div class="col"><div class="card stat-card"><div class="card-body"><h3 class="label">Desvio Padrão</h3><p id="custos-kpi-desvio-padrao" class="number">R$ 0,00</p></div></div></div>
+                        <div class="col"><div class="card stat-card highlight-card"><div class="card-body"><h3 class="label">Média Mensal (Prov.)</h3><p id="custos-kpi-media-mensal" class="number">R$ 0,00</p></div></div></div>
+                    </div>
+                
+                    <!-- Gráficos -->
+                    <div class="row">
+                        <div class="col-lg-7 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">Evolução de Custos no Período</div>
+                                <div class="card-body position-relative" style="height: 350px;">
+                                    <canvas id="custos-evolucao-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-5 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header">Custos por Processo</div>
+                                <div class="card-body position-relative" style="height: 350px;">
+                                    <canvas id="custos-processo-bar-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header">Comparativo Mensal (Últimos 12 Meses)</div>
+                                <div class="card-body position-relative" style="height: 400px;">
+                                    <canvas id="custos-comparativo-mensal-chart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                
+                    <!-- Tabela de Dados -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Detalhes dos Lançamentos</span>
+                            <div class="btn-group btn-group-sm">
+                                <button id="custos-select-all" class="btn btn-outline-secondary">Selecionar Todos</button>
+                                <button id="custos-print-button" class="btn btn-outline-primary"><i class="fas fa-print"></i> Imprimir</button>
+                                <button id="custos-export-button" class="btn btn-outline-success"><i class="fas fa-file-excel"></i> Exportar</button>
+                            </div>
+                        </div>
+                        <div class="card-body table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th><input type="checkbox" id="custos-select-all-header"></th>
+                                        <th>Status</th>
+                                        <th>Conta/Origem</th>
+                                        <th>Processo</th>
+                                        <th>Descrição</th>
+                                        <th>Valor</th>
+                                        <th>Juros</th>
+                                        <th>Total</th>
+                                        <th>Vencimento</th>
+                                        <th>Empresa</th>
+                                        <th>Setor</th>
+                                        <th>Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-custos-detalhes">
+                                    <!-- Dados serão inseridos aqui pelo JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </section>
 
                 <section id="empresas" class="content-section d-none">

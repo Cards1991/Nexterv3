@@ -37,12 +37,12 @@ function showSection(sectionName) {
     if (targetSection) {
         targetSection.classList.remove('d-none');
         targetSection.classList.add('fade-in');
-        
-        // Carregar dados específicos da seção
-        carregarDadosSecao(sectionName);
     } else {
         console.error('Seção não encontrada:', sectionName);
+        return; // Sai da função se a seção não for encontrada
     }
+    // Carregar dados específicos da seção DEPOIS de torná-la visível
+    carregarDadosSecao(sectionName);
     
     // Atualizar menu ativo
     atualizarMenuAtivo(sectionName);
@@ -187,7 +187,6 @@ async function carregarDadosSecao(sectionName) {
                 // Lógica para carregar dados da seção de Consumo de EPI (se houver)
                 break;
              case 'analise-custos':
-                // Lógica para carregar dados da seção de Análise de Custos (se houver)
                 if (typeof inicializarAnaliseCustos === 'function') {
                     await inicializarAnaliseCustos();
                 }
