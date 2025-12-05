@@ -32,22 +32,27 @@ if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
 }
 
-// Instâncias dos serviços
-const db = firebase.firestore();
-const auth = firebase.auth();
-const timestamp = firebase.firestore.FieldValue.serverTimestamp;
+// Instâncias dos serviços (disponibilizadas globalmente para compatibilidade)
+window.db = firebase.firestore();
+window.auth = firebase.auth();
+window.timestamp = firebase.firestore.FieldValue.serverTimestamp;
 
 // Habilitar persistência offline
-if (db) {
-    db.enablePersistence().catch(err => {
-        console.warn('Persistência offline:', err.code);
-    });
+if (window.db) {
+    window.db.enablePersistence()
+        .then(() => console.log('✅ Persistência offline habilitada (Produção)'))
+        .catch(err => {
+            if (err.code === 'failed-precondition') {
+                console.warn('⚠️ Persistência já ativa em outra aba (Produção)');
+            } else if (err.code === 'unimplemented') {
+                console.warn('⚠️ Browser não suporta persistência offline (Produção)');
+            } else {
+                console.error('❌ Erro ao habilitar persistência (Produção):', err);
+            }
+        });
 }
  
 console.log('🚀 Firebase configurado para produção');
-
-export { db, auth, timestamp };
-export default { db, auth, timestamp };
 `;
 
 // Escreve o arquivo

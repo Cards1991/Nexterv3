@@ -1036,19 +1036,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 btnSair.addEventListener('click', (e) => { e.preventDefault(); sair(); });
             }
 
-// app.js - ADICIONE ESTE CÓDIGO NO INÍCIO
-// ============================================
-
-// Verificar se Firebase está carregado
-if (typeof firebase === 'undefined') {
-    console.error('❌ Firebase não carregado!');
-    document.body.innerHTML = `
-        <div style="padding: 20px; text-align: center;">
-            <h2>Erro de Configuração</h2>
-            <p>Firebase não foi carregado corretamente.</p>
-            <button onclick="location.reload()">Recarregar</button>
-        </div>
-            // Configurar sidebar toggle
             const sidebarToggle = document.getElementById('sidebarToggle');
             if (sidebarToggle) {
                 sidebarToggle.addEventListener('click', function() {
@@ -1056,7 +1043,7 @@ if (typeof firebase === 'undefined') {
                     document.body.classList.toggle('sidebar-open');
                 });
             }
-            
+
             // Carregar dados iniciais
             await carregarDadosDashboard();
             await carregarLogoEmpresa();
@@ -1065,13 +1052,30 @@ if (typeof firebase === 'undefined') {
             if (typeof carregarAgenda === 'function') {
                 await carregarAgenda();
             }
-            
+
         } else {
             // Redirecionar para login se não estiver autenticado
             window.location.href = 'login.html';
         }
     });
 });
+
+// Verificar se Firebase está carregado (movido para o início do script)
+if (typeof firebase === 'undefined') {
+    console.error('❌ Firebase não carregado!');
+    document.body.innerHTML = `
+        <div style="padding: 20px; text-align: center;">
+            <h2>Erro de Configuração</h2>
+            <p>Firebase não foi carregado corretamente.</p>
+            <button onclick="location.reload()">Recarregar</button>
+        </div>
+    `;
+    // Interrompe a execução do script se o Firebase não estiver carregado
+    throw new Error("Firebase SDK não está carregado. A aplicação não pode continuar.");
+}
+
+
+
 
 // Carregar e exibir o logo da empresa
 async function carregarLogoEmpresa() {
