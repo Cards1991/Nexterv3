@@ -1,0 +1,8 @@
+{
+  "name": "nexter-rh",
+  "version": "1.0.0",
+  "description": "Sistema de RH da Crival",
+  "scripts": {
+    "vercel-build": "node generate-firebase-config.js"
+  }
+}
