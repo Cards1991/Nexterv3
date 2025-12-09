@@ -85,6 +85,7 @@ async function listarHorasExtras() {
 
         if (querySnapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum registro encontrado para o período.</td></tr>';
+            criarGraficosHorasExtras({}, {}, {}, 0, 0); // Limpa os gráficos
         }
 
         querySnapshot.forEach((doc) => {
@@ -93,7 +94,7 @@ async function listarHorasExtras() {
             const dsrValue = parseFloat(overtime.dsr) || 0;
             const overtimePay = parseFloat(overtime.overtimePay) || 0;
             const date = new Date(overtime.date + 'T00:00:00');
-            const month = date.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+            const month = date.toLocaleString('pt-BR', { month: 'long', year: 'numeric', timeZone: 'UTC' });
 
             sectorData[overtime.sector] = (sectorData[overtime.sector] || 0) + extraHours;
             employeeData[overtime.employeeName] = (employeeData[overtime.employeeName] || 0) + extraHours;
@@ -129,7 +130,7 @@ async function listarHorasExtras() {
 
     } catch (error) {
         console.error("Erro ao listar horas extras: ", error);
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados. Verifique os índices do Firestore.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados. Verifique os índices do Firestore ou as permissões. Detalhe: ${error.message}</td></tr>`;
     }
 }
 
@@ -220,9 +221,9 @@ function exportarTabelaParaExcel(tableId, filename) {
 function formatarData(date) {
     if (!date) return '-';
     try {
-        const d = new Date(date);
+        const d = new Date(date); // A data já vem como objeto Date
         if (isNaN(d.getTime())) return '-';
-        return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' }); // Adicionado UTC para evitar problemas de fuso
+        return d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     } catch {
         return '-';
     }

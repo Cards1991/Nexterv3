@@ -544,6 +544,29 @@ function validarFormularioHorasExtras() {
     return erros;
 }
 
+/**
+ * Calcula o número de domingos e feriados em um determinado mês e ano.
+ * @param {number} year - O ano.
+ * @param {number} month - O mês (0-11).
+ * @returns {number} - O número de dias não úteis (domingos + feriados).
+ */
+function getDiasNaoUteis(year, month) {
+    const feriadosFixos = [ // Formato MM-DD
+        '01-01', '04-21', '05-01', '09-07', '10-12', '11-02', '11-15', '12-25'
+    ];
+    let diasNaoUteis = 0;
+    const diasNoMes = new Date(year, month + 1, 0).getDate();
+
+    for (let dia = 1; dia <= diasNoMes; dia++) {
+        const data = new Date(year, month, dia);
+        const dataStr = `${String(month + 1).padStart(2, '0')}-${String(dia).padStart(2, '0')}`;
+        if (data.getDay() === 0 || feriadosFixos.includes(dataStr)) { // 0 = Domingo
+            diasNaoUteis++;
+        }
+    }
+    return diasNaoUteis;
+}
+
 async function calcularEExibirHorasExtras() {
     // Validar formulário primeiro
     const erros = validarFormularioHorasExtras();
@@ -587,9 +610,14 @@ async function calcularEExibirHorasExtras() {
         const overtimePay = overtimeRate * hoursDiff;
         
         // Cálculo do DSR (Descanso Semanal Remunerado)
-        // Considerando 26 dias úteis e 4-5 domingos/feriados no mês
-        // Fórmula: (valor das horas extras / 26) × 5
-        const dsr = (overtimePay / 26) * 5;
+        // Fórmula: (Valor Total Horas Extras / Dias Úteis do Mês) * (Domingos e Feriados do Mês)
+        const dataLancamento = new Date(date + 'T00:00:00');
+        const ano = dataLancamento.getFullYear();
+        const mes = dataLancamento.getMonth();
+        const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+        const diasNaoUteis = getDiasNaoUteis(ano, mes);
+        const diasUteis = diasNoMes - diasNaoUteis;
+        const dsr = diasUteis > 0 ? (overtimePay / diasUteis) * diasNaoUteis : 0;
 
         // Preparar dados para exibição
         const overtimeData = {
