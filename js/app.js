@@ -281,13 +281,13 @@ async function carregarDadosSecao(sectionName) {
                 // Apenas exibe a seção estática.
                 break;
             case 'dp-horas-solicitacao':
-                if (typeof renderMinhasSolicitacoes === 'function') {
-                    await renderMinhasSolicitacoes();
+                if (typeof inicializarTelaSolicitacao === 'function') {
+                    await inicializarTelaSolicitacao();
                 }
                 break;
             case 'control-horas-autorizacao':
-                if (typeof renderAutorizacaoDashboard === 'function') {
-                    await renderAutorizacaoDashboard();
+                if (typeof inicializarTelaAutorizacao === 'function') {
+                    await inicializarTelaAutorizacao();
                 }
                 break;
         }

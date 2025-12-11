@@ -1445,9 +1445,9 @@
                 <!-- Seção Controladoria: Autorização de Horas Extras -->
                 <section id="control-horas-autorizacao" class="content-section d-none">
                     <h2 class="page-title">Autorização de Horas Extras - Controladoria</h2>
-
+                
                     <div class="row mb-3">
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card p-3">
                                 <div class="card-body">
                                     <div class="small text-muted">Total Solicitado (R$)</div>
@@ -1455,7 +1455,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <div class="card p-3">
                                 <div class="card-body">
                                     <div class="small text-muted">Total Aprovado (R$)</div>
@@ -1463,30 +1463,44 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card p-3">
+                        <div class="col-md-3">
+                            <div class="card p-3 bg-light">
                                 <div class="card-body">
                                     <div class="small text-muted">Diferença (R$)</div>
                                     <div id="auth-diferenca" class="h4">R$ 0,00</div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-
-                    <div class="card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Comparativo Solicitações x Aprovadas</span>
-                            <div>
-                                <button class="btn btn-outline-secondary btn-sm" onclick="renderAutorizacaoDashboard()"><i class="fas fa-sync"></i> Atualizar</button>
+                        <div class="col-md-3">
+                            <div class="card p-3 bg-warning text-dark">
+                                <div class="card-body">
+                                    <div class="small">Solicitações Pendentes</div>
+                                    <div id="auth-pendentes" class="h4">0</div>
+                                </div>
                             </div>
                         </div>
+                    </div>
+                
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center" id="auth-chart-header">
+                            <span>Comparativo Solicitações x Aprovadas</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="inicializarTelaAutorizacao()">
+                                <i class="fas fa-sync"></i> Atualizar
+                            </button>
+                        </div>
                         <div class="card-body">
-                            <div id="auth-chart-container" style="height:300px">Carregando gráfico...</div>
+                            <div id="auth-chart-container" style="height:300px;"><canvas id="auth-chart-canvas"></canvas></div>
                         </div>
                     </div>
-
+                
                     <div class="card">
-                        <div class="card-header">Últimas Solicitações</div>
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Últimas Solicitações</span>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-secondary" id="auth-btn-imprimir"><i class="fas fa-print"></i> Imprimir</button>
+                                <button class="btn btn-outline-success" id="auth-btn-exportar"><i class="fas fa-file-excel"></i> Exportar Excel</button>
+                            </div>
+                        </div>
                         <div class="card-body"><div id="auth-solicitacoes-table">Carregando...</div></div>
                     </div>
                 </section>
@@ -3563,6 +3577,92 @@
         </div>
     </div>
 
+    <!-- Modal Ajuste de Solicitação de Horas Extras (Controladoria) -->
+    <div class="modal fade" id="ajusteSolicitacaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Ajustar Solicitação de Horas Extras</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form-ajuste-solicitacao">
+                    <input type="hidden" id="ajuste-solicitacao-id">
+                    <div class="modal-body">
+                        <div class="alert alert-info">
+                            <strong>Funcionário:</strong> <span id="ajuste-funcionario-nome"></span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Data Início</label>
+                                <input type="date" id="ajuste-start-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hora Início</label>
+                                <input type="time" id="ajuste-start-time" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data Fim</label>
+                                <input type="date" id="ajuste-end-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hora Fim</label>
+                                <input type="time" id="ajuste-end-time" class="form-control" required>
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label class="form-label">Motivo / Observações</label>
+                            <textarea id="ajuste-reason" class="form-control" rows="3"></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary"><i class="fas fa-save me-1"></i> Salvar Ajustes</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Solicitação de Horas Extras -->
+    <div class="modal fade" id="solicitacaoHorasModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Nova Solicitação de Horas Extras</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="form-solicitacao-horas">
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Funcionário <span class="text-danger">*</span></label>
+                                <select id="sol-employee" class="form-select" required></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data Início <span class="text-danger">*</span></label>
+                                <input type="date" id="sol-start-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hora Início <span class="text-danger">*</span></label>
+                                <input type="time" id="sol-start-time" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data Fim <span class="text-danger">*</span></label>
+                                <input type="date" id="sol-end-date" class="form-control" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Hora Fim <span class="text-danger">*</span></label>
+                                <input type="time" id="sol-end-time" class="form-control" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Motivo / Observações</label>
+                                <textarea id="sol-reason" class="form-control" rows="3" placeholder="Descreva o motivo das horas extras..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i> Enviar Solicitação</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Importação de Funcionários -->
     <div class="modal fade" id="importarFuncionariosModal" tabindex="-1">
         <div class="modal-dialog modal-lg">
@@ -4365,9 +4465,9 @@
     <script src="js/afd-parser.js" defer></script>
     <script src="js/funcionarios.js" defer></script>
     <script src="js/dashboard-faltas.js" defer></script>
-    <script src="js/horas-extras.js" defer></script>
+    <script src="js/solicitacao-horas-extras.js" defer></script>
+    <script src="js/autorizacao-horas.js" defer></script>
     <script src="js/horas-extras-lancamento.js" defer></script>
-    <script src="js/horas-extras-solicitacao.js" defer></script>
     <script src="js/empresas.js" defer></script>
     <script src="js/movimentacoes.js" defer></script>
     <script src="js/relatorios.js" defer></script>
