@@ -153,6 +153,9 @@ async function salvarNovaSolicitacao() {
         }
 
         const user = firebase.auth().currentUser;
+        // Adiciona o cálculo do valor estimado na criação
+        const valorEstimado = await calcularValorEstimado(start, end, employeeId);
+
         const data = {
             employeeId,
             employeeName,
@@ -162,7 +165,9 @@ async function salvarNovaSolicitacao() {
             status: 'pendente',
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user.uid,
-            createdByName: user.displayName || user.email
+            createdByName: user.displayName || user.email,
+            valorEstimado: valorEstimado,
+            valorOriginalSolicitado: valorEstimado // Salva o valor original na criação
         };
 
         await db.collection('solicitacoes_horas').add(data);
@@ -263,3 +268,29 @@ window.abrirModalSolicitacaoHoras = abrirModalNovaSolicitacao;
 // Exporta funções para o escopo global para serem chamadas pelo HTML
 window.cancelarMinhaSolicitacao = cancelarMinhaSolicitacao;
 window.excluirMinhaSolicitacao = excluirMinhaSolicitacao;
+
+/**
+ * Calcula o valor estimado de uma solicitação de horas extras.
+ * (Função adicionada para estar disponível neste módulo)
+ */
+async function calcularValorEstimado(start, end, employeeId) {
+    try {
+        const duracaoMinutos = (end - start) / (1000 * 60);
+        if (duracaoMinutos <= 0) return 0;
+
+        const funcDoc = await db.collection('funcionarios').doc(employeeId).get();
+        if (!funcDoc.exists) return 0;
+
+        const salario = parseFloat(funcDoc.data().salario || 0);
+        if (salario <= 0) return 0;
+
+        const valorHora = salario / 220;
+        const valorExtra = (duracaoMinutos / 60) * (valorHora * 1.5); // Assumindo 50%
+        const dsr = valorExtra / 6; // DSR simplificado
+
+        return parseFloat((valorExtra + dsr).toFixed(2));
+    } catch (error) {
+        console.error("Erro no cálculo do valor estimado:", error);
+        return 0;
+    }
+}

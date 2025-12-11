@@ -1488,8 +1488,15 @@
                                 <i class="fas fa-sync"></i> Atualizar
                             </button>
                         </div>
-                        <div class="card-body">
-                            <div id="auth-chart-container" style="height:300px;"><canvas id="auth-chart-canvas"></canvas></div>
+                        <div class="card-body" id="auth-chart-container">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div style="height:250px;"><canvas id="auth-chart-solicitado"></canvas></div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div style="height:250px;"><canvas id="auth-chart-aprovado"></canvas></div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 

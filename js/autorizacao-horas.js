@@ -5,7 +5,8 @@
 
 let listenerAutorizacao = null;
 let cacheSolicitacoes = [];
-let chartAutorizacao = null;
+let chartSolicitado = null;
+let chartAprovado = null;
 
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
@@ -73,11 +74,19 @@ async function carregarSolicitacoes() {
             const funcionariosSnap = await db.collection('funcionarios').get();
             const salariosMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, parseFloat(doc.data().salario || 0)]));
 
+            // CORREÇÃO: Diferencia o valor atual do valor original
             const solicitacoesPromises = snapshot.docs.map(async (doc) => {
                 const data = doc.data();
                 if (!data.start || !data.end) return null;
-                const valorEstimado = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
-                return { id: doc.id, ...data, valorEstimado };
+
+                const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
+                
+                return { 
+                    id: doc.id, 
+                    ...data, 
+                    valorEstimado: valorAtual, // Valor atual (após edições)
+                    valorOriginalSolicitado: data.valorOriginalSolicitado ?? valorAtual // Usa o original, ou o atual se o original não existir
+                };
             });
 
             cacheSolicitacoes = (await Promise.all(solicitacoesPromises)).filter(Boolean);
@@ -157,8 +166,15 @@ function renderizarTabela(solicitacoes, container) {
  * Atualiza os cards de KPI (Indicadores Chave de Performance).
  */
 function atualizarKPIs(solicitacoes) {
-    const totalSolicitado = solicitacoes.filter(s => s.status !== 'cancelado').reduce((acc, s) => acc + s.valorEstimado, 0);
-    const totalAprovado = solicitacoes.filter(s => s.status === 'aprovado').reduce((acc, s) => acc + s.valorEstimado, 0);
+    // CORREÇÃO: Usa o valor original se existir, para uma análise de custo precisa.
+    const totalSolicitado = solicitacoes
+        .filter(s => s.status !== 'cancelado')
+        .reduce((acc, s) => acc + (s.valorOriginalSolicitado ?? s.valorEstimado ?? 0), 0);
+
+    const totalAprovado = solicitacoes
+        .filter(s => s.status === 'aprovado')
+        .reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
     const pendentes = solicitacoes.filter(s => s.status === 'pendente').length;
 
     document.getElementById('auth-total-solicitado').textContent = `R$ ${totalSolicitado.toFixed(2).replace('.', ',')}`;
@@ -171,51 +187,64 @@ function atualizarKPIs(solicitacoes) {
  * Renderiza o gráfico de comparação de valores solicitados vs. aprovados.
  */
 function renderizarGrafico(solicitacoes) {
-    const ctx = document.getElementById('auth-chart-canvas')?.getContext('2d');
-    if (!ctx) return;
+    const ctxSolicitado = document.getElementById('auth-chart-solicitado')?.getContext('2d');
+    const ctxAprovado = document.getElementById('auth-chart-aprovado')?.getContext('2d');
 
-    const dadosAgrupados = solicitacoes.reduce((acc, s) => {
-        // CORREÇÃO: Verifica se createdAt existe antes de chamar toDate()
-        if (!s.createdAt || !s.createdAt.toDate) return acc;
-        const dia = s.createdAt.toDate().toISOString().split('T')[0];
-        if (!acc[dia]) acc[dia] = { solicitado: 0, aprovado: 0 };
-        if (s.status !== 'cancelado') acc[dia].solicitado += s.valorEstimado;
-        if (s.status === 'aprovado') acc[dia].aprovado += s.valorEstimado;
-        return acc;
-    }, {});
+    if (!ctxSolicitado || !ctxAprovado) return;
 
-    const labels = Object.keys(dadosAgrupados).sort();
-    const dataSolicitado = labels.map(l => dadosAgrupados[l].solicitado);
-    const dataAprovado = labels.map(l => dadosAgrupados[l].aprovado);
+    // Destrói gráficos antigos para evitar sobreposição
+    if (chartSolicitado) chartSolicitado.destroy();
+    if (chartAprovado) chartAprovado.destroy();
 
-    if (chartAutorizacao) chartAutorizacao.destroy();
+    // Usa valor ORIGINAL para o total solicitado
+    const totalSolicitado = solicitacoes
+        .filter(s => s.status !== 'cancelado')
+        .reduce((acc, s) => acc + (s.valorOriginalSolicitado ?? s.valorEstimado ?? 0), 0);
 
-    chartAutorizacao = new Chart(ctx, {
-        type: 'bar',
+    // Usa valor ATUAL para o total aprovado
+    const totalAprovado = solicitacoes
+        .filter(s => s.status === 'aprovado')
+        .reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
+    const chartOptions = (title) => ({
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '70%',
+        plugins: {
+            legend: { display: false },
+            title: {
+                display: true,
+                text: title,
+                font: { size: 16 }
+            }
+        }
+    });
+
+    // Gráfico 1: Valor Total Solicitado (ORIGINAL)
+    chartSolicitado = new Chart(ctxSolicitado, {
+        type: 'doughnut',
         data: {
-            labels: labels.map(l => new Date(l).toLocaleDateString('pt-BR', { timeZone: 'UTC' })),
+            labels: ['Solicitado'],
             datasets: [
                 {
-                    label: 'Valor Solicitado (R$)',
-                    data: dataSolicitado,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                    borderColor: 'rgba(54, 162, 235, 1)',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Valor Aprovado (R$)',
-                    data: dataAprovado,
-                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
-                    borderColor: 'rgba(75, 192, 192, 1)',
-                    borderWidth: 1
+                    data: [totalSolicitado],
+                    backgroundColor: ['rgba(54, 162, 235, 0.8)'],
+                    borderColor: ['rgba(54, 162, 235, 1)'],
+                    borderWidth: 2
                 }
             ]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: { y: { beginAtZero: true, ticks: { callback: value => `R$ ${value}` } } }
-        }
+        options: chartOptions('Total Solicitado')
+    });
+
+    // Gráfico 2: Valor Total Aprovado (ATUAL)
+    chartAprovado = new Chart(ctxAprovado, {
+        type: 'doughnut',
+        data: {
+            labels: ['Aprovado'],
+            datasets: [{ data: [totalAprovado], backgroundColor: ['rgba(75, 192, 192, 0.8)'], borderColor: ['rgba(75, 192, 192, 1)'], borderWidth: 2 }]
+        },
+        options: chartOptions('Total Aprovado')
     });
 }
 
@@ -316,20 +345,40 @@ async function salvarAjusteSolicitacao() {
 
     try {
         const docOriginal = await db.collection('solicitacoes_horas').doc(id).get();
-        const valorEstimado = await calcularValorEstimado(start, end, docOriginal.data().employeeId);
+        // VERIFICAÇÃO: Garante que o documento ainda existe antes de prosseguir.
+        if (!docOriginal.exists) {
+            mostrarMensagem("Erro: A solicitação original não foi encontrada. Pode ter sido excluída.", "error");
+            return;
+        }
 
-        await db.collection('solicitacoes_horas').doc(id).update({
+        const dadosOriginais = docOriginal.data();
+        const valorEstimado = await calcularValorEstimado(start, end, docOriginal.data().employeeId);
+        
+        const updateData = {
             start: firebase.firestore.Timestamp.fromDate(start),
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason,
-            valorEstimado: valorEstimado,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+            valorEstimado: valorEstimado, // O valor atualizado/aprovado
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+        };
+
+        // Se o valor original ainda não foi salvo, salva-o agora.
+        // Isso preserva o valor inicial para o dashboard de comparação.
+        // A verificação `??` (nullish coalescing) garante que, se `valorOriginalSolicitado` for nulo ou undefined, ele será definido com o valor de `valorEstimado` daquele momento.
+        // CORREÇÃO: A verificação `typeof ... !== 'number'` é mais segura para evitar que um valor 0 seja considerado falso.
+        if (dadosOriginais.valorOriginalSolicitado === null || dadosOriginais.valorOriginalSolicitado === undefined) {
+            updateData.valorOriginalSolicitado = dadosOriginais.valorEstimado || 0;
+        }
+
+        await db.collection('solicitacoes_horas').doc(id).update(updateData);
 
         bootstrap.Modal.getInstance(document.getElementById('ajusteSolicitacaoModal')).hide();
         mostrarMensagem("Ajustes salvos com sucesso!", "success");
+        // A UI será atualizada automaticamente pelo listener onSnapshot.
     } catch (e) {
-        mostrarMensagem("Erro ao salvar ajustes.", "error");
+        // CORREÇÃO: Loga o erro detalhado no console para facilitar a depuração.
+        console.error("Erro detalhado ao salvar ajuste:", e);
+        mostrarMensagem(`Erro ao salvar ajustes: ${e.message}`, "error");
     }
 }
 
