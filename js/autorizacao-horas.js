@@ -5,8 +5,7 @@
 
 let listenerAutorizacao = null;
 let cacheSolicitacoes = [];
-let chartSolicitado = null;
-let chartAprovado = null;
+let chartAutorizacao = null;
 
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
@@ -36,8 +35,38 @@ function inicializarTelaAutorizacao() {
         btnExportar.bound = true;
     }
 
+    const btnFiltrar = document.getElementById('auth-btn-filtrar');
+    if (btnFiltrar && !btnFiltrar.bound) {
+        btnFiltrar.addEventListener('click', carregarSolicitacoes);
+        btnFiltrar.bound = true;
+    }
+
     // Inicia o carregamento de dados em tempo real
+    popularFiltrosAutorizacao();
     carregarSolicitacoes();
+}
+
+/**
+ * Popula os filtros da tela de autorização, como o de setores.
+ */
+async function popularFiltrosAutorizacao() {
+    const setorSelect = document.getElementById('auth-filtro-setor');
+    if (!setorSelect) return;
+
+    try {
+        const setores = new Set();
+        const empresasSnap = await db.collection('empresas').get();
+        empresasSnap.forEach(doc => {
+            (doc.data().setores || []).forEach(setor => setores.add(setor));
+        });
+
+        setorSelect.innerHTML = '<option value="">Todos os Setores</option>';
+        [...setores].sort().forEach(setor => {
+            setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao popular filtro de setores:", error);
+    }
 }
 
 /**
@@ -56,11 +85,26 @@ async function carregarSolicitacoes() {
     // Cancela o listener anterior para evitar duplicações
     if (listenerAutorizacao) listenerAutorizacao();
 
+    // Pega os valores dos filtros
+    const dataInicio = document.getElementById('auth-filtro-data-inicio').value;
+    const dataFim = document.getElementById('auth-filtro-data-fim').value;
+    const setor = document.getElementById('auth-filtro-setor').value;
+
     // Cria um novo listener
-    listenerAutorizacao = db.collection('solicitacoes_horas')
-        .orderBy('createdAt', 'desc')
-        .limit(100)
-        .onSnapshot(async (snapshot) => {
+    let query = db.collection('solicitacoes_horas').orderBy('createdAt', 'desc');
+
+    // Aplica filtros de data se existirem
+    if (dataInicio) {
+        query = query.where('createdAt', '>=', new Date(dataInicio + 'T00:00:00'));
+    }
+    if (dataFim) {
+        const dataFimObj = new Date(dataFim + 'T23:59:59');
+        query = query.where('createdAt', '<=', dataFimObj);
+    }
+
+    // O filtro de setor será aplicado no lado do cliente, pois não temos o campo 'setor' na coleção 'solicitacoes_horas'
+
+    listenerAutorizacao = query.limit(200).onSnapshot(async (snapshot) => {
             console.log(`📊 Snapshot recebido: ${snapshot.docs.length} documentos`);
 
             if (snapshot.empty) {
@@ -73,11 +117,15 @@ async function carregarSolicitacoes() {
             // Otimização: Carrega salários de todos os funcionários de uma vez
             const funcionariosSnap = await db.collection('funcionarios').get();
             const salariosMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, parseFloat(doc.data().salario || 0)]));
+            const setoresMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, doc.data().setor || '']));
 
             // CORREÇÃO: Diferencia o valor atual do valor original
             const solicitacoesPromises = snapshot.docs.map(async (doc) => {
                 const data = doc.data();
                 if (!data.start || !data.end) return null;
+
+                // Adiciona o setor do funcionário ao objeto da solicitação
+                data.setor = setoresMap.get(data.employeeId) || 'N/A';
 
                 const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
                 
@@ -85,11 +133,18 @@ async function carregarSolicitacoes() {
                     id: doc.id, 
                     ...data, 
                     valorEstimado: valorAtual, // Valor atual (após edições)
-                    valorOriginalSolicitado: data.valorOriginalSolicitado ?? valorAtual // Usa o original, ou o atual se o original não existir
+                    valorOriginalSolicitado: typeof data.valorOriginalSolicitado === 'number' ? data.valorOriginalSolicitado : valorAtual
                 };
             });
 
-            cacheSolicitacoes = (await Promise.all(solicitacoesPromises)).filter(Boolean);
+            let solicitacoesProcessadas = (await Promise.all(solicitacoesPromises)).filter(Boolean);
+
+            // Aplica filtro de setor no lado do cliente
+            if (setor) {
+                solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.setor === setor);
+            }
+
+            cacheSolicitacoes = solicitacoesProcessadas;
 
             console.log(`✅ Processadas ${cacheSolicitacoes.length} solicitações válidas`);
 
@@ -147,6 +202,7 @@ function renderizarTabela(solicitacoes, container) {
                 <td class="text-center"><span class="badge ${statusConfig.class}">${statusConfig.text}</span></td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info" onclick="abrirModalAjuste('${s.id}', true)" title="Visualizar"><i class="fas fa-eye"></i></button>
                         ${s.status === 'pendente' ? `
                             <button class="btn btn-success" onclick="aprovarSolicitacao('${s.id}')" title="Aprovar"><i class="fas fa-check"></i></button>
                             <button class="btn btn-primary" onclick="abrirModalAjuste('${s.id}')" title="Editar"><i class="fas fa-edit"></i></button>
@@ -187,14 +243,11 @@ function atualizarKPIs(solicitacoes) {
  * Renderiza o gráfico de comparação de valores solicitados vs. aprovados.
  */
 function renderizarGrafico(solicitacoes) {
-    const ctxSolicitado = document.getElementById('auth-chart-solicitado')?.getContext('2d');
-    const ctxAprovado = document.getElementById('auth-chart-aprovado')?.getContext('2d');
-
-    if (!ctxSolicitado || !ctxAprovado) return;
+    const ctx = document.getElementById('auth-chart-canvas')?.getContext('2d');
+    if (!ctx) return;
 
     // Destrói gráficos antigos para evitar sobreposição
-    if (chartSolicitado) chartSolicitado.destroy();
-    if (chartAprovado) chartAprovado.destroy();
+    if (chartAutorizacao) chartAutorizacao.destroy();
 
     // Usa valor ORIGINAL para o total solicitado
     const totalSolicitado = solicitacoes
@@ -206,45 +259,32 @@ function renderizarGrafico(solicitacoes) {
         .filter(s => s.status === 'aprovado')
         .reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
 
-    const chartOptions = (title) => ({
-        responsive: true,
-        maintainAspectRatio: false,
-        cutout: '70%',
-        plugins: {
-            legend: { display: false },
-            title: {
-                display: true,
-                text: title,
-                font: { size: 16 }
-            }
-        }
-    });
-
-    // Gráfico 1: Valor Total Solicitado (ORIGINAL)
-    chartSolicitado = new Chart(ctxSolicitado, {
-        type: 'doughnut',
+    chartAutorizacao = new Chart(ctx, {
+        type: 'bar',
         data: {
-            labels: ['Solicitado'],
+            labels: ['Comparativo de Custos'],
             datasets: [
                 {
+                    label: 'Valor Solicitado (R$)',
                     data: [totalSolicitado],
-                    backgroundColor: ['rgba(54, 162, 235, 0.8)'],
-                    borderColor: ['rgba(54, 162, 235, 1)'],
-                    borderWidth: 2
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Valor Aprovado (R$)',
+                    data: [totalAprovado],
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
                 }
             ]
         },
-        options: chartOptions('Total Solicitado')
-    });
-
-    // Gráfico 2: Valor Total Aprovado (ATUAL)
-    chartAprovado = new Chart(ctxAprovado, {
-        type: 'doughnut',
-        data: {
-            labels: ['Aprovado'],
-            datasets: [{ data: [totalAprovado], backgroundColor: ['rgba(75, 192, 192, 0.8)'], borderColor: ['rgba(75, 192, 192, 1)'], borderWidth: 2 }]
-        },
-        options: chartOptions('Total Aprovado')
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { callback: value => `R$ ${value.toFixed(2)}` } } }
+        }
     });
 }
 
@@ -253,16 +293,69 @@ function renderizarGrafico(solicitacoes) {
 // =================================================================
 
 async function aprovarSolicitacao(id) {
-    if (!confirm("Aprovar esta solicitação?")) return;
+    if (!confirm("Aprovar esta solicitação e lançar no dashboard de Horas Extras?")) return;
+
     try {
+        const solicitacaoRef = db.collection('solicitacoes_horas').doc(id);
+        const solicitacaoDoc = await solicitacaoRef.get();
+
+        if (!solicitacaoDoc.exists) throw new Error("Solicitação não encontrada.");
+
+        const solicitacao = solicitacaoDoc.data();
+        const funcionarioDoc = await db.collection('funcionarios').doc(solicitacao.employeeId).get();
+        if (!funcionarioDoc.exists) throw new Error("Funcionário da solicitação não encontrado.");
+        
+        const funcionario = funcionarioDoc.data();
+        const start = solicitacao.start.toDate();
+        const end = solicitacao.end.toDate();
+        const duracaoMinutos = Math.round((end - start) / (1000 * 60));
+        const horasDecimais = duracaoMinutos / 60;
+
+        const salarioBase = parseFloat(funcionario.salario) || 0;
+        const valorHora = salarioBase / 220;
+        const taxaHoraExtra = valorHora * 1.5;
+        const valorTotalHoras = horasDecimais * taxaHoraExtra;
+
+        const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+        const diasNaoUteis = 5; // Simplificação
+        const diasUteis = diasNoMes - diasNaoUteis;
+        const dsr = diasUteis > 0 ? (valorTotalHoras / diasUteis) * diasNaoUteis : 0;
+
+        const lancamentoHE = {
+            date: start.toISOString().split('T')[0],
+            employeeId: solicitacao.employeeId,
+            employeeName: solicitacao.employeeName,
+            sector: funcionario.setor,
+            reason: solicitacao.reason || 'Aprovado via solicitação',
+            hours: horasDecimais.toFixed(2),
+            overtimePay: parseFloat(valorTotalHoras.toFixed(2)),
+            dsr: parseFloat(dsr.toFixed(2)),
+            createdAt: new Date(),
+            source: 'solicitacao',
+            solicitacaoId: id
+        };
+
+        const batch = db.batch();
+        batch.update(solicitacaoRef, {
+            status: 'aprovado',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedByUid: firebase.auth().currentUser.uid
+        });
+        
+        const novoLancamentoRef = db.collection('overtime').doc();
+        batch.set(novoLancamentoRef, lancamentoHE);
+
+        await batch.commit();
+
         await db.collection('solicitacoes_horas').doc(id).update({
             status: 'aprovado',
             approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
             approvedByUid: firebase.auth().currentUser.uid
         });
-        mostrarMensagem("Solicitação aprovada com sucesso!", "success");
+        mostrarMensagem("Solicitação aprovada e lançada no dashboard de Horas Extras!", "success");
     } catch (e) {
-        mostrarMensagem("Erro ao aprovar.", "error");
+        console.error("Erro ao aprovar e lançar hora extra:", e);
+        mostrarMensagem(`Erro ao aprovar: ${e.message}`, "error");
     }
 }
 
@@ -311,7 +404,7 @@ async function excluirSolicitacaoDeHoras(id) {
     }
 }
 
-async function abrirModalAjuste(id) {
+async function abrirModalAjuste(id, readOnly = false) {
     const doc = await db.collection('solicitacoes_horas').doc(id).get();
     if (!doc.exists) {
         mostrarMensagem("Solicitação não encontrada.", "error");
@@ -329,13 +422,28 @@ async function abrirModalAjuste(id) {
     document.getElementById('ajuste-end-time').value = end.toTimeString().slice(0, 5);
     document.getElementById('ajuste-reason').value = data.reason || '';
 
+    // Lógica para modo somente leitura
+    const fields = document.querySelectorAll('#form-ajuste-solicitacao input, #form-ajuste-solicitacao textarea');
+    const saveButton = document.querySelector('#ajusteSolicitacaoModal .btn-primary');
+    fields.forEach(field => field.readOnly = readOnly);
+    if (saveButton) {
+        saveButton.style.display = readOnly ? 'none' : 'block';
+    }
+    const modalTitle = document.querySelector('#ajusteSolicitacaoModal .modal-title');
+    if(modalTitle) modalTitle.textContent = readOnly ? 'Visualizar Solicitação' : 'Ajustar Solicitação';
+
     new bootstrap.Modal(document.getElementById('ajusteSolicitacaoModal')).show();
 }
 
 async function salvarAjusteSolicitacao() {
     const id = document.getElementById('ajuste-solicitacao-id').value;
-    const start = new Date(`${document.getElementById('ajuste-start-date').value}T${document.getElementById('ajuste-start-time').value}`);
-    const end = new Date(`${document.getElementById('ajuste-end-date').value}T${document.getElementById('ajuste-end-time').value}`);
+    // CORREÇÃO: Remove o 'Z' para que o navegador interprete a data no fuso horário local e converta corretamente para UTC ao salvar.
+    const startDate = document.getElementById('ajuste-start-date').value;
+    const startTime = document.getElementById('ajuste-start-time').value;
+    const start = new Date(`${startDate}T${startTime}`);
+    const endDate = document.getElementById('ajuste-end-date').value;
+    const endTime = document.getElementById('ajuste-end-time').value;
+    const end = new Date(`${endDate}T${endTime}`);
     const reason = document.getElementById('ajuste-reason').value;
 
     if (end <= start) {
@@ -451,3 +559,5 @@ window.rejeitarSolicitacao = rejeitarSolicitacao;
 window.excluirSolicitacaoDeHoras = excluirSolicitacaoDeHoras; // Nome corrigido
 window.abrirModalAjuste = abrirModalAjuste;
 window.salvarAjusteSolicitacao = salvarAjusteSolicitacao;
+window.imprimirTabelaAutorizacao = imprimirTabelaAutorizacao;
+window.exportarTabelaAutorizacao = exportarTabelaAutorizacao;

@@ -144,6 +144,7 @@ async function salvarNovaSolicitacao() {
     }
 
     try {
+        // CORREÇÃO: Remove o 'Z' para que o navegador interprete a data no fuso horário local e converta corretamente para UTC ao salvar.
         const start = new Date(`${startDate}T${startTime}`);
         const end = new Date(`${endDate}T${endTime}`);
 
