@@ -723,6 +723,28 @@ async function verDetalhesFuncionario(funcionarioId) {
             historicoHTML += '</ul>';
         }
 
+        // Histórico de Alterações de Função (registrado no próprio documento do funcionário)
+        if (Array.isArray(funcionario.historicoMovimentacoes) && funcionario.historicoMovimentacoes.length > 0) {
+            historicoHTML += '<h6 class="mt-4">Histórico de Alterações de Função:</h6>';
+            historicoHTML += '<ul class="list-group list-group-flush">';
+            // Ordena descendente por data quando possível
+            const movsOrdenadas = funcionario.historicoMovimentacoes.slice().sort((a, b) => {
+                const ad = a.data && a.data.toDate ? a.data.toDate().getTime() : new Date(a.data).getTime();
+                const bd = b.data && b.data.toDate ? b.data.toDate().getTime() : new Date(b.data).getTime();
+                return bd - ad;
+            });
+            movsOrdenadas.forEach((mov) => {
+                historicoHTML += `
+                    <li class="list-group-item">
+                        <strong>${formatarData(mov.data)}:</strong>
+                        <div><small>De: ${mov.de.empresaNome || 'N/A'} — ${mov.de.setor || 'N/A'} / ${mov.de.cargo || 'N/A'}</small></div>
+                        <div><small>Para: ${mov.para.empresaNome || 'N/A'} — ${mov.para.setor || 'N/A'} / ${mov.para.cargo || 'N/A'}</small></div>
+                        <div><small class="text-muted">Motivo: ${mov.motivo || 'Não informado'}</small></div>
+                    </li>`;
+            });
+            historicoHTML += '</ul>';
+        }
+
         // Histórico de Aumentos
         historicoHTML += '<h6 class="mt-4">Histórico de Aumentos:</h6>';
         if (Array.isArray(funcionario.historicoAumentos) && funcionario.historicoAumentos.length > 0) {

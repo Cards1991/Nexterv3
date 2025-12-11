@@ -134,6 +134,41 @@ async function listarHorasExtras() {
     }
 }
 
+function renderizarRankingHorasExtras(employeeData) {
+    const container = document.getElementById('he-employee-ranking');
+    if (!container) return;
+
+    container.innerHTML = '';
+
+    const sortedEmployees = Object.entries(employeeData).sort(([, a], [, b]) => b - a);
+
+    if (sortedEmployees.length === 0) {
+        container.innerHTML = '<div class="list-group-item text-center text-muted">Nenhum dado de funcionário para exibir.</div>';
+        return;
+    }
+
+    const top10 = sortedEmployees.slice(0, 10);
+
+    top10.forEach(([nome, horas], index) => {
+        const medalhas = ['🥇', '🥈', '🥉'];
+        const posicao = index < 3 ? medalhas[index] : `#${index + 1}`;
+        const classeCor = index < 3 ? 'fw-bold' : '';
+
+        const itemEl = document.createElement('div');
+        itemEl.className = 'list-group-item d-flex justify-content-between align-items-center';
+        itemEl.innerHTML = `
+            <div class="d-flex align-items-center">
+                <span class="${classeCor} me-3" style="min-width: 40px;">${posicao}</span>
+                <div>
+                    <div class="fw-semibold">${nome}</div>
+                </div>
+            </div>
+            <span class="badge bg-primary rounded-pill px-3 py-2">${horas.toFixed(2)} horas</span>
+        `;
+        container.appendChild(itemEl);
+    });
+}
+
 function criarGraficosHorasExtras(sectorData, employeeData, monthlyData, totalHours, totalValue) {
     // Destruir gráficos antigos
     Object.values(heCharts).forEach(chart => chart.destroy());
@@ -142,9 +177,7 @@ function criarGraficosHorasExtras(sectorData, employeeData, monthlyData, totalHo
     document.getElementById('he-totalOvertimeCard').textContent = totalHours.toFixed(2);
     document.getElementById('he-totalOvertimeValueCard').textContent = `R$ ${totalValue.toFixed(2)}`;
 
-    const sortData = (data) => Object.entries(data).sort(([,a],[,b]) => b-a).reduce((r, [k, v]) => ({ ...r, [k]: v }), {});
-
-    const top10EmployeeData = Object.fromEntries(Object.entries(sortData(employeeData)).slice(0, 10));
+    const sortData = (data) => Object.fromEntries(Object.entries(data).sort(([,a],[,b]) => b-a));
 
     const chartOptions = {
         responsive: true,
@@ -162,14 +195,8 @@ function criarGraficosHorasExtras(sectorData, employeeData, monthlyData, totalHo
         options: chartOptions
     });
 
-    heCharts.employee = new Chart(document.getElementById('he-employeeChart').getContext('2d'), {
-        type: 'bar',
-        data: {
-            labels: Object.keys(top10EmployeeData),
-            datasets: [{ label: 'Horas Extras', data: Object.values(top10EmployeeData), backgroundColor: 'rgba(153, 102, 255, 0.7)' }]
-        },
-        options: chartOptions
-    });
+    // Renderiza o novo ranking em vez do gráfico de barras
+    renderizarRankingHorasExtras(employeeData);
 
     heCharts.monthly = new Chart(document.getElementById('he-monthlyChart').getContext('2d'), {
         type: 'line',

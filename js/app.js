@@ -8,7 +8,8 @@ const TODAS_SECOES = [
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
     'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao',
-    'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos',
+    'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
+    'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'analise-custos'
 , 'dashboard-faltas'];
@@ -278,6 +279,16 @@ async function carregarDadosSecao(sectionName) {
             case 'compliance-denuncia':
                 // Nenhuma ação de carregamento de dados necessária por enquanto
                 // Apenas exibe a seção estática.
+                break;
+            case 'dp-horas-solicitacao':
+                if (typeof renderMinhasSolicitacoes === 'function') {
+                    await renderMinhasSolicitacoes();
+                }
+                break;
+            case 'control-horas-autorizacao':
+                if (typeof renderAutorizacaoDashboard === 'function') {
+                    await renderAutorizacaoDashboard();
+                }
                 break;
         }
     } catch (error) {

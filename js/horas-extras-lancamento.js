@@ -604,10 +604,16 @@ async function calcularEExibirHorasExtras() {
             return;
         }
 
+        // Calcula o total de minutos para conversão no formato usado pelo sistema
+        const totalMinutes = Math.round(hoursDiff * 60);
+        // Formato customizado para cálculo/exibição: minutos como fração de 100 (ex: 33 minutos -> 0.33)
+        const hoursDisplayFormat = parseFloat((Math.floor(totalMinutes / 60) + (totalMinutes % 60) / 100).toFixed(2));
+
         // Calcular valores
         const hourlyRate = salary / 220; // 220 horas mensais
         const overtimeRate = (overtimeType === 50) ? hourlyRate * 1.5 : hourlyRate * 2;
-        const overtimePay = overtimeRate * hoursDiff;
+        // Usa o formato minutos/100 para compatibilidade com cálculo legado
+        const overtimePay = overtimeRate * hoursDisplayFormat;
         
         // Cálculo do DSR (Descanso Semanal Remunerado)
         // Fórmula: (Valor Total Horas Extras / Dias Úteis do Mês) * (Domingos e Feriados do Mês)
@@ -630,7 +636,7 @@ async function calcularEExibirHorasExtras() {
             reason: reason,
             entryTime: entryTime,
             exitTime: exitTime,
-            hours: parseFloat(hoursDiff.toFixed(2)),
+            hours: hoursDisplayFormat,
             overtimeType: overtimeType,
             hourlyRate: parseFloat(hourlyRate.toFixed(2)),
             overtimeRate: parseFloat(overtimeRate.toFixed(2)),

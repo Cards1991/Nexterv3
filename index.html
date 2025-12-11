@@ -130,6 +130,7 @@
                                             <ul class="nav flex-column">
                                                 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-calculos">Folha de Pagamento</a></li>
                                                 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras">Horas Extras</a></li>
+                                                <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-solicitacao">Solicitação de Horas Extras</a></li>
                                             </ul>
                                         </div>
                                     </li>
@@ -163,6 +164,7 @@
                                 <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="financeiro">Painel Financeiro</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos">Análise de Custos</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="control-horas-autorizacao">Autorização de Horas Extras</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -941,45 +943,6 @@
                     </div>
                 </section>
 
-                <section id="empresas" class="content-section d-none">
-                    <h2 class="page-title">Empresas e Setores</h2>
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <span>Cadastro de Empresas</span>
-                            <div class="btn-group">
-                                <button class="btn btn-outline-secondary btn-sm" onclick="exportarModeloEmpresasCSV()">
-                                    <i class="fas fa-file-csv"></i> Exportar Modelo (CSV)
-                                </button>
-                                <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importarEmpresasModal">
-                                    <i class="fas fa-file-import"></i> Importar Empresas (CSV)
-                                </button>
-                                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#empresaModal">
-                                    <i class="fas fa-plus"></i> Nova Empresa
-                                </button>
-                            </div>
-                        </div>
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Nome</th>
-                                            <th>CNPJ</th>
-                                            <th>Setores</th>
-                                            <th>Funcionários</th>
-                                            <th>Funções</th>
-                                            <th>Ações</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="tabela-empresas">
-                                        <tr><td colspan="5" class="text-center">Carregando empresas...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </section>
-
                 <section id="funcionarios" class="content-section d-none">
                     <h2 class="page-title">Funcionários Ativos</h2>
                     <div class="card">
@@ -1303,6 +1266,14 @@
                 <!-- Seção de Alteração de Função -->
                 <section id="alteracao-funcao" class="content-section d-none">
                     <h2 class="page-title">Alteração Temporária de Função</h2>
+                    <!-- Container para Alertas de Exame de Função -->
+                    <div id="alertas-exame-funcao-container" class="mb-4">
+                        <!-- Alertas serão inseridos aqui pelo JavaScript -->
+                        <div class="card border-warning" id="alerta-exame-funcao-modelo" style="display: none;">
+                            <div class="card-header bg-warning text-dark"><i class="fas fa-exclamation-triangle"></i> <strong>Alerta: Exame de Mudança de Função Próximo</strong></div>
+                            <div class="card-body" id="lista-alertas-exame-funcao"></div>
+                        </div>
+                    </div>
                     <div class="row">
                         <div class="col-lg-5">
                             <div class="card">
@@ -1332,8 +1303,14 @@
                                             <select class="form-select" id="alt-novo-cargo" required></select>
                                         </div>
                                         <div class="mb-3">
-                                            <label class="form-label">Motivo/Observação</label>
-                                            <textarea class="form-control" id="alt-motivo" rows="2" placeholder="Ex: Cobertura de faltas no setor de amostras"></textarea>
+                                            <label class="form-label">Motivo da Alteração</label>
+                                            <select class="form-select" id="alt-motivo" required>
+                                                <option value="">Selecione um motivo...</option>
+                                                <option value="Erro de planejamento">Erro de planejamento</option>
+                                                <option value="Ajuste de produção">Ajuste de produção</option>
+                                                <option value="Testes na função para futura promoção">Testes na função para futura promoção</option>
+                                                <option value="Outros">Outros</option>
+                                            </select>
                                         </div>
                                         <button type="button" class="btn btn-primary w-100" onclick="registrarAlteracaoFuncao()">
                                             <i class="fas fa-print"></i> Registrar e Imprimir Termo
@@ -1462,6 +1439,55 @@
                                 </table>
                             </div>
                         </div>
+                    </div>
+                </section>
+
+                <!-- Seção Controladoria: Autorização de Horas Extras -->
+                <section id="control-horas-autorizacao" class="content-section d-none">
+                    <h2 class="page-title">Autorização de Horas Extras - Controladoria</h2>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <div class="card-body">
+                                    <div class="small text-muted">Total Solicitado (R$)</div>
+                                    <div id="auth-total-solicitado" class="h4">R$ 0,00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <div class="card-body">
+                                    <div class="small text-muted">Total Aprovado (R$)</div>
+                                    <div id="auth-total-aprovado" class="h4">R$ 0,00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card p-3">
+                                <div class="card-body">
+                                    <div class="small text-muted">Diferença (R$)</div>
+                                    <div id="auth-diferenca" class="h4">R$ 0,00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mb-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Comparativo Solicitações x Aprovadas</span>
+                            <div>
+                                <button class="btn btn-outline-secondary btn-sm" onclick="renderAutorizacaoDashboard()"><i class="fas fa-sync"></i> Atualizar</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="auth-chart-container" style="height:300px">Carregando gráfico...</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Últimas Solicitações</div>
+                        <div class="card-body"><div id="auth-solicitacoes-table">Carregando...</div></div>
                     </div>
                 </section>
 
@@ -1984,7 +2010,12 @@
                             <div class="card h-100"><div class="card-header">Horas Extras por Setor</div><div class="card-body" style="height: 300px;"><canvas id="he-sectorChart"></canvas></div></div>
                         </div>
                         <div class="col-lg-6 mb-4">
-                            <div class="card h-100"><div class="card-header">Horas Extras por Funcionário (Top 10)</div><div class="card-body" style="height: 300px;"><canvas id="he-employeeChart"></canvas></div></div>
+                            <div class="card h-100">
+                                <div class="card-header">Ranking de Funcionários com Mais Horas Extras (Top 10)</div>
+                                <div class="card-body p-0">
+                                    <div class="list-group list-group-flush" id="he-employee-ranking"></div>
+                                </div>
+                            </div>
                         </div>
                         <div class="col-12 mb-4">
                             <div class="card"><div class="card-header">Total de Horas Extras por Mês</div><div class="card-body" style="height: 300px;"><canvas id="he-monthlyChart"></canvas></div></div>
@@ -2011,6 +2042,26 @@
                                 <div class="col">Total DSR: <span id="he-totalDSR">R$ 0,00</span></div>
                                 <div class="col">Total Geral: <span id="he-grandTotal">R$ 0,00</span></div>
                             </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Departamento Pessoal: Solicitação de Horas Extras (Gerente) -->
+                <section id="dp-horas-solicitacao" class="content-section d-none">
+                    <h2 class="page-title">Solicitação de Horas Extras</h2>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <p class="text-muted">Aqui o gerente pode solicitar intervalo de horas extras para um funcionário.</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-primary" onclick="abrirModalSolicitacaoHoras()"><i class="fas fa-plus-circle"></i> Nova Solicitação</button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Minhas Solicitações</div>
+                        <div class="card-body">
+                            <div id="minhas-solicitacoes-container">Carregando...</div>
                         </div>
                     </div>
                 </section>
@@ -4316,6 +4367,7 @@
     <script src="js/dashboard-faltas.js" defer></script>
     <script src="js/horas-extras.js" defer></script>
     <script src="js/horas-extras-lancamento.js" defer></script>
+    <script src="js/horas-extras-solicitacao.js" defer></script>
     <script src="js/empresas.js" defer></script>
     <script src="js/movimentacoes.js" defer></script>
     <script src="js/relatorios.js" defer></script>
@@ -4350,8 +4402,8 @@
     <script src="js/analise-pessoas.js" defer></script>
     <script src="js/app.js" defer></script>
     <script>
-        // Garante que o Firebase seja inicializado antes de outros scripts que o utilizam
-        // No ambiente local, firebase-config.js já inicializa o Firebase diretamente.
+        // O script firebase-config.js é carregado de forma síncrona no <head>
+        // para garantir que o objeto 'firebase' esteja disponível globalmente antes que os scripts da aplicação (com 'defer') executem.
     </script>
     <script src="js/voice-commands.js" defer></script>
 </body>

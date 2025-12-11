@@ -1040,8 +1040,9 @@ function validarAtestado(formData) {
     if (!formData.tipo) errors.push('Tipo é obrigatório');
     
     // Regex melhorado para CID (letra, 2 dígitos, opcionalmente ponto e mais 1-2 dígitos)
-    if (formData.cid && !/^[A-Z]\d{2}(\.\d{1,2})?$/i.test(formData.cid)) {
-        errors.push('Formato de CID inválido. Ex: A01 ou J06.9');
+    // Permite formatos como F41.1 e F411
+    if (formData.cid && !/^[A-Z]\d{2}(\.?\d{1,2})?$/i.test(formData.cid)) {
+        errors.push('Formato de CID inválido. Ex: F41.1 ou F411');
     }
     
     return errors;

@@ -6,12 +6,57 @@ async function inicializarAlteracaoFuncao() {
     try {
         await Promise.all([
             carregarDadosParaAlteracao(),
-            carregarHistoricoAlteracoes()
+            carregarHistoricoAlteracoes(),
+            verificarAlertasDeExames() // Nova função para verificar os alertas
         ]);
         configurarFormularioAlteracao();
     } catch (e) {
         console.error("Erro ao inicializar alteração de função:", e);
         mostrarMensagem("Erro ao carregar módulo de alteração de função", "error");
+    }
+}
+
+/**
+ * Verifica as alterações de função que estão próximas de 90 dias e exibe um alerta.
+ */
+async function verificarAlertasDeExames() {
+    const container = document.getElementById('alertas-exame-funcao-container');
+    const listaAlertas = document.getElementById('lista-alertas-exame-funcao');
+    const cardAlerta = document.getElementById('alerta-exame-funcao-modelo');
+
+    if (!container || !listaAlertas || !cardAlerta) return;
+
+    try {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
+        // Busca todas as alterações de função
+        const snap = await db.collection('alteracoes_funcao').get();
+        const alertas = [];
+
+        snap.forEach(doc => {
+            const alteracao = doc.data();
+            const dataAlteracao = alteracao.dataAlteracao.toDate();
+            dataAlteracao.setHours(0, 0, 0, 0);
+
+            const diffTime = hoje.getTime() - dataAlteracao.getTime();
+            const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+            // Se a alteração tem 85 dias ou mais, cria um alerta
+            if (diffDays >= 85) {
+                alertas.push({
+                    nome: alteracao.funcionarioNome,
+                    dias: diffDays,
+                    de: `${alteracao.setorOrigem} / ${alteracao.cargoOrigem}`,
+                    para: `${alteracao.setorDestino} / ${alteracao.cargoDestino}`
+                });
+            }
+        });
+
+        renderizarAlertas(alertas, listaAlertas, cardAlerta);
+
+    } catch (error) {
+        console.error("Erro ao verificar alertas de exame de função:", error);
     }
 }
 
@@ -128,7 +173,54 @@ async function registrarAlteracaoFuncao() {
             createdByUid: firebase.auth().currentUser?.uid
         };
 
-        await db.collection('alteracoes_funcao').add(alteracaoData);
+        const docRef = await db.collection('alteracoes_funcao').add(alteracaoData);
+
+        // Atualiza o cadastro do funcionário (setor / cargo / empresa) e registra no histórico interno
+        try {
+            const historicoMov = {
+                tipo: 'alteracao_funcao',
+                data: alteracaoData.dataAlteracao,
+                de: {
+                    empresaId: alteracaoData.empresaIdOrigem,
+                    empresaNome: alteracaoData.empresaNomeOrigem,
+                    setor: alteracaoData.setorOrigem,
+                    cargo: alteracaoData.cargoOrigem
+                },
+                para: {
+                    empresaId: alteracaoData.empresaIdDestino,
+                    empresaNome: alteracaoData.empresaNomeDestino,
+                    setor: alteracaoData.setorDestino,
+                    cargo: alteracaoData.cargoDestino
+                },
+                motivo: alteracaoData.motivo || null,
+                alteracaoFuncaoId: docRef.id,
+                criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                criadoPor: firebase.auth().currentUser?.uid || null
+            };
+
+            // Atualiza campos principais do funcionário
+            await db.collection('funcionarios').doc(func.id).update({
+                setor: alteracaoData.setorDestino,
+                cargo: alteracaoData.cargoDestino,
+                empresaId: alteracaoData.empresaIdDestino || alteracaoData.empresaIdOrigem,
+                historicoMovimentacoes: firebase.firestore.FieldValue.arrayUnion(historicoMov),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedByUid: firebase.auth().currentUser?.uid || null
+            });
+
+            // Atualiza cache local para refletir a mudança imediata na UI
+            const cacheIndex = __alteracao_funcionarios_cache.findIndex(f => f.id === func.id);
+            if (cacheIndex !== -1) {
+                __alteracao_funcionarios_cache[cacheIndex].setor = alteracaoData.setorDestino;
+                __alteracao_funcionarios_cache[cacheIndex].cargo = alteracaoData.cargoDestino;
+                __alteracao_funcionarios_cache[cacheIndex].empresaId = alteracaoData.empresaIdDestino || alteracaoData.empresaIdOrigem;
+            }
+        } catch (err) {
+            console.error('Erro ao atualizar cadastro/histórico do funcionário:', err);
+            // Não interrompe o fluxo principal, apenas avisa
+            mostrarMensagem('Alteração registrada, mas falha ao atualizar cadastro do funcionário.', 'warning');
+        }
+
         mostrarMensagem("Alteração registrada com sucesso!", "success");
 
         gerarTermoAlteracao(alteracaoData);
@@ -172,6 +264,30 @@ async function carregarHistoricoAlteracoes() {
             </tr>
         `;
     }).join('');
+}
+
+/**
+ * Renderiza os alertas na interface do usuário.
+ * @param {Array} alertas - A lista de alertas a serem exibidos.
+ * @param {HTMLElement} listaEl - O elemento onde a lista de alertas será renderizada.
+ * @param {HTMLElement} cardEl - O card de alerta principal.
+ */
+function renderizarAlertas(alertas, listaEl, cardEl) {
+    if (alertas.length === 0) {
+        cardEl.style.display = 'none';
+        return;
+    }
+
+    listaEl.innerHTML = alertas.map(alerta => `
+        <div class="alert alert-secondary p-2 mb-2">
+            <strong>${alerta.nome}</strong> - A alteração de função para 
+            <strong>${alerta.para}</strong> já completou 
+            <span class="badge bg-danger">${alerta.dias} dias</span>. 
+            É recomendado realizar o exame de mudança de função.
+        </div>
+    `).join('');
+
+    cardEl.style.display = 'block';
 }
 
 function gerarTermoAlteracao(data) {
@@ -248,13 +364,14 @@ async function editarAlteracao(id) {
         // Preenche o formulário com os dados
         document.getElementById('alt-funcionario').value = alt.funcionarioId;
         document.getElementById('alt-funcionario').dispatchEvent(new Event('change')); // Força a atualização dos dados do funcionário
-        document.getElementById('alt-data').value = alt.dataAlteracao.toDate().toISOString().split('T')[0];
-        document.getElementById('alt-motivo').value = alt.motivo || '';
 
         // Aguarda um pouco para os selects serem populados e então seleciona os valores
         setTimeout(() => {
             const setorSelect = document.getElementById('alt-novo-setor');
             const cargoSelect = document.getElementById('alt-novo-cargo');
+            const motivoSelect = document.getElementById('alt-motivo');
+            document.getElementById('alt-data').value = alt.dataAlteracao.toDate().toISOString().split('T')[0];
+            motivoSelect.value = alt.motivo || '';
             setorSelect.value = alt.setorDestino;
             cargoSelect.value = alt.cargoDestino;
         }, 500);
