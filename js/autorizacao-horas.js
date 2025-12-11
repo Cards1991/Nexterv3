@@ -35,6 +35,12 @@ function inicializarTelaAutorizacao() {
         btnExportar.bound = true;
     }
 
+    const btnIntegrar = document.getElementById('auth-btn-integrar-custos');
+    if (btnIntegrar && !btnIntegrar.bound) {
+        btnIntegrar.addEventListener('click', integrarComAnaliseDeCustos);
+        btnIntegrar.bound = true;
+    }
+
     const btnFiltrar = document.getElementById('auth-btn-filtrar');
     if (btnFiltrar && !btnFiltrar.bound) {
         btnFiltrar.addEventListener('click', carregarSolicitacoes);
@@ -197,7 +203,9 @@ function renderizarTabela(solicitacoes, container) {
                     <div>${s.employeeName || 'N/A'}</div>
                     <small class="text-muted">${s.createdByName || ''}</small>
                 </td>
-                <td><small>${start.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })} - ${end.toLocaleTimeString('pt-BR', { timeStyle: 'short' })}</small></td>
+                <td>
+                    <small>${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
+                </td>
                 <td class="text-end fw-bold">R$ ${s.valorEstimado.toFixed(2).replace('.', ',')}</td>
                 <td class="text-center"><span class="badge ${statusConfig.class}">${statusConfig.text}</span></td>
                 <td class="text-end">
@@ -561,3 +569,83 @@ window.abrirModalAjuste = abrirModalAjuste;
 window.salvarAjusteSolicitacao = salvarAjusteSolicitacao;
 window.imprimirTabelaAutorizacao = imprimirTabelaAutorizacao;
 window.exportarTabelaAutorizacao = exportarTabelaAutorizacao;
+
+/**
+ * Aglutina os custos de horas extras aprovadas por setor e os envia para a Análise de Custos.
+ */
+async function integrarComAnaliseDeCustos() {
+    if (!confirm("Deseja integrar os custos das horas extras aprovadas com a Análise de Custos? Apenas solicitações ainda não integradas serão enviadas.")) {
+        return;
+    }
+
+    const btn = document.getElementById('auth-btn-integrar-custos');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Integrando...';
+
+    try {
+        // 1. Buscar todas as solicitações aprovadas que ainda não foram integradas
+        const solicitacoesSnap = await db.collection('solicitacoes_horas')
+            .where('status', '==', 'aprovado')
+            .where('integradoCusto', '!=', true)
+            .get();
+
+        if (solicitacoesSnap.empty) {
+            mostrarMensagem("Nenhuma nova solicitação aprovada para integrar.", "info");
+            return;
+        }
+
+        // 2. Buscar dados dos funcionários para obter o setor
+        const funcionariosSnap = await db.collection('funcionarios').get();
+        const setoresMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, doc.data().setor || 'Sem Setor']));
+
+        // 3. Aglutinar os valores por setor
+        const custosPorSetor = new Map();
+        const idsParaMarcar = [];
+
+        solicitacoesSnap.forEach(doc => {
+            const solicitacao = doc.data();
+            const setor = setoresMap.get(solicitacao.employeeId) || 'Sem Setor';
+            const valor = solicitacao.valorEstimado || 0;
+
+            if (valor > 0) {
+                const totalAtual = custosPorSetor.get(setor) || 0;
+                custosPorSetor.set(setor, totalAtual + valor);
+                idsParaMarcar.push(doc.id);
+            }
+        });
+
+        // 4. Criar os lançamentos financeiros em um batch
+        const batch = db.batch();
+        const dataVencimento = new Date(); // Usa a data atual como vencimento
+
+        for (const [setor, valorTotal] of custosPorSetor.entries()) {
+            const novoLancamentoRef = db.collection('lancamentos_financeiros').doc();
+            batch.set(novoLancamentoRef, {
+                contaOrigem: 'FOPAG',
+                processo: 'Horas Extras',
+                descricao: `Horas extras ${setor}`,
+                valor: parseFloat(valorTotal.toFixed(2)),
+                dataVencimento: dataVencimento,
+                status: 'Pendente', // Define como pendente para aprovação no financeiro
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            });
+        }
+
+        // 5. Marcar as solicitações como integradas
+        idsParaMarcar.forEach(id => {
+            const solicitacaoRef = db.collection('solicitacoes_horas').doc(id);
+            batch.update(solicitacaoRef, { integradoCusto: true });
+        });
+
+        await batch.commit();
+
+        mostrarMensagem(`${custosPorSetor.size} lançamento(s) de custo foram criados com sucesso!`, "success");
+
+    } catch (error) {
+        console.error("Erro ao integrar com análise de custos:", error);
+        mostrarMensagem("Falha na integração com a Análise de Custos.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-coins"></i> Integrar com Análise de Custos';
+    }
+}

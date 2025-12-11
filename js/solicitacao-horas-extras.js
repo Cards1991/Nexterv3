@@ -2,6 +2,9 @@
 // Módulo de Solicitação de Horas Extras (Visão do Gerente)
 // =================================================================
 
+let __funcionarios_ativos_solicitacao_cache = [];
+let __funcionarios_select_html_cache = '<option value="">Nenhum funcionário ativo encontrado.</option>';
+
 /**
  * Inicializa a tela de solicitação de horas extras.
  * É chamada quando a seção 'dp-horas-solicitacao' é exibida.
@@ -18,6 +21,7 @@ async function inicializarTelaSolicitacao() {
         btnFiltrar.addEventListener('click', renderMinhasSolicitacoes);
         btnFiltrar.bound = true;
     }
+    await carregarFuncionariosParaCache(); // Pré-carrega os funcionários
     await popularFiltrosSolicitacao();
     await renderMinhasSolicitacoes();
 }
@@ -82,8 +86,8 @@ async function renderMinhasSolicitacoes() {
                     <td><span class="badge ${statusBadge}">${s.status || 'pendente'}</span></td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            ${s.status === 'pendente' ? `<button class="btn btn-outline-warning" onclick="cancelarMinhaSolicitacao('${s.id}')" title="Cancelar"><i class="fas fa-times-circle"></i></button>` : ''}
-                            ${s.status !== 'aprovado' ? `<button class="btn btn-outline-danger" onclick="excluirMinhaSolicitacao('${s.id}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
+                            ${s.status === 'pendente' ? `<button class="btn btn-outline-warning" onclick="cancelarMinhaSolicitacao('${doc.id}')" title="Cancelar"><i class="fas fa-times-circle"></i></button>` : ''}
+                            ${s.status !== 'aprovado' ? `<button class="btn btn-outline-danger" onclick="excluirMinhaSolicitacao('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -95,6 +99,55 @@ async function renderMinhasSolicitacoes() {
     } catch (err) {
         console.error("Erro ao renderizar 'Minhas Solicitações':", err);
         container.innerHTML = '<div class="alert alert-danger">Erro ao carregar suas solicitações.</div>';
+    }
+}
+
+/**
+ * Carrega todos os funcionários ativos para um cache local.
+ * Isso acelera o preenchimento do select no modal de nova solicitação.
+ */
+async function carregarFuncionariosParaCache() {
+    try {
+        const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+        const funcionarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        __funcionarios_ativos_solicitacao_cache = funcionarios;
+
+        if (funcionarios.length > 0) {
+            let optionsHtml = '<option value="">Selecione um funcionário</option>';
+            funcionarios.forEach(f => {
+                optionsHtml += `<option value="${f.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}">${f.nome} - ${f.cargo || ''}</option>`;
+            });
+            __funcionarios_select_html_cache = optionsHtml;
+        }
+        console.log(`Cache de funcionários para solicitação carregado: ${funcionarios.length} funcionários.`);
+    } catch (err) {
+        console.error("Erro ao carregar funcionários para cache:", err);
+        mostrarMensagem("Erro ao carregar lista de funcionários.", "error");
+    }
+}
+
+/**
+ * Populates the sector filter dropdown on the solicitation screen.
+ */
+async function popularFiltrosSolicitacao() {
+    const setorSelect = document.getElementById('sol-filtro-setor');
+    if (!setorSelect) return;
+
+    // Avoid re-populating if already filled
+    if (setorSelect.options.length > 1) return;
+
+    try {
+        const setores = new Set();
+        const empresasSnap = await db.collection('empresas').get();
+        empresasSnap.forEach(doc => {
+            (doc.data().setores || []).forEach(setor => setores.add(setor));
+        });
+
+        [...setores].sort().forEach(setor => {
+            setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao popular filtro de setores:", error);
     }
 }
 
@@ -115,32 +168,27 @@ function abrirModalNovaSolicitacao() {
     document.getElementById('sol-start-date').value = now.toISOString().split('T')[0];
     document.getElementById('sol-start-time').value = now.toTimeString().slice(0, 5);
     const endDateTime = new Date(now.getTime() + 2 * 60 * 60 * 1000);
-    document.getElementById('sol-end-date').value = endDateTime.toISOString().split('T')[0];
     document.getElementById('sol-end-time').value = endDateTime.toTimeString().slice(0, 5);
 
     // 2. Mostra o modal imediatamente para o usuário
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
-    // 3. Carrega os funcionários em segundo plano (assincronamente)
+    // 3. Carrega os funcionários do cache (agora é síncrono e rápido)
     const select = document.getElementById('sol-employee');
-    select.innerHTML = '<option value="">Carregando funcionários...</option>';
-    select.disabled = true;
+    select.innerHTML = '<option value="">Selecione um funcionário</option>'; // Default option
+    select.innerHTML = __funcionarios_select_html_cache;
+    select.disabled = __funcionarios_ativos_solicitacao_cache.length === 0;
 
-    db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get()
-        .then(snapshot => {
-            select.innerHTML = '<option value="">Selecione um funcionário</option>';
-            snapshot.forEach(doc => {
-                const f = doc.data();
-                select.innerHTML += `<option value="${doc.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}">${f.nome} - ${f.cargo || ''}</option>`;
-            });
-            select.disabled = false;
-        })
-        .catch(err => {
-            console.error("Erro ao carregar funcionários no modal:", err);
-            select.innerHTML = '<option value="">Erro ao carregar funcionários</option>';
-            select.disabled = false;
-        });
+    // Adiciona um listener para preencher o setor quando um funcionário é selecionado
+    select.addEventListener('change', (e) => {
+        const sectorInput = document.getElementById('sol-sector');
+        const selectedOption = e.target.options[e.target.selectedIndex];
+        if (sectorInput && selectedOption) {
+            // Preenche o campo de setor com o valor do atributo data-setor da opção selecionada
+            sectorInput.value = selectedOption.dataset.setor || '';
+        }
+    });
 }
 
 /**
@@ -152,11 +200,11 @@ async function salvarNovaSolicitacao() {
     const employeeName = employeeSelect.options[employeeSelect.selectedIndex].dataset.nome;
     const startDate = document.getElementById('sol-start-date').value;
     const startTime = document.getElementById('sol-start-time').value;
-    const endDate = document.getElementById('sol-end-date').value;
+    const endDate = startDate; // A data de fim é a mesma da de início
     const endTime = document.getElementById('sol-end-time').value;
     const reason = document.getElementById('sol-reason').value;
 
-    if (!employeeId || !startDate || !startTime || !endDate || !endTime) {
+    if (!employeeId || !startDate || !startTime || !endTime) {
         mostrarMensagem('Preencha todos os campos obrigatórios.', 'warning');
         return;
     }
