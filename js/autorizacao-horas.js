@@ -449,7 +449,7 @@ async function salvarAjusteSolicitacao() {
     const startDate = document.getElementById('ajuste-start-date').value;
     const startTime = document.getElementById('ajuste-start-time').value;
     const start = new Date(`${startDate}T${startTime}`);
-    const endDate = document.getElementById('ajuste-end-date').value;
+    const endDate = startDate; // A data de fim é a mesma da de início
     const endTime = document.getElementById('ajuste-end-time').value;
     const end = new Date(`${endDate}T${endTime}`);
     const reason = document.getElementById('ajuste-reason').value;
