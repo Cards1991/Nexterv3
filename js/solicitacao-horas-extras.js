@@ -13,6 +13,12 @@ async function inicializarTelaSolicitacao() {
         btnNova.addEventListener('click', abrirModalNovaSolicitacao);
         btnNova.bound = true;
     }
+    const btnFiltrar = document.getElementById('sol-btn-filtrar');
+    if (btnFiltrar && !btnFiltrar.bound) {
+        btnFiltrar.addEventListener('click', renderMinhasSolicitacoes);
+        btnFiltrar.bound = true;
+    }
+    await popularFiltrosSolicitacao();
     await renderMinhasSolicitacoes();
 }
 
@@ -32,11 +38,23 @@ async function renderMinhasSolicitacoes() {
             return;
         }
 
-        const snap = await db.collection('solicitacoes_horas')
+        // Pega os valores dos filtros
+        const dataInicio = document.getElementById('sol-filtro-data-inicio').value;
+        const dataFim = document.getElementById('sol-filtro-data-fim').value;
+        const setor = document.getElementById('sol-filtro-setor').value;
+
+        let query = db.collection('solicitacoes_horas')
             .where('createdByUid', '==', user.uid)
-            .orderBy('createdAt', 'desc')
-            .limit(50)
-            .get();
+            .orderBy('createdAt', 'desc');
+
+        if (dataInicio) {
+            query = query.where('createdAt', '>=', new Date(dataInicio + 'T00:00:00'));
+        }
+        if (dataFim) {
+            query = query.where('createdAt', '<=', new Date(dataFim + 'T23:59:59'));
+        }
+
+        const snap = await query.limit(200).get();
 
         if (snap.empty) {
             container.innerHTML = '<p class="text-muted text-center mt-4">Você ainda não criou nenhuma solicitação.</p>';
@@ -64,8 +82,8 @@ async function renderMinhasSolicitacoes() {
                     <td><span class="badge ${statusBadge}">${s.status || 'pendente'}</span></td>
                     <td class="text-end">
                         <div class="btn-group btn-group-sm">
-                            ${s.status === 'pendente' ? `<button class="btn btn-outline-warning" onclick="cancelarMinhaSolicitacao('${doc.id}')" title="Cancelar"><i class="fas fa-times-circle"></i></button>` : ''}
-                            ${s.status !== 'aprovado' ? `<button class="btn btn-outline-danger" onclick="excluirMinhaSolicitacao('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
+                            ${s.status === 'pendente' ? `<button class="btn btn-outline-warning" onclick="cancelarMinhaSolicitacao('${s.id}')" title="Cancelar"><i class="fas fa-times-circle"></i></button>` : ''}
+                            ${s.status !== 'aprovado' ? `<button class="btn btn-outline-danger" onclick="excluirMinhaSolicitacao('${s.id}')" title="Excluir"><i class="fas fa-trash"></i></button>` : ''}
                         </div>
                     </td>
                 </tr>
@@ -114,7 +132,7 @@ function abrirModalNovaSolicitacao() {
             select.innerHTML = '<option value="">Selecione um funcionário</option>';
             snapshot.forEach(doc => {
                 const f = doc.data();
-                select.innerHTML += `<option value="${doc.id}" data-nome="${f.nome}">${f.nome} - ${f.cargo || ''}</option>`;
+                select.innerHTML += `<option value="${doc.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}">${f.nome} - ${f.cargo || ''}</option>`;
             });
             select.disabled = false;
         })
@@ -144,9 +162,13 @@ async function salvarNovaSolicitacao() {
     }
 
     try {
-        // CORREÇÃO: Remove o 'Z' para que o navegador interprete a data no fuso horário local e converta corretamente para UTC ao salvar.
-        const start = new Date(`${startDate}T${startTime}`);
-        const end = new Date(`${endDate}T${endTime}`);
+        // CORREÇÃO: Cria a data a partir dos componentes para evitar problemas de fuso horário
+        const [sYear, sMonth, sDay] = startDate.split('-').map(Number);
+        const [sHour, sMinute] = startTime.split(':').map(Number);
+        const start = new Date(sYear, sMonth - 1, sDay, sHour, sMinute);
+        const [eYear, eMonth, eDay] = endDate.split('-').map(Number); // CORRIGIDO
+        const [eHour, eMinute] = endTime.split(':').map(Number);
+        const end = new Date(eYear, eMonth - 1, eDay, eHour, eMinute);
 
         if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
             mostrarMensagem('As datas e horas fornecidas são inválidas.', 'error');
