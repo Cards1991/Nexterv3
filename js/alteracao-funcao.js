@@ -291,25 +291,48 @@ function renderizarAlertas(alertas, listaEl, cardEl) {
 }
 
 function gerarTermoAlteracao(data) {
-    const dataFormatada = formatarData(data.dataAlteracao);
+    // CORREÇÃO: Garante que estamos passando um objeto Date para a função formatarData
+    const dataFormatada = formatarData(data.dataAlteracao.toDate ? data.dataAlteracao.toDate() : data.dataAlteracao);
+    const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+
+    // CORREÇÃO: Substituído todo o bloco de conteúdo pelo novo layout profissional
     const conteudo = `
         <html>
-            <head><title>Termo de Alteração de Função</title><style>@page { size: A4; margin: 0; } body{font-family: Arial, sans-serif; margin: 1.5cm;} h1{text-align:center;} p{line-height: 1.6; text-align: justify;} .assinatura{margin-top: 80px; text-align: center;}</style>
+            <head>
+                <title>Termo de Alteração de Função</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    @page { size: A4; margin: 0; }
+                    body { font-family: 'Segoe UI', system-ui, sans-serif; color: #333; }
+                    .termo-container { max-width: 800px; margin: 2cm auto; padding: 2cm; border: 1px solid #ddd; }
+                    .termo-header { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; }
+                    .termo-header h2 { font-weight: 700; color: #0d6efd; }
+                    .termo-body p { font-size: 1.1rem; line-height: 1.8; text-align: justify; margin-bottom: 1.5rem; }
+                    .info-block { background-color: #f8f9fa; border-left: 5px solid #0d6efd; padding: 1rem; margin: 1.5rem 0; border-radius: .25rem; }
+                    .assinatura-area { margin-top: 80px; display: flex; justify-content: space-around; }
+                    .assinatura-block { text-align: center; }
+                    .assinatura-linha { border-top: 1px solid #333; width: 280px; margin: 40px auto 5px auto; }
+                    @media print {
+                        body { background-color: #fff; }
+                        .termo-container { border: none; box-shadow: none; margin: 1cm; padding: 1cm; }
+                    }
+                </style>
             </head>
             <body>
-                <h1>Termo de Alteração Temporária de Função</h1>
-                <p>Pelo presente instrumento, fica registrada a alteração temporária de função do(a) colaborador(a) <strong>${data.funcionarioNome}</strong>,
-                que na data de <strong>${dataFormatada}</strong>, será deslocado(a) de suas atividades habituais no setor <strong>${data.setorOrigem}</strong>,
-                cargo <strong>${data.cargoOrigem}</strong>, para exercer a função de <strong>${data.cargoDestino}</strong> no setor <strong>${data.setorDestino}</strong>.</p>
-                <p>A presente alteração é de caráter excepcional e temporário, motivada por: <strong>${data.motivo || 'necessidade operacional do dia'}</strong>.</p>
-                <p>O colaborador declara estar ciente e de acordo com a alteração descrita, que se restringe à data mencionada.</p>
-                <br><br>
-                <p>Local e Data: ________________________, ${dataFormatada}.</p>
-                <div class="assinatura">
-                    <p>_________________________________________<br><strong>${data.funcionarioNome}</strong><br>(Assinatura do Colaborador)</p>
-                </div>
-                <div class="assinatura">
-                    <p>_________________________________________<br><strong>(Nome do Responsável/Gerente)</strong><br>(Assinatura da Empresa)</p>
+                <div class="termo-container">
+                    <div class="termo-header">
+                        <h2>TERMO DE ALTERAÇÃO DE FUNÇÃO E SALÁRIO</h2>
+                    </div>
+                    <div class="termo-body">
+                        <p>Pelo presente instrumento, fica registrada a alteração de função do(a) colaborador(a) <strong>${data.funcionarioNome}</strong>, que a partir da data de <strong>${dataFormatada}</strong>, será transferido(a) de suas atividades no setor <strong>${data.setorOrigem}</strong> (cargo: ${data.cargoOrigem}) para exercer a função de <strong>${data.cargoDestino}</strong> no setor <strong>${data.setorDestino}</strong>.</p>
+                        <div class="info-block"><strong>Motivo da Alteração:</strong> ${data.motivo || 'Necessidade operacional.'}</div>
+                        <p>O colaborador declara estar ciente e de acordo com a alteração descrita. Todas as demais cláusulas do contrato de trabalho original permanecem inalteradas.</p>
+                        <p class="text-end mt-5">Francinópolis-PI, ${hojeFormatado}.</p>
+                    </div>
+                    <div class="assinatura-area">
+                        <div class="assinatura-block"><div class="assinatura-linha"></div><p><strong>${data.funcionarioNome}</strong><br>Colaborador(a)</p></div>
+                        <div class="assinatura-block"><div class="assinatura-linha"></div><p><strong>Empresa</strong><br>(Responsável)</p></div>
+                    </div>
                 </div>
             </body>
         </html>
