@@ -422,15 +422,26 @@ async function abrirModalAjuste(id, readOnly = false) {
     const start = data.start.toDate();
     const end = data.end.toDate();
 
-    document.getElementById('ajuste-solicitacao-id').value = id;
-    document.getElementById('ajuste-funcionario-nome').textContent = data.employeeName;
-    document.getElementById('ajuste-start-date').value = start.toISOString().split('T')[0];
-    document.getElementById('ajuste-start-time').value = start.toTimeString().slice(0, 5);
-    document.getElementById('ajuste-end-date').value = end.toISOString().split('T')[0];
-    document.getElementById('ajuste-end-time').value = end.toTimeString().slice(0, 5);
-    document.getElementById('ajuste-reason').value = data.reason || '';
+    // Helper function for safely getting an element
+    const getElement = (elementId) => {
+        const el = document.getElementById(elementId);
+        if (!el) {
+            console.error(`❌ Elemento do modal não encontrado: #${elementId}`);
+            mostrarMensagem(`Erro de UI: Elemento #${elementId} não encontrado.`, "error");
+        }
+        return el;
+    };
+
+    getElement('ajuste-solicitacao-id').value = id;
+    getElement('ajuste-funcionario-nome').textContent = data.employeeName;
+    getElement('ajuste-start-date').value = start.toISOString().split('T')[0];
+    getElement('ajuste-start-time').value = start.toTimeString().slice(0, 5);
+    getElement('ajuste-end-date').value = end.toISOString().split('T')[0];
+    getElement('ajuste-end-time').value = end.toTimeString().slice(0, 5);
+    getElement('ajuste-reason').value = data.reason || '';
 
     // Lógica para modo somente leitura
+    const modalElement = getElement('ajusteSolicitacaoModal');
     const fields = document.querySelectorAll('#form-ajuste-solicitacao input, #form-ajuste-solicitacao textarea');
     const saveButton = document.querySelector('#ajusteSolicitacaoModal .btn-primary');
     fields.forEach(field => field.readOnly = readOnly);
@@ -440,7 +451,7 @@ async function abrirModalAjuste(id, readOnly = false) {
     const modalTitle = document.querySelector('#ajusteSolicitacaoModal .modal-title');
     if(modalTitle) modalTitle.textContent = readOnly ? 'Visualizar Solicitação' : 'Ajustar Solicitação';
 
-    new bootstrap.Modal(document.getElementById('ajusteSolicitacaoModal')).show();
+    if (modalElement) new bootstrap.Modal(modalElement).show();
 }
 
 async function salvarAjusteSolicitacao() {
