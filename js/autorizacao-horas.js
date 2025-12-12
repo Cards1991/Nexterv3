@@ -427,21 +427,34 @@ async function abrirModalAjuste(id, readOnly = false) {
         const el = document.getElementById(elementId);
         if (!el) {
             console.error(`❌ Elemento do modal não encontrado: #${elementId}`);
-            mostrarMensagem(`Erro de UI: Elemento #${elementId} não encontrado.`, "error");
+            mostrarMensagem(`Erro de UI: Componente do modal #${elementId} não encontrado.`, "error");
         }
         return el;
     };
 
-    getElement('ajuste-solicitacao-id').value = id;
-    getElement('ajuste-funcionario-nome').textContent = data.employeeName;
-    getElement('ajuste-start-date').value = start.toISOString().split('T')[0];
-    getElement('ajuste-start-time').value = start.toTimeString().slice(0, 5);
-    getElement('ajuste-end-date').value = end.toISOString().split('T')[0];
-    getElement('ajuste-end-time').value = end.toTimeString().slice(0, 5);
-    getElement('ajuste-reason').value = data.reason || '';
+    const solicitacaoIdInput = getElement('ajuste-solicitacao-id');
+    const nomeFuncionarioSpan = getElement('ajuste-funcionario-nome');
+    const startDateInput = getElement('ajuste-start-date');
+    const startTimeInput = getElement('ajuste-start-time');
+    const endDateInput = getElement('ajuste-end-date');
+    const endTimeInput = getElement('ajuste-end-time');
+    const reasonTextarea = getElement('ajuste-reason');
+    const modalElement = getElement('ajusteSolicitacaoModal');
+
+    // Se qualquer elemento essencial do formulário estiver faltando, interrompe a execução.
+    if (!solicitacaoIdInput || !nomeFuncionarioSpan || !startDateInput || !startTimeInput || !endDateInput || !endTimeInput || !reasonTextarea || !modalElement) {
+        return; // Interrompe a função para evitar erros subsequentes.
+    }
+
+    solicitacaoIdInput.value = id;
+    nomeFuncionarioSpan.textContent = data.employeeName;
+    startDateInput.value = start.toISOString().split('T')[0];
+    startTimeInput.value = start.toTimeString().slice(0, 5);
+    endDateInput.value = end.toISOString().split('T')[0];
+    endTimeInput.value = end.toTimeString().slice(0, 5);
+    reasonTextarea.value = data.reason || '';
 
     // Lógica para modo somente leitura
-    const modalElement = getElement('ajusteSolicitacaoModal');
     const fields = document.querySelectorAll('#form-ajuste-solicitacao input, #form-ajuste-solicitacao textarea');
     const saveButton = document.querySelector('#ajusteSolicitacaoModal .btn-primary');
     fields.forEach(field => field.readOnly = readOnly);
