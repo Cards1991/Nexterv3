@@ -280,6 +280,10 @@ async function carregarDadosSecao(sectionName) {
                 // Nenhuma ação de carregamento de dados necessária por enquanto
                 // Apenas exibe a seção estática.
                 break;
+            case 'compliance-fazer-relato':
+                // Também não precisa de carregamento de dados, apenas exibe.
+                // A lógica de habilitação dos botões já está no inicializador.
+                break;
             case 'dp-horas-solicitacao':
                 if (typeof inicializarTelaSolicitacao === 'function') {
                     await inicializarTelaSolicitacao();
@@ -924,6 +928,33 @@ function sair() {
         });
     }
 }
+
+// ========================================
+// Módulo: Canal de Denúncia
+// ========================================
+
+function inicializarCanalDenuncia() {
+    const btnFazerRelato = document.getElementById('btn-fazer-relato');
+    if (btnFazerRelato) {
+        btnFazerRelato.addEventListener('click', () => {
+            showSection('compliance-fazer-relato');
+        });
+    }
+
+    const checkConcordancia = document.getElementById('check-concordancia-relato');
+    if (checkConcordancia) {
+        checkConcordancia.addEventListener('change', (e) => {
+            const isChecked = e.target.checked;
+            document.getElementById('btn-concordo-termos').disabled = !isChecked;
+            document.getElementById('btn-nao-concordo-termos').disabled = !isChecked;
+        });
+    }
+}
+
+// Adiciona a inicialização ao carregar o DOM
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarCanalDenuncia();
+});
 
 // Função genérica para abrir um modal com título e corpo customizados
 function abrirModalGenerico(titulo, corpo) {

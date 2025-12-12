@@ -1446,74 +1446,79 @@
                 <section id="control-horas-autorizacao" class="content-section d-none">
                     <h2 class="page-title">Autorização de Horas Extras - Controladoria</h2>
                 
-                    <div class="row mb-3">
-                        <div class="col-md-3">
-                            <div class="card p-3">
+                    <!-- KPIs Responsivos -->
+                    <div class="row mb-4">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card stat-card h-100">
                                 <div class="card-body">
-                                    <div class="small text-muted">Total Solicitado (R$)</div>
-                                    <div id="auth-total-solicitado" class="h4">R$ 0,00</div>
+                                    <i class="fas fa-file-invoice-dollar text-primary"></i>
+                                    <div class="number" id="auth-total-solicitado">R$ 0,00</div>
+                                    <div class="label">Total Solicitado</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card p-3">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card stat-card h-100">
                                 <div class="card-body">
-                                    <div class="small text-muted">Total Aprovado (R$)</div>
-                                    <div id="auth-total-aprovado" class="h4">R$ 0,00</div>
+                                    <i class="fas fa-check-double text-success"></i>
+                                    <div class="number" id="auth-total-aprovado">R$ 0,00</div>
+                                    <div class="label">Total Aprovado</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card p-3 bg-light">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card stat-card h-100">
                                 <div class="card-body">
-                                    <div class="small text-muted">Diferença (R$)</div>
-                                    <div id="auth-diferenca" class="h4">R$ 0,00</div>
+                                    <i class="fas fa-balance-scale-left text-info"></i>
+                                    <div class="number" id="auth-diferenca">R$ 0,00</div>
+                                    <div class="label">Diferença</div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-3">
-                            <div class="card p-3 bg-warning text-dark">
+                        <div class="col-lg-3 col-md-6 mb-3">
+                            <div class="card stat-card h-100 bg-warning text-dark">
                                 <div class="card-body">
-                                    <div class="small">Solicitações Pendentes</div>
-                                    <div id="auth-pendentes" class="h4">0</div>
+                                    <i class="fas fa-hourglass-half"></i>
+                                    <div class="number" id="auth-pendentes">0</div>
+                                    <div class="label">Solicitações Pendentes</div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 
                     <div class="card mb-3">
-                        <div class="card-header d-flex justify-content-between align-items-center" id="auth-chart-header">
+                        <div class="card-header d-flex justify-content-between align-items-center flex-wrap" id="auth-chart-header">
                             <span>Comparativo Solicitações x Aprovadas</span>
                             <button class="btn btn-outline-secondary btn-sm" onclick="inicializarTelaAutorizacao()">
                                 <i class="fas fa-sync"></i> Atualizar
                             </button>
                         </div>
                         <div class="card-body" id="auth-chart-container">
-                            <div style="height:300px;"><canvas id="auth-chart-canvas"></canvas></div>
+                            <div class="position-relative" style="height:300px;"><canvas id="auth-chart-canvas"></canvas></div>
                         </div>
                     </div>
                 
                     <div class="card">
                         <div class="card-header">
-                            <div class="d-flex justify-content-between align-items-center">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <span>Últimas Solicitações</span>
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-secondary" id="auth-btn-imprimir"><i class="fas fa-print"></i> Imprimir</button>
                                 <button class="btn btn-outline-success" id="auth-btn-exportar"><i class="fas fa-file-excel"></i> Exportar Excel</button>
-                                <button class="btn btn-info" id="auth-btn-integrar-custos"><i class="fas fa-coins"></i> Integrar com Análise de Custos</button>
+                                <button class="btn btn-info" id="auth-btn-integrar-custos-he"><i class="fas fa-coins"></i> Integrar com Análise de Custos</button>
                             </div>
                         </div>
                             <div class="mt-3">
-                                <div class="row g-2 align-items-end">
-                                    <div class="col-md-3"><label for="auth-filtro-data-inicio" class="form-label form-label-sm">De:</label><input type="date" id="auth-filtro-data-inicio" class="form-control form-control-sm"></div>
-                                    <div class="col-md-3"><label for="auth-filtro-data-fim" class="form-label form-label-sm">Até:</label><input type="date" id="auth-filtro-data-fim" class="form-control form-control-sm"></div>
-                                    <div class="col-md-3">
+                                <div class="row g-3 align-items-end">
+                                    <div class="col-lg-2 col-md-6"><label for="auth-filtro-data-inicio" class="form-label form-label-sm">De:</label><input type="date" id="auth-filtro-data-inicio" class="form-control form-control-sm"></div>
+                                    <div class="col-lg-2 col-md-6"><label for="auth-filtro-data-fim" class="form-label form-label-sm">Até:</label><input type="date" id="auth-filtro-data-fim" class="form-control form-control-sm"></div>
+                                    <div class="col-lg-3 col-md-6">
                                         <label for="auth-filtro-setor" class="form-label form-label-sm">Setor:</label>
                                         <select id="auth-filtro-setor" class="form-select form-select-sm">
                                             <option value="">Todos os Setores</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-3">
+                                    <div class="col-lg-3 col-md-6">
                                         <label for="auth-filtro-status" class="form-label form-label-sm">Status:</label>
                                         <select id="auth-filtro-status" class="form-select form-control-sm">
                                             <option value="">Todos os Status</option>
@@ -1523,7 +1528,7 @@
                                             <option value="cancelado">Cancelado</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-3 d-flex justify-content-end align-items-end"><button class="btn btn-primary btn-sm" id="auth-btn-filtrar"><i class="fas fa-filter"></i> Aplicar Filtros</button></div>
+                                    <div class="col-lg-2 col-md-12"><button class="btn btn-primary btn-sm w-100" id="auth-btn-filtrar"><i class="fas fa-filter"></i> Aplicar</button></div>
                                 </div>
                             </div>
                         </div>
@@ -3455,7 +3460,7 @@
                             <p class="text-muted">O canal foi criado de forma segura para receber relatos de colaboradores sobre situações que descumpram o código de ética e conduta, ou que possam ferir valores e políticas da empresa.</p>
                             <p class="text-muted">Os relatos podem ser anônimos, sua identidade será preservada e trataremos o assunto com total sigilo. Será gerado um número de protocolo que possibilitará acompanhar com privacidade o passo a passo do andamento do relato.</p>
                             <div class="mt-4">
-                                <button class="btn btn-primary btn-lg mx-2">
+                    <button class="btn btn-primary btn-lg mx-2" id="btn-fazer-relato">
                                     <i class="fas fa-pen-alt me-2"></i> Quero fazer um relato
                                 </button>
                                 <button class="btn btn-outline-secondary btn-lg mx-2">
@@ -3465,6 +3470,44 @@
                         </div>
                     </div>
                 </section>
+
+    <!-- Seção Compliance - Fazer Relato (Termos) -->
+    <section id="compliance-fazer-relato" class="content-section d-none">
+        <h2 class="page-title">Realizar Relato</h2>
+        <div class="card">
+            <div class="card-body">
+                <p>As informações aqui registradas serão recebidas por uma empresa terceirizada e especializada, as informações são de sigilo absoluto e o tratamento adequado de cada situação pela alta administração da Calçados Crival, sem conflitos de interesses.</p>
+                <p>A veracidade das informações providas é uma responsabilidade do relator. Todas as informações serão verificadas durante o processo de averiguação, e as ações decorrentes serão tomadas a critério exclusivo da Calçados Crival.</p>
+                
+                <h5 class="mt-4">Proteção de Dados</h5>
+                <p>Todas as informações aqui registradas serão tratadas de forma confidencial por sua organização e pela ICTS, uma empresa independente e especializada na captação e tratamento de denúncias.</p>
+                <p>A captação dessas informações tem por finalidade a apuração de possíveis condutas consideradas antiéticas ou que violem os princípios éticos e padrões de conduta e/ou a legislação vigente.</p>
+                <p>Todos os relatos serão armazenados por tempo indeterminado para realização do processo de apuração e deliberação sobre o caso, observando-se as exigências legais específicas. Além disso, informações consolidadas serão utilizadas para geração de estatísticas da operação, mas nenhum nome envolvido ou dado pessoal será exposto.</p>
+                <p>Eventuais dados pessoais informados serão tratados conforme as normativas estabelecidas pela Lei Geral de Proteção de Dados (LGPD - Lei nº 13.709/2018) e demais legislações aplicáveis.</p>
+                <p>Ao clicar em "Concordo" você indica ciência e concordância com o fornecimento de informações que serão única e exclusivamente utilizadas para esta finalidade.</p>
+                <p>Se desejado, posteriormente, poderá exercer seus direitos de acesso, retificação, cancelamento e oposição.</p>
+
+                <hr class="my-4">
+
+                <div class="form-check my-4">
+                    <input class="form-check-input" type="checkbox" value="" id="check-concordancia-relato">
+                    <label class="form-check-label" for="check-concordancia-relato">
+                        Declaro que li e compeendi as informações acima.
+                    </label>
+                </div>
+
+                <div class="d-flex justify-content-center gap-3">
+                    <button class="btn btn-success btn-lg" id="btn-concordo-termos" disabled>
+                        <i class="fas fa-check-circle me-2"></i> Concordo com os termos acima
+                    </button>
+                    <button class="btn btn-danger btn-lg" id="btn-nao-concordo-termos" disabled>
+                        <i class="fas fa-times-circle me-2"></i> Não concordo com os termos acima
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
             </main>
         </div>
     </div>
@@ -4537,45 +4580,43 @@
 
     <!-- Scripts da Aplicação (carregados por último para garantir que o DOM esteja pronto) -->
     <script src="js/utils.js" defer></script>
-    <script src="js/afd-parser.js" defer></script>
+    <script src="js/afd-parser.js" defer></script>    
+    <script src="js/empresas.js" defer></script>
     <script src="js/funcionarios.js" defer></script>
-    <script src="js/dashboard-faltas.js" defer></script>
+    <script src="js/movimentacoes.js" defer></script>
+    <script src="js/painel-demitidos.js" defer></script>
+    <script src="js/transferencia.js" defer></script>
+    <script src="js/alteracao-funcao.js" defer></script>
+    <script src="js/faltas.js" defer></script>
+    <script src="js/afastamentos.js" defer></script>
+    <script src="js/atestados.js" defer></script>
+    <script src="js/controle-disciplinar.js" defer></script>
+    <script src="js/dp-calculos.js" defer></script>
+    <script src="js/horas-extras-lancamento.js" defer></script>
     <script src="js/solicitacao-horas-extras.js" defer></script>
     <script src="js/autorizacao-horas.js" defer></script>
-    <script src="js/horas-extras-lancamento.js" defer></script>
-    <script src="js/empresas.js" defer></script>
-    <script src="js/movimentacoes.js" defer></script>
-    <script src="js/relatorios.js" defer></script>
-    <script src="js/faltas.js" defer></script>
-    <script src="js/afastamentos.js" defer></script>  
-    <script src="js/atestados.js" defer></script>
-    <script src="js/alteracao-funcao.js" defer></script>
-    <script src="js/dp-calculos.js" defer></script>
-    <script src="js/controle-disciplinar.js" defer></script>
-    <script src="js/solicitacoes.js" defer></script>
     <script src="js/financeiro.js" defer></script>
-    <script src="js/admin.js" defer></script>
-    <script src="js/iso-manutencao.js" defer></script>
-    <script src="js/dashboard-manutencao.js" defer></script>
+    <script src="js/custos.js" defer></script>
     <script src="js/iso-maquinas.js" defer></script>
     <script src="js/iso-mecanicos.js" defer></script>
+    <script src="js/iso-manutencao.js" defer></script>
     <script src="js/iso-organograma.js" defer></script>
     <script src="js/iso-swot.js" defer></script>
-    <script src="js/analise-rescisao.js" defer></script>
-    <script src="js/transferencia.js" defer></script>
     <script src="js/iso-avaliacao-colaboradores.js" defer></script>
-    <script src="js/juridico-processos.js" defer></script>
     <script src="js/juridico-clientes.js" defer></script>
+    <script src="js/juridico-processos.js" defer></script>
     <script src="js/juridico-dashboard.js" defer></script>
     <script src="js/juridico-automacao.js" defer></script>
     <script src="js/juridico-financeiro.js" defer></script>
     <script src="js/juridico-documentos.js" defer></script>
-    <script src="js/custos.js" defer></script>
-    <script src="js/painel-demitidos.js" defer></script>
     <script src="js/frota-controle.js" defer></script>
     <script src="js/agenda.js" defer></script>
     <script src="js/analise-pessoas.js" defer></script>
-    <script src="js/app.js" defer></script>
+    <script src="js/analise-rescisao.js" defer></script>
+    <script src="js/dashboard-faltas.js" defer></script>
+    <script src="js/dashboard-manutencao.js" defer></script>
+    <script src="js/admin.js" defer></script>
+    <script src="js/app.js" defer></script> <!-- app.js deve ser um dos últimos -->
     <script>
         // O script firebase-config.js é carregado de forma síncrona no <head>
         // para garantir que o objeto 'firebase' esteja disponível globalmente antes que os scripts da aplicação (com 'defer') executem.
