@@ -95,6 +95,7 @@ async function carregarSolicitacoes() {
     const dataInicio = document.getElementById('auth-filtro-data-inicio').value;
     const dataFim = document.getElementById('auth-filtro-data-fim').value;
     const setor = document.getElementById('auth-filtro-setor').value;
+    const status = document.getElementById('auth-filtro-status').value; // Novo: Pega o valor do filtro de status
 
     // Cria um novo listener
     let query = db.collection('solicitacoes_horas').orderBy('createdAt', 'desc');
@@ -108,8 +109,11 @@ async function carregarSolicitacoes() {
         query = query.where('createdAt', '<=', dataFimObj);
     }
 
-    // O filtro de setor será aplicado no lado do cliente, pois não temos o campo 'setor' na coleção 'solicitacoes_horas'
-
+    // Aplica filtro de status se selecionado
+    if (status) {
+        query = query.where('status', '==', status);
+    }
+    
     listenerAutorizacao = query.limit(200).onSnapshot(async (snapshot) => {
             console.log(`📊 Snapshot recebido: ${snapshot.docs.length} documentos`);
 

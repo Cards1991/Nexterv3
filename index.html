@@ -1513,7 +1513,17 @@
                                             <option value="">Todos os Setores</option>
                                         </select>
                                     </div>
-                                    <div class="col-md-3 d-flex justify-content-end"><button class="btn btn-primary btn-sm" id="auth-btn-filtrar"><i class="fas fa-filter"></i> Aplicar Filtros</button></div>
+                                    <div class="col-md-3">
+                                        <label for="auth-filtro-status" class="form-label form-label-sm">Status:</label>
+                                        <select id="auth-filtro-status" class="form-select form-control-sm">
+                                            <option value="">Todos os Status</option>
+                                            <option value="pendente" selected>Pendente</option>
+                                            <option value="aprovado">Aprovado</option>
+                                            <option value="rejeitado">Rejeitado</option>
+                                            <option value="cancelado">Cancelado</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3 d-flex justify-content-end align-items-end"><button class="btn btn-primary btn-sm" id="auth-btn-filtrar"><i class="fas fa-filter"></i> Aplicar Filtros</button></div>
                                 </div>
                             </div>
                         </div>
