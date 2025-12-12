@@ -43,7 +43,6 @@ async function inicializarAtestados() {
     try {
         adicionarEstilosCorpoHumano();
         configurarEventListenersAtestados();
-        await carregarAtestadosDb();
         await preencherFiltroEmpresasAtestados();
         await renderizarAtestados();
         await atualizarMetricasAtestados();
@@ -59,14 +58,13 @@ function configurarEventListenersAtestados() {
     // Usar event delegation para os botões principais
     try {
         document.addEventListener('click', (e) => {
-            try {
-                if (e.target.closest('#btn-novo-atestado')) {
-                    abrirModalNovoAtestado();
-                }
-                if (e.target.closest('#btn-rotate-body')) {
-                    toggleBodyView();
-                }
-            } catch (error) { console.error('Erro no event listener de clique:', error); }
+            // Adicionado listener para o botão de novo atestado
+            if (e.target.closest('#btn-novo-atestado')) {
+                abrirModalNovoAtestado();
+            }
+            if (e.target.closest('#btn-rotate-body')) {
+                toggleBodyView();
+            }
         });
     } catch (error) { console.error('Erro ao configurar event listener de clique:', error); }
 
@@ -201,29 +199,6 @@ function toggleBodyView() {
     }, 200);
 }
 
-// Carregar atestados do banco
-async function carregarAtestadosDb() {
-    try {
-        const snap = await db.collection('atestados')
-            .orderBy('data_atestado', 'desc')
-            .get();
-            
-        __atestados_cache = snap.docs.map(d => {
-            const data = d.data();
-            return {
-                id: d.id,
-                ...data,
-                // Garantir que data_atestado seja um objeto Date
-                data_atestado: parseDateSafe(data.data_atestado)
-            };
-        }).filter(atestado => atestado.data_atestado); // Remover inválidos
-    } catch (e) {
-        console.error('Erro ao carregar atestados do banco:', e);
-        mostrarMensagem('Erro ao carregar atestados do banco', 'error');
-        throw e;
-    }
-}
-
 // Preencher filtro de empresas
 async function preencherFiltroEmpresasAtestados() {
     try {
@@ -277,6 +252,18 @@ async function renderizarAtestados() {
         
         tbody.innerHTML = '<tr><td colspan="9" class="text-center"><div class="spinner-border"></div></td></tr>';
 
+        // Carrega todos os atestados do banco
+        const snap = await db.collection('atestados')
+            .orderBy('data_atestado', 'desc')
+            .get();
+            
+        __atestados_cache = snap.docs.map(d => ({
+            id: d.id,
+            ...d.data(),
+            data_atestado: parseDateSafe(d.data().data_atestado)
+        })).filter(atestado => atestado.data_atestado);
+
+
         const filtrados = aplicarFiltrosAtestados(__atestados_cache);
         
         if (filtrados.length === 0) {
@@ -289,15 +276,15 @@ async function renderizarAtestados() {
         // Atualizar UI em paralelo
         await Promise.all([
             atualizarTabelaAtestados(filtrados),
-            atualizarGraficoSilhueta(filtrados),
-            analisarAtestadosPsicossociais(filtrados) // Nova função para análise psicossocial
+            atualizarGraficoSilhueta(filtrados)
         ]);
         
         if (totalEl) totalEl.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'registro' : 'registros'}`;
 
     } catch (e) {
         console.error('Erro ao renderizar atestados:', e);
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+        const tbodyError = document.getElementById('atestados-container');
+        if (tbodyError) tbodyError.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados</td></tr>';
     }
 }
 
@@ -310,12 +297,6 @@ async function atualizarTabelaAtestados(filtrados) {
             <button class="btn btn-outline-primary" onclick="editarAtestado('${a.id}')"><i class="fas fa-edit"></i></button>
             <button class="btn btn-outline-danger" onclick="excluirAtestado('${a.id}')"><i class="fas fa-trash"></i></button>
         `;
-
-        const isPsico = isCidPsicossocial(a.cid);
-        if (isPsico) {
-            const corBotaoPsico = a.investigacaoPsicossocial ? 'btn-success' : 'btn-warning';
-            acoesHTML += `<button class="btn ${corBotaoPsico}" onclick="abrirModalAcompanhamentoPsicossocial('${a.id}')" title="Acompanhamento Psicossocial"><i class="fas fa-brain"></i></button>`;
-        }
 
         if (a.encaminhadoINSS && a.afastamentoId) {
             acoesHTML = `<button class="btn btn-outline-warning" title="Ver Encaminhamento ao INSS" onclick="visualizarEncaminhamentoINSS('${a.afastamentoId}')"><i class="fas fa-notes-medical"></i></button>` + acoesHTML;
@@ -480,40 +461,6 @@ function atualizarGraficoSilhueta(atestados) {
                 </small>
             </div>
         `;
-    }
-}
-
-/**
- * Analisa os atestados filtrados e exibe o alerta de saúde psicossocial se necessário.
- * @param {Array} atestadosFiltrados A lista de atestados já filtrada.
- */
-function analisarAtestadosPsicossociais(atestadosFiltrados) {
-    const alertaContainer = document.getElementById('alerta-atestados-psicossociais');
-    const detalhesContainer = document.getElementById('atestados-psicossociais-container');
-
-    if (!alertaContainer || !detalhesContainer) return;
-
-    const casosPsicossociais = atestadosFiltrados.filter(a => isCidPsicossocial(a.cid));
-
-    if (casosPsicossociais.length > 0) {
-        detalhesContainer.innerHTML = casosPsicossociais
-            .map(atestado => {
-                const estagio = atestado.investigacaoPsicossocial?.estagio || 'Não iniciado';
-                let corBadge = 'bg-secondary';
-                if (estagio === 'Análise Inicial' || estagio === 'Conversa Agendada') corBadge = 'bg-warning text-dark';
-                if (estagio === 'Conversado com Funcionário' || estagio === 'Plano de Ação Definido') corBadge = 'bg-info text-dark';
-                if (estagio === 'Caso Encerrado') corBadge = 'bg-success';
-
-                return `
-                    <div class="alert alert-light p-2 mb-2 d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-user-circle me-2"></i>${atestado.colaborador_nome} (CID: <strong>${atestado.cid}</strong>)</span>
-                        <span class="badge ${corBadge}">${estagio}</span>
-                    </div>
-                `;
-            }).join('');
-        alertaContainer.style.display = 'block';
-    } else {
-        alertaContainer.style.display = 'none';
     }
 }
 
@@ -1019,7 +966,6 @@ async function salvarNovoAtestado() {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
         
-        await carregarAtestadosDb();
         // await carregarAlertasPericia(); // Chamada removida para evitar loops
         renderizarAtestados();
         atualizarMetricasAtestados();
@@ -1199,7 +1145,6 @@ async function editarAtestado(id) {
                 const modal = bootstrap.Modal.getInstance(document.getElementById(mid));
                 if (modal) modal.hide();
                 
-                await carregarAtestadosDb();
                 await renderizarAtestados();
                 atualizarMetricasAtestados();
                 mostrarMensagem('Atestado atualizado com sucesso!');
@@ -1219,7 +1164,6 @@ async function excluirAtestado(id) {
     
     try {
         await db.collection('atestados').doc(id).delete();
-        await carregarAtestadosDb();
         await renderizarAtestados();
         atualizarMetricasAtestados();
         mostrarMensagem('Atestado excluído com sucesso!');
@@ -1324,8 +1268,6 @@ async function salvarAcompanhamentoPsicossocial() {
         });
 
         mostrarMensagem("Acompanhamento salvo com sucesso!", "success");
-        bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
-        await carregarAtestadosDb(); // Recarrega os dados do cache
 
         // Se foi atribuído a alguém, cria uma tarefa na agenda
         if (atribuidoParaId) {
@@ -1345,6 +1287,8 @@ async function salvarAcompanhamentoPsicossocial() {
             await db.collection('agenda_atividades').add(agendaTask);
             mostrarMensagem(`Tarefa de acompanhamento atribuída a ${atribuidoParaNome} na agenda.`, "info");
         }
+
+        bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
 
         await renderizarAtestados(); // Renderiza novamente a tabela e os alertas
     } catch (error) {
@@ -1499,7 +1443,102 @@ async function excluirHistoricoPsicossocial(atestadoId, index) {
     });
 
     mostrarMensagem("Registro do histórico excluído.", "success");
-    await carregarAtestadosDb();
     await renderizarAtestados();
     bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
+}
+
+// =================================================================
+// Funções de Análise Psicossocial (Movidas de saude-psicossocial.js)
+// =================================================================
+
+/**
+ * Calcula e renderiza os KPIs (indicadores) da seção psicossocial.
+ * @param {Array} casos - A lista de casos psicossociais.
+ */
+function renderizarMetricasPsicossociais(casos) {
+    const totalCasosEl = document.getElementById('psico-kpi-total-casos');
+    const casosAbertosEl = document.getElementById('psico-kpi-casos-abertos');
+    const mediaDiasEl = document.getElementById('psico-kpi-media-dias');
+
+    if (!totalCasosEl || !casosAbertosEl || !mediaDiasEl) return;
+
+    const totalCasos = casos.length;
+    const casosAbertos = casos.filter(c => c.investigacaoPsicossocial?.estagio !== 'Caso Encerrado').length;
+    
+    const totalDias = casos.reduce((acc, caso) => acc + (caso.dias || 0), 0);
+    const mediaDias = totalCasos > 0 ? (totalDias / totalCasos).toFixed(1) : '0.0';
+
+    totalCasosEl.textContent = totalCasos;
+    casosAbertosEl.textContent = casosAbertos;
+    mediaDiasEl.textContent = mediaDias;
+}
+
+/**
+ * Renderiza o gráfico de tendência de casos psicossociais ao longo do tempo.
+ * @param {Array} casos - A lista de casos psicossociais.
+ */
+function renderizarGraficoTendenciaPsicossocial(casos) {
+    const ctx = document.getElementById('grafico-tendencia-psicossocial')?.getContext('2d');
+    if (!ctx) return;
+
+    // Agrupar casos por mês nos últimos 6 meses
+    const dadosPorMes = {};
+    const hoje = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+        const data = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+        const chave = data.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+        dadosPorMes[chave] = 0;
+    }
+
+    casos.forEach(caso => {
+        const dataAtestado = caso.data_atestado?.toDate ? caso.data_atestado.toDate() : new Date(caso.data_atestado);
+        const seisMesesAtras = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
+        
+        if (dataAtestado >= seisMesesAtras) {
+            const chave = dataAtestado.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+            if (dadosPorMes.hasOwnProperty(chave)) {
+                dadosPorMes[chave]++;
+            }
+        }
+    });
+
+    const labels = Object.keys(dadosPorMes);
+    const data = Object.values(dadosPorMes);
+
+    if (psicoChartInstance) {
+        psicoChartInstance.destroy();
+    }
+
+    psicoChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Nº de Casos Psicossociais',
+                data: data,
+                borderColor: '#dc3545',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1 // Garante que o eixo Y mostre apenas números inteiros
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
 }

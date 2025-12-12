@@ -149,6 +149,7 @@
                             <div class="collapse" id="saudeSubmenu">
                                 <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="afastamentos">Afastamentos</a></li>
+                                <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="saude-psicossocial"><i class="fas fa-brain"></i> Gestão Psicossocial</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="atestados">Atestados</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo de EPI</a></li>
@@ -547,7 +548,6 @@
                 <!-- Saúde Ocupacional: Atestados -->
                 <section id="atestados" class="content-section d-none">
                     <h2 class="page-title">Gestão de Atestados</h2>
-
                     <!-- Dashboard de Alertas Psicossociais -->
                     <div class="card border-primary mb-4" id="alerta-atestados-psicossociais" style="display: none;">
                         <div class="card-header bg-primary text-white">
@@ -695,59 +695,14 @@
                             </div>
                         </div>
                     </div>
+                    <!-- Mapa Corporal -->
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            Mapa Corporal de Incidência por CID
+                        </div>
+                        <div class="card-body" id="body-map-container"></div>
+                    </div>
                 </section>
-
-    <!-- Modal de Acompanhamento Psicossocial -->
-    <div class="modal fade" id="acompanhamentoPsicossocialModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i> Acompanhamento Psicossocial</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="form-acompanhamento-psicossocial">
-                        <input type="hidden" id="psico-atestado-id">
-                        <p><strong>Funcionário:</strong> <span id="psico-nome-funcionario"></span></p>
-                        <p><strong>CID do Atestado:</strong> <span id="psico-cid-atestado"></span></p>
-                        <div class="mb-3">
-                            <label for="psico-estagio" class="form-label">Estágio da Investigação</label>
-                            <select class="form-select" id="psico-estagio" required>
-                                <option value="Análise Inicial">Análise Inicial</option>
-                                <option value="Conversa Agendada">Conversa Agendada</option>
-                                <option value="Conversado com Funcionário">Conversado com Funcionário</option>
-                                <option value="Plano de Ação Definido">Plano de Ação Definido</option>
-                                <option value="Monitoramento">Monitoramento</option>
-                                <option value="Caso Encerrado">Caso Encerrado</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label for="psico-observacoes" class="form-label">Observações e Próximos Passos</label>
-                            <textarea class="form-control" id="psico-observacoes" rows="4" placeholder="Descreva a conversa, ações tomadas, e o que foi combinado..."></textarea>
-                        </div>
-                        <div class="mb-3">
-                            <label for="psico-atribuir-para" class="form-label"><i class="fas fa-user-tag me-2"></i>Atribuir Acompanhamento Para</label>
-                            <select class="form-select" id="psico-atribuir-para">
-                                <option value="">Não atribuir / Manter comigo</option>
-                            </select>
-                        </div>
-                        <hr>
-                        <h6><i class="fas fa-history me-2"></i>Histórico de Acompanhamento</h6>
-                        <div id="psico-historico-container" style="max-height: 200px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
-                            <p class="text-muted small">Nenhum registro anterior.</p>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary me-auto" onclick="imprimirHistoricoPsicossocial()">
-                        <i class="fas fa-print"></i> Imprimir Histórico
-                    </button>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
                 <!-- Seção Saúde Ocupacional: Estoque de EPI -->
                 <section id="estoque-epi" class="content-section d-none">
@@ -3508,6 +3463,104 @@
         </div>
     </section>
 
+                <!-- Seção Saúde Ocupacional: Gestão Psicossocial -->
+                <section id="saude-psicossocial" class="content-section d-none">
+                    <h2 class="page-title">Gestão de Saúde Psicossocial</h2>
+                    <p class="text-muted">Acompanhamento de casos relacionados a CIDs psicossociais (F00-F99, Z65).</p>
+
+                    <!-- KPIs -->
+                    <div class="row mb-4">
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-notes-medical text-primary"></i><div class="number" id="psico-kpi-total-casos">0</div><div class="label">Total de Casos</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-folder-open text-warning"></i><div class="number" id="psico-kpi-casos-abertos">0</div><div class="label">Casos em Aberto</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-calendar-day text-danger"></i><div class="number" id="psico-kpi-media-dias">0</div><div class="label">Média de Dias de Afastamento</div></div></div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-lg-12 mb-4">
+                            <div class="card">
+                                <div class="card-header">Casos Registrados</div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover">
+                                            <thead>
+                                                <tr>
+                                                    <th>Colaborador</th>
+                                                    <th>CID</th>
+                                                    <th>Data do Atestado</th>
+                                                    <th>Dias</th>
+                                                    <th>Estágio do Acompanhamento</th>
+                                                    <th class="text-end">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabela-casos-psicossociais">
+                                                <!-- Conteúdo será carregado via JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-12">
+                            <div class="card">
+                                <div class="card-header">Tendência de Casos (Últimos 6 meses)</div>
+                                <div class="card-body" style="height: 300px;"><canvas id="grafico-tendencia-psicossocial"></canvas></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+    <!-- Modal de Acompanhamento Psicossocial -->
+    <div class="modal fade" id="acompanhamentoPsicossocialModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i> Acompanhamento Psicossocial</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-acompanhamento-psicossocial">
+                        <input type="hidden" id="psico-atestado-id">
+                        <p><strong>Funcionário:</strong> <span id="psico-nome-funcionario"></span></p>
+                        <p><strong>CID do Atestado Inicial:</strong> <span id="psico-cid-atestado"></span></p>
+                        <div class="mb-3">
+                            <label for="psico-estagio" class="form-label">Estágio da Investigação</label>
+                            <select class="form-select" id="psico-estagio" required>
+                                <option value="Análise Inicial">Análise Inicial</option>
+                                <option value="Conversa Agendada">Conversa Agendada</option>
+                                <option value="Conversado com Funcionário">Conversado com Funcionário</option>
+                                <option value="Plano de Ação Definido">Plano de Ação Definido</option>
+                                <option value="Monitoramento">Monitoramento</option>
+                                <option value="Caso Encerrado">Caso Encerrado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="psico-observacoes" class="form-label">Observações e Próximos Passos</label>
+                            <textarea class="form-control" id="psico-observacoes" rows="4" placeholder="Descreva a conversa, ações tomadas, e o que foi combinado..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="psico-atribuir-para" class="form-label"><i class="fas fa-user-tag me-2"></i>Atribuir Acompanhamento Para</label>
+                            <select class="form-select" id="psico-atribuir-para">
+                                <option value="">Não atribuir / Manter comigo</option>
+                            </select>
+                        </div>
+                        <hr>
+                        <h6><i class="fas fa-history me-2"></i>Histórico do Caso</h6>
+                        <div id="psico-historico-container" style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+                            <p class="text-muted small">Nenhum registro anterior.</p>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary me-auto" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button></div>
+            </div>
+        </div>
+    </div>
+
             </main>
         </div>
     </div>
@@ -4611,6 +4664,7 @@
     <script src="js/juridico-documentos.js" defer></script>
     <script src="js/frota-controle.js" defer></script>
     <script src="js/agenda.js" defer></script>
+    <script src="js/saude-psicossocial.js" defer></script>
     <script src="js/analise-pessoas.js" defer></script>
     <script src="js/analise-rescisao.js" defer></script>
     <script src="js/dashboard-faltas.js" defer></script>

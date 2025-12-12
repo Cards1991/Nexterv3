@@ -6,7 +6,7 @@
 const TODAS_SECOES = [ 
     'dashboard', 'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
-    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento',
+    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao',
@@ -292,6 +292,10 @@ async function carregarDadosSecao(sectionName) {
             case 'control-horas-autorizacao':
                 if (typeof inicializarTelaAutorizacao === 'function') {
                     await inicializarTelaAutorizacao();
+                }
+                break;            case 'saude-psicossocial':
+                if (typeof inicializarSaudePsicossocial === 'function') {
+                    await inicializarSaudePsicossocial();
                 }
                 break;
         }
@@ -1062,8 +1066,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserPermissions = userDoc.data().permissoes || {};
                 currentUserPermissions.nome = userDoc.data().nome; // Adiciona o nome ao objeto de permissões
             } else {
-                // Se o usuário não existe na coleção, cria um registro básico sem permissões
-                currentUserPermissions = { isAdmin: false, secoesPermitidas: ['dashboard'], restricaoSetor: null };
+                // Por padrão, novos usuários terão acesso ao dashboard, saúde psicossocial, atestados e afastamentos.
+                currentUserPermissions = { isAdmin: false, secoesPermitidas: ['dashboard', 'saude-psicossocial', 'atestados', 'afastamentos'], restricaoSetor: null };
                 await userDocRef.set({
                     email: user.email,
                     nome: user.displayName || user.email.split('@')[0],
@@ -1071,15 +1075,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, { merge: true });
             }
 
-            // Se for admin, tem acesso a tudo
-            if (currentUserPermissions.isAdmin === true) {
+            if (currentUserPermissions.isAdmin) { // Se o usuário é admin
                 const todasAsSecoesAdmin = [...new Set(TODAS_SECOES.concat(['admin-usuarios']))];
-                currentUserPermissions.secoesPermitidas = todasAsSecoesAdmin;
 
-                // Garante que as permissões de admin sejam salvas no banco de dados
-                await userDocRef.set({
-                    permissoes: currentUserPermissions
-                }, { merge: true });
+                // Verifica se as permissões do admin no Firestore estão atualizadas
+                // Se não estiverem, atualiza o documento do usuário no Firestore
+                if (JSON.stringify(currentUserPermissions.secoesPermitidas.sort()) !== JSON.stringify(todasAsSecoesAdmin.sort())) {
+                    currentUserPermissions.secoesPermitidas = todasAsSecoesAdmin; // Atualiza em memória
+                    await userDocRef.update({ 'permissoes.secoesPermitidas': todasAsSecoesAdmin }); // Atualiza no Firestore
+                    console.log('Permissões de administrador atualizadas no Firestore.');
+                } else {
+                    currentUserPermissions.secoesPermitidas = todasAsSecoesAdmin; // Apenas atualiza em memória
+                }
             }
 
             // Atualizar nome do usuário na barra de navegação
