@@ -13,9 +13,23 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
-    
-    <!-- Configuração do Firebase (DEVE ser carregado primeiro, sem 'defer') -->
-    <script src="firebase-config.js"></script>
+
+    <!-- Carrega as variáveis de ambiente e inicializa o Firebase -->
+    <script src="js/env-loader.js"></script>
+    <script>
+        // Inicializa o Firebase com as configurações carregadas pelo env-loader.js
+        if (window.__FIREBASE_CONFIG__) {
+            firebase.initializeApp(window.__FIREBASE_CONFIG__);
+            window.db = firebase.firestore();
+            window.auth = firebase.auth();
+            window.timestamp = firebase.firestore.FieldValue.serverTimestamp;
+            console.log("🚀 Firebase inicializado com sucesso!");
+        } else {
+            console.error("❌ Falha ao carregar as configurações do Firebase.");
+            document.body.innerHTML = "<h1>Erro Crítico: Configuração do Firebase não encontrada.</h1>";
+        }
+    </script>
+
     <!-- Chart.js (carregado antes dos scripts que o utilizam) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js" defer></script>
     <!-- PapaParse para processamento de CSV -->
@@ -3539,9 +3553,17 @@
                                 <option value="Caso Encerrado">Caso Encerrado</option>
                             </select>
                         </div>
+                        <div class="mb-3" id="psico-data-evento-container" style="display: none;">
+                            <label for="psico-data-evento" class="form-label">Data do Evento</label>
+                            <input type="date" class="form-control" id="psico-data-evento">
+                        </div>
                         <div class="mb-3">
                             <label for="psico-observacoes" class="form-label">Observações e Próximos Passos</label>
                             <textarea class="form-control" id="psico-observacoes" rows="4" placeholder="Descreva a conversa, ações tomadas, e o que foi combinado..."></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label for="psico-observacoes-internas" class="form-label"><i class="fas fa-user-shield text-info"></i> Observações Internas (Não sai na impressão)</label>
+                            <textarea class="form-control" id="psico-observacoes-internas" rows="2" placeholder="Anotações para controle interno, não visíveis para o colaborador."></textarea>
                         </div>
                         <div class="mb-3">
                             <label for="psico-atribuir-para" class="form-label"><i class="fas fa-user-tag me-2"></i>Atribuir Acompanhamento Para</label>
@@ -3556,7 +3578,7 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary me-auto" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button></div>
+                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary me-auto" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btn-salvar-acompanhamento" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button></div>
             </div>
         </div>
     </div>
@@ -4670,11 +4692,7 @@
     <script src="js/dashboard-faltas.js" defer></script>
     <script src="js/dashboard-manutencao.js" defer></script>
     <script src="js/admin.js" defer></script>
-    <script src="js/app.js" defer></script> <!-- app.js deve ser um dos últimos -->
-    <script>
-        // O script firebase-config.js é carregado de forma síncrona no <head>
-        // para garantir que o objeto 'firebase' esteja disponível globalmente antes que os scripts da aplicação (com 'defer') executem.
-    </script>
+    <script src="js/app.js" defer></script>
     <script src="js/voice-commands.js" defer></script>
 </body>
 </html>

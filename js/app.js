@@ -1104,22 +1104,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 btnSair.addEventListener('click', (e) => { e.preventDefault(); sair(); });
             }
 
-            const sidebarToggle = document.getElementById('sidebarToggle');
-            if (sidebarToggle) {
-                sidebarToggle.addEventListener('click', function() {
-                    document.getElementById('sidebar').classList.toggle('show');
-                    document.body.classList.toggle('sidebar-open');
-                });
-            }
-
             // Carregar dados iniciais
             await carregarDadosDashboard();
             await carregarLogoEmpresa();
-
-            // Garante que a agenda seja carregada apenas após a autenticação
-            if (typeof carregarAgenda === 'function') {
-                await carregarAgenda();
-            }
 
         } else {
             // Redirecionar para login se não estiver autenticado

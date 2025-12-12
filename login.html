@@ -47,14 +47,21 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     
-    <!-- Configuração do Firebase (lê as variáveis carregadas acima) -->
-    <script src="firebase-config.js"></script>
+    <!-- Carrega as variáveis de ambiente e inicializa o Firebase -->
+    <script src="js/env-loader.js"></script>
+    <script>
+        // Inicializa o Firebase com as configurações carregadas pelo env-loader.js
+        if (window.__FIREBASE_CONFIG__) {
+            firebase.initializeApp(window.__FIREBASE_CONFIG__);
+            window.db = firebase.firestore();
+            window.auth = firebase.auth();
+            console.log("🚀 Firebase inicializado com sucesso na página de login!");
+        } else {
+            console.error("❌ Falha ao carregar as configurações do Firebase.");
+            document.body.innerHTML = "<h1>Erro Crítico: Configuração do Firebase não encontrada.</h1>";
+        }
+    </script>
     <!-- Script principal da página de login -->
     <script src="js/login.js"></script>
-
-    <script>
-        // No ambiente local, firebase-config.js já inicializa o Firebase diretamente.
-        // Não é necessário chamar window.loadEnv().then(window.initializeFirebase) aqui.
-    </script>
 </body>
 </html>
