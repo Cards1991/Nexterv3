@@ -1,31 +1,98 @@
 // Declara db no escopo global do arquivo
 let db;
+let firebaseInitialized = false;
 
-document.addEventListener('DOMContentLoaded', function() {
-    // Tenta obter a instância do Firestore de window.db ou do firebase padrão
-    
+// Configuração de fallback caso o arquivo externo falhe
+const firebaseConfigFallback = {
+    apiKey: "AIzaSyCLr3ogjIwFQP43lhhgr_zCoO3d1XOc9ag",
+    authDomain: "sys-rh-d5f0d.firebaseapp.com",
+    projectId: "sys-rh-d5f0d",
+    storageBucket: "sys-rh-d5f0d.appspot.com",
+    messagingSenderId: "918840358373",
+    appId: "1:918840358373:web:81725ece352c347a3a6b0c",
+    measurementId: "G-R7NX79FCH5"
+};
+
+// Função para inicializar Firebase
+function initializeFirebase() {
     try {
-        // Verifica se firebase está disponível globalmente
-        // Usa firebase.apps.length para verificar sem gerar erro se não houver app inicializado
-        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
-            db = window.db || firebase.firestore();
-        } else {
-            console.error("Firebase não está disponível.");
+        // Tenta usar window.db primeiro (se já foi definido externamente)
+        if (window.db) {
+            db = window.db;
+            firebaseInitialized = true;
+            console.log("Firestore obtido de window.db");
+            return true;
         }
-    } catch (error) {
-        console.error("Erro ao inicializar Firestore:", error);
-    }
-
-    // Se db não foi inicializado, mostra erro e desativa funcionalidade
-    if (!db) {
-        console.error("Firestore não inicializado corretamente.");
-        alert("Erro de conexão com o banco de dados. Verifique sua conexão.");
         
-        // Desativa todos os controles do formulário
-        const controls = document.querySelectorAll('input, textarea, button');
-        controls.forEach(control => {
-            control.disabled = true;
-        });
+        // Verifica se firebase está disponível
+        if (typeof firebase === 'undefined') {
+            console.log("Firebase não carregado. Tentando carregar...");
+            
+            // Se não estiver disponível, tenta carregar dinamicamente
+            if (!window._firebaseLoading) {
+                window._firebaseLoading = true;
+                loadFirebaseScripts();
+            }
+            return false;
+        }
+        
+        // Inicializa o Firebase se necessário
+        if (!firebase.apps || firebase.apps.length === 0) {
+            console.log("Inicializando Firebase...");
+            firebase.initializeApp(window.__FIREBASE_CONFIG__ || firebaseConfigFallback);
+        }
+        
+        // Obtém a instância do Firestore
+        const app = firebase.apps[0];
+        if (app) {
+            db = firebase.firestore(app);
+            firebaseInitialized = true;
+            console.log("Firestore inicializado com sucesso");
+            return true;
+        }
+        
+        return false;
+    } catch (error) {
+        console.error("Erro ao inicializar Firebase:", error);
+        return false;
+    }
+}
+
+// Função para carregar scripts do Firebase dinamicamente
+function loadFirebaseScripts() {
+    const scripts = [
+        'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
+        'https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js'
+    ];
+    
+    let loaded = 0;
+    
+    scripts.forEach(src => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.async = true;
+        script.onload = () => {
+            loaded++;
+            if (loaded === scripts.length) {
+                console.log("Firebase scripts carregados");
+                // Tenta inicializar novamente após carregar scripts
+                if (initializeFirebase()) {
+                    setupForm();
+                }
+            }
+        };
+        script.onerror = () => {
+            console.error(`Falha ao carregar script: ${src}`);
+        };
+        document.head.appendChild(script);
+    });
+}
+
+// Função para configurar o formulário
+function setupForm() {
+    if (!firebaseInitialized || !db) {
+        console.error("Firestore não inicializado corretamente.");
+        showConnectionError();
         return;
     }
 
@@ -90,4 +157,41 @@ document.addEventListener('DOMContentLoaded', function() {
             salvarBtn.innerHTML = '<i class="fas fa-save"></i> Abrir Chamado';
         }
     });
+}
+
+// Função para mostrar erro de conexão
+function showConnectionError() {
+    alert("Erro de conexão com o banco de dados. Verifique sua conexão.");
+    
+    // Desativa todos os controles do formulário
+    const controls = document.querySelectorAll('input, textarea, button');
+    controls.forEach(control => {
+        control.disabled = true;
+    });
+}
+
+// Inicialização principal
+document.addEventListener('DOMContentLoaded', function() {
+    // Tenta inicializar o Firebase
+    if (initializeFirebase()) {
+        // Se inicializou imediatamente, configura o formulário
+        setupForm();
+    } else if (typeof firebase === 'undefined') {
+        // Se Firebase não está carregado, tenta carregar scripts
+        console.log("Firebase não encontrado. Iniciando carregamento...");
+        loadFirebaseScripts();
+    } else {
+        // Outro caso de erro
+        showConnectionError();
+    }
 });
+
+// Adiciona um fallback: tenta novamente após alguns segundos
+setTimeout(() => {
+    if (!firebaseInitialized && typeof firebase !== 'undefined') {
+        console.log("Tentando inicialização tardia do Firebase...");
+        if (initializeFirebase()) {
+            setupForm();
+        }
+    }
+}, 3000);

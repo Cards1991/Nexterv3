@@ -875,6 +875,13 @@ function exportarFaltasExcel() {
             '% do Total': ((qtd / totalFaltas) * 100).toFixed(1) + '%'
         }));
     
+    // Adiciona linha de total geral ao resumo
+    dadosResumo.push({
+        'Setor': 'TOTAL GERAL',
+        'Qtd. Faltas': totalFaltas,
+        '% do Total': '100%'
+    });
+
     const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
     XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo por Setor");
     XLSX.utils.book_append_sheet(wb, ws, "Detalhado");

@@ -61,10 +61,16 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
 
     <!-- Configuração do Firebase -->
-    <script src="firebase-config.js"></script>
-    <script src="js/manutencao-mobile.js"></script>
+    <script src="js/env-loader.js"></script>
     <script>
-        // No ambiente local, firebase-config.js já inicializa o Firebase diretamente.
+        if (window.__FIREBASE_CONFIG__) {
+            firebase.initializeApp(window.__FIREBASE_CONFIG__);
+            window.db = firebase.firestore();
+            console.log("🚀 Firebase inicializado com sucesso no mobile!");
+        } else {
+            console.error("❌ Falha ao carregar as configurações do Firebase.");
+        }
     </script>
+    <script src="js/manutencao-mobile.js"></script>
 </body>
 </html>
