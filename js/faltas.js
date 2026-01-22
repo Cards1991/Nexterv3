@@ -1,6 +1,7 @@
 // Faltas Diárias - Manhã/Tarde
 let __faltas_cache = [];
 let __faltas_empresas_cache = null;
+let __falta_em_edicao_id = null;
 
 /**
  * Obtém os nomes das empresas, usando um cache para evitar múltiplas leituras do Firestore.
@@ -49,8 +50,18 @@ async function inicializarFaltas() {
         
         const btnNova = document.getElementById('btn-nova-falta');
         if (btnNova && !btnNova.__bound) {
-            btnNova.addEventListener('click', abrirModalNovaFalta);
+            btnNova.addEventListener('click', () => abrirModalNovaFalta());
             btnNova.__bound = true;
+
+            // Injetar botão de replicar faltas
+            if (!document.getElementById('btn-replicar-faltas')) {
+                const btnReplicar = document.createElement('button');
+                btnReplicar.id = 'btn-replicar-faltas';
+                btnReplicar.className = 'btn btn-warning me-2';
+                btnReplicar.innerHTML = '<i class="fas fa-copy"></i> Replicar Manhã -> Tarde';
+                btnReplicar.onclick = replicarFaltasManhaTarde;
+                btnNova.parentNode.insertBefore(btnReplicar, btnNova);
+            }
         }
     } catch (e) { 
         console.error('Erro ao inicializar faltas:', e); 
@@ -200,6 +211,13 @@ async function carregarFaltas() {
             tdAcoes.className = 'text-end';
             const btnGroup = document.createElement('div');
             btnGroup.className = 'btn-group btn-group-sm';
+            
+            const btnEditar = document.createElement('button');
+            btnEditar.className = 'btn btn-outline-primary';
+            btnEditar.innerHTML = '<i class="fas fa-edit"></i>';
+            btnEditar.onclick = () => editarFalta(f.id);
+            btnGroup.appendChild(btnEditar);
+
             const btnExcluir = document.createElement('button');
             btnExcluir.className = 'btn btn-outline-danger';
             btnExcluir.innerHTML = '<i class="fas fa-trash"></i>';
@@ -231,7 +249,7 @@ async function carregarFaltas() {
 }
 
 // Abrir modal de nova falta
-function abrirModalNovaFalta() {
+async function abrirModalNovaFalta(faltaId = null) {
     const id = 'faltaModal';
     let modalEl = document.getElementById(id);
     
@@ -278,40 +296,73 @@ function abrirModalNovaFalta() {
         document.body.appendChild(modalEl);
     }
     
-    // Popular funcionários
-    (async () => {
-        const sel = document.getElementById('falta_func'); 
-        if (!sel) return;
-        
-        sel.innerHTML = '<option value="">Selecione</option>';
-        
-        // Aplicar filtro de setor se houver restrição
-        let fquery = db.collection('funcionarios').where('status', '==', 'Ativo');
-        if (currentUserPermissions.restricaoSetor && !currentUserPermissions.isAdmin) {
-            fquery = fquery.where('setor', '==', currentUserPermissions.restricaoSetor);
+    const btnSalvar = document.getElementById('btn-salvar-falta');
+    if (btnSalvar) btnSalvar.onclick = salvarFalta;
+
+    await popularSelectFuncionariosFalta();
+
+    const modalTitle = modalEl.querySelector('.modal-title');
+    const formFields = {
+        func: document.getElementById('falta_func'),
+        data: document.getElementById('falta_data'),
+        periodo: document.getElementById('falta_periodo'),
+        just: document.getElementById('falta_just')
+    };
+
+    if (faltaId) {
+        __falta_em_edicao_id = faltaId;
+        modalTitle.textContent = 'Editar Falta';
+        btnSalvar.textContent = 'Atualizar';
+
+        try {
+            const doc = await db.collection('faltas').doc(faltaId).get();
+            if (doc.exists) {
+                const data = doc.data();
+                formFields.func.value = data.funcionarioId;
+                const dateObj = data.data?.toDate ? data.data.toDate() : new Date(data.data);
+                formFields.data.value = dateObj.toISOString().split('T')[0];
+                formFields.periodo.value = data.periodo;
+                formFields.just.value = data.justificativa || '';
+            }
+        } catch (e) {
+            console.error('Erro ao carregar falta para edição:', e);
+            mostrarMensagem('Erro ao carregar dados.', 'error');
+            return;
         }
+    } else {
+        __falta_em_edicao_id = null;
+        modalTitle.textContent = 'Registrar Falta';
+        btnSalvar.textContent = 'Salvar';
         
-        const fsnap = await fquery.orderBy('nome').get();
-        
-        fsnap.forEach(d => { 
-            const f = d.data(); 
-            const o = document.createElement('option'); 
-            o.value = d.id; 
-            o.textContent = f.nome; 
-            sel.appendChild(o); 
-        });
-        
-        const d = document.getElementById('falta_data'); 
-        if (d) {
-            d.value = new Date().toISOString().split('T')[0]; // Formato YYYY-MM-DD
-        }
-        const btnSalvar = document.getElementById('btn-salvar-falta');
-        if (btnSalvar) {
-            btnSalvar.onclick = salvarFalta;
-        }
-    })();
+        formFields.func.value = '';
+        formFields.data.value = new Date().toISOString().split('T')[0];
+        formFields.periodo.value = 'manha';
+        formFields.just.value = '';
+    }
     
     new bootstrap.Modal(modalEl).show();
+}
+
+async function popularSelectFuncionariosFalta() {
+    const sel = document.getElementById('falta_func'); 
+    if (!sel || sel.options.length > 1) return;
+    
+    sel.innerHTML = '<option value="">Selecione</option>';
+    
+    let fquery = db.collection('funcionarios').where('status', '==', 'Ativo');
+    if (currentUserPermissions && currentUserPermissions.restricaoSetor && !currentUserPermissions.isAdmin) {
+        fquery = fquery.where('setor', '==', currentUserPermissions.restricaoSetor);
+    }
+    
+    const fsnap = await fquery.orderBy('nome').get();
+    
+    fsnap.forEach(d => { 
+        const f = d.data(); 
+        const o = document.createElement('option'); 
+        o.value = d.id; 
+        o.textContent = f.nome; 
+        sel.appendChild(o); 
+    });
 }
 
 // Salvar falta
@@ -330,17 +381,27 @@ async function salvarFalta() {
         const fdoc = await db.collection('funcionarios').doc(funcId).get();
         const f = fdoc.data();
         
-        await db.collection('faltas').add({
+        const faltaData = {
             funcionarioId: funcId,
             funcionarioNome: f?.nome || null,
             empresaId: f?.empresaId || null,
             setor: f?.setor || null,
             data: parseDate(dataStr),
             periodo: periodo,
-            justificativa: justificativa || null,
-            criado_em: firebase.firestore.FieldValue.serverTimestamp(),
-            createdByUid: firebase.auth().currentUser?.uid || null
-        });
+            justificativa: justificativa || null
+        };
+
+        if (__falta_em_edicao_id) {
+            // Atualizar
+            await db.collection('faltas').doc(__falta_em_edicao_id).update(faltaData);
+            mostrarMensagem('Falta atualizada com sucesso!');
+        } else {
+            // Criar nova
+            faltaData.criado_em = firebase.firestore.FieldValue.serverTimestamp();
+            faltaData.createdByUid = firebase.auth().currentUser?.uid || null;
+            await db.collection('faltas').add(faltaData);
+            mostrarMensagem('Falta registrada com sucesso!');
+        }
         
         // Invalida cache de empresas após salvar falta
         __faltas_empresas_cache = null;
@@ -350,11 +411,14 @@ async function salvarFalta() {
         if (modal) modal.hide();
         
         await carregarFaltas();
-        mostrarMensagem('Falta registrada com sucesso!');
     } catch (e) { 
         console.error('Erro ao salvar falta:', e); 
         mostrarMensagem('Erro ao salvar falta', 'error'); 
     }
+}
+
+function editarFalta(id) {
+    abrirModalNovaFalta(id);
 }
 
 // Excluir falta
@@ -599,5 +663,85 @@ async function verificarFaltasRecorrentes() {
         console.error("Erro ao verificar faltas recorrentes:", error);
         detalhesContainer.innerHTML = '<p class="text-danger">Erro ao carregar dados de alerta.</p>';
         alertaContainer.style.display = 'block';
+    }
+}
+
+async function replicarFaltasManhaTarde() {
+    const dataStr = document.getElementById('falta-filtro-data-inicio')?.value;
+    if (!dataStr) {
+        mostrarMensagem('Selecione uma data no filtro "Data Inicial" para replicar.', 'warning');
+        return;
+    }
+    
+    const dataAlvo = parseDate(dataStr);
+    dataAlvo.setHours(0,0,0,0);
+    
+    const dataFim = new Date(dataAlvo);
+    dataFim.setHours(23,59,59,999);
+
+    if (!confirm(`Deseja replicar as faltas do período da MANHÃ para a TARDE do dia ${formatarData(dataAlvo)}?`)) {
+        return;
+    }
+
+    try {
+        // Buscar todas as faltas do dia (evita necessidade de índice composto no Firestore)
+        const diaSnap = await db.collection('faltas')
+            .where('data', '>=', dataAlvo)
+            .where('data', '<=', dataFim)
+            .get();
+
+        if (diaSnap.empty) {
+            mostrarMensagem('Nenhuma falta encontrada para esta data.', 'info');
+            return;
+        }
+
+        // Separar em memória
+        const faltasManha = [];
+        const funcionariosComFaltaTarde = new Set();
+
+        diaSnap.forEach(doc => {
+            const f = doc.data();
+            if (f.periodo === 'manha') {
+                faltasManha.push({ id: doc.id, ...f });
+            } else if (f.periodo === 'tarde') {
+                funcionariosComFaltaTarde.add(f.funcionarioId);
+            }
+        });
+
+        if (faltasManha.length === 0) {
+            mostrarMensagem('Nenhuma falta encontrada no período da manhã para esta data.', 'info');
+            return;
+        }
+
+        const batch = db.batch();
+        let count = 0;
+
+        faltasManha.forEach(faltaManha => {
+            if (!funcionariosComFaltaTarde.has(faltaManha.funcionarioId)) {
+                const novaFaltaRef = db.collection('faltas').doc();
+                // Remove o id que foi adicionado no objeto local para não salvar no banco
+                const { id, ...dadosFalta } = faltaManha;
+                
+                batch.set(novaFaltaRef, {
+                    ...dadosFalta,
+                    periodo: 'tarde',
+                    criado_em: firebase.firestore.FieldValue.serverTimestamp(),
+                    replicadoDe: faltaManha.id
+                });
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            await batch.commit();
+            mostrarMensagem(`${count} faltas replicadas para o período da tarde com sucesso!`, 'success');
+            await carregarFaltas();
+        } else {
+            mostrarMensagem('Todas as faltas da manhã já possuem correspondente à tarde.', 'info');
+        }
+
+    } catch (e) {
+        console.error('Erro ao replicar faltas:', e);
+        mostrarMensagem('Erro ao replicar faltas.', 'error');
     }
 }

@@ -1,4 +1,33 @@
+// Declara db no escopo global do arquivo
+let db;
+
 document.addEventListener('DOMContentLoaded', function() {
+    // Tenta obter a instância do Firestore de window.db ou do firebase padrão
+    
+    try {
+        // Verifica se firebase está disponível globalmente
+        if (typeof firebase !== 'undefined' && firebase.app()) {
+            db = window.db || firebase.firestore();
+        } else {
+            console.error("Firebase não está disponível.");
+        }
+    } catch (error) {
+        console.error("Erro ao inicializar Firestore:", error);
+    }
+
+    // Se db não foi inicializado, mostra erro e desativa funcionalidade
+    if (!db) {
+        console.error("Firestore não inicializado corretamente.");
+        alert("Erro de conexão com o banco de dados. Verifique sua conexão.");
+        
+        // Desativa todos os controles do formulário
+        const controls = document.querySelectorAll('input, textarea, button');
+        controls.forEach(control => {
+            control.disabled = true;
+        });
+        return;
+    }
+
     // Pega o nome da máquina da URL
     const urlParams = new URLSearchParams(window.location.search);
     const maquinaId = urlParams.get('maquina');
@@ -20,6 +49,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (!maquinaId || !motivo) {
             alert("A máquina deve ser identificada e o motivo deve ser preenchido.");
+            return;
+        }
+
+        // Verifica novamente se db está definido antes de usar
+        if (!db) {
+            alert("Erro de conexão com o banco de dados. Tente novamente.");
             return;
         }
 
