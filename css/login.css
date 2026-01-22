@@ -1,0 +1,22 @@
+body {
+    background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+}
+
+.login-card {
+    max-width: 420px;
+    margin: 0 auto;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, .15);
+    border: 0;
+}
+
+.brand {
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.small-text {
+    font-size: .9rem;
+}

@@ -1,0 +1,17 @@
+# Ignorar diretórios de backup
+bkp/
+
+# Outros arquivos comuns a serem ignorados
+.DS_Store
+
+# Arquivos de ambiente local
+.env
+.env.local
+
+# Arquivos de configuração com chaves secretas
+# O arquivo firebase-config.js será gerado dinamicamente no Vercel.
+# Esta linha garante que seu arquivo local com chaves não seja enviado para o Git.
+/js/firebase-config.js
+
+# Dependências de pacotes (caso use no futuro)
+node_modules/

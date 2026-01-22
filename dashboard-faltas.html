@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Faltas</title>
+    <!-- Adicione aqui seus links de CSS (Bootstrap, etc.) -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        /* Estilos para melhorar a UI */
+        .kpi-card {
+            border-left-width: 5px;
+        }
+        .kpi-card .card-body {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .kpi-card .kpi-value {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        .kpi-card .kpi-icon {
+            font-size: 2.5rem;
+            opacity: 0.3;
+        }
+        .ranking-list .list-group-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container-fluid mt-4">
+    <h1 class="h2 mb-4">Dashboard de Faltas</h1>
+
+    <!-- KPIs (Indicadores Chave de Performance) -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card shadow-sm kpi-card border-primary">
+                <div class="card-body">
+                    <div>
+                        <div class="text-muted text-uppercase">Total de Faltas (Ano)</div>
+                        <div id="kpi-total-faltas" class="kpi-value">...</div>
+                    </div>
+                    <i class="fas fa-calendar-times kpi-icon"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card shadow-sm kpi-card border-warning">
+                <div class="card-body">
+                    <div>
+                        <div class="text-muted text-uppercase">Faltas no Mês Atual</div>
+                        <div id="kpi-faltas-mes" class="kpi-value">...</div>
+                    </div>
+                    <i class="fas fa-calendar-day kpi-icon"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ranking e Gráficos -->
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-header">
+                    <h5 class="card-title mb-0"><i class="fas fa-trophy me-2"></i>Ranking de Faltas</h5>
+                </div>
+                <div id="ranking-funcionarios-faltas" class="list-group list-group-flush ranking-list">
+                    <div class="list-group-item text-center p-4"><i class="fas fa-spinner fa-spin"></i> Carregando ranking...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adicione aqui seus scripts (Firebase, Bootstrap, etc) -->
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
+
+<!-- Script do seu firebase-config.js -->
+<script src="js/firebase-config.js"></script> 
+
+<!-- Novo script do dashboard -->
+<script src="js/dashboard-faltas.js"></script>
+
+<script>
+    // Inicializa o carregamento do dashboard quando a página estiver pronta
+    document.addEventListener('DOMContentLoaded', () => {
+        // Simula a inicialização do Firebase (substitua pelo seu código real)
+        if (typeof firebase !== 'undefined') {
+            // A configuração do firebase-config.js já deve ter sido executada
+            const db = firebase.firestore();
+            carregarDashboardFaltas(db);
+        } else {
+            console.error("Firebase não está definido. Verifique a inclusão dos scripts.");
+        }
+    });
+</script>
+
+</body>
+</html>
