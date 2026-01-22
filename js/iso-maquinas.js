@@ -1,7 +1,9 @@
+
+
 // Gerenciamento do Cadastro de Máquinas - ISO 9001
 // URL fixa para o ambiente de desenvolvimento/teste via DevTunnels.
 // const URL_BASE_QRCODE = 'https://9whrmc68-5500.usw3.devtunnels.ms';
-const URL_BASE_QRCODE = window.location.origin;
+const URL_BASE_QRCODE = 'https://nexterv3-feioaq8yw-charles-projects-523ecb44.vercel.app';
 
 async function inicializarMaquinas() {
     try {
