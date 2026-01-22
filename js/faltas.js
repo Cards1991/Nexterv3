@@ -62,6 +62,16 @@ async function inicializarFaltas() {
                 btnReplicar.onclick = replicarFaltasManhaTarde;
                 btnNova.parentNode.insertBefore(btnReplicar, btnNova);
             }
+
+            // Injetar botão de exportar Excel
+            if (!document.getElementById('btn-exportar-faltas')) {
+                const btnExportar = document.createElement('button');
+                btnExportar.id = 'btn-exportar-faltas';
+                btnExportar.className = 'btn btn-success me-2';
+                btnExportar.innerHTML = '<i class="fas fa-file-excel"></i> Excel';
+                btnExportar.onclick = exportarFaltasExcel;
+                btnNova.parentNode.insertBefore(btnExportar, btnNova);
+            }
         }
     } catch (e) { 
         console.error('Erro ao inicializar faltas:', e); 
@@ -173,6 +183,9 @@ async function carregarFaltas() {
         
         const snap = await query.get();
         const registros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        // Atualiza cache global para uso na exportação e dashboard
+        __faltas_cache = registros;
 
         const empMap = await getEmpresasFaltas();
         
@@ -236,6 +249,7 @@ async function carregarFaltas() {
         });
 
         // Após carregar a tabela principal, verifica as faltas recorrentes
+        renderizarDashboardAnaliseFaltas(registros, empMap);
         await verificarFaltasRecorrentes();
     } catch (e) { 
         console.error('Erro ao carregar faltas:', e);
@@ -744,4 +758,125 @@ async function replicarFaltasManhaTarde() {
         console.error('Erro ao replicar faltas:', e);
         mostrarMensagem('Erro ao replicar faltas.', 'error');
     }
+}
+
+function exportarFaltasExcel() {
+    if (!__faltas_cache || __faltas_cache.length === 0) {
+        mostrarMensagem('Não há dados para exportar.', 'warning');
+        return;
+    }
+
+    // Adiciona a biblioteca XLSX se não existir
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarFaltasExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    const dadosExportacao = __faltas_cache.map(f => {
+        const dataObj = f.data?.toDate ? f.data.toDate() : new Date(f.data);
+        return {
+            'Data': dataObj.toLocaleDateString('pt-BR'),
+            'Funcionário': f.funcionarioNome || 'N/A',
+            'Setor': f.setor || 'N/A',
+            'Período': f.periodo === 'manha' ? 'Manhã' : 'Tarde',
+            'Justificativa': f.justificativa || ''
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    XLSX.utils.book_append_sheet(wb, ws, "Faltas");
+    XLSX.writeFile(wb, "Relatorio_Faltas.xlsx");
+}
+
+function renderizarDashboardAnaliseFaltas(registros, empMap) {
+    let dashboardContainer = document.getElementById('dashboard-analise-faltas');
+    
+    // Cria o container se não existir
+    if (!dashboardContainer) {
+        dashboardContainer = document.createElement('div');
+        dashboardContainer.id = 'dashboard-analise-faltas';
+        dashboardContainer.className = 'row mb-4 g-3';
+        
+        // Insere antes da tabela
+        const tabelaContainer = document.getElementById('faltas-container')?.closest('.table-responsive') || document.getElementById('faltas-container')?.parentElement;
+        if (tabelaContainer) {
+            tabelaContainer.parentElement.insertBefore(dashboardContainer, tabelaContainer);
+        }
+    }
+
+    if (!registros || registros.length === 0) {
+        dashboardContainer.innerHTML = '';
+        return;
+    }
+
+    // Cálculos
+    const totalFaltas = registros.length;
+    const porPeriodo = { manha: 0, tarde: 0 };
+    const porSetor = {};
+    const porFuncionario = {};
+
+    registros.forEach(r => {
+        // Período
+        if (r.periodo === 'manha') porPeriodo.manha++;
+        else porPeriodo.tarde++;
+
+        // Setor
+        const setor = r.setor || 'Não definido';
+        porSetor[setor] = (porSetor[setor] || 0) + 1;
+
+        // Funcionário
+        const func = r.funcionarioNome || 'Desconhecido';
+        porFuncionario[func] = (porFuncionario[func] || 0) + 1;
+    });
+
+    // Top 3 Setores
+    const topSetores = Object.entries(porSetor)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3);
+
+    // Top 3 Funcionários
+    const topFuncionarios = Object.entries(porFuncionario)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3);
+
+    // HTML do Dashboard
+    dashboardContainer.innerHTML = `
+        <div class="col-md-3">
+            <div class="card bg-light h-100 border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <h6 class="text-muted mb-2">Total de Faltas</h6>
+                    <h2 class="mb-0 text-primary fw-bold">${totalFaltas}</h2>
+                    <small class="text-muted">Manhã: ${porPeriodo.manha} | Tarde: ${porPeriodo.tarde}</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold py-2">Top Setores</div>
+                <ul class="list-group list-group-flush list-group-sm">
+                    ${topSetores.map(([nome, qtd]) => 
+                        `<li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                            <span class="text-truncate" style="max-width: 70%;">${nome}</span>
+                            <span class="badge bg-secondary rounded-pill">${qtd}</span>
+                        </li>`).join('')}
+                </ul>
+            </div>
+        </div>
+        <div class="col-md-5">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white fw-bold py-2">Funcionários com Mais Faltas</div>
+                <ul class="list-group list-group-flush list-group-sm">
+                    ${topFuncionarios.map(([nome, qtd]) => 
+                        `<li class="list-group-item d-flex justify-content-between align-items-center py-1">
+                            <span class="text-truncate" style="max-width: 80%;">${nome}</span>
+                            <span class="badge bg-danger rounded-pill">${qtd}</span>
+                        </li>`).join('')}
+                </ul>
+            </div>
+        </div>
+    `;
 }
