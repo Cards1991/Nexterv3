@@ -1512,9 +1512,59 @@ async function visualizarEventoExterno(id, sourceCollection, eventType) {
     }
 }
 
-function visualizarEvento(id, collection) {
-    // Função para visualizar detalhes do evento (pode ser expandida conforme necessário)
-    mostrarMensagem("Visualização de evento - funcionalidade em desenvolvimento", "info");
+async function visualizarEvento(id, collection) {
+    try {
+        const doc = await db.collection(collection).doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Atividade não encontrada.", "error");
+            return;
+        }
+        
+        const atividade = doc.data();
+        const dataFormatada = atividade.data ? new Date(atividade.data.toDate()).toLocaleString('pt-BR') : 'N/A';
+        
+        const conteudo = `
+            <div class="mb-3">
+                <label class="fw-bold">Assunto:</label>
+                <div>${atividade.assunto || atividade.titulo || '-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="fw-bold">Data:</label>
+                    <div>${dataFormatada}</div>
+                </div>
+                <div class="col-6">
+                    <label class="fw-bold">Tipo:</label>
+                    <div>${atividade.tipo || '-'}</div>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label class="fw-bold">Descrição:</label>
+                <div class="p-2 bg-light rounded border" style="white-space: pre-wrap;">${atividade.descricao || '-'}</div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-6">
+                    <label class="fw-bold">Status:</label>
+                    <div><span class="badge ${atividade.status === 'Concluído' ? 'bg-success' : 'bg-warning'}">${atividade.status || 'Aberto'}</span></div>
+                </div>
+                <div class="col-6">
+                    <label class="fw-bold">Atribuído para:</label>
+                    <div>${atividade.atribuidoParaNome || '-'}</div>
+                </div>
+            </div>
+            ${atividade.criadoPorNome ? `<div class="text-muted small text-end">Criado por: ${atividade.criadoPorNome}</div>` : ''}
+        `;
+
+        if (typeof abrirModalGenerico === 'function') {
+            abrirModalGenerico("Detalhes da Atividade", conteudo);
+        } else {
+            alert(`Assunto: ${atividade.assunto}\nData: ${dataFormatada}\nDescrição: ${atividade.descricao}`);
+        }
+
+    } catch (error) {
+        console.error("Erro ao visualizar atividade:", error);
+        mostrarMensagem("Erro ao carregar detalhes da atividade.", "error");
+    }
 }
 
 // ========================================

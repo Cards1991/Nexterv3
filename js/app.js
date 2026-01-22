@@ -7,7 +7,7 @@ const TODAS_SECOES = [
     'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
     'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial',
-    'frota-veiculos', 'frota-motoristas', 'frota-utilizacao',
+    'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot',
@@ -252,6 +252,8 @@ async function carregarDadosSecao(sectionName) {
             case 'frota-veiculos':
             case 'frota-motoristas':
             case 'frota-utilizacao':
+            case 'frota-destinos':
+            case 'frota-tabelas-frete':
                 if (typeof inicializarControleFrota === 'function') {
                     await inicializarControleFrota(sectionName);
                 } else {

@@ -29,6 +29,12 @@ async function inicializarControleFrota(secao) {
         case 'frota-utilizacao':
             await carregarUtilizacoes();
             break;
+        case 'frota-destinos':
+            // await carregarDestinos();
+            break;
+        case 'frota-tabelas-frete':
+            // await carregarTabelasFrete();
+            break;
     }
 }
 

@@ -221,6 +221,8 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-veiculos">Veículos</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-motoristas">Motoristas</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-utilizacao">Utilização</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-destinos">Cadastros de Destinos</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-tabelas-frete">Tabelas de Frete</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -2975,11 +2977,11 @@
                     <div class="card mb-4">
                         <div class="card-body">
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label">Data Início</label>
                                     <input type="date" class="form-control" id="dash-faltas-data-inicio">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-md-2">
                                     <label class="form-label">Data Fim</label>
                                     <input type="date" class="form-control" id="dash-faltas-data-fim">
                                 </div>
@@ -2995,6 +2997,15 @@
                                         <option value="">Todos</option>
                                         <option value="Masculino">Masculino</option>
                                         <option value="Feminino">Feminino</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Período</label>
+                                    <select class="form-select" id="dash-faltas-periodo">
+                                        <option value="">Todos</option>
+                                        <option value="manha">Manhã</option>
+                                        <option value="tarde">Tarde</option>
+                                        <option value="noite">Noite</option>
                                     </select>
                                 </div>
                                 <div class="col-md-2">
@@ -3181,6 +3192,24 @@
                                 <thead><tr><th>Veículo</th><th>Motorista</th><th>Saída</th><th>Retorno</th><th>KM Percorrido</th><th>Destino</th><th>Ações</th></tr></thead>
                                 <tbody id="tabela-frota-historico"></tbody>
                             </table>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="frota-destinos" class="content-section d-none">
+                    <h2 class="page-title">Cadastro de Destinos</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="text-muted text-center">Módulo de Cadastro de Destinos em construção.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="frota-tabelas-frete" class="content-section d-none">
+                    <h2 class="page-title">Tabelas de Frete</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="text-muted text-center">Módulo de Tabelas de Frete em construção.</p>
                         </div>
                     </div>
                 </section>

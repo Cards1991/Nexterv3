@@ -97,6 +97,7 @@ async function carregarDashboardFaltas(db) {
         const dataFim = document.getElementById('dash-faltas-data-fim')?.value;
         const setorFiltro = document.getElementById('dash-faltas-setor')?.value;
         const sexoFiltro = document.getElementById('dash-faltas-sexo')?.value;
+        const periodoFiltro = document.getElementById('dash-faltas-periodo')?.value;
 
         if (dataInicio) {
             // Força a data para o início do dia no horário local (evita problema de UTC)
@@ -130,6 +131,7 @@ async function carregarDashboardFaltas(db) {
                 // Aplicar filtros de Setor e Sexo (em memória)
                 if (setorFiltro && funcionario.setor !== setorFiltro) return;
                 if (sexoFiltro && funcionario.sexo !== sexoFiltro) return;
+                if (periodoFiltro && falta.periodo !== periodoFiltro) return;
 
                 // Contagem para o ranking
                 contagemFaltas[idFuncionario] = (contagemFaltas[idFuncionario] || 0) + 1;
