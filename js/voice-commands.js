@@ -61,7 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function processCommand(command) {
         // Mapeamento de comandos para funções existentes no seu sistema
         if (command.includes('dashboard') || command.includes('início')) {
-            showSection('dashboard');
+            showSection('agenda');
         } else if (command.includes('agenda')) {
             showSection('agenda');
         } else if (command.includes('funcionários')) {

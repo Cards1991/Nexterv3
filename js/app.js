@@ -4,7 +4,7 @@
 
 // Lista de todas as seções disponíveis no sistema
 const TODAS_SECOES = [ 
-    'dashboard', 'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
+    'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
     'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao',
@@ -84,9 +84,6 @@ function atualizarMenuAtivo(activeSection) {
 async function carregarDadosSecao(sectionName) {
     try {
         switch(sectionName) {
-            case 'dashboard':
-                await carregarDadosDashboard();
-                break;
             case 'empresas':
                 if (typeof carregarEmpresas === 'function') {
                     await carregarEmpresas();
@@ -307,61 +304,6 @@ async function carregarDadosSecao(sectionName) {
 
 
 
-
-// Carregar dados do dashboard
-async function carregarDadosDashboard() {
-    try {
-        console.log('Carregando dashboard...');
-        
-        // Carregar funcionários
-        const funcionariosSnapshot = await db.collection('funcionarios').get();
-        const totalFuncionarios = funcionariosSnapshot.size;
-        
-        // Calcular admissões e demissões do mês
-        const hoje = new Date();
-        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-        
-        const movimentacoesSnapshot = await db.collection('movimentacoes')
-            .where('data', '>=', inicioMes)
-            .where('data', '<=', fimMes)
-            .get();
-            
-        let admissoesMes = 0;
-        let demissoesMes = 0;
-        
-        movimentacoesSnapshot.forEach(doc => {
-            const mov = doc.data();
-            if (mov.tipo === 'admissao') {
-                admissoesMes++;
-            } else if (mov.tipo === 'demissao') {
-                demissoesMes++;
-            }
-        });
-        
-        // Calcular taxa de rotatividade
-        const taxaRotatividade = totalFuncionarios > 0 ? 
-            ((demissoesMes / totalFuncionarios) * 100).toFixed(1) : 0;
-        
-        // Atualizar elementos do DOM
-        document.getElementById('total-funcionarios').textContent = totalFuncionarios;
-        document.getElementById('admissoes-mes').textContent = admissoesMes;
-        document.getElementById('demissoes-mes').textContent = demissoesMes;
-        document.getElementById('taxa-rotatividade').textContent = taxaRotatividade + '%';
-        
-        // Carregar métricas para Dashboards de Manutenção
-        await carregarMetricasManutencaoDashboard();
-
-        // Carregar métricas para Dashboards de Controladoria
-        await carregarMetricasControladoriaDashboard();
-
-        // Gerar análise de IA para o dashboard
-        await gerarAnaliseIADashboard(admissoesMes, demissoesMes, taxaRotatividade);
-        
-    } catch (error) {
-        console.error('Erro ao carregar dashboard:', error);
-    }
-}
 
 // Carregar últimas movimentações no dashboard
 async function carregarUltimasMovimentacoesDashboard() {
@@ -1066,8 +1008,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserPermissions = userDoc.data().permissoes || {};
                 currentUserPermissions.nome = userDoc.data().nome; // Adiciona o nome ao objeto de permissões
             } else {
-                // Por padrão, novos usuários terão acesso ao dashboard, saúde psicossocial, atestados e afastamentos.
-                currentUserPermissions = { isAdmin: false, secoesPermitidas: ['dashboard', 'saude-psicossocial', 'atestados', 'afastamentos'], restricaoSetor: null };
+                // Por padrão, novos usuários terão acesso a agenda, saúde psicossocial, atestados e afastamentos.
+                currentUserPermissions = { isAdmin: false, secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos'], restricaoSetor: null };
                 await userDocRef.set({
                     email: user.email,
                     nome: user.displayName || user.email.split('@')[0],
@@ -1105,7 +1047,6 @@ document.addEventListener('DOMContentLoaded', function() {
             }
 
             // Carregar dados iniciais
-            await carregarDadosDashboard();
             await carregarLogoEmpresa();
 
         } else {
@@ -1209,8 +1150,8 @@ function inicializarNavegacao() {
         btnSairSidebar.addEventListener('click', (e) => { e.preventDefault(); sair(); });
     }
 
-    // Mostrar dashboard por padrão
-    showSection('dashboard');
+    // Mostrar agenda por padrão (ou outra seção inicial)
+    showSection('agenda');
 }
 
 // Inicializar modais
@@ -1235,5 +1176,104 @@ function inicializarModais() {
                 document.getElementById('cargo-funcionario').innerHTML = '<option value="">Selecione a empresa primeiro</option>';
             }
         });
+
+        // Listener para carregar setores quando a empresa é selecionada no modal de funcionário
+        const empresaSelect = document.getElementById('empresa-funcionario');
+        if (empresaSelect) {
+            empresaSelect.addEventListener('change', function() {
+                carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
+            });
+        }
     }
 }
+
+// ========================================
+// FUNÇÕES GLOBAIS DE CARREGAMENTO DE DADOS
+// ========================================
+
+async function carregarSelectEmpresas(selectId, empresaSelecionadaId = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    select.innerHTML = '<option value="">Carregando...</option>';
+
+    try {
+        const snapshot = await db.collection('empresas').orderBy('nome').get();
+        
+        if (snapshot.empty) {
+            select.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">Selecione...</option>';
+        
+        snapshot.forEach(doc => {
+            const empresa = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = empresa.nome;
+            if (empresaSelecionadaId && empresaSelecionadaId === doc.id) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+        // Se houver uma empresa selecionada, dispara o evento change para carregar os setores
+        if (empresaSelecionadaId) {
+            select.dispatchEvent(new Event('change'));
+        }
+
+    } catch (error) {
+        console.error("Erro ao carregar empresas:", error);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    
+    if (!empresaId) {
+        select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Carregando...</option>';
+
+    try {
+        const doc = await db.collection('empresas').doc(empresaId).get();
+        
+        if (!doc.exists) {
+            select.innerHTML = '<option value="">Empresa não encontrada</option>';
+            return;
+        }
+
+        const empresa = doc.data();
+        const setores = empresa.setores || [];
+
+        if (setores.length === 0) {
+            select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">Selecione...</option>';
+        
+        setores.sort().forEach(setor => {
+            const option = document.createElement('option');
+            option.value = setor;
+            option.textContent = setor;
+            if (setorSelecionado && setorSelecionado === setor) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+
+    } catch (error) {
+        console.error("Erro ao carregar setores:", error);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+// Exportar para o window para garantir acesso global
+window.carregarSelectEmpresas = carregarSelectEmpresas;
+window.carregarSetoresPorEmpresa = carregarSetoresPorEmpresa;

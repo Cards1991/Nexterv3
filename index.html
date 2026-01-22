@@ -69,12 +69,6 @@
                             <h5 class="sidebar-slogan mt-2">NEXTER</h5>
                             <p class="sidebar-subtitle">O Controle em suas mãos</p>
                         </div>
-                        <!-- Dashboard Principal -->
-                        <li class="nav-item">
-                            <a class="nav-link active" href="#" data-target="dashboard">
-                                <i class="fas fa-home"></i> Dashboard Principal
-                            </a>
-                        </li>
                         <!-- Agenda -->
                         <li class="nav-item">
                             <a class="nav-link" href="#" data-target="agenda">
@@ -84,7 +78,7 @@
                         <!-- Módulo Dashboards -->
                         <li class="nav-item">
                             <a class="nav-link collapsed" href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-chart-pie"></i> Dashboards <i class="fas fa-chevron-down ms-auto"></i>
+                                <i class="fas fa-chart-pie"></i> Análise <i class="fas fa-chevron-down ms-auto"></i>
                             </a>
                             <div class="collapse" id="dashboardsSubmenu">
                                 
@@ -105,6 +99,12 @@
                                         </a>
                                     </li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dashboard-manutencao"><i class="fas fa-tools"></i> Dashboard de Manutenção</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-dashboard"><i class="fas fa-truck"></i> Dashboard Logística</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-dashboard"><i class="fas fa-gavel"></i> Dashboard Jurídico</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras"><i class="fas fa-clock"></i> Dashboard Horas Extras</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i class="fas fa-coins"></i> Análise de Custos</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-swot"><i class="fas fa-chart-line"></i> Análise SWOT</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-avaliacao-colaboradores"><i class="fas fa-users-cog"></i> Análise de Colaboradores</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -143,7 +143,6 @@
                                         <div class="collapse" id="dpCalculosSubmenu">
                                             <ul class="nav flex-column">
                                                 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-calculos">Folha de Pagamento</a></li>
-                                                <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras">Horas Extras</a></li>
                                                 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-solicitacao">Solicitação de Horas Extras</a></li>
                                             </ul>
                                         </div>
@@ -178,7 +177,6 @@
                             <div class="collapse" id="controladoriaSubmenu">
                                 <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="financeiro">Painel Financeiro</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos">Análise de Custos</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="control-horas-autorizacao">Autorização de Horas Extras</a></li>
                                 </ul>
                             </div>
@@ -190,12 +188,6 @@
                             </a>
                             <div class="collapse" id="iso9001Submenu">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item">
-                                        <a class="nav-link submenu-link" href="#" data-target="iso-avaliacao-colaboradores">
-
-                                            <i class="fas fa-users-cog"></i> Análise de Colaboradores
-                                        </a>
-                                    </li>
                                     <li class="nav-item">
                                         <a class="nav-link submenu-link" href="#" data-target="iso-manutencao">
                                             <i class="fas fa-tools"></i> Painel de Manutenção
@@ -209,11 +201,6 @@
                                     <li class="nav-item">
                                         <a class="nav-link submenu-link" href="#" data-target="iso-organograma">
                                             <i class="fas fa-sitemap"></i> Organograma
-                                        </a>
-                                    </li>
-                                    <li class="nav-item">
-                                        <a class="nav-link submenu-link" href="#" data-target="iso-swot">
-                                            <i class="fas fa-chart-line"></i> Análise SWOT
                                         </a>
                                     </li>
                                     <li class="nav-item">
@@ -231,7 +218,6 @@
                             </a>
                             <div class="collapse" id="logisticaSubmenu">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-dashboard">Dashboard</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-veiculos">Veículos</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-motoristas">Motoristas</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-utilizacao">Utilização</a></li>
@@ -247,7 +233,6 @@
                             </a>
                             <div class="collapse" id="juridicoSubmenu">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-dashboard">Dashboard Jurídico</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-processos">Gestão de Processos</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-clientes">Gestão de Clientes</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-automacao">Automação de Peças</a></li>
@@ -293,139 +278,6 @@
             </header>
 
             <main class="content-wrapper">
-                <!-- Seção Dashboard -->
-                <section id="dashboard" class="content-section fade-in">
-                    <h2 class="page-title">Dashboard Principal</h2>
-
-                    <div class="ai-analysis">
-                        <h5><i class="fas fa-robot"></i> Análise com IA</h5>
-                        <p id="ai-analysis-text">Carregando análise de tendências de contratações e demissões...</p>
-                    </div>
-
-                    <h3 class="category-title mb-3">Dashboards de RH</h3>
-                    <div class="row">
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-users text-primary"></i>
-                                    <div class="number" id="total-funcionarios">0</div>
-                                    <div class="label">Total de Funcionários</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-user-plus text-success"></i>
-                                    <div class="number" id="admissoes-mes">0</div>
-                                    <div class="label">Admissões este Mês</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-user-minus text-danger"></i>
-                                    <div class="number" id="demissoes-mes">0</div>
-                                    <div class="label">Demissões este Mês</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-chart-line text-info"></i>
-                                    <div class="number" id="taxa-rotatividade">0%</div>
-                                    <div class="label">Taxa de Rotatividade</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="row mt-1">
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-briefcase text-warning"></i>
-                                    <div class="number" id="reposicoes-abertas">0</div>
-                                    <div class="label">Reposições Abertas</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-3 col-6">
-                            <div class="card stat-card">
-                                <div class="card-body">
-                                    <i class="fas fa-user-plus text-info"></i>
-                                    <div class="number" id="contratacoes-abertas">0</div>
-                                    <div class="label">Contratações Abertas</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- Fim row Dashboards de RH -->
-
-                    <h3 class="category-title mt-5 mb-3">Dashboards de Manutenção</h3>
-                    <div class="row">
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('dashboard-manutencao')">
-                                <div class="card-body">
-                                    <i class="fas fa-tools text-primary"></i>
-                                    <div class="number" id="dash-manut-total-chamados">0</div>
-                                    <div class="label">Chamados Concluídos (Mês)</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('iso-manutencao')">
-                                <div class="card-body">
-                                    <i class="fas fa-exclamation-circle text-danger"></i>
-                                    <div class="number" id="dash-manut-chamados-abertos">0</div>
-                                    <div class="label">Chamados Abertos</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('iso-maquinas')">
-                                <div class="card-body">
-                                    <i class="fas fa-cogs text-info"></i>
-                                    <div class="number" id="dash-manut-maquinas-criticas">0</div>
-                                    <div class="label">Máquinas Críticas</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- Fim row Dashboards de Manutenção -->
-
-                    <h3 class="category-title mt-5 mb-3">Dashboards de Controladoria</h3>
-                    <div class="row">
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('financeiro')">
-                                <div class="card-body">
-                                    <i class="fas fa-dollar-sign text-success"></i>
-                                    <div class="number" id="dash-control-total-lancamentos">0</div>
-                                    <div class="label">Lançamentos Financeiros (Mês)</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('analise-custos')">
-                                <div class="card-body">
-                                    <i class="fas fa-coins text-warning"></i>
-                                    <div class="number" id="dash-control-custo-total-funcionarios">R$ 0,00</div>
-                                    <div class="label">Custo Total Funcionários</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-md-4 col-6">
-                            <div class="card stat-card" onclick="showSection('dp-calculos')">
-                                <div class="card-body">
-                                    <i class="fas fa-calculator text-primary"></i>
-                                    <div class="number" id="dash-control-folhas-calculadas">0</div>
-                                    <div class="label">Folhas Calculadas (Mês)</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div> <!-- Fim row Dashboards de Controladoria -->
-                </section>
-
                 <!-- Seção Agenda -->
                 <section id="agenda" class="content-section d-none">
                     <div class="d-flex justify-content-between align-items-center">
