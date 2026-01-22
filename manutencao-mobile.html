@@ -62,15 +62,6 @@
 
     <!-- Configuração do Firebase -->
     <script src="js/env-loader.js"></script>
-    <script>
-        if (window.__FIREBASE_CONFIG__) {
-            firebase.initializeApp(window.__FIREBASE_CONFIG__);
-            window.db = firebase.firestore();
-            console.log("🚀 Firebase inicializado com sucesso no mobile!");
-        } else {
-            console.error("❌ Falha ao carregar as configurações do Firebase.");
-        }
-    </script>
-    <script src="js/manutencao-mobile.js"></script>
+    <script src="js/manutencao-mobile.js?v=1.1"></script>
 </body>
 </html>

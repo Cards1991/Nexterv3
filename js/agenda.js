@@ -1528,8 +1528,7 @@ function adicionarCSSModais() {
     style.textContent = `
         .agenda-card {
             position: relative;
-        }no;
-widw.emitirValePizza = emitirValePizza
+        }
         .agenda-card-actions {
             position: absolute;
             top: 5px;
@@ -1571,8 +1570,7 @@ widw.emitirValePizza = emitirValePizza
             pointer-events: auto;
             background-color: #fff;
             background-clip: padding-box;
-            border: 1px solid rgba(0,0,0,.2);no;
-widw.emitirValePizza = emitirValePizza
+            border: 1px solid rgba(0,0,0,.2);
             border-radius: 0.3rem;
             outline: 0;
             max-width: 500px;

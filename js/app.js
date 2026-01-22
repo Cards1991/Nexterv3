@@ -1216,13 +1216,6 @@ function inicializarNavegacao() {
 // Inicializar modais
 function inicializarModais() {
 
-// Inicializar a seção de análise de custos
-async function inicializarAnaliseCustos() {
-    console.log('Inicializando seção de Análise de Custos...');
-    // Adicione aqui a lógica para carregar dados ou configurar a seção de análise de custos
-}
-
-    
     // Modal de funcionário
     const funcionarioModal = document.getElementById('funcionarioModal');
     if (funcionarioModal) {

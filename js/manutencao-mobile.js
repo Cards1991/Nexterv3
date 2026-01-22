@@ -1,197 +1,179 @@
-// Declara db no escopo global do arquivo
+// =========================================================
+// Módulo Mobile de Abertura de Chamados (Via QR Code)
+// =========================================================
+
 let db;
-let firebaseInitialized = false;
+let auth;
 
-// Configuração de fallback caso o arquivo externo falhe
-const firebaseConfigFallback = {
-    apiKey: "AIzaSyCLr3ogjIwFQP43lhhgr_zCoO3d1XOc9ag",
-    authDomain: "sys-rh-d5f0d.firebaseapp.com",
-    projectId: "sys-rh-d5f0d",
-    storageBucket: "sys-rh-d5f0d.appspot.com",
-    messagingSenderId: "918840358373",
-    appId: "1:918840358373:web:81725ece352c347a3a6b0c",
-    measurementId: "G-R7NX79FCH5"
-};
-
-// Função para inicializar Firebase
-function initializeFirebase() {
+/**
+ * Inicializa o ambiente mobile, conecta ao Firebase e prepara o formulário.
+ */
+async function inicializarMobile() {
     try {
-        // Tenta usar window.db primeiro (se já foi definido externamente)
-        if (window.db) {
-            db = window.db;
-            firebaseInitialized = true;
-            console.log("Firestore obtido de window.db");
-            return true;
-        }
-        
-        // Verifica se firebase está disponível
+        // Verifica se o Firebase foi carregado pelo HTML
         if (typeof firebase === 'undefined') {
-            console.log("Firebase não carregado. Tentando carregar...");
-            
-            // Se não estiver disponível, tenta carregar dinamicamente
-            if (!window._firebaseLoading) {
-                window._firebaseLoading = true;
-                loadFirebaseScripts();
+            throw new Error("Firebase SDK não encontrado.");
+        }
+
+        // Garante a inicialização do app
+        if (!firebase.apps.length) {
+            if (window.__FIREBASE_CONFIG__) {
+                firebase.initializeApp(window.__FIREBASE_CONFIG__);
+            } else {
+                throw new Error("Configuração do Firebase ausente.");
             }
-            return false;
         }
-        
-        // Inicializa o Firebase se necessário
-        if (!firebase.apps || firebase.apps.length === 0) {
-            console.log("Inicializando Firebase...");
-            firebase.initializeApp(window.__FIREBASE_CONFIG__ || firebaseConfigFallback);
-        }
-        
-        // Obtém a instância do Firestore
-        const app = firebase.apps[0];
-        if (app) {
-            db = firebase.firestore(app);
-            firebaseInitialized = true;
-            console.log("Firestore inicializado com sucesso");
-            return true;
-        }
-        
-        return false;
+
+        // Inicializa serviços
+        auth = firebase.auth();
+        db = firebase.firestore();
+
+        console.log("✅ Mobile: Firebase inicializado.");
+
+        // Aguarda autenticação anônima
+        await autenticarUsuario();
+        configurarFormulario();
+
     } catch (error) {
-        console.error("Erro ao inicializar Firebase:", error);
-        return false;
+        console.error("Erro crítico:", error);
+        alert("Erro ao carregar sistema: " + error.message);
+        document.body.innerHTML = `<div class="p-4 text-center text-danger"><h3>Erro de Conexão</h3><p>${error.message}</p></div>`;
     }
 }
 
-// Função para carregar scripts do Firebase dinamicamente
-function loadFirebaseScripts() {
-    const scripts = [
-        'https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js',
-        'https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js'
-    ];
-    
-    let loaded = 0;
-    
-    scripts.forEach(src => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.async = true;
-        script.onload = () => {
-            loaded++;
-            if (loaded === scripts.length) {
-                console.log("Firebase scripts carregados");
-                // Tenta inicializar novamente após carregar scripts
-                if (initializeFirebase()) {
-                    setupForm();
+/**
+ * Realiza autenticação anônima
+ */
+async function autenticarUsuario() {
+    return new Promise((resolve, reject) => {
+        // Verifica se já está autenticado
+        const user = auth.currentUser;
+        if (user) {
+            console.log("✅ Usuário já autenticado:", user.uid);
+            resolve(user);
+            return;
+        }
+
+        // Tenta autenticar anonimamente
+        console.log("🔑 Realizando login anônimo...");
+        auth.signInAnonymously()
+            .then((userCredential) => {
+                console.log("✅ Login anônimo realizado:", userCredential.user.uid);
+                resolve(userCredential.user);
+            })
+            .catch((error) => {
+                console.error("⚠️ Erro no login anônimo:", error);
+                
+                // Se o login anônimo não estiver habilitado, tenta continuar sem autenticação
+                if (error.code === 'auth/operation-not-allowed') {
+                    alert("Atenção: Login Anônimo não está ativado. Ative em Authentication > Sign-in method.");
+                    resolve(null);
+                } else {
+                    reject(error);
                 }
-            }
-        };
-        script.onerror = () => {
-            console.error(`Falha ao carregar script: ${src}`);
-        };
-        document.head.appendChild(script);
+            });
     });
 }
 
-// Função para configurar o formulário
-function setupForm() {
-    if (!firebaseInitialized || !db) {
-        console.error("Firestore não inicializado corretamente.");
-        showConnectionError();
-        return;
-    }
-
-    // Pega o nome da máquina da URL
+/**
+ * Configura a lógica do formulário, lendo parâmetros da URL (QR Code).
+ */
+function configurarFormulario() {
+    // 1. Captura o parâmetro 'maquina' da URL
     const urlParams = new URLSearchParams(window.location.search);
     const maquinaId = urlParams.get('maquina');
 
+    // Elementos da tela
     const maquinaInput = document.getElementById('mobile-maquina-id');
-    const motivoTextarea = document.getElementById('mobile-motivo');
+    const motivoInput = document.getElementById('mobile-motivo');
+    const paradaCheck = document.getElementById('mobile-maquina-parada');
     const salvarBtn = document.getElementById('btn-salvar-chamado-mobile');
 
+    // 2. Preenchimento automático se veio pelo QR Code
     if (maquinaId) {
         maquinaInput.value = maquinaId;
+        maquinaInput.readOnly = true;
+        maquinaInput.classList.add('bg-light');
     } else {
-        maquinaInput.value = "Máquina não identificada!";
-        maquinaInput.classList.add('is-invalid');
-        salvarBtn.disabled = true;
+        maquinaInput.placeholder = "Digite o código da máquina";
     }
 
-    salvarBtn.addEventListener('click', async () => {
-        const motivo = motivoTextarea.value.trim();
+    // 3. Evento de Envio
+    salvarBtn.addEventListener('click', async (e) => {
+        e.preventDefault();
 
-        if (!maquinaId || !motivo) {
-            alert("A máquina deve ser identificada e o motivo deve ser preenchido.");
+        const maquina = maquinaInput.value.trim();
+        const motivo = motivoInput.value.trim();
+        const isParada = paradaCheck.checked;
+
+        if (!maquina) {
+            alert("Erro: Máquina não identificada. Por favor, escaneie o QR Code novamente.");
             return;
         }
 
-        // Verifica novamente se db está definido antes de usar
-        if (!db) {
-            alert("Erro de conexão com o banco de dados. Tente novamente.");
+        if (!motivo) {
+            alert("Por favor, descreva o motivo do problema.");
+            motivoInput.focus();
             return;
         }
 
-        // Desabilitar botão para evitar cliques duplos
+        // Feedback visual
+        const textoOriginal = salvarBtn.innerHTML;
         salvarBtn.disabled = true;
-        salvarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+        salvarBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enviando...';
 
         try {
+            // Verifica autenticação antes de salvar
+            const user = auth.currentUser;
+            const userUid = user ? user.uid : 'anonimo-sem-auth';
+
             const chamadoData = {
-                maquinaId: maquinaId,
+                maquinaId: maquina,
                 motivo: motivo,
-                observacoes: 'Aberto via Celular',
-                maquinaParada: document.getElementById('mobile-maquina-parada').checked,
+                maquinaParada: isParada,
                 status: 'Aberto',
+                prioridade: isParada ? 'Urgente' : 'Normal',
                 dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
+                origem: 'Mobile/QRCode',
+                usuarioId: userUid,
+                
+                // Campos adicionais para melhor rastreamento
+                observacoes: 'Aberto via Mobile',
                 dataEncerramento: null,
                 tempoParada: null,
                 tipoManutencao: null,
                 observacoesMecanico: null,
             };
 
-            await db.collection('manutencao_chamados').add(chamadoData);
+            console.log("📤 Enviando chamado:", chamadoData);
+            
+            // Tenta salvar no Firestore
+            const docRef = await db.collection('manutencao_chamados').add(chamadoData);
+            console.log("✅ Chamado criado com ID:", docRef.id);
 
-            // Mostrar mensagem de sucesso
+            // Sucesso: Esconde formulário e mostra mensagem
             document.getElementById('form-container').classList.add('d-none');
             document.getElementById('success-message').classList.remove('d-none');
 
         } catch (error) {
-            console.error("Erro ao abrir chamado via mobile:", error);
-            alert("Ocorreu um erro ao tentar abrir o chamado. Tente novamente.");
+            console.error("Erro ao salvar:", error);
+            
+            // Mensagens de erro mais específicas
+            if (error.code === 'permission-denied') {
+                alert("Permissão negada. Verifique as regras de segurança do Firestore.");
+            } else if (error.code === 'unavailable') {
+                alert("Serviço indisponível. Verifique sua conexão com a internet.");
+            } else {
+                alert("Erro ao enviar chamado: " + error.message);
+            }
+            
             salvarBtn.disabled = false;
-            salvarBtn.innerHTML = '<i class="fas fa-save"></i> Abrir Chamado';
+            salvarBtn.innerHTML = textoOriginal;
         }
     });
 }
 
-// Função para mostrar erro de conexão
-function showConnectionError() {
-    alert("Erro de conexão com o banco de dados. Verifique sua conexão.");
-    
-    // Desativa todos os controles do formulário
-    const controls = document.querySelectorAll('input, textarea, button');
-    controls.forEach(control => {
-        control.disabled = true;
-    });
-}
-
-// Inicialização principal
+// Inicializa quando o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', function() {
-    // Tenta inicializar o Firebase
-    if (initializeFirebase()) {
-        // Se inicializou imediatamente, configura o formulário
-        setupForm();
-    } else if (typeof firebase === 'undefined') {
-        // Se Firebase não está carregado, tenta carregar scripts
-        console.log("Firebase não encontrado. Iniciando carregamento...");
-        loadFirebaseScripts();
-    } else {
-        // Outro caso de erro
-        showConnectionError();
-    }
+    inicializarMobile();
 });
-
-// Adiciona um fallback: tenta novamente após alguns segundos
-setTimeout(() => {
-    if (!firebaseInitialized && typeof firebase !== 'undefined') {
-        console.log("Tentando inicialização tardia do Firebase...");
-        if (initializeFirebase()) {
-            setupForm();
-        }
-    }
-}, 3000);

@@ -1,17 +1,57 @@
 let dashboardFaltasCarregado = false;
+let chartFaltasSexo = null;
+let chartFaltasSetor = null;
 
 /**
  * Inicializa o dashboard de faltas, carregando os dados se ainda não tiverem sido carregados.
  */
 async function inicializarDashboardFaltas() {
-    if (dashboardFaltasCarregado) return;
-    
     // Obter a instância do Firestore
     const db = obterFirestore(); // Você precisa criar essa função
     
+    if (!dashboardFaltasCarregado) {
+        await inicializarFiltrosDashboardFaltas(db);
+        
+        const btnFiltrar = document.getElementById('btn-filtrar-dashboard-faltas');
+        if (btnFiltrar) {
+            btnFiltrar.addEventListener('click', () => carregarDashboardFaltas(db));
+        }
+        dashboardFaltasCarregado = true;
+    }
+    
     console.log('Dashboard de Faltas visível. Carregando dados...');
     await carregarDashboardFaltas(db);
-    dashboardFaltasCarregado = true;
+}
+
+async function inicializarFiltrosDashboardFaltas(db) {
+    // Datas padrão (mês atual)
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    
+    const dataInicioEl = document.getElementById('dash-faltas-data-inicio');
+    const dataFimEl = document.getElementById('dash-faltas-data-fim');
+    
+    if (dataInicioEl && !dataInicioEl.value) dataInicioEl.value = inicioMes;
+    if (dataFimEl && !dataFimEl.value) dataFimEl.value = fimMes;
+
+    // Popular setores
+    const setorSelect = document.getElementById('dash-faltas-setor');
+    if (setorSelect) {
+        setorSelect.innerHTML = '<option value="">Todos</option>';
+        try {
+            const empresasSnap = await db.collection('empresas').get();
+            const setores = new Set();
+            empresasSnap.forEach(doc => {
+                (doc.data().setores || []).forEach(s => setores.add(s));
+            });
+            [...setores].sort().forEach(s => {
+                setorSelect.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+        } catch (e) {
+            console.error("Erro ao carregar setores:", e);
+        }
+    }
 }
 
 // Função para obter a instância do Firestore
@@ -45,12 +85,31 @@ async function carregarDashboardFaltas(db) {
             funcionariosMap.set(doc.id, {
                 nome: data.nome || 'Nome não informado',
                 empresa: data.empresa || 'Não definida',
-                setor: data.setor || 'Não definido'
+                setor: data.setor || 'Não definido',
+                sexo: data.sexo || 'Não informado'
             });
         });
 
-        // 2. Buscar todas as faltas
-        const faltasSnapshot = await db.collection('faltas').get();
+        // 2. Buscar faltas com filtro de data
+        let query = db.collection('faltas');
+        
+        const dataInicio = document.getElementById('dash-faltas-data-inicio')?.value;
+        const dataFim = document.getElementById('dash-faltas-data-fim')?.value;
+        const setorFiltro = document.getElementById('dash-faltas-setor')?.value;
+        const sexoFiltro = document.getElementById('dash-faltas-sexo')?.value;
+
+        if (dataInicio) {
+            // Força a data para o início do dia no horário local (evita problema de UTC)
+            const di = new Date(dataInicio + 'T00:00:00');
+            query = query.where('data', '>=', di);
+        }
+        if (dataFim) {
+            // Força a data para o final do dia no horário local
+            const df = new Date(dataFim + 'T23:59:59.999');
+            query = query.where('data', '<=', df);
+        }
+
+        const faltasSnapshot = await query.get();
         const faltas = faltasSnapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data() 
@@ -58,30 +117,34 @@ async function carregarDashboardFaltas(db) {
 
         // 3. Processar os dados para o ranking e KPIs
         const contagemFaltas = {};
-        let faltasMesAtual = 0;
-        const hoje = new Date();
-        const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-        const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        let totalFaltasFiltradas = 0;
+        const funcionariosComFalta = new Set();
+        const faltasPorSexo = {};
+        const faltasPorSetor = {};
 
         faltas.forEach(falta => {
             const idFuncionario = falta.funcionarioId;
-            if (idFuncionario) {
+            const funcionario = funcionariosMap.get(idFuncionario);
+
+            if (idFuncionario && funcionario) {
+                // Aplicar filtros de Setor e Sexo (em memória)
+                if (setorFiltro && funcionario.setor !== setorFiltro) return;
+                if (sexoFiltro && funcionario.sexo !== sexoFiltro) return;
+
                 // Contagem para o ranking
                 contagemFaltas[idFuncionario] = (contagemFaltas[idFuncionario] || 0) + 1;
+                
+                // Contagem para KPIs
+                totalFaltasFiltradas++;
+                funcionariosComFalta.add(idFuncionario);
 
-                // Contagem para o KPI de faltas no mês
-                if (falta.data) {
-                    try {
-                        const dataFalta = falta.data.toDate ? falta.data.toDate() : new Date(falta.data);
-                        if (!isNaN(dataFalta) && 
-                            dataFalta >= primeiroDiaMes && 
-                            dataFalta <= ultimoDiaMes) {
-                            faltasMesAtual++;
-                        }
-                    } catch (e) {
-                        console.warn('Data de falta inválida:', falta.data);
-                    }
-                }
+                // Contagem por Sexo
+                const sexo = funcionario.sexo || 'Não Informado';
+                faltasPorSexo[sexo] = (faltasPorSexo[sexo] || 0) + 1;
+
+                // Contagem por Setor
+                const setor = funcionario.setor || 'Não Definido';
+                faltasPorSetor[setor] = (faltasPorSetor[setor] || 0) + 1;
             }
         });
 
@@ -104,8 +167,10 @@ async function carregarDashboardFaltas(db) {
             .sort((a, b) => b.totalFaltas - a.totalFaltas);
 
         // 5. Renderizar o dashboard
-        renderizarKPIs(faltas.length, faltasMesAtual);
+        renderizarKPIs(totalFaltasFiltradas, funcionariosComFalta.size);
         renderizarRanking(rankingArray, rankingContainer);
+        renderizarGraficoSexo(faltasPorSexo);
+        renderizarGraficoSetor(faltasPorSetor);
 
     } catch (error) {
         console.error('Erro ao carregar dashboard de faltas:', error);
@@ -121,14 +186,14 @@ async function carregarDashboardFaltas(db) {
 /**
  * Renderiza os cartões de KPI no dashboard.
  * @param {number} totalFaltas - O número total de faltas.
- * @param {number} faltasMes - O número de faltas no mês atual.
+ * @param {number} funcionariosUnicos - O número de funcionários únicos com faltas.
  */
-function renderizarKPIs(totalFaltas, faltasMes) {
+function renderizarKPIs(totalFaltas, funcionariosUnicos) {
     const kpiTotalEl = document.getElementById('kpi-total-faltas');
     const kpiMesEl = document.getElementById('kpi-faltas-mes');
 
     if (kpiTotalEl) kpiTotalEl.textContent = totalFaltas.toLocaleString('pt-BR');
-    if (kpiMesEl) kpiMesEl.textContent = faltasMes.toLocaleString('pt-BR');
+    if (kpiMesEl) kpiMesEl.textContent = funcionariosUnicos.toLocaleString('pt-BR');
 }
 
 /**
@@ -183,4 +248,117 @@ function renderizarRanking(ranking, container) {
         footerEl.textContent = `Mostrando top 10 de ${ranking.length} funcionários com faltas`;
         container.appendChild(footerEl);
     }
+}
+
+/**
+ * Renderiza o gráfico de barras de faltas por sexo.
+ * @param {Object} dados - Objeto com a contagem de faltas por sexo.
+ */
+function renderizarGraficoSexo(dados) {
+    const ctx = document.getElementById('grafico-faltas-sexo')?.getContext('2d');
+    if (!ctx) return;
+
+    if (chartFaltasSexo) {
+        chartFaltasSexo.destroy();
+    }
+
+    const labels = Object.keys(dados);
+    const values = Object.values(dados);
+
+    // Cores: Azul para Masculino, Rosa para Feminino
+    const backgroundColors = labels.map(label => {
+        const l = label.toLowerCase();
+        if (l.includes('fem')) return '#FF69B4'; // Rosa
+        if (l.includes('masc')) return '#36A2EB'; // Azul
+        return '#CCCCCC'; // Cinza para outros
+    });
+
+    chartFaltasSexo = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Faltas',
+                data: values,
+                backgroundColor: backgroundColors,
+                borderColor: '#ffffff',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'right',
+                    labels: {
+                        usePointStyle: true,
+                        boxWidth: 8
+                    }
+                }
+            }
+        }
+    });
+}
+
+/**
+ * Renderiza o gráfico de barras horizontal de faltas por setor.
+ * @param {Object} dados - Objeto com a contagem de faltas por setor.
+ */
+function renderizarGraficoSetor(dados) {
+    const ctx = document.getElementById('grafico-faltas-setor')?.getContext('2d');
+    if (!ctx) return;
+
+    if (chartFaltasSetor) {
+        chartFaltasSetor.destroy();
+    }
+
+    // Ordenar por valor decrescente
+    const sortedEntries = Object.entries(dados).sort(([,a], [,b]) => b - a);
+    const labels = sortedEntries.map(([k]) => k);
+    const values = sortedEntries.map(([,v]) => v);
+
+    // Ajuste dinâmico de altura para permitir rolagem se houver muitos setores
+    const wrapper = document.getElementById('chart-wrapper-setor');
+    if (wrapper) {
+        // Define uma altura mínima de 30px por barra ou 100% do pai se for pouco
+        const newHeight = Math.max(wrapper.parentElement.clientHeight, labels.length * 30);
+        wrapper.style.height = `${newHeight}px`;
+    }
+
+    chartFaltasSetor = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Faltas',
+                data: values,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            indexAxis: 'y', // Torna o gráfico horizontal
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    grid: { display: false },
+                    ticks: {
+                        stepSize: 1
+                    }
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { autoSkip: false }
+                }
+            }
+        }
+    });
 }
