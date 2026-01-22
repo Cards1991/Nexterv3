@@ -6,7 +6,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     try {
         // Verifica se firebase está disponível globalmente
-        if (typeof firebase !== 'undefined' && firebase.app()) {
+        // Usa firebase.apps.length para verificar sem gerar erro se não houver app inicializado
+        if (typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0) {
             db = window.db || firebase.firestore();
         } else {
             console.error("Firebase não está disponível.");

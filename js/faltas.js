@@ -88,12 +88,17 @@ async function preencherFiltrosFaltas() {
         
         empSel.innerHTML = '<option value="">Todas</option>';
         const snap = await db.collection('empresas').get();
+        const todosSetores = new Set();
         
         snap.forEach(doc => { 
             const o = document.createElement('option'); 
             o.value = doc.id; 
             o.textContent = doc.data().nome; 
             empSel.appendChild(o); 
+            
+            // Coleta setores para o filtro global
+            const setoresEmpresa = doc.data().setores || [];
+            setoresEmpresa.forEach(s => todosSetores.add(s));
         });
         
         // Data padrão hoje
@@ -106,22 +111,15 @@ async function preencherFiltrosFaltas() {
         }
         if (dataFimInput && !dataFimInput.value) dataFimInput.valueAsDate = new Date();
 
-        
-        // Popular setores quando empresa mudar
-        if (empSel && setSel) {
-            empSel.addEventListener('change', async function() {
-                setSel.innerHTML = '<option value="">Todos</option>';
-                const id = this.value;
-                if (!id) return;
-                
-                const edoc = await db.collection('empresas').doc(id).get();
-                const setores = Array.isArray(edoc.data()?.setores) ? edoc.data().setores : [];
-                setores.forEach(s => { 
-                    const o = document.createElement('option'); 
-                    o.value = s; 
-                    o.textContent = s; 
-                    setSel.appendChild(o); 
-                });
+        // Popular filtro de setores (Global)
+        if (setSel) {
+            setSel.innerHTML = '<option value="">Todos</option>';
+            const setoresOrdenados = Array.from(todosSetores).sort();
+            setoresOrdenados.forEach(s => {
+                const o = document.createElement('option');
+                o.value = s;
+                o.textContent = s;
+                setSel.appendChild(o);
             });
         }
         
@@ -191,9 +189,29 @@ async function carregarFaltas() {
         
         if (registros.length === 0) { 
             tbody.innerHTML = '<tr><td colspan="6" class="text-center">Sem faltas para os filtros</td></tr>'; 
+            // Limpa o dashboard se não houver registros
+            renderizarResumoPorSetor([]);
             return; 
         }
         
+        // Configuração da Tabela Fixa (Scroll)
+        const tableContainer = tbody.closest('.table-responsive');
+        if (tableContainer) {
+            tableContainer.style.maxHeight = '600px'; // Altura fixa
+            tableContainer.style.overflowY = 'auto';
+            tableContainer.style.position = 'relative';
+            
+            // Força o cabeçalho a ficar fixo
+            const thead = tableContainer.querySelector('thead');
+            if (thead) {
+                thead.style.position = 'sticky';
+                thead.style.top = '0';
+                thead.style.backgroundColor = '#fff';
+                thead.style.zIndex = '5';
+                thead.style.boxShadow = '0 2px 2px -1px rgba(0, 0, 0, 0.1)';
+            }
+        }
+
         tbody.innerHTML = '';
         registros.forEach(f => {
             // CORREÇÃO: Garante que dataObj seja um objeto Date válido, mesmo se f.data for uma string.
@@ -213,8 +231,10 @@ async function carregarFaltas() {
             
             const tdPeriodo = document.createElement('td');
             const badge = document.createElement('span');
-            badge.className = 'badge ' + (f.periodo === 'manha' ? 'bg-info' : 'bg-primary');
-            badge.textContent = f.periodo === 'manha' ? 'Manhã' : 'Tarde';
+            const periodoClass = f.periodo === 'manha' ? 'bg-info' : (f.periodo === 'tarde' ? 'bg-primary' : 'bg-dark');
+            const periodoLabel = f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite');
+            badge.className = 'badge ' + periodoClass;
+            badge.textContent = periodoLabel;
             tdPeriodo.appendChild(badge);
             
             const tdJustificativa = document.createElement('td');
@@ -249,7 +269,8 @@ async function carregarFaltas() {
         });
 
         // Após carregar a tabela principal, verifica as faltas recorrentes
-        renderizarDashboardAnaliseFaltas(registros, empMap);
+        // Substituído pelo novo dashboard de tabela dinâmica solicitado
+        renderizarResumoPorSetor(registros);
         await verificarFaltasRecorrentes();
     } catch (e) { 
         console.error('Erro ao carregar faltas:', e);
@@ -283,6 +304,10 @@ async function abrirModalNovaFalta(faltaId = null) {
                             <label class="form-label">Colaborador</label>
                             <select class="form-select" id="falta_func"></select>
                         </div>
+                        <div class="mb-2">
+                            <label class="form-label">Setor</label>
+                            <select class="form-select" id="falta_setor"></select>
+                        </div>
                         <div class="row g-2">
                             <div class="col-6">
                                 <label class="form-label">Data</label>
@@ -293,6 +318,7 @@ async function abrirModalNovaFalta(faltaId = null) {
                                 <select class="form-select" id="falta_periodo">
                                     <option value="manha">Manhã</option>
                                     <option value="tarde">Tarde</option>
+                                    <option value="noite">Noite</option>
                                 </select>
                             </div>
                         </div>
@@ -314,10 +340,12 @@ async function abrirModalNovaFalta(faltaId = null) {
     if (btnSalvar) btnSalvar.onclick = salvarFalta;
 
     await popularSelectFuncionariosFalta();
+    await popularSelectSetoresFalta();
 
     const modalTitle = modalEl.querySelector('.modal-title');
     const formFields = {
         func: document.getElementById('falta_func'),
+        setor: document.getElementById('falta_setor'),
         data: document.getElementById('falta_data'),
         periodo: document.getElementById('falta_periodo'),
         just: document.getElementById('falta_just')
@@ -333,6 +361,7 @@ async function abrirModalNovaFalta(faltaId = null) {
             if (doc.exists) {
                 const data = doc.data();
                 formFields.func.value = data.funcionarioId;
+                formFields.setor.value = data.setor || '';
                 const dateObj = data.data?.toDate ? data.data.toDate() : new Date(data.data);
                 formFields.data.value = dateObj.toISOString().split('T')[0];
                 formFields.periodo.value = data.periodo;
@@ -349,10 +378,19 @@ async function abrirModalNovaFalta(faltaId = null) {
         btnSalvar.textContent = 'Salvar';
         
         formFields.func.value = '';
+        formFields.setor.value = '';
         formFields.data.value = new Date().toISOString().split('T')[0];
         formFields.periodo.value = 'manha';
         formFields.just.value = '';
     }
+
+    // Atualiza o setor ao selecionar o funcionário
+    formFields.func.onchange = function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption && selectedOption.dataset.setor) {
+            formFields.setor.value = selectedOption.dataset.setor;
+        }
+    };
     
     new bootstrap.Modal(modalEl).show();
 }
@@ -375,14 +413,43 @@ async function popularSelectFuncionariosFalta() {
         const o = document.createElement('option'); 
         o.value = d.id; 
         o.textContent = f.nome; 
+        o.dataset.setor = f.setor || '';
         sel.appendChild(o); 
     });
+}
+
+async function popularSelectSetoresFalta() {
+    const sel = document.getElementById('falta_setor');
+    if (!sel) return;
+    
+    sel.innerHTML = '<option value="">Selecione</option>';
+    
+    try {
+        const snap = await db.collection('empresas').get();
+        const todosSetores = new Set();
+        
+        snap.forEach(doc => {
+            const setores = doc.data().setores || [];
+            setores.forEach(s => todosSetores.add(s));
+        });
+        
+        const setoresOrdenados = Array.from(todosSetores).sort();
+        setoresOrdenados.forEach(s => {
+            const o = document.createElement('option');
+            o.value = s;
+            o.textContent = s;
+            sel.appendChild(o);
+        });
+    } catch (e) {
+        console.error("Erro ao carregar setores:", e);
+    }
 }
 
 // Salvar falta
 async function salvarFalta() {
     try {        
         const funcId = document.getElementById('falta_func').value;
+        const setorInput = document.getElementById('falta_setor').value;
         const dataStr = document.getElementById('falta_data').value;
         const periodo = document.getElementById('falta_periodo').value;
         const justificativa = document.getElementById('falta_just').value.trim();
@@ -399,7 +466,7 @@ async function salvarFalta() {
             funcionarioId: funcId,
             funcionarioNome: f?.nome || null,
             empresaId: f?.empresaId || null,
-            setor: f?.setor || null,
+            setor: setorInput || f?.setor || null,
             data: parseDate(dataStr),
             periodo: periodo,
             justificativa: justificativa || null
@@ -560,7 +627,7 @@ async function imprimirRelatorioFaltas() {
             
         if (empId) html += ' | Empresa: ' + (empMap[empId] || '—');
         if (setor) html += ' | Setor: ' + setor;
-        if (periodo) html += ' | Período: ' + (periodo === 'manha' ? 'Manhã' : 'Tarde');
+        if (periodo) html += ' | Período: ' + (periodo === 'manha' ? 'Manhã' : (periodo === 'tarde' ? 'Tarde' : 'Noite'));
         
         html += '</small></div>' +  // FECHA A STRING CORRETAMENTE
             '<small class="text-muted">Gerado em: ' + new Date().toLocaleString('pt-BR') + '</small>' +
@@ -580,7 +647,9 @@ async function imprimirRelatorioFaltas() {
                     html += '<tr>' +
                         '<td>' + formatarData(dataObj) + '</td>' +
                         '<td>' + (f.funcionarioNome || '—') + '</td>' +
-                        '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : 'bg-primary') + '">' + (f.periodo === 'manha' ? 'Manhã' : 'Tarde') + '</span></td>' +
+                        '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : (f.periodo === 'tarde' ? 'bg-primary' : 'bg-dark')) + '">' + 
+                        (f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite')) + 
+                        '</span></td>' +
                         '<td>' + (f.justificativa || '—') + '</td>' +
                         '</tr>';
                 });
@@ -599,7 +668,9 @@ async function imprimirRelatorioFaltas() {
                     '<td>' + (f.funcionarioNome || '—') + '</td>' +
                     '<td>' + (empMap[f.empresaId] || '—') + '</td>' +
                     '<td>' + (f.setor || '—') + '</td>' +
-                    '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : 'bg-primary') + '">' + (f.periodo === 'manha' ? 'Manhã' : 'Tarde') + '</span></td>' +
+                    '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : (f.periodo === 'tarde' ? 'bg-primary' : 'bg-dark')) + '">' + 
+                    (f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite')) + 
+                    '</span></td>' +
                     '<td>' + (f.justificativa || '—') + '</td>' +
                     '</tr>';
             });
@@ -781,102 +852,157 @@ function exportarFaltasExcel() {
             'Data': dataObj.toLocaleDateString('pt-BR'),
             'Funcionário': f.funcionarioNome || 'N/A',
             'Setor': f.setor || 'N/A',
-            'Período': f.periodo === 'manha' ? 'Manhã' : 'Tarde',
+            'Período': f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite'),
             'Justificativa': f.justificativa || ''
         };
     });
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-    XLSX.utils.book_append_sheet(wb, ws, "Faltas");
+    
+    // Adicionar aba de Resumo por Setor
+    const porSetor = {};
+    __faltas_cache.forEach(r => {
+        const setor = r.setor || 'Não definido';
+        porSetor[setor] = (porSetor[setor] || 0) + 1;
+    });
+    const totalFaltas = __faltas_cache.length;
+    const dadosResumo = Object.entries(porSetor)
+        .sort(([,a], [,b]) => b - a)
+        .map(([setor, qtd]) => ({
+            'Setor': setor,
+            'Qtd. Faltas': qtd,
+            '% do Total': ((qtd / totalFaltas) * 100).toFixed(1) + '%'
+        }));
+    
+    const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
+    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo por Setor");
+    XLSX.utils.book_append_sheet(wb, ws, "Detalhado");
+
     XLSX.writeFile(wb, "Relatorio_Faltas.xlsx");
 }
 
-function renderizarDashboardAnaliseFaltas(registros, empMap) {
+/**
+ * Renderiza um dashboard tipo "Tabela Dinâmica" totalizando por setor.
+ */
+function renderizarResumoPorSetor(registros) {
     let dashboardContainer = document.getElementById('dashboard-analise-faltas');
     
     // Cria o container se não existir
     if (!dashboardContainer) {
         dashboardContainer = document.createElement('div');
         dashboardContainer.id = 'dashboard-analise-faltas';
-        dashboardContainer.className = 'row mb-4 g-3';
+        dashboardContainer.className = 'card mb-4 shadow-sm';
         
         // Insere antes da tabela
         const tabelaContainer = document.getElementById('faltas-container')?.closest('.table-responsive') || document.getElementById('faltas-container')?.parentElement;
         if (tabelaContainer) {
-            tabelaContainer.parentElement.insertBefore(dashboardContainer, tabelaContainer);
+            // Insere antes do card da tabela
+            const cardTabela = tabelaContainer.closest('.card');
+            if (cardTabela) {
+                cardTabela.parentNode.insertBefore(dashboardContainer, cardTabela);
+            }
         }
     }
 
     if (!registros || registros.length === 0) {
-        dashboardContainer.innerHTML = '';
+        dashboardContainer.style.display = 'none';
         return;
     }
+    dashboardContainer.style.display = 'block';
 
-    // Cálculos
+    // Agrupamento por Setor
     const totalFaltas = registros.length;
-    const porPeriodo = { manha: 0, tarde: 0 };
     const porSetor = {};
-    const porFuncionario = {};
 
     registros.forEach(r => {
-        // Período
-        if (r.periodo === 'manha') porPeriodo.manha++;
-        else porPeriodo.tarde++;
-
-        // Setor
         const setor = r.setor || 'Não definido';
         porSetor[setor] = (porSetor[setor] || 0) + 1;
-
-        // Funcionário
-        const func = r.funcionarioNome || 'Desconhecido';
-        porFuncionario[func] = (porFuncionario[func] || 0) + 1;
     });
 
-    // Top 3 Setores
-    const topSetores = Object.entries(porSetor)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 3);
-
-    // Top 3 Funcionários
-    const topFuncionarios = Object.entries(porFuncionario)
-        .sort(([,a], [,b]) => b - a)
-        .slice(0, 3);
+    // Ordenar setores por quantidade de faltas (decrescente)
+    const setoresOrdenados = Object.entries(porSetor).sort(([,a], [,b]) => b - a);
 
     // HTML do Dashboard
     dashboardContainer.innerHTML = `
-        <div class="col-md-3">
-            <div class="card bg-light h-100 border-0 shadow-sm">
-                <div class="card-body text-center">
-                    <h6 class="text-muted mb-2">Total de Faltas</h6>
-                    <h2 class="mb-0 text-primary fw-bold">${totalFaltas}</h2>
-                    <small class="text-muted">Manhã: ${porPeriodo.manha} | Tarde: ${porPeriodo.tarde}</small>
-                </div>
-            </div>
+        <div class="card-header bg-light fw-bold">
+            <i class="fas fa-chart-pie me-2"></i> Resumo por Setor (Total: ${totalFaltas})
         </div>
-        <div class="col-md-4">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold py-2">Top Setores</div>
-                <ul class="list-group list-group-flush list-group-sm">
-                    ${topSetores.map(([nome, qtd]) => 
-                        `<li class="list-group-item d-flex justify-content-between align-items-center py-1">
-                            <span class="text-truncate" style="max-width: 70%;">${nome}</span>
-                            <span class="badge bg-secondary rounded-pill">${qtd}</span>
-                        </li>`).join('')}
-                </ul>
-            </div>
-        </div>
-        <div class="col-md-5">
-            <div class="card h-100 border-0 shadow-sm">
-                <div class="card-header bg-white fw-bold py-2">Funcionários com Mais Faltas</div>
-                <ul class="list-group list-group-flush list-group-sm">
-                    ${topFuncionarios.map(([nome, qtd]) => 
-                        `<li class="list-group-item d-flex justify-content-between align-items-center py-1">
-                            <span class="text-truncate" style="max-width: 80%;">${nome}</span>
-                            <span class="badge bg-danger rounded-pill">${qtd}</span>
-                        </li>`).join('')}
-                </ul>
+        <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+            <div class="table-responsive">
+                <table class="table table-sm table-striped mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Setor</th>
+                            <th class="text-center">Qtd. Faltas</th>
+                            <th class="text-end">% do Total</th>
+                            <th style="width: 40%">Representatividade</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${setoresOrdenados.map(([setor, qtd]) => {
+                            const percentual = ((qtd / totalFaltas) * 100).toFixed(1);
+                            return `
+                            <tr>
+                                <td class="fw-bold text-primary">${setor}</td>
+                                <td class="text-center fw-bold">${qtd}</td>
+                                <td class="text-end">${percentual}%</td>
+                                <td class="align-middle">
+                                    <div class="progress" style="height: 6px;">
+                                        <div class="progress-bar bg-info" role="progressbar" style="width: ${percentual}%"></div>
+                                    </div>
+                                </td>
+                                <td class="text-end">
+                                    <button class="btn btn-sm btn-outline-secondary" onclick="visualizarFaltasPorSetor('${setor}')" title="Ver Colaboradores">
+                                        <i class="fas fa-users"></i>
+                                    </button>
+                                </td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
             </div>
         </div>
     `;
+}
+
+function visualizarFaltasPorSetor(setor) {
+    const faltasDoSetor = __faltas_cache.filter(f => (f.setor || 'Não definido') === setor);
+    
+    if (faltasDoSetor.length === 0) {
+        mostrarMensagem('Nenhuma falta encontrada para este setor.', 'info');
+        return;
+    }
+
+    let html = `
+        <div class="table-responsive">
+            <table class="table table-sm table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Colaborador</th>
+                        <th>Período</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${faltasDoSetor.map(f => `
+                        <tr>
+                            <td>${formatarData(f.data?.toDate ? f.data.toDate() : new Date(f.data))}</td>
+                            <td>${f.funcionarioNome}</td>
+                            <td>${f.periodo}</td>
+                            <td>
+                                <button class="btn btn-sm btn-primary" onclick="editarFalta('${f.id}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        </div>
+    `;
+
+    abrirModalGenerico(`Faltas - ${setor}`, html);
 }
