@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'analise-custos'
-, 'dashboard-faltas'];
+, 'dashboard-faltas', 'dashboard-atividades'];
 
 let currentUserPermissions = {};
 
@@ -117,6 +117,11 @@ async function carregarDadosSecao(sectionName) {
                     await inicializarDashboardFaltas();
                 }
                 break;
+            case 'dashboard-atividades':
+                if (typeof inicializarDashboardAtividades === 'function') {
+                    await inicializarDashboardAtividades();
+                }
+                break;
             case 'alteracao-funcao':
                 if (typeof inicializarAlteracaoFuncao === 'function') {
                     await inicializarAlteracaoFuncao();
@@ -199,10 +204,10 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'estoque-epi':
-                // Lógica para carregar dados da seção de Estoque de EPI (se houver)
+                if (typeof inicializarEstoqueEPI === 'function') await inicializarEstoqueEPI();
                 break;
             case 'consumo-epi':
-                // Lógica para carregar dados da seção de Consumo de EPI (se houver)
+                if (typeof inicializarConsumoEPI === 'function') await inicializarConsumoEPI();
                 break;
              case 'analise-custos':
                 if (typeof inicializarAnaliseCustos === 'function') {
@@ -1144,6 +1149,16 @@ function inicializarNavegacao() {
             }
         });
     });
+
+    // Lógica de segurança para o menu "Análise"
+    // Garante que o menu inteiro fique oculto se o usuário não for admin
+    const menuAnalise = document.getElementById('menu-analise');
+    if (menuAnalise) {
+        // Se não for admin, força ocultação (sobrescrevendo qualquer lógica anterior)
+        if (!currentUserPermissions.isAdmin) {
+            menuAnalise.style.setProperty('display', 'none', 'important');
+        }
+    }
 
     // Adicionar evento de clique para o novo botão de sair na sidebar
     const btnSairSidebar = document.getElementById('btn-sair-sidebar');

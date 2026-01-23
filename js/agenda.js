@@ -396,8 +396,18 @@ async function salvarNovaAtividade() {
     const gerarAnoTodo = getElement('atividade-gerar-ano-todo')?.checked;
     const repetirDias = parseInt(getElement('atividade-repetir-dias')?.value, 10);
     const atribuidoParaSelect = getElement('atividade-atribuido-para');
-    const atribuidoParaId = atribuidoParaSelect.value;
-    const atribuidoParaNome = atribuidoParaId ? atribuidoParaSelect.options[atribuidoParaSelect.selectedIndex].dataset.nome : null;
+    
+    let atribuidoParaId = atribuidoParaSelect.value;
+    let atribuidoParaNome = atribuidoParaId ? atribuidoParaSelect.options[atribuidoParaSelect.selectedIndex].dataset.nome : null;
+
+    // Se não selecionou ninguém (Eu mesmo), define o ID do usuário atual explicitamente
+    if (!atribuidoParaId) {
+        const currentUser = firebase.auth().currentUser;
+        if (currentUser) {
+            atribuidoParaId = currentUser.uid;
+            atribuidoParaNome = currentUser.displayName || currentUser.email;
+        }
+    }
 
     console.log('Dados da atividade:', { assunto, data, tipo, descricao });
 
@@ -502,6 +512,11 @@ async function salvarNovaAtividade() {
         // Recarrega a agenda para mostrar a nova atividade
         await carregarAgenda();
 
+        // Atualiza dashboard de atividades se estiver visível
+        if (document.getElementById('dashboard-atividades') && !document.getElementById('dashboard-atividades').classList.contains('d-none') && typeof carregarDadosDashboardAtividades === 'function') {
+            await carregarDadosDashboardAtividades();
+        }
+
     } catch (error) {
         console.error("Erro ao salvar atividade:", error);
         mostrarMensagem("Erro ao salvar atividade: " + error.message, "error");
@@ -521,6 +536,11 @@ async function salvarAlteracoes(id, collection, dados) {
         
         fecharModal(modalId);
         await carregarAgenda();
+
+        // Atualiza dashboard de atividades se estiver visível
+        if (document.getElementById('dashboard-atividades') && !document.getElementById('dashboard-atividades').classList.contains('d-none') && typeof carregarDadosDashboardAtividades === 'function') {
+            await carregarDadosDashboardAtividades();
+        }
         
     } catch (error) {
         console.error("Erro ao salvar alterações:", error);
@@ -535,22 +555,30 @@ async function salvarAlteracoes(id, collection, dados) {
 async function carregarAgenda() {
     console.log("Carregando agenda...");
     
-    const containers = {
-        hoje: getElement('agenda-hoje'),
-        amanha: getElement('agenda-amanha'),
-        atraso: getElement('agenda-atraso'),
-        '7dias': getElement('agenda-7dias'),
-        '30dias': getElement('agenda-30dias'),
-        futuro: getElement('agenda-futuro'),
+    const containersMinhas = {
+        hoje: getElement('agenda-minhas-hoje'),
+        amanha: getElement('agenda-minhas-amanha'),
+        atraso: getElement('agenda-minhas-atraso'),
+        '7dias': getElement('agenda-minhas-7dias'),
+        '30dias': getElement('agenda-minhas-30dias'),
+        futuro: getElement('agenda-minhas-futuro'),
+    };
+
+    const containersEquipe = {
+        hoje: getElement('agenda-equipe-hoje'),
+        amanha: getElement('agenda-equipe-amanha'),
+        atraso: getElement('agenda-equipe-atraso'),
+        '7dias': getElement('agenda-equipe-7dias'),
+        '30dias': getElement('agenda-equipe-30dias'),
+        futuro: getElement('agenda-equipe-futuro'),
     };
 
     // Verificar se containers existem
-    for (const [key, container] of Object.entries(containers)) {
-        if (!container) {
-            console.error(`Container agenda-${key} não encontrado`);
-            return;
+    const todosContainers = [...Object.values(containersMinhas), ...Object.values(containersEquipe)];
+    for (const container of todosContainers) {
+        if (container) {
+            container.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i></div>';
         }
-        container.innerHTML = '<div class="text-center p-3"><i class="fas fa-spinner fa-spin"></i></div>';
     }
 
     // Se a visão for de calendário, ajusta os filtros para o mês inteiro
@@ -561,6 +589,7 @@ async function carregarAgenda() {
 
     try {
         console.log("Buscando dados da agenda...");
+        const currentUser = firebase.auth().currentUser;
         
         const incluirAniversarios = getElement('agenda-filtro-aniversarios').checked;
 
@@ -606,8 +635,26 @@ async function carregarAgenda() {
         // Ordenar eventos por data
         todosEventos.sort((a, b) => a.data - b.data);
         
+        // Separar eventos: Minhas vs Equipe
+        const eventosMinhas = [];
+        const eventosEquipe = [];
+
+        todosEventos.forEach(evento => {
+            // Se for atividade criada por mim e atribuída a outro, vai para Equipe
+            if (evento.collection === 'agenda_atividades' && 
+                evento.criadoPor === currentUser.uid && 
+                evento.atribuidoParaId && 
+                evento.atribuidoParaId !== currentUser.uid) {
+                eventosEquipe.push(evento);
+            } else {
+                // Todo o resto (minhas tarefas, aniversários, financeiro, etc) vai para Minhas
+                eventosMinhas.push(evento);
+            }
+        });
+
         if (agendaView === 'cards') {
-            distribuirEventosNosCards(todosEventos, containers);
+            distribuirEventosNosCards(eventosMinhas, containersMinhas, 'agenda-minhas');
+            distribuirEventosNosCards(eventosEquipe, containersEquipe, 'agenda-equipe');
         } else {
             renderizarCalendario(todosEventos);
         }
@@ -615,9 +662,6 @@ async function carregarAgenda() {
 
     } catch (error) {
         console.error("Erro ao carregar agenda:", error);
-        Object.values(containers).forEach(c => {
-            if (c) c.innerHTML = '<p class="text-danger">Erro ao carregar eventos.</p>';
-        });
     }
 }
 
@@ -737,7 +781,7 @@ function getCorEvento(tipo) {
     return cores[tipo] || '#6c757d';
 }
 
-function distribuirEventosNosCards(eventos, containers) {
+function distribuirEventosNosCards(eventos, containers, prefixoId) {
     console.log("Distribuindo eventos nos cards...");
     
     // Limpar containers
@@ -794,7 +838,7 @@ function distribuirEventosNosCards(eventos, containers) {
         if (container && container.innerHTML === '') {
             container.innerHTML = '<p class="text-muted text-center small p-2">Nenhum evento neste período.</p>';
         }
-        const countElement = getElement(`agenda-count-${key}`);
+        const countElement = getElement(`${prefixoId}-count-${key}`);
         if (countElement) {
             countElement.textContent = counts[key];
         }
@@ -851,11 +895,30 @@ function criarCardEvento(evento) {
     const icone = icones[evento.tipo] || 'fa-sticky-note';
     const cor = cores[evento.tipo] || 'border-secondary';
 
-    let acoesHTML = '';
+    // Lógica para badge de propriedade (Minha vs Equipe)
+    let ownershipBadge = '';
     const currentUser = firebase.auth().currentUser;
+
+    if (evento.collection === 'agenda_atividades' && currentUser) {
+        const isAssignedToMe = evento.atribuidoParaId === currentUser.uid;
+        const isCreatedByMe = evento.criadoPor === currentUser.uid;
+        const isDelegated = isCreatedByMe && evento.atribuidoParaId && evento.atribuidoParaId !== currentUser.uid;
+
+        if (isAssignedToMe) {
+            ownershipBadge = `<span class="badge bg-primary ms-1" style="font-size: 0.7em; vertical-align: middle;"><i class="fas fa-user me-1"></i>Minha</span>`;
+        } else if (isDelegated) {
+            ownershipBadge = `<span class="badge bg-info text-dark ms-1" style="font-size: 0.7em; vertical-align: middle;"><i class="fas fa-users me-1"></i>Equipe</span>`;
+        }
+    }
+
+    let acoesHTML = '';
     if (evento.collection && currentUser && evento.criadoPor === currentUser.uid) {
         acoesHTML = `
             <div class="agenda-card-actions">
+                ${evento.collection === 'agenda_atividades' && evento.status !== 'Concluído' && evento.status !== 'Em Andamento' ? `
+                <button class="btn btn-sm btn-icon" onclick="iniciarAtividadeAgenda('${evento.id}')" title="Iniciar Execução">
+                    <i class="fas fa-play text-warning"></i>
+                </button>` : ''}
                 <button class="btn btn-sm btn-icon" onclick="visualizarEvento('${evento.id}', '${evento.collection}')" title="Visualizar">
                     <i class="fas fa-eye text-info"></i>
                 </button>
@@ -873,6 +936,13 @@ function criarCardEvento(evento) {
     } else if (evento.collection && currentUser) {
         acoesHTML = `
             <div class="agenda-card-actions">
+                ${evento.collection === 'agenda_atividades' && (evento.status === 'Aberto' || evento.status === 'Pendente' || !evento.status) ? `
+                <button class="btn btn-sm btn-icon" onclick="iniciarAtividadeAgenda('${evento.id}')" title="Iniciar Execução">
+                    <i class="fas fa-play text-warning"></i>
+                </button>` : ''}
+                <button class="btn btn-sm btn-icon" onclick="visualizarEvento('${evento.id}', '${evento.collection}')" title="Visualizar">
+                    <i class="fas fa-eye text-info"></i>
+                </button>
                 <button class="btn btn-sm btn-icon" onclick="concluirEvento('${evento.id}', '${evento.collection}')" title="Concluir Tarefa"><i class="fas fa-check-circle text-success"></i></button>
             </div>
         `;
@@ -908,6 +978,9 @@ function criarCardEvento(evento) {
         } else if (evento.status === 'Pendente' || evento.status === 'Aberto') {
             statusClass = 'bg-warning text-dark';
             statusText = 'Em Aberto';
+        } else if (evento.status === 'Em Andamento') {
+            statusClass = 'bg-info text-white';
+            statusText = 'Em Andamento';
         } else if (evento.status === 'Concluído' || evento.status === 'Encerrado') {
             statusClass = 'bg-secondary'; // Cinza para concluído
             statusText = 'Concluído';
@@ -921,7 +994,10 @@ function criarCardEvento(evento) {
             <div class="agenda-card-icon"><i class="fas ${icone}"></i></div>
             <div class="agenda-card-content">
                 <div class="d-flex justify-content-between align-items-start">
-                    <div class="agenda-card-title">${evento.titulo}</div>
+                    <div class="agenda-card-title">
+                        ${evento.titulo}
+                        ${ownershipBadge}
+                    </div>
                     ${statusBadge}
                 </div>
                 <div class="agenda-card-description">${evento.descricao}</div>
@@ -1475,6 +1551,20 @@ async function concluirEvento(id, collection) {
     }
 }
 
+async function iniciarAtividadeAgenda(id) {
+    try {
+        await db.collection('agenda_atividades').doc(id).update({
+            status: 'Em Andamento',
+            executionStartTime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        mostrarMensagem("Atividade iniciada! Status alterado para 'Em Andamento'.", "success");
+        await carregarAgenda();
+    } catch (error) {
+        console.error("Erro ao iniciar atividade:", error);
+        mostrarMensagem("Erro ao iniciar atividade.", "error");
+    }
+}
+
 async function visualizarEventoExterno(id, sourceCollection, eventType) {
     try {
         switch (sourceCollection) {
@@ -1665,3 +1755,4 @@ window.mudarMesCalendario = mudarMesCalendario;
 window.configurarFiltrosParaAno = configurarFiltrosParaAno;
 window.emitirValePizza = emitirValePizza;
 window.openPrintWindow = openPrintWindow;
+window.iniciarAtividadeAgenda = iniciarAtividadeAgenda;

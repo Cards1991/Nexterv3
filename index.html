@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de RH - Nexter</title>
+    <title>Sistema de Gestão - Nexter</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
@@ -76,7 +76,7 @@
                             </a>
                         </li>
                         <!-- Módulo Dashboards -->
-                        <li class="nav-item">
+                        <li class="nav-item" id="menu-analise">
                             <a class="nav-link collapsed" href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
                                 <i class="fas fa-chart-pie"></i> Análise <i class="fas fa-chevron-down ms-auto"></i>
                             </a>
@@ -94,6 +94,11 @@
                                         </a>
                                     </li>
                                     <li class="nav-item">
+                                        <a class="nav-link submenu-link" href="#" data-target="dashboard-atividades">
+                                            <i class="fas fa-tasks"></i> Dashboard de Atividades
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
                                         <a class="nav-link submenu-link" href="#" data-target="dashboard-faltas">
                                             <i class="fas fa-calendar-times"></i> Dashboard de Faltas
                                         </a>
@@ -102,9 +107,6 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-dashboard"><i class="fas fa-truck"></i> Dashboard Logística</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-dashboard"><i class="fas fa-gavel"></i> Dashboard Jurídico</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras"><i class="fas fa-clock"></i> Dashboard Horas Extras</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i class="fas fa-coins"></i> Análise de Custos</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-swot"><i class="fas fa-chart-line"></i> Análise SWOT</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-avaliacao-colaboradores"><i class="fas fa-users-cog"></i> Análise de Colaboradores</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -178,6 +180,7 @@
                                 <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="financeiro">Painel Financeiro</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="control-horas-autorizacao">Autorização de Horas Extras</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i class="fas fa-coins"></i> Análise de Custos</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -208,6 +211,8 @@
                                             <i class="fas fa-tasks"></i> Gerenciar Avaliações
                                         </a>
                                     </li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-swot"><i class="fas fa-chart-line"></i> Análise SWOT</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-avaliacao-colaboradores"><i class="fas fa-users-cog"></i> Análise de Colaboradores</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -318,46 +323,76 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Navegação por Mês -->
-                    <div class="card mb-4">
-                        <div class="card-body">
-                            <h6 class="card-title mb-3"><i class="fas fa-calendar-check me-2"></i>Navegar por Mês</h6>
-                            <div id="agenda-navegacao-meses" class="d-flex flex-wrap gap-2" style="min-height: 38px;"></div>
-                        </div>
-                    </div>
 
                     <!-- Visão de Cards -->
                     <div id="agenda-cards-view">
+                        <!-- Seção Minhas Atividades -->
+                        <h5 class="mb-3 text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Minhas Atividades</h5>
                         <div class="agenda-container">
                             <!-- Coluna Em Atraso -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger" id="agenda-count-atraso">0</span></div>
-                                <div class="agenda-cards" id="agenda-atraso"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger" id="agenda-minhas-count-atraso">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-atraso"></div>
                             </div>
                             <!-- Coluna Hoje -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Hoje</h3><span class="badge bg-warning" id="agenda-count-hoje">0</span></div>
-                                <div class="agenda-cards" id="agenda-hoje"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Hoje</h3><span class="badge bg-warning" id="agenda-minhas-count-hoje">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-hoje"></div>
                             </div>
                             <!-- Coluna Amanhã -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Amanhã</h3><span class="badge bg-secondary" id="agenda-count-amanha">0</span></div>
-                                <div class="agenda-cards" id="agenda-amanha"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Amanhã</h3><span class="badge bg-secondary" id="agenda-minhas-count-amanha">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-amanha"></div>
                             </div>
                             <!-- Coluna Próximos 7 Dias -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-calendar-week"></i> Próximos 7 Dias</h3><span class="badge bg-info" id="agenda-count-7dias">0</span></div>
-                                <div class="agenda-cards" id="agenda-7dias"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-week"></i> Próximos 7 Dias</h3><span class="badge bg-info" id="agenda-minhas-count-7dias">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-7dias"></div>
                             </div>
                             <!-- Coluna Próximos 30 Dias -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-calendar"></i> Próximos 30 Dias</h3><span class="badge bg-primary" id="agenda-count-30dias">0</span></div>
-                                <div class="agenda-cards" id="agenda-30dias"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-calendar"></i> Próximos 30 Dias</h3><span class="badge bg-primary" id="agenda-minhas-count-30dias">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-30dias"></div>
                             </div>
                             <!-- Coluna Futuros -->
                             <div class="agenda-column">
-                                <div class="agenda-header"><h3><i class="fas fa-infinity"></i> Futuros (> 30 dias)</h3><span class="badge bg-dark" id="agenda-count-futuro">0</span></div>
-                                <div class="agenda-cards" id="agenda-futuro"></div>
+                                <div class="agenda-header"><h3><i class="fas fa-infinity"></i> Futuros (> 30 dias)</h3><span class="badge bg-dark" id="agenda-minhas-count-futuro">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-futuro"></div>
+                            </div>
+                        </div>
+
+                        <!-- Seção Atividades da Equipe -->
+                        <h5 class="mt-5 mb-3 text-info border-bottom pb-2"><i class="fas fa-users me-2"></i>Atividades da Equipe (Delegadas)</h5>
+                        <div class="agenda-container">
+                            <!-- Coluna Em Atraso -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger" id="agenda-equipe-count-atraso">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-atraso"></div>
+                            </div>
+                            <!-- Coluna Hoje -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Hoje</h3><span class="badge bg-warning" id="agenda-equipe-count-hoje">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-hoje"></div>
+                            </div>
+                            <!-- Coluna Amanhã -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-day"></i> Amanhã</h3><span class="badge bg-secondary" id="agenda-equipe-count-amanha">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-amanha"></div>
+                            </div>
+                            <!-- Coluna Próximos 7 Dias -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-calendar-week"></i> Próximos 7 Dias</h3><span class="badge bg-info" id="agenda-equipe-count-7dias">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-7dias"></div>
+                            </div>
+                            <!-- Coluna Próximos 30 Dias -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-calendar"></i> Próximos 30 Dias</h3><span class="badge bg-primary" id="agenda-equipe-count-30dias">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-30dias"></div>
+                            </div>
+                            <!-- Coluna Futuros -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-infinity"></i> Futuros (> 30 dias)</h3><span class="badge bg-dark" id="agenda-equipe-count-futuro">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-futuro"></div>
                             </div>
                         </div>
                     </div>
@@ -575,13 +610,74 @@
                 <!-- Seção Saúde Ocupacional: Estoque de EPI -->
                 <section id="estoque-epi" class="content-section d-none">
                     <h2 class="page-title">Saúde Ocupacional - Estoque de EPI</h2>
-                    <div class="card"><div class="card-body"><p>Em breve, esta seção permitirá o controle de estoque de Equipamentos de Proteção Individual.</p></div></div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <button class="btn btn-primary" id="btn-novo-epi" onclick="abrirModalEPI()">
+                                <i class="fas fa-plus-circle"></i> Novo EPI
+                            </button>
+                        </div>
+                        <div class="input-group" style="max-width: 300px;">
+                            <input type="text" class="form-control" id="busca-epi" placeholder="Buscar EPI...">
+                            <button class="btn btn-outline-secondary" onclick="carregarEstoqueEPI()"><i class="fas fa-search"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div class="card">
+                        <div class="card-body table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead>
+                                    <tr>
+                                        <th>Descrição</th>
+                                        <th>CA</th>
+                                        <th>Validade CA</th>
+                                        <th>Fornecedor</th>
+                                        <th class="text-center">Estoque</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-estoque-epi">
+                                    <tr><td colspan="7" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- Seção Saúde Ocupacional: Consumo de EPI -->
                 <section id="consumo-epi" class="content-section d-none">
                     <h2 class="page-title">Saúde Ocupacional - Consumo de EPI</h2>
-                    <div class="card"><div class="card-body"><p>Em breve, esta seção permitirá o registro e análise do consumo de EPIs por funcionário.</p></div></div>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <button class="btn btn-primary" id="btn-novo-consumo">
+                            <i class="fas fa-hand-holding-medical"></i> Registrar Entrega
+                        </button>
+                        <div class="d-flex gap-2">
+                             <input type="date" class="form-control" id="filtro-consumo-inicio">
+                             <input type="date" class="form-control" id="filtro-consumo-fim">
+                             <button class="btn btn-outline-secondary" onclick="carregarHistoricoConsumoEPI()"><i class="fas fa-filter"></i></button>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">Histórico de Entregas</div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Colaborador</th>
+                                        <th>EPI</th>
+                                        <th>CA</th>
+                                        <th>Qtd</th>
+                                        <th>Responsável</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-consumo-epi">
+                                    <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </section>
 
                 <!-- Módulo: Faltas Diárias -->
@@ -1829,6 +1925,149 @@
                         </div>
                         <!-- Outras Análises -->
                         <div id="analise-pessoas-outros"></div>
+                    </div>
+                </section>
+
+                <!-- Seção Dashboard de Atividades (Gestão de Equipe) -->
+                <section id="dashboard-atividades" class="content-section d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <div>
+                            <h2 class="page-title mb-0">Gestão de Atividades</h2>
+                            <p class="text-muted mb-0">Visão geral de desempenho e pendências da equipe.</p>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap justify-content-end">
+                            <div class="d-flex align-items-center gap-2">
+                                <input type="date" class="form-control" id="dash-ativ-data-inicio" title="Data Início">
+                                <span class="text-muted">-</span>
+                                <input type="date" class="form-control" id="dash-ativ-data-fim" title="Data Fim">
+                            </div>
+                            <select class="form-select" id="dash-ativ-filtro-usuario" style="max-width: 200px;" onchange="carregarDadosDashboardAtividades()">
+                                <option value="">Todos os Usuários</option>
+                            </select>
+                            <div class="btn-group" role="group">
+                                <input type="radio" class="btn-check" name="dash-ativ-modo" id="btn-modo-equipe" autocomplete="off" checked onclick="alternarModoDashboardAtividades('equipe')">
+                                <label class="btn btn-outline-primary" for="btn-modo-equipe"><i class="fas fa-users me-2"></i>Equipe</label>
+
+                                <input type="radio" class="btn-check" name="dash-ativ-modo" id="btn-modo-pessoal" autocomplete="off" onclick="alternarModoDashboardAtividades('pessoal')">
+                                <label class="btn btn-outline-primary" for="btn-modo-pessoal"><i class="fas fa-user-check me-2"></i>Meu Desempenho</label>
+                            </div>
+                            <button class="btn btn-outline-secondary" onclick="carregarDadosDashboardAtividades()" title="Atualizar">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Área de Alertas (Prioridade Máxima) -->
+                    <div id="dash-ativ-alertas" class="mb-4"></div>
+
+                    <!-- KPIs -->
+                    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-3 mb-4">
+                        <div class="col">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #0d6efd !important;">
+                                <div class="card-body">
+                                    <div class="text-muted small text-uppercase fw-bold">Total Atribuídas</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <h3 class="mb-0 text-primary" id="dash-ativ-total">0</h3>
+                                        <i class="fas fa-tasks fa-2x text-gray-300 opacity-25"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #ffc107 !important;">
+                                <div class="card-body">
+                                    <div class="text-muted small text-uppercase fw-bold">Pendentes</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <h3 class="mb-0 text-warning" id="dash-ativ-pendentes">0</h3>
+                                        <i class="fas fa-clock fa-2x text-gray-300 opacity-25"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #dc3545 !important;">
+                                <div class="card-body">
+                                    <div class="text-muted small text-uppercase fw-bold">Em Atraso</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <h3 class="mb-0 text-danger" id="dash-ativ-atrasadas">0</h3>
+                                        <i class="fas fa-exclamation-circle fa-2x text-gray-300 opacity-25"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #198754 !important;">
+                                <div class="card-body">
+                                    <div class="text-muted small text-uppercase fw-bold">Concluídas</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <h3 class="mb-0 text-success" id="dash-ativ-concluidas">0</h3>
+                                        <i class="fas fa-check-circle fa-2x text-gray-300 opacity-25"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col">
+                            <div class="card border-0 shadow-sm h-100" style="border-left: 4px solid #6610f2 !important;">
+                                <div class="card-body">
+                                    <div class="text-muted small text-uppercase fw-bold">Tempo Médio</div>
+                                    <div class="d-flex align-items-center justify-content-between mt-2">
+                                        <h3 class="mb-0" style="color: #6610f2;" id="dash-ativ-tempo-medio">-</h3>
+                                        <i class="fas fa-stopwatch fa-2x text-gray-300 opacity-25"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Lista de Atividades -->
+                        <div class="col-lg-8 mb-4">
+                            <div class="card h-100 shadow-sm">
+                                <div class="card-header bg-white py-3">
+                                    <h5 class="mb-0 text-gray-800">Visão Geral das Atividades</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="ps-4">Status</th>
+                                                    <th>Atividade</th>
+                                                    <th>Responsável</th>
+                                                    <th>Prazo</th>
+                                                    <th>Duração</th>
+                                                    <th class="text-end pe-4">Ações</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="tabela-dashboard-atividades">
+                                                <tr><td colspan="6" class="text-center py-4">Carregando...</td></tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Gráficos Laterais -->
+                        <div class="col-lg-4">
+                            <div class="card shadow-sm mb-4">
+                                <div class="card-header bg-white py-3">
+                                    <h6 class="mb-0 fw-bold">Status Geral</h6>
+                                </div>
+                                <div class="card-body d-flex justify-content-center" style="height: 250px;">
+                                    <canvas id="grafico-atividades-status"></canvas>
+                                </div>
+                            </div>
+
+                            <div class="card shadow-sm">
+                                <div class="card-header bg-white py-3">
+                                    <h6 class="mb-0 fw-bold">Carga por Responsável</h6>
+                                </div>
+                                <div class="card-body" style="height: 250px;">
+                                    <canvas id="grafico-atividades-responsavel"></canvas>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -3472,7 +3711,61 @@
                     </div>
                 </section>
 
-    <!-- Modal de Acompanhamento Psicossocial -->
+            <!-- Modal Novo EPI -->
+        <div class="modal fade" id="modalNovoEPI" tabindex="-1" aria-labelledby="modalEPITitulo" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="modalEPITitulo">Novo EPI</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-epi">
+                            <input type="hidden" id="epi-id">
+                            <div class="mb-3">
+                                <label for="epi-descricao" class="form-label">Descrição do EPI</label>
+                                <input type="text" class="form-control" id="epi-descricao" required>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-ca" class="form-label">CA (Certificado de Aprovação)</label>
+                                    <input type="text" class="form-control" id="epi-ca" required>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-validade" class="form-label">Validade do CA</label>
+                                    <input type="date" class="form-control" id="epi-validade" required>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-fornecedor" class="form-label">Fornecedor</label>
+                                    <input type="text" class="form-control" id="epi-fornecedor">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-lote" class="form-label">Lote</label>
+                                    <input type="text" class="form-control" id="epi-lote" placeholder="Cód. do Lote">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-quantidade" class="form-label">Quantidade em Estoque</label>
+                                    <input type="number" class="form-control" id="epi-quantidade" value="0" min="0">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="epi-minimo" class="form-label">Estoque Mínimo</label>
+                                    <input type="number" class="form-control" id="epi-minimo" value="0" min="0">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="salvarEPI()">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Modal de Acompanhamento Psicossocial -->
     <div class="modal fade" id="acompanhamentoPsicossocialModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
@@ -4628,10 +4921,12 @@
     <script src="js/juridico-financeiro.js" defer></script>
     <script src="js/juridico-documentos.js" defer></script>
     <script src="js/frota-controle.js" defer></script>
+    <script src="js/epi-controle.js" defer></script>
     <script src="js/agenda.js" defer></script>
     <script src="js/saude-psicossocial.js" defer></script>
     <script src="js/analise-pessoas.js" defer></script>
     <script src="js/analise-rescisao.js" defer></script>
+    <script src="js/dashboard-atividades.js" defer></script>
     <script src="js/dashboard-faltas.js" defer></script>
     <script src="js/dashboard-manutencao.js" defer></script>
     <script src="js/admin.js" defer></script>
