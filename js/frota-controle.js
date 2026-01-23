@@ -306,6 +306,8 @@ async function carregarUtilizacoes() {
                             <div class="btn-group btn-group-sm">
                                 <button class="btn btn-outline-secondary" title="Imprimir Comprovante de Saída" onclick="imprimirComprovanteSaida('${doc.id}')"><i class="fas fa-print"></i></button>
                                 <button class="btn btn-info" onclick="abrirModalRetorno('${doc.id}')">Registrar Retorno</button>
+                                <button class="btn btn-outline-primary" title="Editar" onclick="abrirModalSaida('${doc.id}')"><i class="fas fa-edit"></i></button>
+                                <button class="btn btn-outline-danger" title="Excluir" onclick="excluirUtilizacao('${doc.id}')"><i class="fas fa-trash"></i></button>
                             </div>
                         </td>
                     </tr>`;
@@ -320,6 +322,8 @@ async function carregarUtilizacoes() {
                         <td>${uso.destino || '-'}</td>
                         <td class="text-end">
                             <button class="btn btn-sm btn-outline-secondary" title="Imprimir Relatório de Viagem" onclick="imprimirComprovanteSaida('${doc.id}')"><i class="fas fa-print"></i></button>
+                            <button class="btn btn-sm btn-outline-primary" title="Editar" onclick="abrirModalSaida('${doc.id}')"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" title="Excluir" onclick="excluirUtilizacao('${doc.id}')"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>`;
             }
@@ -339,13 +343,14 @@ async function carregarUtilizacoes() {
     }
 }
 
-async function abrirModalSaida() {
+async function abrirModalSaida(id = null) {
     const modalElement = document.getElementById('frotaSaidaModal');
     if (!modalElement) return;
     
     const modal = new bootstrap.Modal(modalElement);
     const form = document.getElementById('form-frota-saida');
     if (form) form.reset();
+    document.getElementById('frota-saida-id').value = id || '';
 
     const veiculoSelect = document.getElementById('frota-saida-veiculo');
     const motoristaSelect = document.getElementById('frota-saida-motorista');
@@ -355,16 +360,32 @@ async function abrirModalSaida() {
     veiculoSelect.innerHTML = '<option value="">Carregando...</option>';
     motoristaSelect.innerHTML = '<option value="">Carregando...</option>';
 
+    let currentData = null;
+    if (id) {
+        try {
+            const doc = await db.collection('utilizacoes').doc(id).get();
+            if (doc.exists) currentData = doc.data();
+        } catch (e) {
+            console.error("Erro ao carregar dados para edição:", e);
+        }
+    }
+
     try {
         const [veiculosSnap, motoristasSnap] = await Promise.all([
-            db.collection('veiculos').where('status', '==', 'Ativo').get(),
+            db.collection('veiculos').orderBy('placa').get(),
             db.collection('motoristas').orderBy('nome').get()
         ]);
 
         veiculoSelect.innerHTML = '<option value="">Selecione um veículo</option>';
         veiculosSnap.forEach(doc => {
             const v = doc.data();
-            veiculoSelect.innerHTML += `<option value="${doc.id}" data-km="${v.quilometragemAtual || 0}">${v.placa} - ${v.modelo}</option>`;
+            let shouldShow = false;
+            if (v.status === 'Ativo') shouldShow = true;
+            if (id && currentData && currentData.veiculoId === doc.id) shouldShow = true;
+
+            if (shouldShow) {
+                veiculoSelect.innerHTML += `<option value="${doc.id}" data-km="${v.quilometragemAtual || 0}">${v.placa} - ${v.modelo}</option>`;
+            }
         });
 
         motoristaSelect.innerHTML = '<option value="">Selecione um motorista</option>';
@@ -377,8 +398,24 @@ async function abrirModalSaida() {
             document.getElementById('frota-saida-km-inicial').value = selectedOption.dataset.km || 0;
         };
 
-        document.getElementById('frota-saida-data').valueAsDate = new Date();
-        document.getElementById('frota-saida-hora').value = new Date().toTimeString().slice(0, 5);
+        if (id && currentData) {
+            document.querySelector('#frotaSaidaModal .modal-title').textContent = 'Editar Saída';
+            veiculoSelect.value = currentData.veiculoId;
+            motoristaSelect.value = currentData.motoristaId;
+            document.getElementById('frota-saida-data').value = currentData.dataSaida ? currentData.dataSaida.toDate().toISOString().split('T')[0] : '';
+            document.getElementById('frota-saida-hora').value = currentData.horaSaida || '';
+            document.getElementById('frota-saida-km-inicial').value = currentData.kmInicial || 0;
+            document.getElementById('frota-saida-destino').value = currentData.destino || '';
+            document.getElementById('frota-saida-motivo').value = currentData.motivo || '';
+            
+            // Permitir editar KM inicial na edição
+            document.getElementById('frota-saida-km-inicial').readOnly = false;
+        } else {
+            document.querySelector('#frotaSaidaModal .modal-title').textContent = 'Registrar Saída de Veículo';
+            document.getElementById('frota-saida-data').valueAsDate = new Date();
+            document.getElementById('frota-saida-hora').value = new Date().toTimeString().slice(0, 5);
+            document.getElementById('frota-saida-km-inicial').readOnly = true;
+        }
 
         modal.show();
     } catch (e) {
@@ -388,6 +425,7 @@ async function abrirModalSaida() {
 }
 
 async function registrarSaida() {
+    const id = document.getElementById('frota-saida-id').value;
     const dados = {
         veiculoId: document.getElementById('frota-saida-veiculo').value,
         motoristaId: document.getElementById('frota-saida-motorista').value,
@@ -404,15 +442,68 @@ async function registrarSaida() {
     }
 
     try {
-        await db.collection('utilizacoes').add(dados);
-        await db.collection('veiculos').doc(dados.veiculoId).update({ status: 'Em Uso' });
-        mostrarMensagem("Saída registrada com sucesso!", "success");
+        if (id) {
+            // Edição
+            const docAntigo = await db.collection('utilizacoes').doc(id).get();
+            const dadosAntigos = docAntigo.data();
+
+            // Se mudou o veículo e a viagem ainda está ativa (sem retorno)
+            if (dadosAntigos.veiculoId !== dados.veiculoId && !dadosAntigos.dataRetorno) {
+                // Libera o antigo
+                await db.collection('veiculos').doc(dadosAntigos.veiculoId).update({ status: 'Ativo' });
+                // Ocupa o novo
+                await db.collection('veiculos').doc(dados.veiculoId).update({ status: 'Em Uso' });
+            }
+            
+            // Mantém dados de retorno se existirem, pois o modal de saída não os tem
+            if (dadosAntigos.dataRetorno) {
+                dados.dataRetorno = dadosAntigos.dataRetorno;
+                dados.horaRetorno = dadosAntigos.horaRetorno;
+                dados.kmFinal = dadosAntigos.kmFinal;
+                dados.kmPercorrido = dados.kmFinal - dados.kmInicial; // Recalcula percorrido se mudou inicial
+            }
+
+            await db.collection('utilizacoes').doc(id).update(dados);
+            mostrarMensagem("Registro atualizado com sucesso!", "success");
+        } else {
+            // Novo registro
+            await db.collection('utilizacoes').add(dados);
+            await db.collection('veiculos').doc(dados.veiculoId).update({ status: 'Em Uso' });
+            mostrarMensagem("Saída registrada com sucesso!", "success");
+        }
+        
         const modal = bootstrap.Modal.getInstance(document.getElementById('frotaSaidaModal'));
         if (modal) modal.hide();
         await carregarUtilizacoes();
     } catch (e) {
         console.error("Erro ao registrar saída:", e);
         mostrarMensagem("Erro ao registrar saída.", "error");
+    }
+}
+
+async function excluirUtilizacao(id) {
+    if (!confirm("Tem certeza que deseja excluir este registro de utilização?")) return;
+    try {
+        const doc = await db.collection('utilizacoes').doc(id).get();
+        if (!doc.exists) return;
+        const uso = doc.data();
+
+        // Se estiver em uso (sem data de retorno), liberar o veículo
+        if (!uso.dataRetorno && uso.veiculoId) {
+            try {
+                await db.collection('veiculos').doc(uso.veiculoId).update({ status: 'Ativo' });
+            } catch (veiculoError) {
+                console.warn(`Veículo ${uso.veiculoId} não encontrado para liberar status (provavelmente já excluído).`, veiculoError);
+            }
+        }
+
+        await db.collection('utilizacoes').doc(id).delete();
+        mostrarMensagem("Registro excluído com sucesso.", "success");
+        await carregarUtilizacoes();
+        await carregarDashboardFrota();
+    } catch (e) {
+        console.error("Erro ao excluir utilização:", e);
+        mostrarMensagem("Erro ao excluir.", "error");
     }
 }
 
@@ -596,7 +687,7 @@ function abrirModalDestino() {
     
     const modal = new bootstrap.Modal(modalElement);
     document.getElementById('form-frota-destino').reset();
-    document.getElementById('frota-destino-origem').value = "Francinópolis, PI"; // Padrão
+    document.getElementById('frota-destino-origem').value = "Imbituva, PR"; // Padrão
     document.getElementById('frota-destino-msg-calculo').textContent = "";
     
     modal.show();
