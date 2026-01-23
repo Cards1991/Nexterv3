@@ -30,7 +30,7 @@ async function inicializarControleFrota(secao) {
             await carregarUtilizacoes();
             break;
         case 'frota-destinos':
-            // await carregarDestinos();
+            await carregarDestinos();
             break;
         case 'frota-tabelas-frete':
             // await carregarTabelasFrete();
@@ -553,6 +553,161 @@ async function imprimirComprovanteSaida(utilizacaoId) {
     } catch (e) {
         console.error("Erro ao gerar comprovante:", e);
         mostrarMensagem("Erro ao gerar comprovante.", "error");
+    }
+}
+
+// --- SEÇÃO DE DESTINOS E CÁLCULO DE DISTÂNCIA ---
+
+async function carregarDestinos() {
+    const tbody = document.getElementById('tabela-frota-destinos');
+    if (!tbody) return;
+
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+
+    try {
+        const snapshot = await db.collection('destinos').orderBy('cidadeDestino').get();
+        if (snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhum destino cadastrado.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            tbody.innerHTML += `
+                <tr>
+                    <td>${d.cidadeOrigem || '-'}</td>
+                    <td>${d.cidadeDestino} - ${d.estadoDestino}</td>
+                    <td><strong>${d.distanciaKm} km</strong></td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirDestino('${doc.id}')"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>`;
+        });
+    } catch (e) {
+        console.error("Erro ao carregar destinos:", e);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar destinos.</td></tr>';
+    }
+}
+
+function abrirModalDestino() {
+    const modalElement = document.getElementById('frotaDestinoModal');
+    if (!modalElement) return;
+    
+    const modal = new bootstrap.Modal(modalElement);
+    document.getElementById('form-frota-destino').reset();
+    document.getElementById('frota-destino-origem').value = "Francinópolis, PI"; // Padrão
+    document.getElementById('frota-destino-msg-calculo').textContent = "";
+    
+    modal.show();
+}
+
+async function calcularDistanciaAutomatica() {
+    const origem = document.getElementById('frota-destino-origem').value;
+    const cidadeDestino = document.getElementById('frota-destino-cidade').value;
+    const ufDestino = document.getElementById('frota-destino-uf').value;
+    const msgEl = document.getElementById('frota-destino-msg-calculo');
+    const distInput = document.getElementById('frota-destino-distancia');
+
+    if (!cidadeDestino) {
+        return mostrarMensagem("Informe a cidade de destino.", "warning");
+    }
+
+    const destinoCompleto = `${cidadeDestino}, ${ufDestino}, Brazil`;
+    const origemCompleta = origem.includes("Brazil") ? origem : `${origem}, Brazil`;
+
+    msgEl.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Calculando rota e distância...';
+    msgEl.className = "text-info";
+
+    try {
+        // 1. Geocodificação da Origem
+        const coordsOrigem = await getCoordinates(origemCompleta);
+        if (!coordsOrigem) throw new Error(`Não foi possível localizar a origem: ${origem}`);
+
+        // 2. Geocodificação do Destino
+        const coordsDestino = await getCoordinates(destinoCompleto);
+        if (!coordsDestino) throw new Error(`Não foi possível localizar o destino: ${destinoCompleto}`);
+
+        // 3. Cálculo de Distância (Haversine)
+        // Fator de correção de 1.2 para aproximar da distância rodoviária real (vs linha reta)
+        const distanciaReta = calculateHaversineDistance(coordsOrigem.lat, coordsOrigem.lon, coordsDestino.lat, coordsDestino.lon);
+        const distanciaEstimada = (distanciaReta * 1.20).toFixed(2);
+
+        distInput.value = distanciaEstimada;
+        msgEl.innerHTML = `<i class="fas fa-check-circle"></i> Distância estimada com sucesso! (Lat: ${coordsDestino.lat.toFixed(4)}, Lon: ${coordsDestino.lon.toFixed(4)})`;
+        msgEl.className = "text-success";
+
+        // Armazena coordenadas temporariamente no input para salvar depois
+        distInput.dataset.lat = coordsDestino.lat;
+        distInput.dataset.lon = coordsDestino.lon;
+
+    } catch (error) {
+        console.error("Erro no cálculo:", error);
+        msgEl.innerHTML = `<i class="fas fa-exclamation-circle"></i> ${error.message}`;
+        msgEl.className = "text-danger";
+    }
+}
+
+async function getCoordinates(address) {
+    try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`);
+        const data = await response.json();
+        if (data && data.length > 0) {
+            return { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        }
+        return null;
+    } catch (e) {
+        console.error("Erro na API de mapas:", e);
+        return null;
+    }
+}
+
+function calculateHaversineDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Raio da Terra em km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+async function salvarDestino() {
+    const dados = {
+        cidadeOrigem: document.getElementById('frota-destino-origem').value,
+        cidadeDestino: document.getElementById('frota-destino-cidade').value,
+        estadoDestino: document.getElementById('frota-destino-uf').value,
+        distanciaKm: parseFloat(document.getElementById('frota-destino-distancia').value) || 0,
+        latitude: parseFloat(document.getElementById('frota-destino-distancia').dataset.lat) || null,
+        longitude: parseFloat(document.getElementById('frota-destino-distancia').dataset.lon) || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!dados.cidadeDestino || dados.distanciaKm <= 0) {
+        return mostrarMensagem("Informe a cidade e calcule a distância antes de salvar.", "warning");
+    }
+
+    try {
+        await db.collection('destinos').add(dados);
+        mostrarMensagem("Destino cadastrado com sucesso!", "success");
+        bootstrap.Modal.getInstance(document.getElementById('frotaDestinoModal')).hide();
+        await carregarDestinos();
+    } catch (e) {
+        console.error("Erro ao salvar destino:", e);
+        mostrarMensagem("Erro ao salvar destino.", "error");
+    }
+}
+
+async function excluirDestino(id) {
+    if (!confirm("Excluir este destino?")) return;
+    try {
+        await db.collection('destinos').doc(id).delete();
+        await carregarDestinos();
+        mostrarMensagem("Destino excluído.", "success");
+    } catch (e) {
+        console.error("Erro ao excluir:", e);
     }
 }
 

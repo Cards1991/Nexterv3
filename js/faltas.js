@@ -106,8 +106,7 @@ async function preencherFiltrosFaltas() {
         const dataFimInput = document.getElementById('falta-filtro-data-fim');
         if (dataInicioInput && !dataInicioInput.value) {
             const hoje = new Date();
-            const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-            dataInicioInput.valueAsDate = primeiroDiaMes;
+            dataInicioInput.valueAsDate = hoje;
         }
         if (dataFimInput && !dataFimInput.value) dataFimInput.valueAsDate = new Date();
 
@@ -323,8 +322,15 @@ async function abrirModalNovaFalta(faltaId = null) {
                             </div>
                         </div>
                         <div class="mb-2">
-                            <label class="form-label">Justificativa (opcional)</label>
-                            <textarea class="form-control" id="falta_just" rows="2"></textarea>
+                            <label class="form-label">Justificativa</label>
+                            <select class="form-select" id="falta_just">
+                                <option value="Atestado">Atestado</option>
+                                <option value="Doença">Doença</option>
+                                <option value="Não informado">Não informado</option>
+                                <option value="Outros">Outros</option>
+                                <option value="Perdeu o transporte">Perdeu o transporte</option>
+                                <option value="Problemas Particulares">Problemas Particulares</option>
+                            </select>
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -381,7 +387,7 @@ async function abrirModalNovaFalta(faltaId = null) {
         formFields.setor.value = '';
         formFields.data.value = new Date().toISOString().split('T')[0];
         formFields.periodo.value = 'manha';
-        formFields.just.value = '';
+        formFields.just.value = 'Não informado';
     }
 
     // Atualiza o setor ao selecionar o funcionário
@@ -730,14 +736,22 @@ async function verificarFaltasRecorrentes() {
         const recorrentes = Object.values(contagemPorFuncionario).filter(f => f.count > 2);
 
         if (recorrentes.length > 0) {
-            detalhesContainer.innerHTML = recorrentes
-                .sort((a, b) => b.count - a.count) // Ordena por quem tem mais faltas
-                .map(func => `
+            // Ordena por quem tem mais faltas
+            recorrentes.sort((a, b) => b.count - a.count);
+
+            let html = '<div class="mb-3 text-primary"><i class="fas fa-robot"></i> <strong>Insight IA:</strong> Detectamos padrões de ausência que podem indicar desmotivação ou problemas pessoais. Sugere-se agendar feedback com os colaboradores listados abaixo.</div>';
+
+            html += recorrentes.map(func => `
                     <div class="alert alert-light p-2 mb-2 d-flex justify-content-between align-items-center">
-                        <span><i class="fas fa-user-circle me-2"></i>${func.nome}</span>
+                        <div>
+                            <i class="fas fa-user-circle me-2"></i><strong>${func.nome}</strong>
+                            <div class="small text-muted ms-4">Frequência acima da média do setor.</div>
+                        </div>
                         <span class="badge bg-danger">${func.count} faltas</span>
                     </div>
                 `).join('');
+            
+            detalhesContainer.innerHTML = html;
             alertaContainer.style.display = 'block';
         } else {
             detalhesContainer.innerHTML = '<p class="text-muted">Nenhum funcionário com mais de 2 faltas no período.</p>';
@@ -1013,3 +1027,84 @@ function visualizarFaltasPorSetor(setor) {
 
     abrirModalGenerico(`Faltas - ${setor}`, html);
 }
+
+let chartEvolucaoFaltas = null;
+
+async function renderizarGraficoEvolucaoFaltas() {
+    const canvas = document.getElementById('grafico-evolucao-faltas-dia');
+    if (!canvas) return;
+
+    const dataInicioStr = document.getElementById('dash-faltas-data-inicio')?.value;
+    const dataFimStr = document.getElementById('dash-faltas-data-fim')?.value;
+    
+    let query = db.collection('faltas');
+    if (dataInicioStr) query = query.where('data', '>=', parseDate(dataInicioStr));
+    if (dataFimStr) {
+        const fim = parseDate(dataFimStr);
+        fim.setHours(23,59,59);
+        query = query.where('data', '<=', fim);
+    }
+
+    const snap = await query.get();
+    const faltas = snap.docs.map(d => d.data());
+
+    // Agrupar por dia e período
+    const dadosPorDia = {};
+    const diasSemanaCount = { 0: 0, 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0 };
+    const nomesDias = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    
+    faltas.forEach(f => {
+        const dataObj = f.data?.toDate ? f.data.toDate() : new Date(f.data);
+        const diaKey = dataObj.toLocaleDateString('pt-BR'); // DD/MM/YYYY
+        
+        diasSemanaCount[dataObj.getDay()]++;
+
+        if (!dadosPorDia[diaKey]) {
+            dadosPorDia[diaKey] = { total: 0, manha: 0, tarde: 0, noite: 0, dataSort: dataObj.getTime() };
+        }
+        
+        dadosPorDia[diaKey].total++;
+        if (f.periodo === 'manha') dadosPorDia[diaKey].manha++;
+        else if (f.periodo === 'tarde') dadosPorDia[diaKey].tarde++;
+        else if (f.periodo === 'noite') dadosPorDia[diaKey].noite++;
+    });
+
+    // Ordenar por data
+    const diasOrdenados = Object.entries(dadosPorDia)
+        .sort(([,a], [,b]) => a.dataSort - b.dataSort)
+        .map(([key, val]) => ({ dia: key, ...val }));
+
+    const labels = diasOrdenados.map(d => d.dia.substring(0, 5)); // DD/MM
+    const dataTotal = diasOrdenados.map(d => d.total);
+    const dataManha = diasOrdenados.map(d => d.manha);
+    const dataTarde = diasOrdenados.map(d => d.tarde);
+    const dataNoite = diasOrdenados.map(d => d.noite);
+
+    if (chartEvolucaoFaltas) chartEvolucaoFaltas.destroy();
+
+    chartEvolucaoFaltas = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'Manhã', data: dataManha, borderColor: '#0dcaf0', backgroundColor: 'rgba(13, 202, 240, 0.2)', fill: true, tension: 0.4 },
+                { label: 'Tarde', data: dataTarde, borderColor: '#0d6efd', backgroundColor: 'rgba(13, 110, 253, 0.2)', fill: true, tension: 0.4 },
+                { label: 'Noite', data: dataNoite, borderColor: '#212529', backgroundColor: 'rgba(33, 37, 41, 0.2)', fill: true, tension: 0.4 }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { stacked: true, beginAtZero: true }
+            },
+            plugins: {
+                legend: { position: 'top' },
+                tooltip: { mode: 'index', intersect: false }
+            }
+        }
+    });
+}
+
+// Exportar para uso global
+window.renderizarGraficoEvolucaoFaltas = renderizarGraficoEvolucaoFaltas;

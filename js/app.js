@@ -11,7 +11,7 @@ const TODAS_SECOES = [
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot',
-    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'analise-custos'
+    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
 , 'dashboard-faltas', 'dashboard-atividades'];
 
 let currentUserPermissions = {};
@@ -116,6 +116,9 @@ async function carregarDadosSecao(sectionName) {
                 if (typeof inicializarDashboardFaltas === 'function') {
                     await inicializarDashboardFaltas();
                 }
+                if (typeof renderizarGraficoEvolucaoFaltas === 'function') {
+                    await renderizarGraficoEvolucaoFaltas();
+                }
                 break;
             case 'dashboard-atividades':
                 if (typeof inicializarDashboardAtividades === 'function') {
@@ -208,6 +211,14 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'consumo-epi':
                 if (typeof inicializarConsumoEPI === 'function') await inicializarConsumoEPI();
+                break;
+            case 'epi-compras':
+                if (typeof inicializarComprasEPI === 'function') await inicializarComprasEPI();
+                break;
+            case 'analise-epi':
+                if (typeof carregarDashboardConsumoEPI === 'function') {
+                    await carregarDashboardConsumoEPI();
+                }
                 break;
              case 'analise-custos':
                 if (typeof inicializarAnaliseCustos === 'function') {
