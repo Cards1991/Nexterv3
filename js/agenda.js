@@ -989,6 +989,18 @@ function criarCardEvento(evento) {
         statusBadge = `<span class="badge ${statusClass} ms-2">${statusText}</span>`;
     }
 
+    let conclusaoInfo = '';
+    if (evento.status === 'Concluído' && evento.concluidoEm) {
+        const dataConclusao = evento.concluidoEm.toDate ? evento.concluidoEm.toDate() : new Date(evento.concluidoEm);
+        const dataFormatadaConclusao = dataConclusao.toLocaleDateString('pt-BR');
+        const horaFormatadaConclusao = dataConclusao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        
+        conclusaoInfo = `<div class="mt-2 pt-2 border-top small text-success">
+            <i class="fas fa-check-double me-1"></i> Concluído em: ${dataFormatadaConclusao} às ${horaFormatadaConclusao}
+            ${evento.tempoResolucao ? `<br><i class="fas fa-stopwatch me-1"></i> Duração: ${evento.tempoResolucao}` : ''}
+        </div>`;
+    }
+
     return `
         <div class="agenda-card ${cor}">
             <div class="agenda-card-icon"><i class="fas ${icone}"></i></div>
@@ -1002,6 +1014,7 @@ function criarCardEvento(evento) {
                 </div>
                 <div class="agenda-card-description">${evento.descricao}</div>
                 <div class="agenda-card-date">${atribuicaoInfo} ${dataFormatada}</div>
+                ${conclusaoInfo}
             </div>
             ${acoesHTML}
         </div>
@@ -1231,7 +1244,9 @@ async function fetchAtividades() {
                     criadoPor: atividade.criadoPor,
                     criadoPorNome: atividade.criadoPorNome,
                     atribuidoParaId: atividade.atribuidoParaId,
-                    atribuidoParaNome: atividade.atribuidoParaNome
+                    atribuidoParaNome: atividade.atribuidoParaNome,
+                    concluidoEm: atividade.concluidoEm,
+                    tempoResolucao: atividade.tempoResolucao
                 };
             });
 
@@ -1576,10 +1591,13 @@ async function concluirEvento(id, collection) {
         const doc = await docRef.get();
         const dados = doc.data();
 
+        // CORREÇÃO: Usa o tempo de início da execução se existir, senão usa o tempo de criação.
+        const startTime = dados.executionStartTime || dados.criadoEm;
+
         await docRef.update({ 
             status: 'Concluído',
             concluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            tempoResolucao: calcularTempoResolucao(dados.criadoEm)
+            tempoResolucao: calcularTempoResolucao(startTime)
         });
 
         mostrarMensagem("Tarefa concluída com sucesso!", "success");

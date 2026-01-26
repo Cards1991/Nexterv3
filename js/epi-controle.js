@@ -256,8 +256,11 @@ async function carregarHistoricoConsumoEPI() {
                     <td><span class="badge bg-primary rounded-pill">${consumo.quantidade}</span></td>
                     <td><small class="text-muted">${consumo.responsavelNome || 'Sistema'}</small></td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" onclick="devolverItemEPI('${doc.id}', ${consumo.quantidade}, '${consumo.epiDescricao}')" title="Devolver/Excluir">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="devolverItemEPI('${doc.id}', ${consumo.quantidade}, '${consumo.epiDescricao}')" title="Devolver/Estornar">
                             <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirConsumoEPI('${doc.id}')" title="Excluir Registro">
+                            <i class="fas fa-trash"></i>
                         </button>
                     </td>
                 </tr>
@@ -823,6 +826,63 @@ function imprimirRelatorioEntrega(id, funcionario, data, responsavel, itens) {
     const printWindow = window.open('', '_blank', 'width=800,height=600');
     printWindow.document.write(conteudo);
     printWindow.document.close();
+}
+
+async function excluirConsumoEPI(consumoId) {
+    if (!confirm("Tem certeza que deseja excluir este registro de consumo? O item será devolvido ao estoque.")) {
+        return;
+    }
+
+    try {
+        const consumoRef = db.collection('epi_consumo').doc(consumoId);
+        const doc = await consumoRef.get();
+        
+        if (!doc.exists) {
+            mostrarMensagem("Registro não encontrado.", "error");
+            return;
+        }
+
+        const dados = doc.data();
+        const epiId = dados.epiId;
+        const qtd = dados.quantidade;
+
+        if (!epiId || !qtd) {
+            await consumoRef.delete();
+            mostrarMensagem("Registro de consumo excluído (sem impacto no estoque).", "success");
+            carregarHistoricoConsumoEPI();
+            carregarDashboardConsumoEPI();
+            return;
+        }
+
+        const batch = db.batch();
+
+        const estoqueRef = db.collection('epi_estoque').doc(epiId);
+        
+        const estoqueDoc = await estoqueRef.get();
+        if(estoqueDoc.exists) {
+            batch.update(estoqueRef, {
+                quantidade: firebase.firestore.FieldValue.increment(qtd)
+            });
+        }
+
+        batch.delete(consumoRef);
+
+        await batch.commit();
+
+        if(estoqueDoc.exists) {
+            mostrarMensagem(`Registro excluído e ${qtd} item(ns) devolvido(s) ao estoque.`, "success");
+        } else {
+            mostrarMensagem("Registro de consumo excluído. O item de estoque original não foi encontrado.", "warning");
+        }
+        
+        carregarHistoricoConsumoEPI();
+        carregarEstoqueEPI();
+        carregarDashboardConsumoEPI();
+
+    } catch (error) {
+        console.error("Erro ao excluir registro de consumo:", error);
+        mostrarMensagem("Erro ao processar a exclusão.", "error");
+    }
 }
 
 async function devolverItemEPI(consumoId, qtdAtual, descricao) {
@@ -1512,6 +1572,7 @@ window.adicionarItemEPI = adicionarItemEPI;
 window.removerItemEPI = removerItemEPI;
 window.atualizarTabelaItensEntrega = atualizarTabelaItensEntrega;
 window.calcularTotalItens = calcularTotalItens;
+window.excluirConsumoEPI = excluirConsumoEPI;
 window.devolverItemEPI = devolverItemEPI;
 window.carregarDashboardConsumoEPI = carregarDashboardConsumoEPI;
 window.gerarSolicitacaoCompraEPI = gerarSolicitacaoCompraEPI;

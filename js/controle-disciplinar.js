@@ -10,7 +10,44 @@ document.addEventListener('DOMContentLoaded', function() {
     if (btnNovoRegistro) {
         btnNovoRegistro.addEventListener('click', () => abrirModalNovoRegistroDisciplinar());
     }
+    setupFiltrosDisciplinares();
 });
+
+function setupFiltrosDisciplinares() {
+    const tableContainer = document.getElementById('tabela-controle-disciplinar')?.closest('.table-responsive') || document.getElementById('tabela-controle-disciplinar')?.parentElement;
+    
+    if (tableContainer && !document.getElementById('disciplinar-filtro-container')) {
+        const filterHTML = `
+            <div id="disciplinar-filtro-container" class="row g-2 mb-3 align-items-end bg-light p-2 rounded border">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Data Início</label>
+                    <input type="date" id="disciplinar-filtro-data-inicio" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold">Data Fim</label>
+                    <input type="date" id="disciplinar-filtro-data-fim" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Funcionário</label>
+                    <select id="disciplinar-filtro-funcionario" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button id="btn-filtrar-disciplinar" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter"></i> Filtrar</button>
+                </div>
+            </div>
+        `;
+        tableContainer.insertAdjacentHTML('beforebegin', filterHTML);
+        
+        // Popula o filtro de funcionários
+        if (typeof carregarSelectFuncionariosAtivos === 'function') {
+            carregarSelectFuncionariosAtivos('disciplinar-filtro-funcionario');
+        }
+
+        document.getElementById('btn-filtrar-disciplinar').addEventListener('click', carregarDadosDisciplinares);
+    }
+}
 
 // Função para carregar dados de controle disciplinar
 async function carregarDadosDisciplinares() {
@@ -21,18 +58,28 @@ async function carregarDadosDisciplinares() {
     if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
-
+    
     try {
-        const snapshot = await db.collection('registros_disciplinares').orderBy('dataOcorrencia', 'desc').get();
+        let query = db.collection('registros_disciplinares');
 
-        if (snapshot.empty) {
+        const dataInicio = document.getElementById('disciplinar-filtro-data-inicio')?.value;
+        const dataFim = document.getElementById('disciplinar-filtro-data-fim')?.value;
+        const funcId = document.getElementById('disciplinar-filtro-funcionario')?.value;
+
+        if (dataInicio) query = query.where('dataOcorrencia', '>=', new Date(dataInicio + 'T00:00:00'));
+        if (dataFim) query = query.where('dataOcorrencia', '<=', new Date(dataFim + 'T23:59:59'));
+        if (funcId) query = query.where('funcionarioId', '==', funcId);
+
+        const querySnapshot = await query.orderBy('dataOcorrencia', 'desc').get();
+
+        if (querySnapshot.empty) {
             gerarDashboardDisciplinar([]); // Gera dashboard vazio
             tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum registro disciplinar encontrado.</td></tr>';
             return;
         }
 
         tbody.innerHTML = '';
-        snapshot.forEach(doc => {
+        querySnapshot.forEach(doc => {
             const registro = doc.data();
             todosRegistros.push(registro); // Adiciona ao array para o dashboard
             const dataOcorrencia = registro.dataOcorrencia?.toDate ? registro.dataOcorrencia.toDate() : new Date();
@@ -159,6 +206,10 @@ async function abrirModalNovoRegistroDisciplinar(id = null) {
     const form = document.getElementById('form-registro-disciplinar');
     form.reset();
     document.getElementById('registro-disciplinar-id').value = '';
+    
+    // Limpa área de sugestão se existir
+    const sugestaoEl = document.getElementById('disciplinar-sugestao-container');
+    if (sugestaoEl) sugestaoEl.innerHTML = '';
 
     // Preencher select de funcionários
     const selectFuncionario = document.getElementById('disciplinar-funcionario');
@@ -180,9 +231,111 @@ async function abrirModalNovoRegistroDisciplinar(id = null) {
         mostrarMensagem('Falha ao carregar a lista de funcionários.', 'error');
     }
 
+    // Adicionar listeners para sugestão
+    selectFuncionario.addEventListener('change', verificarSugestaoDisciplinar);
+    
+    // Adiciona container de sugestão se não existir
+    const modalBody = form.parentElement;
+    if (!document.getElementById('disciplinar-sugestao-container')) {
+        const div = document.createElement('div');
+        div.id = 'disciplinar-sugestao-container';
+        div.className = 'mt-3';
+        // Insere antes dos botões do modal (footer) ou no final do body
+        modalBody.appendChild(div);
+    }
+
     // TODO: Implementar lógica para carregar dados se for edição (id != null)
 
     modal.show();
+}
+
+async function verificarSugestaoDisciplinar() {
+    const funcionarioId = document.getElementById('disciplinar-funcionario').value;
+    const container = document.getElementById('disciplinar-sugestao-container');
+    
+    if (!funcionarioId || !container) return;
+    
+    container.innerHTML = '<div class="text-muted small"><i class="fas fa-spinner fa-spin"></i> Analisando histórico...</div>';
+
+    try {
+        // Buscar histórico do funcionário
+        const historySnap = await db.collection('registros_disciplinares')
+            .where('funcionarioId', '==', funcionarioId)
+            .orderBy('dataOcorrencia', 'desc')
+            .get();
+
+        const history = historySnap.docs.map(d => d.data());
+        
+        // Lógica de sugestão
+        let sugestao = '';
+        let motivo = '';
+        let cor = 'alert-info';
+
+        // Verifica suspensões anteriores
+        const hasSusp7 = history.some(r => r.medidaAplicada === 'Suspensão de 7 dias');
+        const hasSusp5 = history.some(r => r.medidaAplicada === 'Suspensão de 5 dias');
+        const hasSusp3 = history.some(r => r.medidaAplicada === 'Suspensão de 3 dias');
+        const hasSusp1 = history.some(r => r.medidaAplicada === 'Suspensão de 1 dia');
+
+        if (hasSusp7) {
+            sugestao = 'Justa Causa';
+            motivo = 'Colaborador já possui suspensão de 7 dias.';
+            cor = 'alert-danger';
+        } else if (hasSusp5) {
+            sugestao = 'Suspensão de 7 dias';
+            motivo = 'Colaborador já possui suspensão de 5 dias.';
+            cor = 'alert-warning';
+        } else if (hasSusp3) {
+            sugestao = 'Suspensão de 5 dias';
+            motivo = 'Colaborador já possui suspensão de 3 dias.';
+            cor = 'alert-warning';
+        } else if (hasSusp1) {
+            sugestao = 'Suspensão de 3 dias';
+            motivo = 'Colaborador já possui suspensão de 1 dia.';
+            cor = 'alert-warning';
+        } else {
+            // Verifica advertências nos últimos 30 dias
+            const trintaDiasAtras = new Date();
+            trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+            
+            const advertenciasRecentes = history.filter(r => 
+                r.medidaAplicada.includes('Advertência') && 
+                r.dataOcorrencia.toDate() >= trintaDiasAtras
+            );
+
+            if (advertenciasRecentes.length >= 3) {
+                sugestao = 'Suspensão de 1 dia';
+                motivo = `Colaborador possui ${advertenciasRecentes.length} advertências nos últimos 30 dias.`;
+                cor = 'alert-warning';
+            } else {
+                sugestao = 'Advertência Escrita';
+                motivo = 'Histórico recente limpo ou leve.';
+                cor = 'alert-success';
+            }
+        }
+
+        container.innerHTML = `
+            <div class="alert ${cor} mb-0">
+                <strong><i class="fas fa-robot"></i> Sugestão do Sistema:</strong> ${sugestao}
+                <br><small>${motivo}</small>
+            </div>
+        `;
+        
+        // Tenta pré-selecionar a medida se existir no select
+        const tipoSelect = document.getElementById('disciplinar-tipo');
+        if (tipoSelect) {
+            for (let i = 0; i < tipoSelect.options.length; i++) {
+                if (tipoSelect.options[i].value === sugestao) {
+                    tipoSelect.selectedIndex = i;
+                    break;
+                }
+            }
+        }
+
+    } catch (e) {
+        console.error("Erro ao gerar sugestão:", e);
+        container.innerHTML = '';
+    }
 }
 
 // Função para salvar novo registro
@@ -285,13 +438,34 @@ async function visualizarRegistroDisciplinar(id) {
         }
         const registro = doc.data();
 
+        // Buscar histórico completo do funcionário para exibir no modal
+        const historySnap = await db.collection('registros_disciplinares')
+            .where('funcionarioId', '==', registro.funcionarioId)
+            .orderBy('dataOcorrencia', 'desc')
+            .get();
+
+        let historicoHTML = '<div class="list-group list-group-flush mt-3">';
+        historySnap.forEach(hDoc => {
+            const h = hDoc.data();
+            const activeClass = hDoc.id === id ? 'list-group-item-primary' : '';
+            historicoHTML += `
+                <div class="list-group-item ${activeClass}">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1">${h.medidaAplicada}</h6>
+                        <small>${formatarData(h.dataOcorrencia.toDate())}</small>
+                    </div>
+                    <p class="mb-1 small">Alínea ${h.classificacao}: ${h.descricao}</p>
+                </div>
+            `;
+        });
+        historicoHTML += '</div>';
+
         const corpoModal = `
-            <div class="row">
-                <div class="col-md-6 mb-3"><strong>Funcionário:</strong><p>${registro.funcionarioNome}</p></div>
-                <div class="col-md-6 mb-3"><strong>Data da Ocorrência:</strong><p>${formatarData(registro.dataOcorrencia.toDate())}</p></div>
-                <div class="col-12 mb-3"><strong>Classificação (CLT):</strong><p>Alínea ${registro.classificacao}</p></div>
-                <div class="col-12 mb-3"><strong>Medida Aplicada:</strong><p><span class="badge bg-warning text-dark">${registro.medidaAplicada}</span></p></div>
-                <div class="col-12"><strong>Descrição da Ocorrência:</strong><p style="white-space: pre-wrap;">${registro.descricao}</p></div>
+            <div class="mb-3">
+                <h5>${registro.funcionarioNome}</h5>
+                <hr>
+                <h6>Histórico Disciplinar</h6>
+                ${historicoHTML}
             </div>
         `;
 

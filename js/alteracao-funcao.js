@@ -295,11 +295,21 @@ function gerarTermoAlteracao(data) {
     const dataFormatada = formatarData(data.dataAlteracao.toDate ? data.dataAlteracao.toDate() : data.dataAlteracao);
     const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
 
+    let corpoTermo = '';
+    
+    if (data.motivo === 'Mudança temporária') {
+        // Texto ajustado para corresponder exatamente ao solicitado pelo usuário, em um único parágrafo.
+        corpoTermo = `<p>Pelo presente instrumento, fica registrada a alteração de função do(a) colaborador(a) <strong>${data.funcionarioNome}</strong>. Na data de <strong>${dataFormatada}</strong>, será transferido(a) de suas atividades no setor <strong>${data.setorOrigem}</strong> (cargo: <strong>${data.cargoOrigem}</strong>) para exercer a função de <strong>${data.cargoDestino}</strong> no setor <strong>${data.setorDestino}</strong>. Motivo da Alteração: Mudança temporária. O colaborador declara ter recebido todo o treinamento e equipamento de proteção e esta ciente e de acordo com a alteração descrita. Todas as demais cláusulas do contrato de trabalho original permanecem inalteradas.</p>`;
+    } else {
+        // Texto para outros motivos também ajustado para um único parágrafo para consistência.
+        corpoTermo = `<p>Pelo presente instrumento, fica registrada a alteração de função do(a) colaborador(a) <strong>${data.funcionarioNome}</strong>, que a partir da data de <strong>${dataFormatada}</strong>, será transferido(a) de suas atividades no setor <strong>${data.setorOrigem}</strong> (cargo: <strong>${data.cargoOrigem}</strong>) para exercer a função de <strong>${data.cargoDestino}</strong> no setor <strong>${data.setorDestino}</strong>. Motivo da Alteração: ${data.motivo || 'Necessidade operacional.'}. O colaborador declara estar ciente e de acordo com a alteração descrita. Todas as demais cláusulas do contrato de trabalho original permanecem inalteradas.</p>`;
+    }
+
     // CORREÇÃO: Substituído todo o bloco de conteúdo pelo novo layout profissional
     const conteudo = `
         <html>
             <head>
-                <title>Termo de Alteração de Função</title>
+                <title>Termo de mudança temporária de função</title>
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
                 <style>
                     @page { size: A4; margin: 0; }
@@ -308,7 +318,6 @@ function gerarTermoAlteracao(data) {
                     .termo-header { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; }
                     .termo-header h2 { font-weight: 700; color: #0d6efd; }
                     .termo-body p { font-size: 1.1rem; line-height: 1.8; text-align: justify; margin-bottom: 1.5rem; }
-                    .info-block { background-color: #f8f9fa; border-left: 5px solid #0d6efd; padding: 1rem; margin: 1.5rem 0; border-radius: .25rem; }
                     .assinatura-area { margin-top: 80px; display: flex; justify-content: space-around; }
                     .assinatura-block { text-align: center; }
                     .assinatura-linha { border-top: 1px solid #333; width: 280px; margin: 40px auto 5px auto; }
@@ -321,13 +330,11 @@ function gerarTermoAlteracao(data) {
             <body>
                 <div class="termo-container">
                     <div class="termo-header">
-                        <h2>TERMO DE ALTERAÇÃO DE FUNÇÃO E SALÁRIO</h2>
+                        <h2>Termo de mudança temporária de função</h2>
                     </div>
                     <div class="termo-body">
-                        <p>Pelo presente instrumento, fica registrada a alteração de função do(a) colaborador(a) <strong>${data.funcionarioNome}</strong>, que a partir da data de <strong>${dataFormatada}</strong>, será transferido(a) de suas atividades no setor <strong>${data.setorOrigem}</strong> (cargo: ${data.cargoOrigem}) para exercer a função de <strong>${data.cargoDestino}</strong> no setor <strong>${data.setorDestino}</strong>.</p>
-                        <div class="info-block"><strong>Motivo da Alteração:</strong> ${data.motivo || 'Necessidade operacional.'}</div>
-                        <p>O colaborador declara estar ciente e de acordo com a alteração descrita. Todas as demais cláusulas do contrato de trabalho original permanecem inalteradas.</p>
-                        <p class="text-end mt-5">Francinópolis-PI, ${hojeFormatado}.</p>
+                        ${corpoTermo}
+                        <p class="text-end mt-5">Imbituva-PR, ${hojeFormatado}.</p>
                     </div>
                     <div class="assinatura-area">
                         <div class="assinatura-block"><div class="assinatura-linha"></div><p><strong>${data.funcionarioNome}</strong><br>Colaborador(a)</p></div>

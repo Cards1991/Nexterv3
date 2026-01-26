@@ -15,6 +15,7 @@ async function inicializarGestaoProcessos() {
     document.getElementById('jur-tipo-acao')?.addEventListener('change', atualizarPedidosDoProcesso);
     document.getElementById('btn-filtrar-processos')?.addEventListener('click', carregarProcessosJuridicos);
     document.getElementById('jur-pedidos-container')?.addEventListener('input', calcularValorCausaAutomatico);
+    document.getElementById('jur-pedidos-container')?.addEventListener('change', calcularValorCausaAutomatico);
 }
 
 function atualizarPedidosDoProcesso() {
@@ -39,7 +40,7 @@ function atualizarPedidosDoProcesso() {
             <div class="col-lg-3 col-md-4">
                 <div class="input-group input-group-sm">
                     <span class="input-group-text">R$</span>
-                    <input type="number" class="form-control valor-pedido" id="valor-${pedido.replace(/\s+/g, '')}" placeholder="Valor">
+                    <input type="text" inputmode="decimal" class="form-control valor-pedido" id="valor-${pedido.replace(/\s+/g, '')}" placeholder="Valor">
                 </div>
             </div>
             <div class="col-lg-3 col-md-4">
@@ -68,8 +69,8 @@ function calcularValorCausaAutomatico() {
     container.querySelectorAll('.pedido-checkbox:checked').forEach(checkbox => {
         const pedidoId = checkbox.value.replace(/\s+/g, '');
         const valorInput = document.getElementById(`valor-${pedidoId}`);
-        if (valorInput) {
-            valorTotal += parseFloat(valorInput.value) || 0;
+        if (valorInput && valorInput.value) {
+            valorTotal += parseFloat(valorInput.value.replace(',', '.')) || 0;
         }
     });
 
@@ -129,6 +130,7 @@ async function carregarProcessosJuridicos() {
                     <td><span class="badge ${statusClass}">${proc.status || '-'}</span></td>
                     <td>${proc.dataConciliacao ? formatarData(proc.dataConciliacao.toDate()) : 'N/A'}</td>
                     <td class="text-end">
+                        <button class="btn btn-sm btn-outline-secondary" onclick="visualizarProcessoCompacto('${proc.id}')" title="Visualizar Resumo"><i class="fas fa-search-plus"></i></button>
                         <button class="btn btn-sm btn-outline-info" onclick="abrirModalAnaliseRiscoIA('${proc.id}')" title="Análise de Risco (IA)"><i class="fas fa-brain"></i></button>
                         <button class="btn btn-sm btn-outline-primary" onclick="abrirModalProcesso('${proc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                         <button class="btn btn-sm btn-outline-danger" onclick="excluirProcessoJuridico('${proc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
@@ -239,9 +241,10 @@ async function salvarProcessoJuridico() {
     const container = document.getElementById('jur-pedidos-container');
     container.querySelectorAll('.form-check-input:checked').forEach(chk => {
         const pedidoId = chk.value.replace(/\s+/g, '');
+        const valorInput = document.getElementById(`valor-${pedidoId}`);
         pedidos.push({
             pedido: chk.value,
-            valor: parseFloat(document.getElementById(`valor-${pedidoId}`).value) || 0,
+            valor: parseFloat(valorInput.value.replace(',', '.')) || 0,
             risco: document.getElementById(`risco-${pedidoId}`).value,
             avaliacaoProva: document.getElementById(`avaliacao-${pedidoId}`).value
         });
@@ -260,8 +263,8 @@ async function salvarProcessoJuridico() {
         parteContraria: document.getElementById('jur-parte-contraria').value,
         tipoAcao: document.getElementById('jur-tipo-acao').value,
         status: document.getElementById('jur-status').value,
-        descricao: document.getElementById('jur-descricao').value,
-        valorCausa: parseFloat(document.getElementById('jur-valor-causa').value) || 0,
+        descricao: document.getElementById('jur-descricao').value.trim(),
+        valorCausa: parseFloat(document.getElementById('jur-valor-causa').value.replace(',', '.')) || 0,
         dataConciliacao: document.getElementById('jur-data-conciliacao').value ? new Date(document.getElementById('jur-data-conciliacao').value) : null,
         dataInstrucao: document.getElementById('jur-data-instrucao').value ? new Date(document.getElementById('jur-data-instrucao').value) : null,
         pedidos: pedidos,
@@ -439,7 +442,7 @@ async function abrirModalAnaliseRiscoIA(processoId) {
                 <table class="table table-bordered table-sm">
                     <thead><tr class="table-light"><th>Pedido</th><th>Probabilidade de Perda</th><th>Impacto Financeiro</th><th>Classificação</th></tr></thead>
                     <tbody>
-                        ${processo.pedidos?.map(p => `<tr><td>${p.pedido}</td><td>${p.risco}</td><td>R$ ${p.valor.toFixed(2)}</td><td><span class="badge bg-warning text-dark">${p.risco}</span></td></tr>`).join('') || '<tr><td colspan="4">Nenhum pedido informado.</td></tr>'}
+                        ${processo.pedidos?.map(p => `<tr><td>${p.pedido}</td><td>${p.risco}</td><td>R$ ${(p.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td><span class="badge bg-warning text-dark">${p.risco}</span></td></tr>`).join('') || '<tr><td colspan="4">Nenhum pedido informado.</td></tr>'}
                     </tbody>
                 </table>
 
@@ -454,12 +457,90 @@ async function abrirModalAnaliseRiscoIA(processoId) {
                 </ul>
 
                 <h5 class="mt-4"><i class="fas fa-search-dollar text-primary"></i> Estimativa Consolidada (Exemplo)</h5>
-                <p>A estimativa de perda total para este processo é de <strong>R$ ${processo.valorCausa?.toFixed(2) || '0.00'}</strong>, com um risco geral de <strong>${processo.riscoGeral}</strong>.</p>
+                <p>A estimativa de perda total para este processo é de <strong>R$ ${(processo.valorCausa || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>, com um risco geral de <strong>${processo.riscoGeral}</strong>.</p>
             `;
         }, 1500); // Simula o tempo de processamento da IA
     } catch (error) {
         console.error("Erro ao carregar dados para análise de risco:", error);
         modalBody.innerHTML = '<p class="text-danger">Ocorreu um erro ao carregar os dados do processo.</p>';
+    }
+}
+
+/**
+ * Abre um modal com uma visualização compacta dos detalhes do processo.
+ * @param {string} processoId O ID do processo no Firestore.
+ */
+async function visualizarProcessoCompacto(processoId) {
+    try {
+        const doc = await db.collection('processos_juridicos').doc(processoId).get();
+        if (!doc.exists) {
+            mostrarMensagem("Processo não encontrado.", "error");
+            return;
+        }
+        const proc = doc.data();
+
+        const getRiskClass = (risco) => {
+            switch (risco) {
+                case 'Alto': return 'bg-danger';
+                case 'Médio': return 'bg-warning text-dark';
+                case 'Baixo': return 'bg-success';
+                default: return 'bg-secondary';
+            }
+        };
+
+        const getStatusClass = (status) => {
+            switch (status) {
+                case 'Ativo': return 'bg-primary';
+                case 'Finalizado': return 'bg-success';
+                default: return 'bg-secondary';
+            }
+        };
+
+        let corpoModal = `
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <small class="text-muted">Nº do Processo</small>
+                    <p class="fw-bold fs-5 mb-0">${proc.numeroProcesso || 'Não informado'}</p>
+                </div>
+                <div class="text-end">
+                    <small class="text-muted d-block">Status Atual</small>
+                    <span class="badge ${getStatusClass(proc.status)} fs-6">${proc.status || 'N/A'}</span>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3"><small class="text-muted">Cliente</small><p>${proc.cliente || 'N/A'}</p></div>
+                <div class="col-md-6 mb-3"><small class="text-muted">Parte Contrária</small><p>${proc.parteContraria || 'N/A'}</p></div>
+            </div>
+            <div class="row">
+                <div class="col-md-6 mb-3"><small class="text-muted">Tipo de Ação</small><p><span class="badge bg-info text-dark">${proc.tipoAcao || 'N/A'}</span></p></div>
+                <div class="col-md-6 mb-3"><small class="text-muted">Risco Geral</small><p><span class="badge ${getRiskClass(proc.riscoGeral)}">${proc.riscoGeral || 'N/A'}</span></p></div>
+            </div>
+            <hr>
+            <h6>Objeto da Ação</h6>
+            <p>${proc.descricao || 'Não informado'}</p>
+            <h6>Pedidos</h6>
+        `;
+
+        if (proc.pedidos && proc.pedidos.length > 0) {
+            corpoModal += '<ul class="list-group list-group-flush">';
+            proc.pedidos.forEach(p => {
+                corpoModal += `<li class="list-group-item d-flex justify-content-between align-items-center">
+                                ${p.pedido}
+                                <span class="badge bg-primary rounded-pill">R$ ${(p.valor || 0).toFixed(2)}</span>
+                               </li>`;
+            });
+            corpoModal += '</ul>';
+        } else {
+            corpoModal += '<p class="text-muted">Nenhum pedido registrado.</p>';
+        }
+
+        corpoModal += `<h6 class="mt-3">Valor Total da Causa</h6><p class="fs-5 fw-bold text-success">R$ ${(proc.valorCausa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>`;
+
+        abrirModalGenerico(`Resumo do Processo: ${proc.numeroProcesso}`, corpoModal);
+
+    } catch (error) {
+        console.error("Erro ao visualizar processo:", error);
+        mostrarMensagem("Falha ao carregar detalhes do processo.", "error");
     }
 }
 

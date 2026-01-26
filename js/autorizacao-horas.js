@@ -102,11 +102,11 @@ async function carregarSolicitacoes() {
 
     // Aplica filtros de data se existirem
     if (dataInicio) {
-        query = query.where('createdAt', '>=', new Date(dataInicio + 'T00:00:00'));
+        query = query.where('createdAt', '>=', firebase.firestore.Timestamp.fromDate(new Date(dataInicio + 'T00:00:00')));
     }
     if (dataFim) {
         const dataFimObj = new Date(dataFim + 'T23:59:59');
-        query = query.where('createdAt', '<=', dataFimObj);
+        query = query.where('createdAt', '<=', firebase.firestore.Timestamp.fromDate(dataFimObj));
     }
 
     // Aplica filtro de status se selecionado
