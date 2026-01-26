@@ -1212,6 +1212,7 @@ async function inicializarComprasEPI() {
                                 <button class="btn btn-success" onclick="baixarCompraTotal('${doc.id}')" title="Baixar Total"><i class="fas fa-check-double"></i></button>
                                 <button class="btn btn-info" onclick="baixarCompraParcial('${doc.id}')" title="Baixar Parcial"><i class="fas fa-box-open"></i></button>
                             ` : ''}
+                            <button class="btn btn-outline-danger" onclick="excluirCompraEPI('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
                         </div>
                     </td>
                 </tr>
@@ -1452,6 +1453,18 @@ window.processarRecebimentoCompra = async function(docId) {
     }
 };
 
+async function excluirCompraEPI(id) {
+    if (!confirm("Tem certeza que deseja excluir esta solicitação de compra?")) return;
+    try {
+        await db.collection('epi_compras').doc(id).delete();
+        mostrarMensagem("Solicitação excluída com sucesso.", "success");
+        inicializarComprasEPI();
+    } catch (error) {
+        console.error("Erro ao excluir solicitação:", error);
+        mostrarMensagem("Erro ao excluir solicitação.", "error");
+    }
+}
+
 // ========================================
 // INICIALIZAÇÃO DOS MÓDULOS
 // ========================================
@@ -1507,6 +1520,7 @@ window.visualizarCompra = visualizarCompra;
 window.baixarCompraTotal = baixarCompraTotal;
 window.baixarCompraParcial = baixarCompraParcial;
 window.imprimirRelatorioEntrega = imprimirRelatorioEntrega;
+window.excluirCompraEPI = excluirCompraEPI;
 window.inicializarEstoqueEPI = inicializarEstoqueEPI;
 window.inicializarConsumoEPI = inicializarConsumoEPI;
 
