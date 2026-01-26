@@ -120,8 +120,8 @@ async function carregarDashboardFaltas(db) {
         const contagemFaltas = {};
         let totalFaltasFiltradas = 0;
         const funcionariosComFalta = new Set();
-        const faltasPorSexo = {};
-        const faltasPorSetor = {};
+        const funcionariosPorSexo = {}; // Contará funcionários únicos por sexo
+        const faltasPorSetor = {}; // Contará o total de faltas por setor
 
         faltas.forEach(falta => {
             const idFuncionario = falta.funcionarioId;
@@ -141,15 +141,24 @@ async function carregarDashboardFaltas(db) {
                 funcionariosComFalta.add(idFuncionario);
 
                 // Contagem por Sexo
-                const sexo = funcionario.sexo || 'Não Informado';
-                faltasPorSexo[sexo] = (faltasPorSexo[sexo] || 0) + 1;
+                const sexo = funcionario.sexo || 'Não Informado'; // Agrupa como 'Não Informado' se não houver sexo
+                if (!funcionariosPorSexo[sexo]) {
+                    funcionariosPorSexo[sexo] = new Set();
+                }
+                funcionariosPorSexo[sexo].add(idFuncionario);
 
                 // Contagem por Setor
                 const setor = funcionario.setor || 'Não Definido';
                 faltasPorSetor[setor] = (faltasPorSetor[setor] || 0) + 1;
             }
         });
-
+        
+        // Converter os Sets de funcionários por sexo em contagens numéricas
+        const contagemFuncionariosPorSexo = {};
+        for (const sexo in funcionariosPorSexo) {
+            contagemFuncionariosPorSexo[sexo] = funcionariosPorSexo[sexo].size;
+        }
+        
         // 4. Montar e ordenar o ranking
         const rankingArray = Object.entries(contagemFaltas)
             .map(([funcionarioId, totalFaltas]) => {
@@ -171,7 +180,7 @@ async function carregarDashboardFaltas(db) {
         // 5. Renderizar o dashboard
         renderizarKPIs(totalFaltasFiltradas, funcionariosComFalta.size);
         renderizarRanking(rankingArray, rankingContainer);
-        renderizarGraficoSexo(faltasPorSexo);
+        renderizarGraficoSexo(contagemFuncionariosPorSexo);
         renderizarGraficoSetor(faltasPorSetor);
 
     } catch (error) {
