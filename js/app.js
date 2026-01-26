@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
-, 'dashboard-faltas', 'dashboard-atividades'];
+, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos'];
 
 let currentUserPermissions = {};
 
@@ -311,6 +311,11 @@ async function carregarDadosSecao(sectionName) {
                 break;            case 'saude-psicossocial':
                 if (typeof inicializarSaudePsicossocial === 'function') {
                     await inicializarSaudePsicossocial();
+                }
+                break;
+            case 'gestao-sumidos':
+                if (typeof inicializarGestaoSumidos === 'function') {
+                    await inicializarGestaoSumidos();
                 }
                 break;
         }

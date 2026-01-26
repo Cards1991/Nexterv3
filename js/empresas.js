@@ -110,8 +110,8 @@ async function salvarEmpresa() {
         const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
-        const pagaSindicato = document.getElementById('paga-sindicato-empresa').checked;
-        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa').checked;
+        const pagaSindicato = document.getElementById('paga-sindicato-empresa')?.checked || false;
+        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa')?.checked || false;
 
         if (!nome) {
             mostrarMensagem('Preencha o nome da empresa', 'warning');
@@ -160,8 +160,13 @@ async function editarEmpresa(empresaId) {
         document.getElementById('setores-empresa').value = Array.isArray(empresa.setores) ? empresa.setores.join(', ') : '';
         document.getElementById('funcoes-empresa').value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
         document.getElementById('rat-empresa').value = empresa.rat || '';
-        document.getElementById('paga-sindicato-empresa').checked = empresa.pagaSindicato === true;
-        document.getElementById('paga-contribuicao-patronal-empresa').checked = empresa.pagaContribuicaoPatronal === true;
+
+        const pagaSindicatoEl = document.getElementById('paga-sindicato-empresa');
+        if (pagaSindicatoEl) pagaSindicatoEl.checked = empresa.pagaSindicato === true;
+
+        const pagaContribuicaoPatronalEl = document.getElementById('paga-contribuicao-patronal-empresa');
+        if (pagaContribuicaoPatronalEl) pagaContribuicaoPatronalEl.checked = empresa.pagaContribuicaoPatronal === true;
+
 
         // Garante que o título do modal esteja correto para edição
         const modalTitle = document.querySelector('#empresaModal .modal-title');
@@ -187,8 +192,8 @@ async function atualizarEmpresa(empresaId) {
         const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
-        const pagaSindicato = document.getElementById('paga-sindicato-empresa').checked;
-        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa').checked;
+        const pagaSindicato = document.getElementById('paga-sindicato-empresa')?.checked || false;
+        const pagaContribuicaoPatronal = document.getElementById('paga-contribuicao-patronal-empresa')?.checked || false;
         const setores = setoresText.split(',').map(s => s.trim()).filter(s => s);
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;

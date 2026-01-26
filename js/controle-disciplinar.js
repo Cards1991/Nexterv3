@@ -553,14 +553,14 @@ async function imprimirRelatorioDisciplinar() {
 
         let tabelaHTML = '<p class="text-muted">Nenhum registro encontrado para este funcionário.</p>';
         if (!snapshot.empty) {
-            tabelaHTML = '<table class="table table-bordered table-sm"><thead><tr><th>Data</th><th>Classificação</th><th>Medida</th><th>Descrição</th></tr></thead><tbody>';
+            tabelaHTML = '<table class="table-custom"><thead><tr><th>Data</th><th>Classificação</th><th>Medida</th><th>Descrição</th></tr></thead><tbody>';
             snapshot.forEach(doc => {
                 const reg = doc.data();
                 tabelaHTML += `
                     <tr>
                         <td>${formatarData(reg.dataOcorrencia.toDate())}</td>
-                        <td>${reg.classificacao || '-'}</td>
-                        <td>${reg.medidaAplicada}</td>
+                        <td><strong>${reg.classificacao || '-'}</strong></td>
+                        <td><span class="badge-custom">${reg.medidaAplicada}</span></td>
                         <td>${reg.descricao}</td>
                     </tr>
                 `;
@@ -577,28 +577,52 @@ async function imprimirRelatorioDisciplinar() {
                 <head>
                     <title>Relatório Disciplinar - ${funcionarioNome}</title>
                     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-                    <style>ge { size: A4; margin: 1cm; } 
-                        body { font-family: 'Segoe UI', sans-serif; color: #333; } 
-                        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #0056b3; padding-bottom: 10px; margin-bottom: 20px; }
-                        .header img { max-height: 60px; max-width: 200px; }
-                        .header h2 { color: #0056b3; margin: 0; font-weight: 600; }
-                        .info-section p { margin-bottom: 5px; }
-                        .table { font-size: 0.9rem; }
-                        .table th { background-color: #f2f2f2; }
-                        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 0.8rem; color: #888; }
+                    <style>
+                        @page { size: A4; margin: 1.5cm; } 
+                        body { font-family: 'Segoe UI', sans-serif; color: #333; background: #fff; } 
+                        .report-container { max-width: 100%; margin: 0 auto; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 3px solid #0d6efd; padding-bottom: 20px; }
+                        .header h2 { color: #0d6efd; font-weight: 700; margin: 0; text-transform: uppercase; letter-spacing: 1px; }
+                        .header p { color: #6c757d; margin: 5px 0 0; font-size: 0.9rem; }
+                        .info-card { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 8px; padding: 20px; margin-bottom: 30px; }
+                        .info-row { display: flex; justify-content: space-between; margin-bottom: 10px; }
+                        .info-label { font-weight: 600; color: #495057; }
+                        .info-value { font-weight: 500; color: #212529; }
+                        .table-custom { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+                        .table-custom th { background-color: #0d6efd; color: white; padding: 12px; text-align: left; font-weight: 600; font-size: 0.85rem; text-transform: uppercase; }
+                        .table-custom td { padding: 12px; border-bottom: 1px solid #dee2e6; font-size: 0.9rem; vertical-align: top; }
+                        .table-custom tr:last-child td { border-bottom: 2px solid #0d6efd; }
+                        .badge-custom { background-color: #e9ecef; color: #495057; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; border: 1px solid #ced4da; }
+                        .footer { margin-top: 50px; text-align: center; font-size: 0.8rem; color: #adb5bd; border-top: 1px solid #dee2e6; padding-top: 20px; }
                     </style>
                 </head>
                 <body>
-                    < 
-                    <div class="info-section mb-4">
-                        <p><strong>Funcionário:</strong> ${funcionarioNome}</p>
-                        <p><strong>Data de Emissão:</strong> ${new Date().toLocaleDateString('pt-BR')}</p>
-                    </div>
+                    <div class="report-container">
+                        <div class="header">
+                            <h2>Relatório Disciplinar</h2>
+                            <p>Histórico de Ocorrências e Medidas Disciplinares</p>
+                        </div>
 
-                    ${tabelaHTML}
+                        <div class="info-card">
+                            <div class="row">
+                                <div class="col-md-6 mb-2">
+                                    <span class="info-label">Colaborador:</span>
+                                    <div class="info-value fs-5">${funcionarioNome}</div>
+                                </div>
+                                <div class="col-md-6 mb-2 text-md-end">
+                                    <span class="info-label">Data de Emissão:</span>
+                                    <div class="info-value">${new Date().toLocaleDateString('pt-BR')}</div>
+                                </div>
+                            </div>
+                        </div>
 
-                    <div class="footer">
-                        <p>NEXTER - O Controle em suas mãos</p>
+                        <h5 class="mb-3 text-primary" style="font-weight: 600; border-left: 4px solid #0d6efd; padding-left: 10px;">Detalhamento das Ocorrências</h5>
+                        ${tabelaHTML}
+
+                        <div class="footer">
+                            <p>Documento gerado eletronicamente pelo Sistema Nexter.</p>
+                            <p>Confidencial - Uso Interno</p>
+                        </div>
                     </div>
                 </body>
             </html>
