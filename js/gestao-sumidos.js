@@ -52,7 +52,7 @@ async function inicializarGestaoSumidos() {
                                 <th>Data de Admissão</th>
                                 <th>Setor</th>
                                 <th>Data do Último Registro de Ponto</th>
-                                <th>Tempo Desaparecido (Automático)</th>
+                                <th>Tempo Desaparecido</th>
                                 <th class="text-end pe-4">Ações</th>
                             </tr>
                         </thead>
