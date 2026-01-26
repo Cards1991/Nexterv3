@@ -1473,29 +1473,68 @@ function emitirValePizza(funcionarioId, nomeFuncionario) {
 // ========================================
 
 function imprimirResumoDoDia() {
-    const containerHoje = getElement('agenda-hoje');
-    if (!containerHoje || containerHoje.children.length === 0 || containerHoje.querySelector('.text-muted')) {
+    // Captura os containers de "Hoje" tanto de Minhas Atividades quanto da Equipe
+    const containerMinhas = getElement('agenda-minhas-hoje');
+    const containerEquipe = getElement('agenda-equipe-hoje');
+    
+    // Verifica se há conteúdo válido (não vazio e sem a mensagem de "Nenhum evento")
+    const temMinhas = containerMinhas && containerMinhas.children.length > 0 && !containerMinhas.querySelector('p.text-muted');
+    const temEquipe = containerEquipe && containerEquipe.children.length > 0 && !containerEquipe.querySelector('p.text-muted');
+
+    if (!temMinhas && !temEquipe) {
         mostrarMensagem("Não há eventos na coluna 'Hoje' para imprimir.", "info");
         return;
     }
 
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
+    
+    let conteudoPrincipal = '';
+
+    if (temMinhas) {
+        conteudoPrincipal += `
+            <h4 class="mt-4 mb-3 border-bottom pb-2">Minhas Atividades</h4>
+            <div class="agenda-cards">${containerMinhas.innerHTML}</div>
+        `;
+    }
+
+    if (temEquipe) {
+        conteudoPrincipal += `
+            <h4 class="mt-4 mb-3 border-bottom pb-2">Atividades da Equipe</h4>
+            <div class="agenda-cards">${containerEquipe.innerHTML}</div>
+        `;
+    }
+
     let conteudoHTML = `
         <html>
             <head>
                 <title>Resumo do Dia - ${dataHoje}</title>
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-                <link rel="stylesheet" href="css/style.css">
                 <style> 
-                    @page { size: A4; margin: 1.5cm; } 
-                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; } 
+                    @page { size: A4; margin: 1.5cm; }
+                    body { font-family: 'Segoe UI', sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 20px; }
                     .agenda-card-actions { display: none !important; } 
+                    .agenda-card { border: 1px solid #dee2e6; border-left-width: 4px; margin-bottom: 10px; page-break-inside: avoid; padding: 10px; border-radius: 4px; background-color: #f8f9fa; }
+                    .agenda-card-title { font-weight: bold; font-size: 1.1em; margin-bottom: 5px; }
+                    .agenda-card-description { font-size: 0.9em; color: #555; margin-bottom: 5px; }
+                    .agenda-card-date { font-size: 0.8em; color: #777; }
+                    /* Cores das bordas para impressão */
+                    .border-success { border-left-color: #28a745 !important; }
+                    .border-warning { border-left-color: #ffc107 !important; }
+                    .border-info { border-left-color: #17a2b8 !important; }
+                    .border-primary { border-left-color: #0d6efd !important; }
+                    .border-danger { border-left-color: #dc3545 !important; }
+                    .border-secondary { border-left-color: #6c757d !important; }
+                    .border-dark { border-left-color: #212529 !important; }
+                    .border-purple { border-left-color: #6610f2 !important; }
                 </style>
             </head>
             <body>
-                <h2 class="mb-4">Resumo de Atividades - ${dataHoje}</h2>
-                <div class="agenda-cards">${containerHoje.innerHTML}</div>
+                <h2 class="mb-4 text-center">Resumo de Atividades - ${dataHoje}</h2>
+                ${conteudoPrincipal}
+                <div class="mt-5 text-center text-muted small">
+                    <p>Gerado automaticamente pelo Sistema Nexter</p>
+                </div>
             </body>
         </html>`;
 
