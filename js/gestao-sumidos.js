@@ -2,8 +2,27 @@
 // Módulo: Gestão de Sumidos (Absenteísmo Crítico)
 // ========================================
 
+let whatsappConfigSumidos = {
+    telefone: '',
+    ativo: true
+};
+
+async function carregarConfiguracaoWhatsApp() {
+    try {
+        const doc = await db.collection('configuracoes').doc('whatsapp').get();
+        if (doc.exists) {
+            const data = doc.data();
+            whatsappConfigSumidos.telefone = data.telefone || '';
+            whatsappConfigSumidos.ativo = data.ativo !== false;
+        }
+    } catch (e) {
+        console.error("Erro ao carregar config WhatsApp:", e);
+    }
+}
+
 async function inicializarGestaoSumidos() {
     console.log("Inicializando Gestão de Sumidos...");
+    await carregarConfiguracaoWhatsApp();
     const container = document.getElementById('gestao-sumidos');
     if (!container) return;
 
@@ -87,6 +106,11 @@ async function carregarListaSumidos() {
             if (tempoDesaparecido > 30) badgeClass = 'bg-danger'; // Abandono de emprego (30 dias)
             else if (tempoDesaparecido > 15) badgeClass = 'bg-warning text-dark';
 
+            let btnWhatsapp = '';
+            if (tempoDesaparecido > 15) {
+                btnWhatsapp = `<button class="btn btn-sm btn-success" onclick="enviarAlertaWhatsAppSumido('${caso.nome}', '${caso.setor || ''}', ${tempoDesaparecido}, '${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString('pt-BR') : '-'}')" title="Enviar Alerta WhatsApp"><i class="fab fa-whatsapp"></i></button>`;
+            }
+
             html += `
                 <tr>
                     <td class="ps-4 fw-bold">${caso.nome}</td>
@@ -96,6 +120,7 @@ async function carregarListaSumidos() {
                     <td><span class="badge ${badgeClass} fs-6">${tempoDesaparecido} dias</span></td>
                     <td class="text-end pe-4">
                         <div class="btn-group">
+                            ${btnWhatsapp}
                             <button class="btn btn-sm btn-outline-primary" onclick="abrirModalTratamento('${doc.id}')">
                                 <i class="fas fa-file-contract me-1"></i> Tratamento
                             </button>
@@ -112,6 +137,25 @@ async function carregarListaSumidos() {
         console.error("Erro ao carregar sumidos:", error);
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
+}
+
+function enviarAlertaWhatsAppSumido(nome, setor, dias, ultimoPonto) {
+    if (!whatsappConfigSumidos.ativo || !whatsappConfigSumidos.telefone) {
+        mostrarMensagem("WhatsApp não configurado ou desativado nas configurações gerais.", "warning");
+        return;
+    }
+    
+    const telefone = formatarTelefoneWhatsApp(whatsappConfigSumidos.telefone);
+    const mensagem = `⚠️ *ALERTA DE ABSENTEÍSMO CRÍTICO* ⚠️\n\n` +
+        `👤 *Colaborador:* ${nome}\n` +
+        `🏢 *Setor:* ${setor}\n` +
+        `📅 *Último Ponto:* ${ultimoPonto}\n` +
+        `⏳ *Tempo de Ausência:* ${dias} dias\n\n` +
+        `❗ *Status:* Superior a 15 dias.\n` +
+        `👉 *Ação:* Verificar protocolo de abandono de emprego.`;
+        
+    const link = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+    window.open(link, '_blank');
 }
 
 function atualizarDashboardSumidos(casos) {

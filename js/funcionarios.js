@@ -599,19 +599,6 @@ async function atualizarFuncionario(funcionarioId) {
 
 async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPorFora = 0) {
     try {
-        // Lógica de cálculo simplificada conforme solicitado.
-        // Custo = Salário + 8% de FGTS + Provisão de Férias (1/12) + Terço de Férias + FGTS s/ Férias + Provisão 13º + FGTS s/ 13º + Sindicato + Patronal + RAT + INCRA + VR.
-        const fgts = salario * 0.08;
-        const provisaoFerias = salario / 12;
-        const tercoFerias = provisaoFerias / 3;
-        const fgtsSobreFerias = provisaoFerias * 0.08;
-        const provisao13 = salario / 12;
-        const fgtsSobre13 = provisao13 * 0.08;
-
-        let custoSindicato = 0;
-        let custoPatronal = 0;
-        let custoRat = 0;
-        let custoIncra = 0;
         let custoValeRefeicao = 0;
 
         // Busca dados da empresa e do funcionário em paralelo
@@ -620,34 +607,38 @@ async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPor
             db.collection('funcionarios').doc(funcionarioId).get()
         ]);
 
+        let totalEncargosPercentual = 0;
+
         if (empresaDoc.exists) {
             const empresaData = empresaDoc.data();
-            const baseCalculoContribuicoes = salario + provisaoFerias + provisao13;
+            const impostos = empresaData.impostos || {};
 
-            if (empresaData.pagaSindicato === true) {
-                custoSindicato = baseCalculoContribuicoes * 0.008; // 0.8%
-            }
-            if (empresaData.pagaContribuicaoPatronal === true) {
-                custoPatronal = baseCalculoContribuicoes * 0.20; // 20%
+            // Soma os percentuais cadastrados na empresa
+            const rat = parseFloat(empresaData.rat) || 0;
+            const fgts = parseFloat(impostos.fgts) || 0;
+            const terceiros = parseFloat(impostos.terceiros) || 0;
+            const patronal = parseFloat(impostos.patronal) || 0;
+            const sindicato = parseFloat(impostos.sindicato) || 0;
 
-                // Calcula o RAT apenas se a contribuição patronal estiver ativa
-                if (empresaData.rat && empresaData.rat > 0) {
-                    const percentualRat = (empresaData.rat * 2) / 100;
-                    custoRat = salario * percentualRat;
-                }
-
-                // Calcula o INCRA (0.2%) apenas se a contribuição patronal estiver ativa
-                custoIncra = salario * 0.002;
-            }
+            totalEncargosPercentual = rat + fgts + terceiros + patronal + sindicato;
         }
 
         if (funcionarioDoc.exists && funcionarioDoc.data().beneficios?.valeAlimentacao === true) {
             custoValeRefeicao = 260.00;
         }
 
-        const custoTotal = salario + fgts + provisaoFerias + tercoFerias + fgtsSobreFerias + provisao13 + fgtsSobre13 + 
-                           custoSindicato + custoPatronal + custoRat + custoIncra + custoValeRefeicao + 
-                           salarioPorFora; // Adiciona o salário por fora ao custo final
+        // Cálculo das Provisões (Férias + 1/3 + 13º)
+        const provisaoFerias = salario / 12;
+        const tercoFerias = provisaoFerias / 3;
+        const provisao13 = salario / 12;
+        const totalProvisoes = provisaoFerias + tercoFerias + provisao13;
+
+        // Cálculo dos Encargos sobre Salário e Provisões
+        const baseCalculoEncargos = salario + totalProvisoes;
+        const valorEncargos = baseCalculoEncargos * (totalEncargosPercentual / 100);
+
+        // Custo Total = Salário + Provisões + Encargos + Benefícios + Salário Por Fora
+        const custoTotal = salario + totalProvisoes + valorEncargos + custoValeRefeicao + salarioPorFora;
 
         await db.collection('funcionarios').doc(funcionarioId).update({
             custoTotal: parseFloat(custoTotal.toFixed(2))

@@ -67,3 +67,15 @@ function formatarData(data) {
                    (data instanceof Date ? data : new Date(data));
     return dataObj.toLocaleDateString('pt-BR');
 }
+
+/**
+ * Formata um número de telefone para o padrão do WhatsApp (55 + DDD + Número).
+ * @param {string} numero O número de telefone.
+ * @returns {string} O número formatado.
+ */
+function formatarTelefoneWhatsApp(numero) {
+    if (!numero) return '';
+    let telefone = numero.replace(/[^\d+]/g, '');
+    if (!telefone.startsWith('+')) telefone = '55' + telefone.replace(/^0+/, '');
+    return telefone;
+}

@@ -76,18 +76,6 @@ async function carregarConfigGerente() {
     }
 }
 
-// ============ FUNÇÕES UTILITÁRIAS ============
-function formatarTelefoneWhatsApp(numero) {
-    if (!numero) return '';
-    // Formatar telefone (remover caracteres não numéricos, exceto +)
-    let telefone = numero.replace(/[^\d+]/g, '');
-    
-    // Se não começar com +, adicionar código do Brasil
-    if (!telefone.startsWith('+')) {
-        telefone = '55' + telefone.replace(/^0+/, '');
-    }
-    return telefone;
-}
 
 // ============ WHATSAPP FUNCTIONS ============
 function enviarNotificacaoWhatsApp(chamadoData) {

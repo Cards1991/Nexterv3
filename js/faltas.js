@@ -329,6 +329,7 @@ async function abrirModalNovaFalta(faltaId = null) {
                                 <option value="Não informado">Não informado</option>
                                 <option value="Outros">Outros</option>
                                 <option value="Perdeu o transporte">Perdeu o transporte</option>
+                                <option value="Gestantes">Gestantes</option>
                                 <option value="Problemas Particulares">Problemas Particulares</option>
                             </select>
                         </div>
