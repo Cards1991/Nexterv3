@@ -34,6 +34,7 @@ async function inicializarTelaSolicitacao() {
     }
     await carregarFuncionariosParaCache(); // Pré-carrega os funcionários
     await popularFiltrosSolicitacao();
+    await popularFiltroSolicitantes(); // Popula o filtro de usuários
     await renderMinhasSolicitacoes();
 }
 
@@ -57,6 +58,8 @@ async function renderMinhasSolicitacoes() {
         const dataInicio = document.getElementById('sol-filtro-data-inicio').value;
         const dataFim = document.getElementById('sol-filtro-data-fim').value;
         const setor = document.getElementById('sol-filtro-setor').value;
+        const periodo = document.getElementById('sol-filtro-periodo').value;
+        const usuarioFiltro = document.getElementById('sol-filtro-usuario').value;
 
         // CORREÇÃO: Buscamos por ordem de criação (índice padrão) e filtramos data do evento localmente
         // Isso evita o erro de índice inexistente no Firestore
@@ -80,6 +83,25 @@ async function renderMinhasSolicitacoes() {
         if (dataFim) {
             const dtFim = new Date(dataFim + 'T23:59:59');
             docs = docs.filter(s => s.start && s.start.toDate() <= dtFim);
+        }
+
+        // Filtro por Solicitante (Usuário)
+        if (usuarioFiltro) {
+            docs = docs.filter(s => s.createdByUid === usuarioFiltro);
+        }
+
+        // Filtro por Período (Manhã, Tarde, Noite)
+        if (periodo) {
+            docs = docs.filter(s => {
+                if (!s.start) return false;
+                const start = s.start.toDate();
+                const hora = start.getHours();
+                
+                if (periodo === 'manha') return hora >= 4 && hora < 12;
+                if (periodo === 'tarde') return hora >= 12 && hora < 20;
+                if (periodo === 'noite') return hora >= 20 || hora < 4;
+                return false;
+            });
         }
 
         // Ordenação local por data do evento
@@ -250,6 +272,25 @@ async function popularFiltrosSolicitacao() {
         });
     } catch (error) {
         console.error("Erro ao popular filtro de setores:", error);
+    }
+}
+
+/**
+ * Popula o filtro de solicitantes na tela de listagem.
+ */
+async function popularFiltroSolicitantes() {
+    const select = document.getElementById('sol-filtro-usuario');
+    if (!select || select.options.length > 1) return;
+
+    try {
+        const usersSnap = await db.collection('usuarios').orderBy('nome').get();
+        select.innerHTML = '<option value="">Todos</option>';
+        usersSnap.forEach(doc => {
+            const user = doc.data();
+            select.innerHTML += `<option value="${doc.id}">${user.nome || user.email}</option>`;
+        });
+    } catch (error) {
+        console.error("Erro ao carregar solicitantes para filtro:", error);
     }
 }
 

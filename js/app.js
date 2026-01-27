@@ -1190,8 +1190,19 @@ function inicializarNavegacao() {
         btnSairSidebar.addEventListener('click', (e) => { e.preventDefault(); sair(); });
     }
 
-    // Mostrar agenda por padrão (ou outra seção inicial)
-    showSection('agenda');
+    // Determinar a seção inicial com base nas permissões
+    let secaoInicial = 'agenda';
+
+    // Se o usuário não tem permissão para ver a agenda, redireciona para a primeira seção que ele tem acesso
+    if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('agenda')) {
+        const primeiraSecaoValida = currentUserPermissions.secoesPermitidas.find(secao => TODAS_SECOES.includes(secao));
+        if (primeiraSecaoValida) {
+            secaoInicial = primeiraSecaoValida;
+        }
+    }
+
+    // Mostrar seção inicial
+    showSection(secaoInicial);
 }
 
 // Inicializar modais
