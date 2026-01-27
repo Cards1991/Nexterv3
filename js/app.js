@@ -1140,13 +1140,20 @@ function inicializarNavegacao() {
 
             // Se o link está dentro de um submenu (um 'div.collapse'),
             // precisamos garantir que o menu pai também esteja visível.
-            const parentCollapse = link.closest('.collapse');
-            if (parentCollapse) {
+            // CORREÇÃO: Loop para suportar múltiplos níveis de aninhamento (ex: DP -> Cálculos -> Solicitação)
+            let parentCollapse = link.closest('.collapse');
+            while (parentCollapse) {
                 // Encontra o link <a> que controla (abre/fecha) o submenu.
                 const toggleLink = navContainer.querySelector(`a[data-bs-toggle="collapse"][href="#${parentCollapse.id}"]`);
                 if (toggleLink) {
                     // Torna o <li> do menu pai visível.
-                    toggleLink.closest('.nav-item').style.display = 'block';
+                    const parentNavItem = toggleLink.closest('.nav-item');
+                    if (parentNavItem) parentNavItem.style.display = 'block';
+                    
+                    // Busca o próximo collapse pai (se houver) para continuar subindo na hierarquia
+                    parentCollapse = toggleLink.closest('.collapse');
+                } else {
+                    break;
                 }
             }
         }

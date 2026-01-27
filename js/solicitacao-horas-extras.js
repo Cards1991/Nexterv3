@@ -256,7 +256,7 @@ async function popularFiltrosSolicitacao() {
 /**
  * Abre o modal para criar uma nova solicitação de horas extras.
  */
-function abrirModalNovaSolicitacao() {
+async function abrirModalNovaSolicitacao() {
     const modalId = 'solicitacaoHorasModal';
     const modalEl = document.getElementById(modalId);
     if (!modalEl) {
@@ -281,6 +281,16 @@ function abrirModalNovaSolicitacao() {
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
+    // Carregar lista de solicitantes (usuários do sistema)
+    await popularSelectSolicitantes();
+    
+    // Define o usuário atual como padrão se for uma nova solicitação
+    const currentUser = firebase.auth().currentUser;
+    const reqSelect = document.getElementById('sol-requester');
+    if (reqSelect && currentUser && !document.getElementById('sol-id').value) {
+        reqSelect.value = currentUser.uid;
+    }
+
     // 3. Carrega os funcionários do cache (agora é síncrono e rápido)
     const select = document.getElementById('sol-employee');
     select.innerHTML = '<option value="">Selecione um funcionário</option>'; // Default option
@@ -298,6 +308,29 @@ function abrirModalNovaSolicitacao() {
     });
 }
 
+async function popularSelectSolicitantes() {
+    const select = document.getElementById('sol-requester');
+    if (!select) return;
+    
+    // Evita repopular se já tiver opções carregadas
+    if (select.options.length > 0) return;
+
+    try {
+        const usersSnap = await db.collection('usuarios').orderBy('nome').get();
+        select.innerHTML = ''; 
+        
+        usersSnap.forEach(doc => {
+            const user = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = user.nome || user.email;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error("Erro ao carregar solicitantes:", error);
+    }
+}
+
 /**
  * Salva a nova solicitação de horas extras no Firestore.
  */
@@ -311,6 +344,10 @@ async function salvarNovaSolicitacao() {
     const endDate = startDate; // A data de fim é a mesma da de início
     const endTime = document.getElementById('sol-end-time').value;
     const reason = document.getElementById('sol-reason').value;
+
+    const requesterSelect = document.getElementById('sol-requester');
+    const requesterId = requesterSelect ? requesterSelect.value : user.uid;
+    const requesterName = requesterSelect ? requesterSelect.options[requesterSelect.selectedIndex].text : (user.displayName || user.email);
 
     if (!employeeId || !startDate || !startTime || !endTime) {
         mostrarMensagem('Preencha todos os campos obrigatórios.', 'warning');
@@ -342,21 +379,23 @@ async function salvarNovaSolicitacao() {
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason || '',
             status: 'pendente',
-            createdByUid: user.uid,
-            createdByName: user.displayName || user.email,
             valorEstimado: valorEstimado,
-            valorOriginalSolicitado: valorEstimado // Salva o valor original na criação
+            createdByUid: requesterId,
+            createdByName: requesterName
         };
 
         if (solicitacaoId) {
             // Atualização
             data.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
-            // Remove campos que não devem ser alterados na edição simples
-            delete data.createdAt; 
+            data.updatedByUid = user.uid; // Registra quem alterou
+            
             await db.collection('solicitacoes_horas').doc(solicitacaoId).update(data);
             mostrarMensagem('Solicitação atualizada com sucesso!', 'success');
         } else {
+            // Criação
+            data.valorOriginalSolicitado = valorEstimado;
             data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            
             await db.collection('solicitacoes_horas').add(data);
             mostrarMensagem('Solicitação enviada para aprovação!', 'success');
         }
@@ -455,7 +494,7 @@ async function editarSolicitacao(id) {
         const data = doc.data();
 
         // Abre o modal (que reseta o form)
-        abrirModalNovaSolicitacao();
+        await abrirModalNovaSolicitacao();
 
         // Preenche com os dados existentes
         document.getElementById('sol-id').value = id;
@@ -470,6 +509,11 @@ async function editarSolicitacao(id) {
         document.getElementById('sol-start-time').value = start.toTimeString().slice(0, 5);
         document.getElementById('sol-end-time').value = end.toTimeString().slice(0, 5);
         document.getElementById('sol-reason').value = data.reason || '';
+
+        const reqSelect = document.getElementById('sol-requester');
+        if (reqSelect && data.createdByUid) {
+            reqSelect.value = data.createdByUid;
+        }
 
         // Ajusta textos para modo edição
         document.querySelector('#solicitacaoHorasModal .modal-title').innerHTML = '<i class="fas fa-edit me-2"></i>Editar Solicitação';
@@ -493,7 +537,10 @@ async function cancelarMinhaSolicitacao(id) {
         const docRef = db.collection('solicitacoes_horas').doc(id);
         const doc = await docRef.get();
 
-        if (doc.data().createdByUid !== user.uid) {
+        const isCreator = doc.data().createdByUid === user.uid;
+        const isAdmin = typeof currentUserPermissions !== 'undefined' && currentUserPermissions.isAdmin;
+
+        if (!isCreator && !isAdmin) {
             mostrarMensagem("Você não tem permissão para cancelar esta solicitação.", "error");
             return;
         }
@@ -535,7 +582,10 @@ async function excluirMinhaSolicitacao(id) {
         }
 
         // Validação de permissão
-        if (doc.data().createdByUid !== user.uid) {
+        const isCreator = doc.data().createdByUid === user.uid;
+        const isAdmin = typeof currentUserPermissions !== 'undefined' && currentUserPermissions.isAdmin;
+
+        if (!isCreator && !isAdmin) {
             mostrarMensagem("Você não tem permissão para excluir esta solicitação.", "error");
             return;
         }

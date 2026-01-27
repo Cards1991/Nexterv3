@@ -6,6 +6,7 @@
 let listenerAutorizacao = null;
 let cacheSolicitacoes = [];
 let chartAutorizacao = null;
+let __auth_funcionarios_cache = null;
 
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
@@ -424,6 +425,15 @@ async function excluirSolicitacaoDeHoras(id) {
     }
 }
 
+async function carregarFuncionariosAuth() {
+    if (__auth_funcionarios_cache) return __auth_funcionarios_cache;
+    try {
+        const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+        __auth_funcionarios_cache = snap.docs.map(d => ({id: d.id, ...d.data()}));
+        return __auth_funcionarios_cache;
+    } catch (e) { console.error("Erro ao carregar funcionários:", e); return []; }
+}
+
 async function abrirModalAjuste(id, readOnly = false) {
     const doc = await db.collection('solicitacoes_horas').doc(id).get();
     if (!doc.exists) {
@@ -445,7 +455,7 @@ async function abrirModalAjuste(id, readOnly = false) {
     };
 
     const solicitacaoIdInput = getElement('ajuste-solicitacao-id');
-    const nomeFuncionarioSpan = getElement('ajuste-funcionario-nome');
+    const funcionarioSelect = getElement('ajuste-funcionario-select');
     const startDateInput = getElement('ajuste-start-date');
     const startTimeInput = getElement('ajuste-start-time');
     const endDateInput = getElement('ajuste-end-date');
@@ -454,12 +464,17 @@ async function abrirModalAjuste(id, readOnly = false) {
     const modalElement = getElement('ajusteSolicitacaoModal');
 
     // Se qualquer elemento essencial do formulário estiver faltando, interrompe a execução.
-    if (!solicitacaoIdInput || !nomeFuncionarioSpan || !startDateInput || !startTimeInput || !endDateInput || !endTimeInput || !reasonTextarea || !modalElement) {
+    if (!solicitacaoIdInput || !funcionarioSelect || !startDateInput || !startTimeInput || !endDateInput || !endTimeInput || !reasonTextarea || !modalElement) {
         return; // Interrompe a função para evitar erros subsequentes.
     }
 
+    // Popula o select de funcionários
+    const funcionarios = await carregarFuncionariosAuth();
+    funcionarioSelect.innerHTML = funcionarios.map(f => 
+        `<option value="${f.id}" ${f.id === data.employeeId ? 'selected' : ''}>${f.nome}</option>`
+    ).join('');
+
     solicitacaoIdInput.value = id;
-    nomeFuncionarioSpan.textContent = data.employeeName;
     startDateInput.value = start.toISOString().split('T')[0];
     startTimeInput.value = start.toTimeString().slice(0, 5);
     endDateInput.value = end.toISOString().split('T')[0];
@@ -470,6 +485,7 @@ async function abrirModalAjuste(id, readOnly = false) {
     const fields = document.querySelectorAll('#form-ajuste-solicitacao input, #form-ajuste-solicitacao textarea');
     const saveButton = document.querySelector('#ajusteSolicitacaoModal .btn-primary');
     fields.forEach(field => field.readOnly = readOnly);
+    funcionarioSelect.disabled = readOnly;
     if (saveButton) {
         saveButton.style.display = readOnly ? 'none' : 'block';
     }
@@ -489,6 +505,10 @@ async function salvarAjusteSolicitacao() {
     const endTime = document.getElementById('ajuste-end-time').value;
     const end = new Date(`${endDate}T${endTime}`);
     const reason = document.getElementById('ajuste-reason').value;
+    
+    const funcionarioSelect = document.getElementById('ajuste-funcionario-select');
+    const employeeId = funcionarioSelect.value;
+    const employeeName = funcionarioSelect.options[funcionarioSelect.selectedIndex].text;
 
     if (end <= start) {
         mostrarMensagem("A data final deve ser maior que a inicial.", "warning");
@@ -504,13 +524,15 @@ async function salvarAjusteSolicitacao() {
         }
 
         const dadosOriginais = docOriginal.data();
-        const valorEstimado = await calcularValorEstimado(start, end, docOriginal.data().employeeId);
+        const valorEstimado = await calcularValorEstimado(start, end, employeeId);
         
         const updateData = {
             start: firebase.firestore.Timestamp.fromDate(start),
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason,
             valorEstimado: valorEstimado, // O valor atualizado/aprovado
+            employeeId: employeeId,
+            employeeName: employeeName,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
         };
 
