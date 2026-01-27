@@ -181,6 +181,13 @@ async function carregarFaltas() {
         const snap = await query.get();
         const registros = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         
+        // Ordenar registros de A a Z pelo nome do funcionário
+        registros.sort((a, b) => {
+            const nomeA = (a.funcionarioNome || '').toLowerCase();
+            const nomeB = (b.funcionarioNome || '').toLowerCase();
+            return nomeA.localeCompare(nomeB);
+        });
+
         // Atualiza cache global para uso na exportação e dashboard
         __faltas_cache = registros;
 
