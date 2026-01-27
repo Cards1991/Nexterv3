@@ -13,6 +13,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage-compat.js"></script>
 
     <!-- Carrega as variáveis de ambiente e inicializa o Firebase -->
     <script src="js/env-loader.js"></script>
@@ -34,6 +35,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js" defer></script>
     <!-- PapaParse para processamento de CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- Signature Pad para assinatura eletrônica -->
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" defer></script>
     <style>
@@ -2248,14 +2251,16 @@
                     <div class="card mb-4">
                         <div class="card-body">
                             <div class="row g-3 align-items-end">
-                                <div class="col-md-3"><label for="he-startDate" class="form-label">Data Inicial:</label><input type="date" id="he-startDate" class="form-control" required></div>
-                                <div class="col-md-3"><label for="he-endDate" class="form-label">Data Final:</label><input type="date" id="he-endDate" class="form-control" required></div>
-                                <div class="col-md-3"><label for="he-sectorFilter" class="form-label">Setor:</label><select id="he-sectorFilter" class="form-select"></select></div>
-                                <div class="col-md-3 d-flex gap-2">
-                                    <button id="he-filterButton" class="btn btn-primary w-100"><i class="fas fa-filter"></i> Filtrar</button>
-                                    <button id="he-printButton" class="btn btn-outline-secondary" title="Imprimir Relatório"><i class="fas fa-print"></i></button>
-                                    <button id="he-exportButton" class="btn btn-outline-success" title="Exportar para Excel"><i class="fas fa-file-excel"></i></button>
-                                    <button class="btn btn-info" onclick="showSection('dp-horas-extras-lancamento')" title="Lançar Horas Extras"><i class="fas fa-plus-circle"></i></button>
+                                <div class="col-md-2"><label for="he-startDate" class="form-label">Data Inicial:</label><input type="date" id="he-startDate" class="form-control" required></div>
+                                <div class="col-md-2"><label for="he-endDate" class="form-label">Data Final:</label><input type="date" id="he-endDate" class="form-control" required></div>
+                                <div class="col-md-3"><label for="he-companyFilter" class="form-label">Empresa:</label><select id="he-companyFilter" class="form-select"><option value="">Todas</option></select></div>
+                                <div class="col-md-2"><label for="he-sectorFilter" class="form-label">Setor:</label><select id="he-sectorFilter" class="form-select"></select></div>
+                                <div class="col-md-3"><label for="he-employeeFilter" class="form-label">Colaborador:</label><select id="he-employeeFilter" class="form-select"><option value="">Todos</option></select></div>
+                                <div class="col-md-12 d-flex gap-2 justify-content-end">
+                                    <button id="he-filterButton" class="btn btn-primary"><i class="fas fa-filter"></i> Filtrar</button>
+                                    <button id="he-printButton" class="btn btn-outline-secondary" title="Imprimir Relatório"><i class="fas fa-print"></i> Imprimir</button>
+                                    <button id="he-exportButton" class="btn btn-outline-success" title="Exportar para Excel"><i class="fas fa-file-excel"></i> Excel</button>
+                                    <button class="btn btn-info" onclick="showSection('dp-horas-extras-lancamento')" title="Lançar Horas Extras"><i class="fas fa-plus-circle"></i> Lançar</button>
                                 </div>
                             </div>
                         </div>
@@ -2296,7 +2301,7 @@
                                 <thead>
                                     <tr>
                                         <th>Setor</th><th>Funcionário</th><th>Data</th><th>Motivo</th>
-                                        <th>Horas Extras</th><th>Valor Hora Extra</th><th>DSR</th><th>Total</th><th>Ações</th>
+                                        <th>Horas Extras</th><th>Valor Hora Extra</th><th>DSR</th><th>Total</th><th>Assinatura</th><th>Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="he-overtimeList"></tbody>
@@ -5119,6 +5124,46 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="salvarDestino()">Salvar Destino</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Assinatura de Horas Extras -->
+    <div class="modal fade" id="modalAssinaturaHE" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-file-signature me-2"></i>Assinar Horas Extras</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="assinatura-he-id">
+                    
+                    <div class="alert alert-light border">
+                        <p class="mb-1"><strong>Colaborador:</strong> <span id="assinatura-colaborador"></span></p>
+                        <p class="mb-1"><strong>Data:</strong> <span id="assinatura-data"></span></p>
+                        <p class="mb-0"><strong>Total Horas:</strong> <span id="assinatura-horas" class="fw-bold"></span></p>
+                    </div>
+
+                    <p class="small text-muted mb-2">Assine abaixo utilizando o mouse ou o dedo (em dispositivos móveis):</p>
+                    
+                    <div class="border rounded bg-white" style="position: relative;">
+                        <canvas id="signature-canvas" style="width: 100%; height: 200px; touch-action: none; display: block;"></canvas>
+                        <div class="text-muted small position-absolute bottom-0 end-0 pe-2 pb-1 user-select-none">Área de Assinatura</div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between mt-2">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparAssinatura()">
+                            <i class="fas fa-eraser me-1"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="salvarAssinatura()">
+                        <i class="fas fa-check-circle me-1"></i> Confirmar Assinatura
+                    </button>
                 </div>
             </div>
         </div>
