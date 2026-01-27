@@ -62,18 +62,69 @@ async function abrirModalPermissoes(uid) {
     // Popular seções
     const secoesContainer = document.getElementById('perm-secoes-container');
     secoesContainer.innerHTML = '';
-    TODAS_SECOES.forEach(secao => {
-        const isChecked = (permissoes.secoesPermitidas || []).includes(secao);
-        const checkboxHTML = `
-            <div class="col-md-4">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" value="${secao}" id="perm-check-${secao}" ${isChecked ? 'checked' : ''}>
-                    <label class="form-check-label" for="perm-check-${secao}">${secao.replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}</label>
+
+    // Definição dos grupos de permissões
+    const gruposPermissoes = {
+        'Análise (Dashboards)': [
+            'analise-rescisao', 'analise-pessoas', 'dashboard-atividades', 'dashboard-faltas',
+            'dashboard-manutencao', 'frota-dashboard', 'juridico-dashboard', 'dp-horas-extras',
+            'analise-epi', 'analise-custos'
+        ],
+        'Departamento Pessoal': [
+            'funcionarios', 'admissao', 'demissao', 'painel-demitidos', 'alteracao-funcao',
+            'dp-calculos', 'dp-horas-solicitacao', 'dp-horas-extras-lancamento', 'transferencia',
+            'faltas', 'controle-disciplinar', 'gestao-sumidos', 'movimentacoes'
+        ],
+        'Saúde Ocupacional': [
+            'afastamentos', 'saude-psicossocial', 'atestados', 'estoque-epi', 'consumo-epi', 'epi-compras'
+        ],
+        'Controladoria': [
+            'financeiro', 'control-horas-autorizacao'
+        ],
+        'ISO 9001': [
+            'iso-manutencao', 'iso-maquinas', 'iso-mecanicos', 'iso-temperatura-injetoras',
+            'iso-organograma', 'gerenciar-avaliacoes', 'iso-swot', 'iso-avaliacao-colaboradores'
+        ],
+        'Logística': [
+            'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete'
+        ],
+        'Jurídico': [
+            'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro',
+            'juridico-documentos', 'compliance-denuncia'
+        ],
+        'Geral / Admin': [
+            'agenda', 'empresas', 'relatorios', 'admin-usuarios'
+        ]
+    };
+
+    // Identificar seções que não estão nos grupos definidos (para garantir que nada fique de fora)
+    const secoesAgrupadas = new Set(Object.values(gruposPermissoes).flat());
+    const secoesRestantes = (typeof TODAS_SECOES !== 'undefined' ? TODAS_SECOES : []).filter(s => !secoesAgrupadas.has(s));
+    
+    if (secoesRestantes.length > 0) {
+        gruposPermissoes['Outros'] = secoesRestantes;
+    }
+
+    for (const [grupo, secoes] of Object.entries(gruposPermissoes)) {
+        const secoesValidas = (typeof TODAS_SECOES !== 'undefined') ? secoes.filter(s => TODAS_SECOES.includes(s)) : secoes;
+        
+        if (secoesValidas.length === 0) continue;
+
+        secoesContainer.innerHTML += `<div class="col-12 mt-3 mb-2"><h6 class="border-bottom pb-1 text-primary fw-bold">${grupo}</h6></div>`;
+
+        secoesValidas.forEach(secao => {
+            const isChecked = (permissoes.secoesPermitidas || []).includes(secao);
+            const label = secao.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+            secoesContainer.innerHTML += `
+                <div class="col-md-4 mb-1">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" value="${secao}" id="perm-check-${secao}" ${isChecked ? 'checked' : ''}>
+                        <label class="form-check-label small" for="perm-check-${secao}">${label}</label>
+                    </div>
                 </div>
-            </div>
-        `;
-        secoesContainer.innerHTML += checkboxHTML;
-    });
+            `;
+        });
+    }
 
     // Popular setores
     const setorSelect = document.getElementById('perm-user-setor');

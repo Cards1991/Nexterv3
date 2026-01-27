@@ -60,10 +60,14 @@ async function renderMinhasSolicitacoes() {
 
         // CORREÇÃO: Buscamos por ordem de criação (índice padrão) e filtramos data do evento localmente
         // Isso evita o erro de índice inexistente no Firestore
-        let query = db.collection('solicitacoes_horas')
-            .where('createdByUid', '==', user.uid)
-            .orderBy('createdAt', 'desc')
-            .limit(300);
+        let query = db.collection('solicitacoes_horas');
+
+        // Se não for admin, filtra apenas as próprias solicitações
+        if (typeof currentUserPermissions === 'undefined' || !currentUserPermissions.isAdmin) {
+            query = query.where('createdByUid', '==', user.uid);
+        }
+
+        query = query.orderBy('createdAt', 'desc').limit(300);
 
         const snap = await query.get();
         let docs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
