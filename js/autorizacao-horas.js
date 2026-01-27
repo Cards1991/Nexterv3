@@ -98,23 +98,26 @@ async function carregarSolicitacoes() {
     const status = document.getElementById('auth-filtro-status').value; // Novo: Pega o valor do filtro de status
 
     // Cria um novo listener
-    let query = db.collection('solicitacoes_horas').orderBy('createdAt', 'desc');
+    let query = db.collection('solicitacoes_horas');
 
     // Aplica filtros de data se existirem
-    if (dataInicio) {
-        query = query.where('createdAt', '>=', firebase.firestore.Timestamp.fromDate(new Date(dataInicio + 'T00:00:00')));
-    }
-    if (dataFim) {
-        const dataFimObj = new Date(dataFim + 'T23:59:59');
-        query = query.where('createdAt', '<=', firebase.firestore.Timestamp.fromDate(dataFimObj));
-    }
-
-    // Aplica filtro de status se selecionado
-    if (status) {
-        query = query.where('status', '==', status);
+    if (dataInicio || dataFim) {
+        if (dataInicio) {
+            query = query.where('start', '>=', firebase.firestore.Timestamp.fromDate(new Date(dataInicio + 'T00:00:00')));
+        }
+        if (dataFim) {
+            const dataFimObj = new Date(dataFim + 'T23:59:59');
+            query = query.where('start', '<=', firebase.firestore.Timestamp.fromDate(dataFimObj));
+        }
+        // CORREÇÃO: Firestore exige ordenação pelo mesmo campo do filtro de desigualdade
+        query = query.orderBy('start', 'desc');
+    } else {
+        // Sem filtro de data, ordena por criação e limita
+        query = query.orderBy('createdAt', 'desc');
+        query = query.limit(200);
     }
     
-    listenerAutorizacao = query.limit(200).onSnapshot(async (snapshot) => {
+    listenerAutorizacao = query.onSnapshot(async (snapshot) => {
             console.log(`📊 Snapshot recebido: ${snapshot.docs.length} documentos`);
 
             if (snapshot.empty) {
@@ -152,6 +155,11 @@ async function carregarSolicitacoes() {
             // Aplica filtro de setor no lado do cliente
             if (setor) {
                 solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.setor === setor);
+            }
+
+            // Aplica filtro de status no lado do cliente para evitar erro de índice e garantir consistência
+            if (status) {
+                solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.status === status);
             }
 
             cacheSolicitacoes = solicitacoesProcessadas;

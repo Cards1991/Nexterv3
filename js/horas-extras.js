@@ -76,12 +76,11 @@ async function preencherFiltrosHorasExtras() {
         console.error("Erro ao popular filtros:", error);
     }
 
-    // Definir datas padrão (mês atual)
+    // Definir datas padrão (Hoje) para otimizar carregamento
     const hoje = new Date();
-    const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-    const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
-    document.getElementById('he-startDate').value = primeiroDia;
-    document.getElementById('he-endDate').value = ultimoDia;
+    const hojeStr = hoje.toISOString().split('T')[0];
+    document.getElementById('he-startDate').value = hojeStr;
+    document.getElementById('he-endDate').value = hojeStr;
 }
 
 async function listarHorasExtras() {
@@ -117,6 +116,9 @@ async function listarHorasExtras() {
         const docs = querySnapshot.docs.filter(doc => {
             const data = doc.data();
             
+            // Filtro de Status: Exibir apenas horas autorizadas (ignora pendentes)
+            if (data.status === 'pendente') return false;
+
             // Filtro de Setor
             if (sector !== "Todos" && data.sector !== sector) return false;
             
