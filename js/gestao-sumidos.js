@@ -324,6 +324,17 @@ async function abrirModalTratamento(id) {
                             <input type="hidden" id="tratamento-id">
                             <h5 id="tratamento-nome-funcionario" class="mb-3"></h5>
                             
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Situação Atual (Status)</label>
+                                <select class="form-select" id="tratamento-status">
+                                    <option value="Em Aberto">Em Aberto</option>
+                                    <option value="Tentativa de Contato">Tentativa de Contato</option>
+                                    <option value="Aguardando Retorno">Aguardando Retorno</option>
+                                    <option value="Em Processo de Abandono">Em Processo de Abandono</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                </select>
+                            </div>
+
                             <div class="card mb-3">
                                 <div class="card-header bg-light">Etapas do Processo</div>
                                 <div class="card-body">
@@ -376,6 +387,7 @@ async function abrirModalTratamento(id) {
 
         document.getElementById('tratamento-id').value = id;
         document.getElementById('tratamento-nome-funcionario').textContent = data.nome;
+        document.getElementById('tratamento-status').value = data.status || 'Em Aberto';
 
         document.getElementById('check-whatsapp').checked = !!t.whatsapp;
         document.getElementById('data-whatsapp').value = t.dataWhatsapp || '';
@@ -412,6 +424,7 @@ window.toggleAdvogadoField = toggleAdvogadoField;
 
 async function salvarTratamento() {
     const id = document.getElementById('tratamento-id').value;
+    const status = document.getElementById('tratamento-status').value;
     const tratamento = {
         whatsapp: document.getElementById('check-whatsapp').checked,
         dataWhatsapp: document.getElementById('data-whatsapp').value,
@@ -427,7 +440,7 @@ async function salvarTratamento() {
     };
 
     try {
-        await db.collection('casos_sumidos').doc(id).update({ tratamento, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
+        await db.collection('casos_sumidos').doc(id).update({ tratamento, status: status, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
         mostrarMensagem("Tratamento atualizado!", "success");
         bootstrap.Modal.getInstance(document.getElementById('modalTratamentoSumido')).hide();
         carregarListaSumidos();
@@ -475,6 +488,9 @@ async function imprimirHistoricoSumido() {
                     <div class="row">
                         <div class="col-6"><strong>Colaborador:</strong><br> ${data.nome}</div>
                         <div class="col-6 text-end"><strong>Último Ponto:</strong><br> ${data.dataUltimoPonto ? data.dataUltimoPonto.toDate().toLocaleDateString('pt-BR') : 'N/A'}</div>
+                    </div>
+                    <div class="row mt-3 pt-3 border-top">
+                        <div class="col-12"><strong>Situação Atual:</strong> ${data.status || 'Em Aberto'}</div>
                     </div>
                 </div>
 
