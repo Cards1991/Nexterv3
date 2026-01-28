@@ -53,6 +53,7 @@ async function inicializarGestaoSumidos() {
                                 <th>Setor</th>
                                 <th>Data do Último Registro de Ponto</th>
                                 <th>Tempo Desaparecido</th>
+                                <th>Status</th>
                                 <th class="text-end pe-4">Ações</th>
                             </tr>
                         </thead>
@@ -121,6 +122,7 @@ async function carregarListaSumidos() {
             html += `
                 <tr>
                     <td class="ps-4 fw-bold">${caso.nome}</td>
+                    <td>${dataAdmissao ? dataAdmissao.toLocaleDateString('pt-BR') : '-'}</td>
                     <td>${caso.setor || '-'}</td>
                     <td>${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString('pt-BR') : '-'}</td>
                     <td><span class="badge ${badgeClass} fs-6">${tempoDesaparecido} dias</span></td>
@@ -128,6 +130,9 @@ async function carregarListaSumidos() {
                     <td class="text-end pe-4">
                         <div class="btn-group">
                             ${btnWhatsapp}
+                            <button class="btn btn-sm btn-outline-primary" onclick="window.abrirModalEditarSumido('${doc.id}')" title="Editar Caso">
+                                <i class="fas fa-edit"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-primary" onclick="abrirModalTratamento('${doc.id}')">
                                 <i class="fas fa-file-contract me-1"></i> Tratamento
                             </button>
@@ -304,6 +309,145 @@ async function salvarNovoSumido() {
     }
 }
 
+async function abrirModalEditarSumido(id) {
+    let modalEl = document.getElementById('modalEditarSumido');
+    
+    // Garante que o modal use a estrutura correta (select em vez de input) se já existir no DOM
+    if (modalEl) {
+        const setorInput = modalEl.querySelector('#edit-sumido-setor');
+        if (setorInput && setorInput.tagName === 'INPUT') {
+            modalEl.remove();
+            modalEl = null;
+        }
+    }
+
+    if (!modalEl) {
+        const modalHTML = `
+            <div class="modal fade" id="modalEditarSumido" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Caso</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="form-editar-sumido">
+                                <input type="hidden" id="edit-sumido-id">
+                                <div class="mb-3">
+                                    <label class="form-label">Colaborador</label>
+                                    <input type="text" class="form-control bg-light" id="edit-sumido-nome" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Data de Admissão</label>
+                                    <input type="date" class="form-control" id="edit-sumido-admissao">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Setor</label>
+                                    <select class="form-select" id="edit-sumido-setor"></select>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Data do Último Ponto</label>
+                                    <input type="date" class="form-control" id="edit-sumido-ultimo-ponto" required>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="window.salvarEdicaoSumido()">Salvar Alterações</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        modalEl = document.getElementById('modalEditarSumido');
+    }
+
+    try {
+        const doc = await db.collection('casos_sumidos').doc(id).get();
+        if (!doc.exists) return;
+        const data = doc.data();
+
+        document.getElementById('edit-sumido-id').value = id;
+        document.getElementById('edit-sumido-nome').value = data.nome;
+        
+        // Carregar setores baseados na empresa do funcionário
+        const setorSelect = document.getElementById('edit-sumido-setor');
+        setorSelect.innerHTML = '<option value="">Carregando...</option>';
+        
+        if (data.funcionarioId) {
+            const funcDoc = await db.collection('funcionarios').doc(data.funcionarioId).get();
+            if (funcDoc.exists && funcDoc.data().empresaId && window.carregarSetoresPorEmpresa) {
+                await window.carregarSetoresPorEmpresa(funcDoc.data().empresaId, 'edit-sumido-setor', data.setor);
+            } else {
+                setorSelect.innerHTML = `<option value="${data.setor}" selected>${data.setor}</option>`;
+            }
+        } else {
+             setorSelect.innerHTML = `<option value="${data.setor}" selected>${data.setor}</option>`;
+        }
+        
+        // Tratamento seguro de datas para evitar RangeError
+        if (data.dataAdmissao) {
+            try {
+                const dtAdm = data.dataAdmissao.toDate ? data.dataAdmissao.toDate() : new Date(data.dataAdmissao);
+                if (!isNaN(dtAdm.getTime())) {
+                    document.getElementById('edit-sumido-admissao').value = dtAdm.toISOString().split('T')[0];
+                }
+            } catch (e) { console.warn("Data admissão inválida", e); }
+        } else {
+            document.getElementById('edit-sumido-admissao').value = '';
+        }
+        
+        if (data.dataUltimoPonto) {
+            try {
+                const dtPonto = data.dataUltimoPonto.toDate ? data.dataUltimoPonto.toDate() : new Date(data.dataUltimoPonto);
+                if (!isNaN(dtPonto.getTime())) {
+                    document.getElementById('edit-sumido-ultimo-ponto').value = dtPonto.toISOString().split('T')[0];
+                }
+            } catch (e) { console.warn("Data último ponto inválida", e); }
+        } else {
+            document.getElementById('edit-sumido-ultimo-ponto').value = '';
+        }
+
+        new bootstrap.Modal(modalEl).show();
+    } catch (e) {
+        console.error(e);
+        mostrarMensagem("Erro ao carregar dados.", "error");
+    }
+}
+
+async function salvarEdicaoSumido() {
+    const id = document.getElementById('edit-sumido-id').value;
+    const setor = document.getElementById('edit-sumido-setor').value;
+    const dataAdmissaoStr = document.getElementById('edit-sumido-admissao').value;
+    const dataPontoStr = document.getElementById('edit-sumido-ultimo-ponto').value;
+
+    if (!dataPontoStr) {
+        mostrarMensagem("A data do último ponto é obrigatória.", "warning");
+        return;
+    }
+
+    try {
+        const updateData = {
+            setor: setor,
+            dataUltimoPonto: new Date(dataPontoStr + 'T00:00:00')
+        };
+
+        if (dataAdmissaoStr) {
+            updateData.dataAdmissao = new Date(dataAdmissaoStr + 'T00:00:00');
+        }
+
+        await db.collection('casos_sumidos').doc(id).update(updateData);
+        
+        mostrarMensagem("Dados atualizados com sucesso!", "success");
+        bootstrap.Modal.getInstance(document.getElementById('modalEditarSumido')).hide();
+        carregarListaSumidos();
+    } catch (e) {
+        console.error(e);
+        mostrarMensagem("Erro ao salvar alterações.", "error");
+    }
+}
+
 async function excluirCasoSumido(id) {
     if (!confirm("Tem certeza que deseja excluir este caso?")) return;
     try {
@@ -350,6 +494,10 @@ async function abrirModalTratamento(id) {
                                         <label class="form-label small">Observação</label>
                                         <input type="text" class="form-control form-control-sm" id="tratamento-acao-obs" placeholder="Ex: Enviado telegrama para o endereço...">
                                     </div>
+                                    <div class="col-md-12 mt-2">
+                                        <label class="form-label small">Data da Ação</label>
+                                        <input type="date" class="form-control form-control-sm" id="tratamento-acao-data">
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -372,6 +520,9 @@ async function abrirModalTratamento(id) {
                         <div id="tratamento-historico-container" class="list-group" style="max-height: 250px; overflow-y: auto;">
                             <!-- Histórico será inserido aqui -->
                         </div>
+                        <div class="mt-2 text-end">
+                            <button class="btn btn-sm btn-outline-secondary" onclick="imprimirHistoricoSumido()"><i class="fas fa-print"></i> Imprimir Histórico</button>
+                        </div>
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
@@ -393,6 +544,7 @@ async function abrirModalTratamento(id) {
         document.getElementById('tratamento-id').value = id;
         document.getElementById('tratamento-nome-funcionario').textContent = data.nome;
         document.getElementById('tratamento-status-geral').value = data.status || 'Em Aberto';
+        document.getElementById('tratamento-acao-data').valueAsDate = new Date(); // Data padrão hoje
 
         // Renderizar histórico
         const historicoContainer = document.getElementById('tratamento-historico-container');
@@ -403,14 +555,17 @@ async function abrirModalTratamento(id) {
         } else {
             historicoContainer.innerHTML = historico
                 .sort((a, b) => b.data.seconds - a.data.seconds) // Ordena do mais recente para o mais antigo
-                .map(item => `
+                .map((item, index) => `
                     <div class="list-group-item list-group-item-action flex-column align-items-start">
                         <div class="d-flex w-100 justify-content-between">
                             <h6 class="mb-1">${item.tipo}</h6>
                             <small>${item.data.toDate().toLocaleDateString('pt-BR')}</small>
                         </div>
                         <p class="mb-1">${item.observacao || 'Nenhuma observação.'}</p>
-                        <small class="text-muted">Por: ${item.responsavel || 'Sistema'}</small>
+                        <div class="d-flex justify-content-between align-items-center">
+                            <small class="text-muted">Por: ${item.responsavel || 'Sistema'}</small>
+                            <button class="btn btn-sm btn-outline-danger py-0 px-1" onclick="excluirItemHistoricoSumido('${id}', ${index})"><i class="fas fa-trash"></i></button>
+                        </div>
                     </div>
                 `).join('');
         }
@@ -427,13 +582,15 @@ async function salvarAcaoTratamento() {
 
     const tipoAcao = document.getElementById('tratamento-acao-tipo').value;
     const obsAcao = document.getElementById('tratamento-acao-obs').value;
+    const dataAcaoStr = document.getElementById('tratamento-acao-data').value;
+    const dataAcao = dataAcaoStr ? new Date(dataAcaoStr + 'T12:00:00') : new Date();
 
     // Só adiciona ao histórico se uma observação for feita
     if (obsAcao) {
         const novaAcao = {
             tipo: tipoAcao,
             observacao: obsAcao,
-            data: new Date(),
+            data: dataAcao,
             responsavel: firebase.auth().currentUser?.displayName || 'Usuário'
         };
 
@@ -466,6 +623,26 @@ async function salvarAcaoTratamento() {
 
     bootstrap.Modal.getInstance(document.getElementById('modalTratamentoSumido')).hide();
     carregarListaSumidos();
+}
+
+async function excluirItemHistoricoSumido(docId, index) {
+    if (!confirm("Excluir este item do histórico?")) return;
+    
+    try {
+        const docRef = db.collection('casos_sumidos').doc(docId);
+        const docSnap = await docRef.get();
+        const historico = docSnap.data().historicoTratamento || [];
+        
+        // O índice passado é baseado na lista ordenada (desc), precisamos achar o item correto no array original
+        // A melhor forma é ordenar o array original da mesma maneira antes de remover, ou usar um ID único.
+        // Como não temos ID único no item, vamos remover pelo índice reverso ou recarregar e filtrar.
+        // Simplificação: Ordenar o array original em memória (desc), remover pelo índice visual, e salvar.
+        historico.sort((a, b) => b.data.seconds - a.data.seconds);
+        historico.splice(index, 1);
+        
+        await docRef.update({ historicoTratamento: historico });
+        abrirModalTratamento(docId); // Recarrega o modal
+    } catch (e) { console.error(e); }
 }
 
 async function imprimirHistoricoSumido() {
@@ -535,3 +712,7 @@ async function imprimirHistoricoSumido() {
         win.document.close();
     } catch (e) { console.error(e); }
 }
+
+// Exportar funções para o escopo global
+window.abrirModalEditarSumido = abrirModalEditarSumido;
+window.salvarEdicaoSumido = salvarEdicaoSumido;

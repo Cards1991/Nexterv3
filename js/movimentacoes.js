@@ -162,11 +162,31 @@ class MovimentacoesManager {
 
             // Carregar empresas para o formulário de admissão
             const empresaAdmissaoSelect = document.getElementById('empresa-funcionario-admissao');
+            const setorAdmissaoSelect = document.getElementById('setor-funcionario-admissao');
             if (empresaAdmissaoSelect) {
                 await carregarSelectEmpresas('empresa-funcionario-admissao');
                 empresaAdmissaoSelect.addEventListener('change', async () => {
                     await carregarSetoresPorEmpresa(empresaAdmissaoSelect.value, 'setor-funcionario-admissao');
                     await this.carregarFuncoesPorEmpresa(empresaAdmissaoSelect.value, 'cargo-funcionario-admissao');
+                });
+            }
+
+            if (setorAdmissaoSelect) {
+                setorAdmissaoSelect.addEventListener('change', async () => {
+                    const setorDesc = setorAdmissaoSelect.value;
+                    const empresaId = empresaAdmissaoSelect.value;
+                    const liderSelect = document.getElementById('lider-funcionario-admissao');
+
+                    if (!setorDesc || !empresaId || !liderSelect) return;
+
+                    try {
+                        const setorSnap = await db.collection('setores').where('empresaId', '==', empresaId).where('descricao', '==', setorDesc).limit(1).get();
+                        if (!setorSnap.empty) {
+                            liderSelect.value = setorSnap.docs[0].data().gerenteId || '';
+                        }
+                    } catch (error) {
+                        console.error("Erro ao buscar líder do setor para admissão:", error);
+                    }
                 });
             }
 
@@ -1101,6 +1121,14 @@ async function abrirNovaContratacaoModal() {
         document.getElementById('contr-setor').innerHTML = '<option value="">Selecione a empresa</option>';
         document.getElementById('contr-cargo').innerHTML = '<option value="">Selecione a empresa</option>';
 
+        // Configurar listener para carregar setores e cargos
+        const empSelect = document.getElementById('contr-empresa');
+        empSelect.onchange = async function() {
+             await carregarSetoresPorEmpresa(this.value, 'contr-setor');
+             if (window.movimentacoesManager) {
+                await window.movimentacoesManager.carregarFuncoesPorEmpresa(this.value, 'contr-cargo');
+             }
+        };
         
         const modal = new bootstrap.Modal(document.getElementById('contratacaoNovaModal'));
         modal.show();

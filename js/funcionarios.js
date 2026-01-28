@@ -875,26 +875,31 @@ async function carregarSetoresPorEmpresa(empresaId, selectId) {
     select.innerHTML = '<option value="">Selecione um setor</option>';
     if (!empresaId) return;
     
-    try {
-        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
-        if (!empresaDoc.exists) return;
+    select.disabled = true;
+    select.innerHTML = '<option value="">Carregando...</option>';
 
-        const empresa = empresaDoc.data();
-        
-        if (empresa.setores && empresa.setores.length > 0) {
-            select.disabled = false;
-            empresa.setores.forEach(setor => {
-                const option = document.createElement('option');
-                option.value = setor;
-                option.textContent = setor;
-                select.appendChild(option);
-            });
-        } else {
+    try {
+        const setoresSnap = await db.collection('setores').where('empresaId', '==', empresaId).get();
+
+        if (setoresSnap.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
-            select.disabled = true;
+            return;
         }
+
+        const setoresDocs = setoresSnap.docs.sort((a, b) => (a.data().descricao || '').localeCompare(b.data().descricao || ''));
+
+        select.innerHTML = '<option value="">Selecione um setor</option>';
+        setoresDocs.forEach(doc => {
+            const setor = doc.data();
+            const option = document.createElement('option');
+            option.value = setor.descricao;
+            option.textContent = setor.descricao;
+            select.appendChild(option);
+        });
+        select.disabled = false;
     } catch (error) {
         console.error('Erro ao carregar setores:', error);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 }
 
@@ -1009,6 +1014,30 @@ function inicializarModalFuncionario() {
         empresaSelect.addEventListener('change', function() {
             carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
             carregarFuncoesPorEmpresa(this.value, 'cargo-funcionario');
+        });
+    }
+
+    if (setorSelect) {
+        setorSelect.addEventListener('change', async function() {
+            const setorDesc = this.value;
+            const empresaId = document.getElementById('empresa-funcionario').value;
+            const liderSelect = document.getElementById('lider-funcionario');
+
+            if (!setorDesc || !empresaId || !liderSelect) return;
+
+            try {
+                const setorSnap = await db.collection('setores')
+                    .where('empresaId', '==', empresaId)
+                    .where('descricao', '==', setorDesc)
+                    .limit(1).get();
+
+                if (!setorSnap.empty) {
+                    const setorData = setorSnap.docs[0].data();
+                    liderSelect.value = setorData.gerenteId || '';
+                }
+            } catch (error) {
+                console.error("Erro ao buscar líder do setor:", error);
+            }
         });
     }
 
@@ -1642,5 +1671,120 @@ function openPrintWindow(content, options = {}) {
         printWindow.focus();
         printWindow.print();
         // printWindow.close(); // Descomente se quiser fechar automaticamente após imprimir
+    }
+}
+
+// --- AUMENTO SALARIAL EM MASSA ---
+
+async function abrirModalAumentoMassa() {
+    const percentual = prompt("Digite a porcentagem de aumento para TODOS os funcionários (apenas salário em folha):", "6.0");
+    if (percentual === null) return;
+    
+    const pct = parseFloat(percentual.replace(',', '.'));
+    if (isNaN(pct) || pct <= 0) {
+        mostrarMensagem("Porcentagem inválida.", "warning");
+        return;
+    }
+
+    if (confirm(`ATENÇÃO: Isso aplicará um aumento de ${pct}% no salário em folha de TODOS os funcionários ativos.\n\nConfirma esta operação?`)) {
+        aplicarAumentoMassa(pct);
+    }
+}
+
+async function aplicarAumentoMassa(percentual) {
+    try {
+        mostrarMensagem("Aplicando aumentos... aguarde.", "info");
+        
+        const funcionariosSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        const batch = db.batch();
+        const historicoBackup = [];
+        const dataAumento = new Date();
+
+        funcionariosSnap.forEach(doc => {
+            const func = doc.data();
+            const salarioAtual = parseFloat(func.salario || 0);
+            
+            if (salarioAtual > 0) {
+                const novoSalario = salarioAtual * (1 + (percentual / 100));
+                
+                // Salva dados para backup/undo
+                historicoBackup.push({
+                    id: doc.id,
+                    salarioAnterior: salarioAtual
+                });
+
+                // Atualiza funcionário
+                const funcRef = db.collection('funcionarios').doc(doc.id);
+                batch.update(funcRef, { 
+                    salario: parseFloat(novoSalario.toFixed(2)),
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // Adiciona ao histórico individual (opcional, mas recomendado)
+                const registroAumento = {
+                    data: dataAumento,
+                    valor: parseFloat((novoSalario - salarioAtual).toFixed(2)),
+                    motivo: `Dissídio/Aumento em Massa (${percentual}%)`,
+                    assinatura: 'Sistema',
+                    tipo: 'folha',
+                    salarioAnterior: salarioAtual,
+                    novoSalario: parseFloat(novoSalario.toFixed(2))
+                };
+                batch.update(funcRef, {
+                    historicoAumentos: firebase.firestore.FieldValue.arrayUnion(registroAumento)
+                });
+            }
+        });
+
+        // Salva o log do lote para permitir desfazer
+        const logRef = db.collection('historico_aumentos_massa').doc();
+        batch.set(logRef, {
+            data: firebase.firestore.FieldValue.serverTimestamp(),
+            percentual: percentual,
+            funcionariosAfetados: historicoBackup,
+            criadoPor: firebase.auth().currentUser?.uid
+        });
+
+        await batch.commit();
+        mostrarMensagem(`Aumento de ${percentual}% aplicado com sucesso para ${historicoBackup.length} funcionários!`, "success");
+        carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro no aumento em massa:", error);
+        mostrarMensagem("Erro ao aplicar aumento em massa.", "error");
+    }
+}
+
+async function desfazerUltimoAumentoMassa() {
+    if (!confirm("Deseja desfazer o ÚLTIMO aumento em massa aplicado? Isso reverterá os salários para o valor anterior.")) return;
+
+    try {
+        const logsSnap = await db.collection('historico_aumentos_massa').orderBy('data', 'desc').limit(1).get();
+        if (logsSnap.empty) {
+            mostrarMensagem("Nenhum histórico de aumento em massa encontrado.", "warning");
+            return;
+        }
+
+        const logDoc = logsSnap.docs[0];
+        const logData = logDoc.data();
+        const batch = db.batch();
+
+        logData.funcionariosAfetados.forEach(item => {
+            const funcRef = db.collection('funcionarios').doc(item.id);
+            batch.update(funcRef, { salario: item.salarioAnterior });
+            // Nota: Remover do array historicoAumentos é complexo via batch sem ler antes, 
+            // aqui estamos revertendo apenas o valor atual do salário.
+        });
+
+        // Deleta o log
+        batch.delete(logDoc.ref);
+
+        await batch.commit();
+        mostrarMensagem("Último aumento em massa revertido com sucesso.", "success");
+        carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro ao desfazer aumento:", error);
+        mostrarMensagem("Erro ao desfazer aumento.", "error");
     }
 }

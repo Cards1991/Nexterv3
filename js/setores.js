@@ -334,20 +334,47 @@ function exportarDashboardSetoresWord() {
      }
      
      const html = `
-        <html>
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
             <meta charset="utf-8">
             <title>Análise de Lotação</title>
+            <!--[if gte mso 9]>
+            <xml>
+            <w:WordDocument>
+            <w:View>Print</w:View>
+            <w:Zoom>90</w:Zoom>
+            <w:DoNotOptimizeForBrowser/>
+            </w:WordDocument>
+            </xml>
+            <![endif]-->
             <style>
+                @page {
+                    size: 29.7cm 21cm;
+                    margin: 1cm 1cm 1cm 1cm;
+                    mso-page-orientation: landscape;
+                }
+                @page Section1 {
+                    size: 29.7cm 21cm;
+                    margin: 1cm 1cm 1cm 1cm;
+                    mso-header-margin: 36pt;
+                    mso-footer-margin: 36pt;
+                    mso-paper-source: 0;
+                    layout: landscape;
+                }
+                div.Section1 {
+                    page: Section1;
+                }
                 body { font-family: Arial, sans-serif; }
-                table { width: 100%; border-collapse: collapse; }
-                th, td { border: 1px solid #000; padding: 8px; text-align: center; }
+                table { width: 100%; border-collapse: collapse; font-size: 10pt; }
+                th, td { border: 1px solid #000; padding: 4px; text-align: center; }
                 th { background-color: #f2f2f2; }
             </style>
         </head>
         <body>
-            <h2>Análise de Lotação e Vagas</h2>
-            ${table.outerHTML}
+            <div class="Section1">
+                <h2>Análise de Lotação e Vagas</h2>
+                ${table.outerHTML}
+            </div>
         </body>
         </html>
      `;

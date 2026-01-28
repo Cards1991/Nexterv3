@@ -256,6 +256,9 @@ async function carregarHistoricoConsumoEPI() {
                     <td><span class="badge bg-primary rounded-pill">${consumo.quantidade}</span></td>
                     <td><small class="text-muted">${consumo.responsavelNome || 'Sistema'}</small></td>
                     <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary" onclick="editarConsumoEPI('${doc.id}')" title="Editar Registro">
+                            <i class="fas fa-edit"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="devolverItemEPI('${doc.id}', ${consumo.quantidade}, '${consumo.epiDescricao}')" title="Devolver/Estornar">
                             <i class="fas fa-undo"></i>
                         </button>
@@ -272,6 +275,89 @@ async function carregarHistoricoConsumoEPI() {
     } catch (error) {
         console.error("Erro ao carregar histórico de consumo:", error);
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
+    }
+}
+
+async function editarConsumoEPI(id) {
+    const modalId = 'modalEditarConsumoEPI';
+    let modalEl = document.getElementById(modalId);
+
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = modalId;
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Editar Registro de Consumo</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="edit-consumo-id">
+                        <div class="mb-3">
+                            <label class="form-label">Data da Entrega</label>
+                            <input type="date" class="form-control" id="edit-consumo-data">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo</label>
+                            <select class="form-select" id="edit-consumo-motivo">
+                                <option value="Admissão">Admissão</option>
+                                <option value="Prazo de Troca">Prazo de Troca</option>
+                                <option value="Perda">Perda</option>
+                                <option value="EPI Danificado">EPI Danificado</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="alert alert-warning small">
+                            <i class="fas fa-exclamation-triangle"></i> Alterar a quantidade requer estorno e nova entrega para manter a integridade do estoque. Use a função "Devolver/Estornar" se precisar alterar quantidades.
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" onclick="salvarEdicaoConsumoEPI()">Salvar Alterações</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    try {
+        const doc = await db.collection('epi_consumo').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Registro não encontrado.", "error");
+            return;
+        }
+        const data = doc.data();
+        
+        document.getElementById('edit-consumo-id').value = id;
+        document.getElementById('edit-consumo-data').value = data.dataEntrega.toDate().toISOString().split('T')[0];
+        document.getElementById('edit-consumo-motivo').value = data.motivo;
+
+        new bootstrap.Modal(modalEl).show();
+    } catch (e) {
+        console.error(e);
+        mostrarMensagem("Erro ao carregar dados.", "error");
+    }
+}
+
+async function salvarEdicaoConsumoEPI() {
+    const id = document.getElementById('edit-consumo-id').value;
+    const novaData = document.getElementById('edit-consumo-data').value;
+    const novoMotivo = document.getElementById('edit-consumo-motivo').value;
+
+    try {
+        await db.collection('epi_consumo').doc(id).update({
+            dataEntrega: new Date(novaData.replace(/-/g, '\/')),
+            motivo: novoMotivo
+        });
+        mostrarMensagem("Registro atualizado com sucesso!", "success");
+        bootstrap.Modal.getInstance(document.getElementById('modalEditarConsumoEPI')).hide();
+        carregarHistoricoConsumoEPI();
+    } catch (e) {
+        console.error(e);
+        mostrarMensagem("Erro ao salvar.", "error");
     }
 }
 
