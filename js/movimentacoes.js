@@ -1,4 +1,43 @@
 
+async function carregarSelectEmpresas(selectId) {
+    try {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        const empresasSnapshot = await db.collection('empresas').orderBy('nome').get();
+        
+        select.innerHTML = '<option value="">Selecione uma empresa</option>';
+        empresasSnapshot.forEach(doc => {
+            select.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
+        });
+    } catch (error) {
+        console.error('Erro ao carregar empresas:', error);
+    }
+}
+
+async function carregarSetoresPorEmpresa(empresaId, selectId) {
+    try {
+        const select = document.getElementById(selectId);
+        if (!select) return;
+
+        if (!empresaId) {
+            select.innerHTML = '<option value="">Selecione um setor</option>';
+            return;
+        }
+
+        const setoresSnap = await db.collection('setores')
+            .where('empresaId', '==', empresaId)
+            .orderBy('descricao')
+            .get();
+
+        select.innerHTML = '<option value="">Selecione um setor</option>';
+        setoresSnap.forEach(doc => {
+            select.innerHTML += `<option value="${doc.data().descricao}">${doc.data().descricao}</option>`;
+        });
+    } catch (error) {
+        console.error('Erro ao carregar setores:', error);
+    }
+}
 class MovimentacoesManager {
     constructor() {
         this.graficoMensal = null;
@@ -28,11 +67,6 @@ class MovimentacoesManager {
         if (btnCalcular) {
             btnCalcular.disabled = !(selectDemissao.value && dataDemissaoInput.value);
         }
-    }
-
-    init() {
-        this.bindEvents();
-        this.carregarDadosIniciais();
     }
 
     async carregarDadosIniciais() {
@@ -94,14 +128,26 @@ class MovimentacoesManager {
                 if (dataDemissaoInput) {
                     dataDemissaoInput.addEventListener('change', () => this.checkAndEnableButton());
                 }
+
+                // Listener para o campo de aviso prévio
+                const avisoPrevioSelect = document.getElementById('demissao-aviso-previo');
+                const motivoDispensaContainer = document.getElementById('container-motivo-dispensa-aviso');
+                if (avisoPrevioSelect && motivoDispensaContainer) {
+                    avisoPrevioSelect.addEventListener('change', () => {
+                        motivoDispensaContainer.classList.toggle('d-none', avisoPrevioSelect.value !== 'Dispensado');
+                        if (avisoPrevioSelect.value !== 'Dispensado') {
+                            document.getElementById('demissao-motivo-dispensa-aviso').value = '';
+                        }
+                    });
+                }
             }
 
             // Carregar empresas para o formulário de admissão
             const empresaAdmissaoSelect = document.getElementById('empresa-funcionario-admissao');
             if (empresaAdmissaoSelect) {
-                await this.carregarSelectEmpresas('empresa-funcionario-admissao');
+                await carregarSelectEmpresas('empresa-funcionario-admissao');
                 empresaAdmissaoSelect.addEventListener('change', async () => {
-                    await this.carregarSetoresPorEmpresa(empresaAdmissaoSelect.value, 'setor-funcionario-admissao');
+                    await carregarSetoresPorEmpresa(empresaAdmissaoSelect.value, 'setor-funcionario-admissao');
                     await this.carregarFuncoesPorEmpresa(empresaAdmissaoSelect.value, 'cargo-funcionario-admissao');
                 });
             }
@@ -118,65 +164,30 @@ class MovimentacoesManager {
         }
     }
 
-    async carregarSelectEmpresas(selectId) {
-        try {
-            const select = document.getElementById(selectId);
-            if (!select) return;
-
-            const empresasSnapshot = await db.collection('empresas').orderBy('nome').get();
-            
-            select.innerHTML = '<option value="">Selecione uma empresa</option>';
-            empresasSnapshot.forEach(doc => {
-                select.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
-            });
-        } catch (error) {
-            console.error('Erro ao carregar empresas:', error);
-        }
-    }
-
-    async carregarSetoresPorEmpresa(empresaId, selectId) {
-        try {
-            const select = document.getElementById(selectId);
-            if (!select) return;
-
-            if (!empresaId) {
-                select.innerHTML = '<option value="">Selecione um setor</option>';
-                return;
-            }
-
-            const setoresSnapshot = await db.collection('setores')
-                .where('empresaId', '==', empresaId)
-                .orderBy('nome')
-                .get();
-
-            select.innerHTML = '<option value="">Selecione um setor</option>';
-            setoresSnapshot.forEach(doc => {
-                select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`;
-            });
-        } catch (error) {
-            console.error('Erro ao carregar setores:', error);
-        }
-    }
-
     async carregarFuncoesPorEmpresa(empresaId, selectId) {
         try {
             const select = document.getElementById(selectId);
             if (!select) return;
+            
+            select.innerHTML = '<option value="">Selecione um cargo</option>';
+            select.disabled = true;
 
             if (!empresaId) {
-                select.innerHTML = '<option value="">Selecione um cargo</option>';
+                select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
                 return;
             }
+            
+            const empresaDoc = await db.collection('empresas').doc(empresaId).get();
+            if (!empresaDoc.exists) return;
 
-            const funcoesSnapshot = await db.collection('funcoes')
-                .where('empresaId', '==', empresaId)
-                .orderBy('nome')
-                .get();
-
-            select.innerHTML = '<option value="">Selecione um cargo</option>';
-            funcoesSnapshot.forEach(doc => {
-                select.innerHTML += `<option value="${doc.data().nome}">${doc.data().nome}</option>`;
-            });
+            const empresa = empresaDoc.data();
+            
+            if (empresa.funcoes && empresa.funcoes.length > 0) {
+                select.disabled = false;
+                empresa.funcoes.forEach(funcao => {
+                    select.innerHTML += `<option value="${funcao}">${funcao}</option>`;
+                });
+            }
         } catch (error) {
             console.error('Erro ao carregar funções:', error);
         }
@@ -187,17 +198,28 @@ class MovimentacoesManager {
             const select = document.getElementById(selectId);
             if (!select) return;
 
-            const lideresSnapshot = await db.collection('funcionarios')
-                .where('status', '==', 'Ativo')
-                .where('cargo', 'in', ['Gerente', 'Supervisor', 'Coordenador', 'Líder'])
-                .orderBy('nome')
-                .get();
+            select.innerHTML = '<option value="">Sem líder</option>';
 
-            select.innerHTML = '<option value="">Selecione um líder</option>';
-            lideresSnapshot.forEach(doc => {
-                const data = doc.data();
-                select.innerHTML += `<option value="${doc.id}">${data.nome} - ${data.cargo}</option>`;
-            });
+            // Usa o cache de funcionários ativos já carregado
+            if (__funcionarios_ativos_cache) {
+                __funcionarios_ativos_cache.forEach(func => {
+                    const option = document.createElement('option');
+                    option.value = func.id;
+                    option.textContent = func.nome;
+                    select.appendChild(option);
+                });
+            } else {
+                 const funcionariosSnapshot = await db.collection('funcionarios')
+                    .where('status', '==', 'Ativo')
+                    .orderBy('nome').get();
+                 funcionariosSnapshot.forEach(doc => {
+                    const func = doc.data();
+                    const option = document.createElement('option');
+                    option.value = doc.id;
+                    option.textContent = func.nome;
+                    select.appendChild(option);
+                });
+            }
         } catch (error) {
             console.error('Erro ao carregar líderes:', error);
         }
@@ -236,6 +258,9 @@ class MovimentacoesManager {
         const tipoDemissao = document.getElementById('demissao-tipo').value;
         const avisoPrevio = document.getElementById('demissao-aviso-previo').value;
         const motivo = document.getElementById('demissao-motivo').value;
+        const observacoes = document.getElementById('demissao-observacoes').value;
+        const necessitaReposicao = document.getElementById('demissao-reposicao').checked;
+        const motivoDispensaAviso = document.getElementById('demissao-motivo-dispensa-aviso').value;
 
         if (!funcionarioId || !data || !tipoDemissao || !motivo) {
             this.mostrarMensagem("Preencha todos os campos obrigatórios.", "warning");
@@ -260,8 +285,10 @@ class MovimentacoesManager {
                 tipo: 'demissao',
                 data: new Date(data.replace(/-/g, '/')),
                 motivo: tipoDemissao,
-                detalhes: motivo,
+                motivoDetalhado: motivo,
+                detalhes: observacoes,
                 avisoPrevio: avisoPrevio,
+                motivoDispensaAviso: avisoPrevio === 'Dispensado' ? motivoDispensaAviso : null,
                 dataRegistro: firebase.firestore.FieldValue.serverTimestamp(),
                 registradoPor: user ? user.uid : null,
                 status: 'Concluído'
@@ -271,6 +298,7 @@ class MovimentacoesManager {
 
             await db.collection('funcionarios').doc(funcionarioId).update({
                 status: 'Demitido',
+                necessitaReposicao: necessitaReposicao,
                 ultimaMovimentacao: movimentacaoData.data
             });
 
@@ -993,3 +1021,268 @@ const movimentacoesManager = new MovimentacoesManager();
 
 // Exportar para uso global
 window.movimentacoesManager = movimentacoesManager;
+
+// Funções para abrir modais de solicitação, agora parte deste módulo
+async function abrirNovaReposicaoModal() {
+    try {
+        document.getElementById('form-reposicao-nova').reset();
+
+        // Popular o select de funcionários demitidos
+        const selectFuncionario = document.getElementById('rep-nova-funcionario');
+        selectFuncionario.innerHTML = '<option value="">Selecione um funcionário (opcional)</option>';
+        
+        // Filtra funcionários demitidos e que necessitam de reposição
+        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Demitido').orderBy('nome').get();
+        funcSnap.forEach(doc => {
+            const funcionario = doc.data();
+            // Filtro em memória para garantir compatibilidade se o campo não existir em registros antigos
+            if (funcionario.necessitaReposicao === true) {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = `${funcionario.nome}`;
+                // Armazena dados para preenchimento automático
+                option.dataset.empresaId = funcionario.empresaId;
+                option.dataset.setor = funcionario.setor;
+                option.dataset.cargo = funcionario.cargo;
+                selectFuncionario.appendChild(option);
+            }
+        });
+
+        // Popular empresas
+        await carregarSelectEmpresas('rep-nova-empresa');
+        // Resetar selects de setor e cargo
+        document.getElementById('rep-nova-setor').innerHTML = '<option value="">Selecione a empresa</option>';
+
+        // Listener para preenchimento automático
+        selectFuncionario.addEventListener('change', async function() {
+            const selectedOption = this.options[this.selectedIndex];
+            if (selectedOption && selectedOption.value) {
+                document.getElementById('rep-nova-empresa').value = selectedOption.dataset.empresaId;
+                await carregarSetoresPorEmpresa(selectedOption.dataset.empresaId, 'rep-nova-setor');
+                document.getElementById('rep-nova-setor').value = selectedOption.dataset.setor;
+                document.getElementById('rep-nova-cargo').value = selectedOption.dataset.cargo;
+            }
+        });
+        
+        const modal = new bootstrap.Modal(document.getElementById('reposicaoNovaModal'));
+        modal.show();
+    } catch (error) {
+        console.error("Erro ao abrir modal de reposição:", error);
+        mostrarMensagem("Erro ao preparar solicitação de reposição.", "error");
+    }
+}
+window.abrirNovaReposicaoModal = abrirNovaReposicaoModal;
+
+async function abrirNovaContratacaoModal() {
+    try {
+        document.getElementById('form-contratacao-nova').reset();
+        
+        // Popular empresas
+        await carregarSelectEmpresas('contr-empresa');
+        // Resetar selects de setor e cargo
+        document.getElementById('contr-setor').innerHTML = '<option value="">Selecione a empresa</option>';
+        document.getElementById('contr-cargo').innerHTML = '<option value="">Selecione a empresa</option>';
+
+        
+        const modal = new bootstrap.Modal(document.getElementById('contratacaoNovaModal'));
+        modal.show();
+    } catch (error) {
+        console.error("Erro ao abrir modal de contratação:", error);
+        mostrarMensagem("Erro ao preparar solicitação de contratação.", "error");
+    }
+}
+window.abrirNovaContratacaoModal = abrirNovaContratacaoModal;
+
+async function criarReposicaoManual() {
+    try {
+        const funcionarioId = document.getElementById('rep-nova-funcionario').value;
+        const funcionarioNome = document.getElementById('rep-nova-funcionario').options[document.getElementById('rep-nova-funcionario').selectedIndex].text;
+        const empresaId = document.getElementById('rep-nova-empresa').value;
+        const setor = document.getElementById('rep-nova-setor').value;
+        const cargo = document.getElementById('rep-nova-cargo').value;
+        const observacoes = document.getElementById('rep-nova-observacoes').value;
+
+        if (!empresaId || !setor || !cargo) {
+            mostrarMensagem("Empresa, Setor e Cargo são obrigatórios.", "warning");
+            return;
+        }
+
+        await db.collection('reposicoes').add({
+            funcionarioId: funcionarioId || null,
+            funcionarioNome: funcionarioId ? funcionarioNome : 'N/A',
+            empresaId: empresaId,
+            setor: setor,
+            cargo: cargo,
+            observacoes: observacoes,
+            status: 'pendente',
+            abertaEm: firebase.firestore.FieldValue.serverTimestamp(),
+            createdByUid: firebase.auth().currentUser?.uid
+        });
+
+        mostrarMensagem("Solicitação de reposição aberta com sucesso!", "success");
+        bootstrap.Modal.getInstance(document.getElementById('reposicaoNovaModal')).hide();
+        
+        if (typeof window.carregarDashboardMovimentacoes === 'function') {
+            await window.carregarDashboardMovimentacoes();
+        }
+
+    } catch (error) {
+        console.error("Erro ao criar solicitação de reposição:", error);
+        mostrarMensagem("Falha ao criar solicitação.", "error");
+    }
+}
+window.criarReposicaoManual = criarReposicaoManual;
+
+async function criarContratacaoManual() {
+    try {
+        const empresaId = document.getElementById('contr-empresa').value;
+        const setor = document.getElementById('contr-setor').value;
+        const cargo = document.getElementById('contr-cargo').value;
+        const salario = document.getElementById('contr-salario').value;
+        const turno = document.getElementById('contr-turno').value;
+        const quantidade = parseInt(document.getElementById('contr-quantidade').value) || 1;
+        const observacoes = document.getElementById('contr-observacoes').value;
+        const solicitacaoId = document.getElementById('contr-solicitacao-id').value; // Para edição
+
+        if (!empresaId || !setor || !cargo) {
+            mostrarMensagem("Empresa, Setor e Cargo são obrigatórios.", "warning");
+            return;
+        }
+
+        const dados = {
+            empresaId: empresaId,
+            setor: setor,
+            cargo: cargo,
+            salario: salario,
+            turno: turno,
+            quantidade: quantidade,
+            observacoes: observacoes,
+            status: 'pendente',
+            abertaEm: firebase.firestore.FieldValue.serverTimestamp(),
+            createdByUid: firebase.auth().currentUser?.uid
+        };
+
+        if (solicitacaoId) {
+            await db.collection('contratacoes').doc(solicitacaoId).update(dados);
+            mostrarMensagem("Solicitação de contratação atualizada com sucesso!", "success");
+        } else {
+            await db.collection('contratacoes').add(dados);
+            mostrarMensagem("Solicitação de contratação aberta com sucesso!", "success");
+        }
+
+        bootstrap.Modal.getInstance(document.getElementById('contratacaoNovaModal')).hide();
+        
+        if (typeof window.carregarDashboardMovimentacoes === 'function') {
+            await window.carregarDashboardMovimentacoes();
+        }
+
+    } catch (error) {
+        console.error("Erro ao criar solicitação de contratação:", error);
+        mostrarMensagem("Falha ao criar solicitação.", "error");
+    }
+}
+window.criarContratacaoManual = criarContratacaoManual;
+
+async function preencherVaga(solicitacaoId, tipo) {
+    try {
+        const colecao = tipo === 'reposicao' ? 'reposicoes' : 'contratacoes';
+        const docRef = db.collection(colecao).doc(solicitacaoId);
+        const doc = await docRef.get();
+
+        if (!doc.exists) {
+            mostrarMensagem("Solicitação não encontrada.", "error");
+            return;
+        } else {
+            await docRef.update({ status: 'preenchida', preenchidaEm: firebase.firestore.FieldValue.serverTimestamp() });
+        }
+
+        const solicitacao = doc.data();
+        showSection('admissao');
+
+        setTimeout(async () => {
+            document.getElementById('empresa-funcionario-admissao').value = solicitacao.empresaId;
+            await carregarSetoresPorEmpresa(solicitacao.empresaId, 'setor-funcionario-admissao');
+            document.getElementById('setor-funcionario-admissao').value = solicitacao.setor;
+            await movimentacoesManager.carregarFuncoesPorEmpresa(solicitacao.empresaId, 'cargo-funcionario-admissao');
+            document.getElementById('cargo-funcionario-admissao').value = solicitacao.cargo;
+        }, 500);
+    } catch (error) {
+        console.error("Erro ao tentar preencher vaga:", error);
+        mostrarMensagem("Ocorreu um erro ao preparar o formulário de admissão.", "error");
+    }
+}
+window.preencherVaga = preencherVaga;
+
+async function editarSolicitacao(solicitacaoId, tipo) {
+    const colecao = tipo === 'reposicao' ? 'reposicoes' : 'contratacoes';
+    
+    const doc = await db.collection(colecao).doc(solicitacaoId).get();
+    if (!doc.exists) {
+        mostrarMensagem("Solicitação não encontrada.", "error");
+        return;
+    }
+    const data = doc.data();
+
+    if (tipo === 'contratacao') {
+        await abrirNovaContratacaoModal();
+        document.getElementById('contr-solicitacao-id').value = solicitacaoId;
+        document.getElementById('contr-empresa').value = data.empresaId;
+        
+        // Trigger change to load dependent dropdowns
+        const event = new Event('change');
+        document.getElementById('contr-empresa').dispatchEvent(event);
+
+        // Use a timeout to allow dependent dropdowns to populate
+        setTimeout(() => {
+            document.getElementById('contr-setor').value = data.setor;
+            document.getElementById('contr-cargo').value = data.cargo;
+            document.getElementById('contr-turno').value = data.turno || 'Dia';
+            document.getElementById('contr-salario').value = data.salario || '';
+            document.getElementById('contr-quantidade').value = data.quantidade || 1;
+            document.getElementById('contr-observacoes').value = data.observacoes || '';
+        }, 500); // 500ms delay might be needed
+    } else if (tipo === 'reposicao') {
+        await abrirNovaReposicaoModal();
+        document.getElementById('rep-solicitacao-id').value = solicitacaoId;
+        document.getElementById('rep-nova-funcionario').value = data.funcionarioId;
+        document.getElementById('rep-nova-empresa').value = data.empresaId;
+
+        const event = new Event('change');
+        document.getElementById('rep-nova-empresa').dispatchEvent(event);
+
+        setTimeout(() => {
+            document.getElementById('rep-nova-setor').value = data.setor;
+        }, 500);
+        document.getElementById('rep-nova-cargo').value = data.cargo;
+        document.getElementById('rep-nova-observacoes').value = data.observacoes || '';
+    }
+}
+window.editarSolicitacao = editarSolicitacao;
+
+async function excluirSolicitacao(solicitacaoId, tipo) {
+    const colecao = tipo === 'reposicao' ? 'reposicoes' : 'contratacoes';
+    if (!confirm(`Tem certeza que deseja excluir esta solicitação de ${tipo}?`)) {
+        return;
+    }
+    try {
+        await db.collection(colecao).doc(solicitacaoId).delete();
+        mostrarMensagem("Solicitação excluída com sucesso.", "success");
+        if (typeof window.carregarDashboardMovimentacoes === 'function') {
+            await window.carregarDashboardMovimentacoes();
+        }
+    } catch (error) {
+        console.error("Erro ao excluir solicitação:", error);
+        mostrarMensagem("Falha ao excluir a solicitação.", "error");
+    }
+}
+window.excluirSolicitacao = excluirSolicitacao;
+
+async function visualizarSolicitacao(solicitacaoId, tipo) {
+    // ... (código existente)
+}
+window.visualizarSolicitacao = visualizarSolicitacao;
+
+async function calcularCustoEstimadoContratacao(salario, empresaId) {
+    // ... (código existente)
+}
+window.calcularCustoEstimadoContratacao = calcularCustoEstimadoContratacao;

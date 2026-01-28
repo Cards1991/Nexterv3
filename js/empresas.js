@@ -51,16 +51,22 @@ async function carregarEmpresas() {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
         const empresasSnapshot = await db.collection('empresas').get();
+        const setoresSnapshot = await db.collection('setores').get();
         empresas = [];
 
         if (empresasSnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma empresa cadastrada</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma empresa cadastrada</td></tr>';
             return;
         }
 
         // Contar funcionários por empresa
         const funcionariosSnapshot = await db.collection('funcionarios').get();
         const contagemFuncionarios = {};
+        const contagemSetores = {};
+        setoresSnapshot.forEach(doc => {
+            const setor = doc.data();
+            contagemSetores[setor.empresaId] = (contagemSetores[setor.empresaId] || 0) + 1;
+        });
         funcionariosSnapshot.forEach(doc => {
             const func = doc.data();
             if (func.empresaId) {
@@ -74,15 +80,14 @@ async function carregarEmpresas() {
             empresas.push(empresa);
 
             const numFuncionarios = contagemFuncionarios[doc.id] || 0;
-            const setores = Array.isArray(empresa.setores) && empresa.setores.length ? 
-                empresa.setores.join(', ') : 'Nenhum setor cadastrado';
+            const numSetores = contagemSetores[doc.id] || 0;
             const numFuncoes = Array.isArray(empresa.funcoes) ? empresa.funcoes.length : 0;
 
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${empresa.nome}</td>
                 <td>${empresa.cnpj || 'Não informado'}</td>
-                <td>${setores}</td>
+                <td><span class="badge bg-secondary">${numSetores}</span></td>
                 <td><span class="badge bg-primary">${numFuncionarios}</span></td>
                 <td><span class="badge bg-info">${numFuncoes}</span></td>
                 <td>
@@ -107,7 +112,6 @@ async function salvarEmpresa() {
     try {
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa')?.value || ''; // Garante que seja uma string vazia se não encontrado
-        const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         
@@ -127,7 +131,6 @@ async function salvarEmpresa() {
             return;
         }
 
-        const setores = setoresText.split(',').map(s => s.trim()).filter(s => s);
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
 
@@ -141,7 +144,6 @@ async function salvarEmpresa() {
                 patronal: percPatronal,
                 sindicato: percSindicato
             },
-            setores: setores,
             funcoes: funcoes,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),            
             createdByUid: user ? user.uid : null
@@ -170,7 +172,6 @@ async function editarEmpresa(empresaId) {
         // Preencher modal com dados da empresa
         document.getElementById('nome-empresa').value = empresa.nome;
         document.getElementById('cnpj-empresa').value = empresa.cnpj || '';
-        document.getElementById('setores-empresa').value = Array.isArray(empresa.setores) ? empresa.setores.join(', ') : '';
         document.getElementById('funcoes-empresa').value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
         document.getElementById('rat-empresa').value = empresa.rat || '';
 
@@ -220,7 +221,6 @@ async function atualizarEmpresa(empresaId) {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa').value;
-        const setoresText = document.getElementById('setores-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         
@@ -234,14 +234,12 @@ async function atualizarEmpresa(empresaId) {
         const temSindicato = document.getElementById('empresa-check-sindicato')?.checked || false;
         const percSindicato = temSindicato ? (parseFloat(document.getElementById('empresa-input-sindicato').value) || 0) : 0;
 
-        const setores = setoresText.split(',').map(s => s.trim()).filter(s => s);
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
 
         const updateData = {
             nome: nome,
             cnpj: cnpj,
-            setores: setores,
             funcoes: funcoes,            
             rat: rat,
             impostos: {

@@ -80,8 +80,8 @@
                         </li>
                         <!-- Módulo Dashboards -->
                         <li class="nav-item" id="menu-analise">
-                            <a class="nav-link collapsed" href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-chart-pie"></i> Análise <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-chart-pie"></i> Análise
                             </a>
                             <div class="collapse" id="dashboardsSubmenu">
                                 
@@ -114,15 +114,21 @@
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link" href="#" data-target="empresas">
+                        <li class="nav-item"> <!-- MODIFICADO -->
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#empresasSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
                                 <i class="fas fa-building"></i> Empresas e Setores
                             </a>
+                            <div class="collapse" id="empresasSubmenu">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="empresas">Cadastro de Empresas</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="setores">Cadastro de Setores</a></li>
+                                </ul>
+                            </div>
                         </li>
                         <!-- Módulo Departamento Pessoal -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#dpSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-user-tie"></i> Departamento Pessoal <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#dpSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-user-tie"></i> Departamento Pessoal
                             </a>
                             <div class="collapse" id="dpSubmenu">
                                  <ul class="nav flex-column">
@@ -130,8 +136,8 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="admissao">Admissão</a></li>
                                     <!-- Submenu para Demissão -->
                                     <li class="nav-item">
-                                        <a class="nav-link collapsed" href="#demissaoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="demissaoSubmenu">
-                                            <i class="fas fa-user-minus"></i> Demissão <i class="fas fa-chevron-down ms-auto"></i>
+                                        <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#demissaoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="demissaoSubmenu">
+                                            <i class="fas fa-user-minus"></i> Demissão
                                         </a>
                                         <div class="collapse" id="demissaoSubmenu">
                                             <ul class="nav flex-column">
@@ -143,8 +149,8 @@
                                     <!-- Fim do Submenu para Demissão -->
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="alteracao-funcao">Alteração de Função</a></li>                                    
                                     <li class="nav-item">
-                                        <a class="nav-link collapsed" href="#dpCalculosSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="dpCalculosSubmenu">
-                                            <i class="fas fa-calculator"></i> Cálculos <i class="fas fa-chevron-down ms-auto"></i>
+                                        <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#dpCalculosSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="dpCalculosSubmenu">
+                                            <i class="fas fa-calculator"></i> Cálculos
                                         </a>
                                         <div class="collapse" id="dpCalculosSubmenu">
                                             <ul class="nav flex-column">
@@ -163,8 +169,8 @@
                         </li>
                         <!-- Módulo Saúde Ocupacional -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#saudeSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-heart-pulse"></i> Saúde Ocupacional <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#saudeSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-heart-pulse"></i> Saúde Ocupacional
                             </a>
                             <div class="collapse" id="saudeSubmenu">
                                 <ul class="nav flex-column">
@@ -179,8 +185,8 @@
                         </li>
                         <!-- Módulo Controladoria -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#controladoriaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-calculator"></i> Controladoria <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#controladoriaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-calculator"></i> Controladoria
                             </a>
                             <div class="collapse" id="controladoriaSubmenu">
                                 <ul class="nav flex-column">
@@ -192,8 +198,8 @@
                         </li>
                         <!-- Módulo ISO 9001 -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#iso9001Submenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-certificate"></i> ISO 9001 <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#iso9001Submenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-certificate"></i> ISO 9001
                             </a>
                             <div class="collapse" id="iso9001Submenu">
                                 <ul class="nav flex-column">
@@ -224,8 +230,8 @@
                         </li>
                         <!-- Módulo Logística -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#logisticaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-truck"></i> Logística <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#logisticaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-truck"></i> Logística
                             </a>
                             <div class="collapse" id="logisticaSubmenu">
                                 <ul class="nav flex-column">
@@ -241,8 +247,8 @@
 
                         <!-- Módulo Jurídico -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed" href="#juridicoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                                <i class="fas fa-gavel"></i> Jurídico <i class="fas fa-chevron-down ms-auto"></i>
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#juridicoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-gavel"></i> Jurídico
                             </a>
                             <div class="collapse" id="juridicoSubmenu">
                                 <ul class="nav flex-column">
@@ -1059,6 +1065,8 @@
                         <div class="card-body d-flex justify-content-between align-items-center flex-wrap gap-3">
                             <div class="d-flex align-items-center gap-2 flex-wrap">
                                 <span class="fw-bold me-2"><i class="fas fa-filter"></i> Filtros:</span>
+                                <input type="date" class="form-control form-control-sm" id="mov-filtro-inicio" title="Data Início" style="width: 130px;">
+                                <input type="date" class="form-control form-control-sm" id="mov-filtro-fim" title="Data Fim" style="width: 130px;">
                                 <select class="form-select form-select-sm" id="mov-filtro-empresa" style="width: 200px;">
                                     <option value="">Todas as Empresas</option>
                                 </select>
@@ -1247,7 +1255,28 @@
                                         <label for="demissao-aviso-previo" class="form-label">Aviso Prévio</label>
                                         <select class="form-select" id="demissao-aviso-previo"><option>Trabalhado</option><option>Indenizado</option><option>Dispensado</option></select>
                                     </div>
-                                    <div class="col-12"><label for="demissao-motivo" class="form-label">Motivo Detalhado</label><textarea class="form-control" id="demissao-motivo" rows="3" required></textarea></div>
+                                    <div class="col-12 d-none" id="container-motivo-dispensa-aviso">
+                                        <label for="demissao-motivo-dispensa-aviso" class="form-label">Motivo da Dispensa do Aviso Prévio</label>
+                                        <textarea class="form-control" id="demissao-motivo-dispensa-aviso" rows="2"></textarea>
+                                    </div>
+                                    <div class="col-12">
+                                        <label for="demissao-motivo" class="form-label">Motivo do Desligamento</label>
+                                        <select class="form-select" id="demissao-motivo" required>
+                                            <option value="">Selecione...</option>
+                                            <option value="Mudança de carreira">Mudança de carreira</option>
+                                            <option value="Problema de relacionamento">Problema de relacionamento</option>
+                                            <option value="Insatisfação com o Trabalho">Insatisfação com o Trabalho</option>
+                                            <option value="Questões Salariais">Questões Salariais</option>
+                                            <option value="Problemas Pessoais">Problemas Pessoais</option>
+                                            <option value="Não Informado">Não Informado</option>
+                                            <option value="Mudança de Cidade">Mudança de Cidade</option>
+                                            <option value="Não se adaptou">Não se adaptou</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12"><label for="demissao-observacoes" class="form-label">Observações</label><textarea class="form-control" id="demissao-observacoes" rows="3"></textarea></div>
+                                    <div class="col-12">
+                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="demissao-reposicao"><label class="form-check-label" for="demissao-reposicao">Necessita de Reposição?</label></div>
+                                    </div>
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-4">
                                     <button type="button" class="btn btn-info" id="btn-calcular-rescisao" onclick="movimentacoesManager.calcularRescisao()" disabled>
@@ -1611,6 +1640,32 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tabela-empresas"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Cadastro de Setores -->
+                <section id="setores" class="content-section d-none">
+                    <h2 class="page-title">Cadastro de Setores</h2>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Setores Cadastrados</span>
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalSetor()">
+                                <i class="fas fa-plus"></i> Novo Setor
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Descrição</th><th>Empresa</th><th>Gerente Responsável</th>
+                                            <th class="text-center">Qtd. Ideal Colab.</th><th>Data Criação</th><th>Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-setores"></tbody>
                                 </table>
                             </div>
                         </div>
@@ -4126,10 +4181,6 @@
                             <input type="hidden" id="logo-url-empresa">
                         </div>
                         <div class="mb-3">
-                            <label class="form-label">Setores (separados por vírgula)</label>
-                            <textarea class="form-control" id="setores-empresa" rows="3" placeholder="Ex: RH, TI, Vendas, Financeiro"></textarea>
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label">Funções (separadas por vírgula)</label>
                             <textarea class="form-control" id="funcoes-empresa" rows="3" placeholder="Ex: Analista, Gerente, Operador, Auxiliar"></textarea>
                         </div>
@@ -4659,6 +4710,7 @@
                 </div>
                 <div class="modal-body">
                     <form id="form-reposicao-nova">
+                        <input type="hidden" id="rep-solicitacao-id">
                         <div class="mb-3">
                             <label class="form-label">Funcionário desligado</label>
                             <select class="form-select" id="rep-nova-funcionario" required>
@@ -4686,6 +4738,10 @@
                         <div class="mb-3">
                             <label class="form-label">Cargo</label>
                             <input type="text" class="form-control" id="rep-nova-cargo" placeholder="Ex: Analista">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="rep-nova-observacoes" rows="2"></textarea>
                         </div>
                     </form>
                 </div>
@@ -5335,10 +5391,52 @@
         </div>
     </div>
 
+    <!-- Modal Novo Setor -->
+    <div class="modal fade" id="setorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Novo Setor</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-setor">
+                        <input type="hidden" id="setor-id">
+                        <div class="mb-3">
+                            <label class="form-label">Empresa</label>
+                            <select class="form-select" id="setor-empresa" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrição (Nome do Setor)</label>
+                            <input type="text" class="form-control" id="setor-descricao" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Gerente Responsável</label>
+                            <select class="form-select" id="setor-gerente"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Quantidade Ideal de Colaboradores</label>
+                            <input type="number" class="form-control" id="setor-qtd-ideal" min="0">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="setor-observacao" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarSetor()">Salvar Setor</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts da Aplicação (carregados por último para garantir que o DOM esteja pronto) -->
     <script src="js/utils.js" defer></script>
     <script src="js/afd-parser.js" defer></script>    
     <script src="js/empresas.js" defer></script>
+    <script src="js/setores.js" defer></script>
     <script src="js/funcionarios.js" defer></script>
     <script src="js/movimentacoes.js" defer></script>
     <script src="js/painel-demitidos.js" defer></script>

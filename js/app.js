@@ -2,7 +2,7 @@
 // 🎯 FUNÇÕES PRINCIPAIS DO APP
 // ============================
 
-// Lista de todas as seções disponíveis no sistema
+// Lista de todas as seções disponíveis no sistema (MODIFICADO)
 const TODAS_SECOES = [ 
     'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
@@ -10,7 +10,7 @@ const TODAS_SECOES = [
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao',
-    'iso-maquinas', 'iso-organograma', 'iso-swot',
+    'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
 , 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos'];
 
@@ -87,6 +87,11 @@ async function carregarDadosSecao(sectionName) {
             case 'empresas':
                 if (typeof carregarEmpresas === 'function') {
                     await carregarEmpresas();
+                }
+                break;
+            case 'setores':
+                if (typeof inicializarSetores === 'function') {
+                    await inicializarSetores();
                 }
                 break;
             case 'funcionarios':
@@ -565,6 +570,18 @@ async function inicializarMovimentacoesDashboard() {
         carregarSetoresPorEmpresa(empresaFiltro.value, 'mov-filtro-setor');
     });
 
+    // Define as datas padrão para o mês atual, se estiverem vazias
+    const filtroInicioInput = document.getElementById('mov-filtro-inicio');
+    const filtroFimInput = document.getElementById('mov-filtro-fim');
+
+    if (filtroInicioInput && filtroFimInput && !filtroInicioInput.value && !filtroFimInput.value) {
+        const hoje = new Date();
+        const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        filtroInicioInput.value = primeiroDia.toISOString().split('T')[0];
+        filtroFimInput.value = ultimoDia.toISOString().split('T')[0];
+    }
+
     // Carrega os dados iniciais
     await carregarDashboardMovimentacoes();
 }
@@ -593,28 +610,55 @@ async function carregarDashboardMovimentacoes() {
         const filtroStatus = document.getElementById('mov-filtro-status').value || 'pendente';
         const filtroEmpresa = document.getElementById('mov-filtro-empresa').value;
         const filtroSetor = document.getElementById('mov-filtro-setor').value;
+        const filtroInicio = document.getElementById('mov-filtro-inicio')?.value;
+        const filtroFim = document.getElementById('mov-filtro-fim')?.value;
 
+        // --- Query para as listas (respeita o filtro de status) ---
         let reposicoesQuery = db.collection('reposicoes').where('status', '==', filtroStatus);
         let contratacoesQuery = db.collection('contratacoes').where('status', '==', filtroStatus);
 
+        // --- Query para os cards (sempre status 'pendente') ---
+        let reposicoesPendentesQuery = db.collection('reposicoes').where('status', '==', 'pendente');
+        let contratacoesPendentesQuery = db.collection('contratacoes').where('status', '==', 'pendente');
+
+        // Aplicar filtros comuns a todas as queries
         if (filtroEmpresa) {
             reposicoesQuery = reposicoesQuery.where('empresaId', '==', filtroEmpresa);
             contratacoesQuery = contratacoesQuery.where('empresaId', '==', filtroEmpresa);
+            reposicoesPendentesQuery = reposicoesPendentesQuery.where('empresaId', '==', filtroEmpresa);
+            contratacoesPendentesQuery = contratacoesPendentesQuery.where('empresaId', '==', filtroEmpresa);
         }
         if (filtroSetor) {
             reposicoesQuery = reposicoesQuery.where('setor', '==', filtroSetor);
             contratacoesQuery = contratacoesQuery.where('setor', '==', filtroSetor);
+            reposicoesPendentesQuery = reposicoesPendentesQuery.where('setor', '==', filtroSetor);
+            contratacoesPendentesQuery = contratacoesPendentesQuery.where('setor', '==', filtroSetor);
+        }
+        if (filtroInicio) {
+            const dataInicio = new Date(filtroInicio + 'T00:00:00');
+            reposicoesQuery = reposicoesQuery.where('abertaEm', '>=', dataInicio);
+            contratacoesQuery = contratacoesQuery.where('abertaEm', '>=', dataInicio);
+            reposicoesPendentesQuery = reposicoesPendentesQuery.where('abertaEm', '>=', dataInicio);
+            contratacoesPendentesQuery = contratacoesPendentesQuery.where('abertaEm', '>=', dataInicio);
+        }
+        if (filtroFim) {
+            const dataFim = new Date(filtroFim + 'T23:59:59');
+            reposicoesQuery = reposicoesQuery.where('abertaEm', '<=', dataFim);
+            contratacoesQuery = contratacoesQuery.where('abertaEm', '<=', dataFim);
+            reposicoesPendentesQuery = reposicoesPendentesQuery.where('abertaEm', '<=', dataFim);
+            contratacoesPendentesQuery = contratacoesPendentesQuery.where('abertaEm', '<=', dataFim);
         }
 
-        const [reposicoesSnap, contratacoesSnap] = await Promise.all([
+        const [
+            reposicoesSnap, 
+            contratacoesSnap,
+            reposicoesPendentesSnap,
+            contratacoesPendentesSnap
+        ] = await Promise.all([
             reposicoesQuery.orderBy('abertaEm', 'desc').get(),
-            contratacoesQuery.orderBy('abertaEm', 'desc').get()
-        ]);
-
-        // Para os cards, sempre contamos as pendentes, independente do filtro
-        const [reposicoesPendentesSnap, contratacoesPendentesSnap] = await Promise.all([
-            db.collection('reposicoes').where('status', '==', 'pendente').get(),
-            db.collection('contratacoes').where('status', '==', 'pendente').get()
+            contratacoesQuery.orderBy('abertaEm', 'desc').get(),
+            reposicoesPendentesQuery.get(), // Não precisa de orderBy para contagem
+            contratacoesPendentesQuery.get() // Não precisa de orderBy para contagem
         ]);
 
         const totalReposicoesPendentes = reposicoesPendentesSnap.size;
@@ -644,14 +688,14 @@ async function carregarDashboardMovimentacoes() {
                     const tempoAberto = filtroStatus === 'pendente' ? calcularDiferencaTempo(abertaEm) : formatarData(reposicao.preenchidaEm?.toDate());
 
                     let acoesBtn = ''; // Declaração da variável fora do if
-                    if (filtroStatus === 'pendente') { // Ações apenas para status pendente
-                        acoesBtn = `
+                    
+                    acoesBtn = `
                         <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); visualizarSolicitacao('${doc.id}', 'reposicao')" title="Visualizar"><i class="fas fa-eye"></i></button>
-                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); preencherVaga('${doc.id}', 'reposicao')" title="Preencher Vaga"><i class="fas fa-user-check"></i></button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editarSolicitacao('${doc.id}', 'reposicao')" title="Editar"><i class="fas fa-edit"></i></button>
+                        ${filtroStatus === 'pendente' ? `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); preencherVaga('${doc.id}', 'reposicao')" title="Preencher Vaga"><i class="fas fa-user-check"></i></button>` : ''}
+                        ${filtroStatus === 'pendente' ? `<button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editarSolicitacao('${doc.id}', 'reposicao')" title="Editar"><i class="fas fa-edit"></i></button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); excluirSolicitacao('${doc.id}', 'reposicao')" title="Excluir"><i class="fas fa-trash"></i></button>
                     `;
-                    }
+                    
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>${reposicao.cargo} <br><small class="text-muted">(${reposicao.funcionarioNome})</small></td>
@@ -681,14 +725,12 @@ async function carregarDashboardMovimentacoes() {
                     const tempoAberto = filtroStatus === 'pendente' ? calcularDiferencaTempo(abertaEm) : formatarData(contratacao.preenchidaEm?.toDate());
 
                     let acoesBtn = '';
-                    if (filtroStatus === 'pendente') {
-                        acoesBtn = `
+                    acoesBtn = `
                         <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); visualizarSolicitacao('${doc.id}', 'contratacao')" title="Visualizar"><i class="fas fa-eye"></i></button>
-                        <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); preencherVaga('${doc.id}', 'contratacao')" title="Preencher Vaga"><i class="fas fa-user-check"></i></button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editarSolicitacao('${doc.id}', 'contratacao')" title="Editar"><i class="fas fa-edit"></i></button>
+                        ${filtroStatus === 'pendente' ? `<button class="btn btn-sm btn-success" onclick="event.stopPropagation(); preencherVaga('${doc.id}', 'contratacao')" title="Preencher Vaga"><i class="fas fa-user-check"></i></button>` : ''}
+                        ${filtroStatus === 'pendente' ? `<button class="btn btn-sm btn-outline-primary" onclick="event.stopPropagation(); editarSolicitacao('${doc.id}', 'contratacao')" title="Editar"><i class="fas fa-edit"></i></button>` : ''}
                         <button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); excluirSolicitacao('${doc.id}', 'contratacao')" title="Excluir"><i class="fas fa-trash"></i></button>
                     `;
-                    }
 
                     // Aguarda o cálculo do custo estimado e multiplica pela quantidade
                     const custoEstimado = await calcularCustoEstimadoContratacao(parseFloat(contratacao.salario || 0), contratacao.empresaId);
@@ -1291,25 +1333,21 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 
     select.innerHTML = '<option value="">Carregando...</option>';
 
-    try {
-        const doc = await db.collection('empresas').doc(empresaId).get();
-        
-        if (!doc.exists) {
-            select.innerHTML = '<option value="">Empresa não encontrada</option>';
-            return;
-        }
+    try {        
+        const setoresSnapshot = await db.collection('setores')
+            .where('empresaId', '==', empresaId)
+            .orderBy('descricao')
+            .get();
 
-        const empresa = doc.data();
-        const setores = empresa.setores || [];
-
-        if (setores.length === 0) {
+        if (setoresSnapshot.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
             return;
         }
 
         select.innerHTML = '<option value="">Selecione...</option>';
         
-        setores.sort().forEach(setor => {
+        setoresSnapshot.forEach(doc => {
+            const setor = doc.data().descricao;
             const option = document.createElement('option');
             option.value = setor;
             option.textContent = setor;

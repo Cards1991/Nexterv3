@@ -93,7 +93,14 @@ async function carregarListaSumidos() {
         snapshot.forEach(doc => {
             const caso = doc.data();
             const dataUltimoPonto = caso.dataUltimoPonto ? caso.dataUltimoPonto.toDate() : null;
-            const dataAdmissao = caso.dataAdmissao ? caso.dataAdmissao.toDate() : null;
+            const dataAdmissao = caso.dataAdmissao ? (caso.dataAdmissao.toDate ? caso.dataAdmissao.toDate() : new Date(caso.dataAdmissao)) : null;
+            const status = caso.status || 'Em Aberto';
+
+            let statusClass = 'bg-secondary';
+            if (status === 'Em Tratamento') statusClass = 'bg-warning text-dark';
+            if (status === 'Posse do Jurídico') statusClass = 'bg-info';
+            if (status === 'Finalizado') statusClass = 'bg-success';
+
             
             let tempoDesaparecido = 0;
             if (dataUltimoPonto) {
@@ -114,10 +121,10 @@ async function carregarListaSumidos() {
             html += `
                 <tr>
                     <td class="ps-4 fw-bold">${caso.nome}</td>
-                    <td>${dataAdmissao ? dataAdmissao.toLocaleDateString('pt-BR') : '-'}</td>
                     <td>${caso.setor || '-'}</td>
                     <td>${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString('pt-BR') : '-'}</td>
                     <td><span class="badge ${badgeClass} fs-6">${tempoDesaparecido} dias</span></td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
                     <td class="text-end pe-4">
                         <div class="btn-group">
                             ${btnWhatsapp}
@@ -317,63 +324,62 @@ async function abrirModalTratamento(id) {
                 <div class="modal-dialog modal-lg">
                     <div class="modal-content">
                         <div class="modal-header">
-                            <h5 class="modal-title"><i class="fas fa-file-contract me-2"></i>Tratamento de Abandono de Emprego</h5>
+                        <h5 class="modal-title"><i class="fas fa-history me-2"></i>Histórico e Tratamento do Caso</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body">
                             <input type="hidden" id="tratamento-id">
                             <h5 id="tratamento-nome-funcionario" class="mb-3"></h5>
-                            
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Situação Atual (Status)</label>
-                                <select class="form-select" id="tratamento-status">
-                                    <option value="Em Aberto">Em Aberto</option>
-                                    <option value="Tentativa de Contato">Tentativa de Contato</option>
-                                    <option value="Aguardando Retorno">Aguardando Retorno</option>
-                                    <option value="Em Processo de Abandono">Em Processo de Abandono</option>
-                                    <option value="Finalizado">Finalizado</option>
-                                </select>
-                            </div>
 
-                            <div class="card mb-3">
-                                <div class="card-header bg-light">Etapas do Processo</div>
-                                <div class="card-body">
-                                    <div class="row g-3 align-items-center mb-2">
-                                        <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="check-whatsapp"><label class="form-check-label" for="check-whatsapp">Comunicado via WhatsApp</label></div></div>
-                                        <div class="col-md-6"><input type="date" class="form-control form-control-sm" id="data-whatsapp"></div>
+                        <!-- Seção para adicionar nova ação -->
+                        <div class="card bg-light border mb-4">
+                            <div class="card-body">
+                                <h6 class="card-title text-primary">Adicionar Nova Ação ao Histórico</h6>
+                                <div class="row g-2">
+                                    <div class="col-md-5">
+                                        <label class="form-label small">Tipo da Ação</label>
+                                        <select class="form-select form-select-sm" id="tratamento-acao-tipo">
+                                            <option value="Contato WhatsApp">Contato WhatsApp</option>
+                                            <option value="Envio de A.R.">Envio de A.R.</option>
+                                            <option value="Parecer Jurídico">Parecer Jurídico</option>
+                                            <option value="Finalização do Caso">Finalização do Caso</option>
+                                            <option value="Outro">Outro</option>
+                                        </select>
                                     </div>
-                                    <div class="row g-3 align-items-center mb-2">
-                                        <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="check-ar"><label class="form-check-label" for="check-ar">Comunicado via A.R.</label></div></div>
-                                        <div class="col-md-6"><input type="date" class="form-control form-control-sm" id="data-ar"></div>
-                                    </div>
-                                    <div class="row g-3 align-items-center mb-2">
-                                        <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="check-pedido-demissao"><label class="form-check-label" for="check-pedido-demissao">Pedido de Demissão</label></div></div>
-                                        <div class="col-md-6"><input type="date" class="form-control form-control-sm" id="data-pedido-demissao"></div>
-                                    </div>
-                                    <hr>
-                                    <div class="row g-3 align-items-center mb-2">
-                                        <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="check-inicio-jc" onchange="toggleAdvogadoField()"><label class="form-check-label" for="check-inicio-jc">Iniciado a Justa Causa</label></div></div>
-                                        <div class="col-md-6"><input type="date" class="form-control form-control-sm" id="data-inicio-jc"></div>
-                                    </div>
-                                    <div class="row g-3 align-items-center mb-2">
-                                        <div class="col-md-6"><div class="form-check"><input class="form-check-input" type="checkbox" id="check-executa-jc" onchange="toggleAdvogadoField()"><label class="form-check-label" for="check-executa-jc">Justa Causa Executada</label></div></div>
-                                        <div class="col-md-6"><input type="date" class="form-control form-control-sm" id="data-executa-jc"></div>
-                                    </div>
-                                    <div id="container-advogado" style="display:none;" class="mt-3 p-3 bg-light border rounded">
-                                        <label class="form-label fw-bold"><i class="fas fa-gavel"></i> Advogado do Parecer</label>
-                                        <input type="text" class="form-control" id="advogado-parecer" placeholder="Nome do Advogado responsável">
+                                    <div class="col-md-7">
+                                        <label class="form-label small">Observação</label>
+                                        <input type="text" class="form-control form-control-sm" id="tratamento-acao-obs" placeholder="Ex: Enviado telegrama para o endereço...">
                                     </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                            <button type="button" class="btn btn-info" onclick="imprimirHistoricoSumido()"><i class="fas fa-print"></i> Imprimir Histórico</button>
-                            <button type="button" class="btn btn-primary" onclick="salvarTratamento()">Salvar</button>
+
+                        <!-- Seção de Status e Histórico -->
+                        <div class="row">
+                            <div class="col-md-5">
+                                <label class="form-label fw-bold">Atualizar Status Geral</label>
+                                <select class="form-select" id="tratamento-status-geral">
+                                    <option value="Em Aberto">Em Aberto</option>
+                                    <option value="Em Tratamento">Em Tratamento</option>
+                                    <option value="Posse do Jurídico">Posse do Jurídico</option>
+                                    <option value="Finalizado">Finalizado</option>
+                                </select>
+                            </div>
                         </div>
+                        
+                        <hr>
+                        <h6><i class="fas fa-history me-2"></i>Histórico de Tratamentos</h6>
+                        <div id="tratamento-historico-container" class="list-group" style="max-height: 250px; overflow-y: auto;">
+                            <!-- Histórico será inserido aqui -->
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                        <button type="button" class="btn btn-primary" onclick="salvarAcaoTratamento()">Salvar Ação e Status</button>
                     </div>
                 </div>
             </div>
+        </div>
         `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         modalEl = document.getElementById('modalTratamentoSumido');
@@ -383,28 +389,31 @@ async function abrirModalTratamento(id) {
         const doc = await db.collection('casos_sumidos').doc(id).get();
         if (!doc.exists) return;
         const data = doc.data();
-        const t = data.tratamento || {};
 
         document.getElementById('tratamento-id').value = id;
         document.getElementById('tratamento-nome-funcionario').textContent = data.nome;
-        document.getElementById('tratamento-status').value = data.status || 'Em Aberto';
+        document.getElementById('tratamento-status-geral').value = data.status || 'Em Aberto';
 
-        document.getElementById('check-whatsapp').checked = !!t.whatsapp;
-        document.getElementById('data-whatsapp').value = t.dataWhatsapp || '';
-        document.getElementById('check-ar').checked = !!t.ar;
-        document.getElementById('data-ar').value = t.dataAr || '';
-        
-        document.getElementById('check-pedido-demissao').checked = !!t.pedidoDemissao;
-        document.getElementById('data-pedido-demissao').value = t.dataPedidoDemissao || '';
+        // Renderizar histórico
+        const historicoContainer = document.getElementById('tratamento-historico-container');
+        const historico = data.historicoTratamento || [];
 
-        document.getElementById('check-inicio-jc').checked = !!t.inicioJustaCausa;
-        document.getElementById('data-inicio-jc').value = t.dataInicioJustaCausa || '';
-        document.getElementById('check-executa-jc').checked = !!t.justaCausaExecutada;
-        document.getElementById('data-executa-jc').value = t.dataJustaCausaExecutada || '';
-        
-        document.getElementById('advogado-parecer').value = t.advogadoParecer || '';
-
-        toggleAdvogadoField(); // Atualiza visibilidade do campo advogado
+        if (historico.length === 0) {
+            historicoContainer.innerHTML = '<p class="text-muted small p-3">Nenhuma ação registrada no histórico.</p>';
+        } else {
+            historicoContainer.innerHTML = historico
+                .sort((a, b) => b.data.seconds - a.data.seconds) // Ordena do mais recente para o mais antigo
+                .map(item => `
+                    <div class="list-group-item list-group-item-action flex-column align-items-start">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">${item.tipo}</h6>
+                            <small>${item.data.toDate().toLocaleDateString('pt-BR')}</small>
+                        </div>
+                        <p class="mb-1">${item.observacao || 'Nenhuma observação.'}</p>
+                        <small class="text-muted">Por: ${item.responsavel || 'Sistema'}</small>
+                    </div>
+                `).join('');
+        }
 
         new bootstrap.Modal(modalEl).show();
     } catch (e) {
@@ -412,42 +421,51 @@ async function abrirModalTratamento(id) {
     }
 }
 
-function toggleAdvogadoField() {
-    const jcInicio = document.getElementById('check-inicio-jc').checked;
-    const jcExecuta = document.getElementById('check-executa-jc').checked;
-    const container = document.getElementById('container-advogado');
-    if (container) {
-        container.style.display = (jcInicio || jcExecuta) ? 'block' : 'none';
-    }
-}
-window.toggleAdvogadoField = toggleAdvogadoField;
-
-async function salvarTratamento() {
+async function salvarAcaoTratamento() {
     const id = document.getElementById('tratamento-id').value;
-    const status = document.getElementById('tratamento-status').value;
-    const tratamento = {
-        whatsapp: document.getElementById('check-whatsapp').checked,
-        dataWhatsapp: document.getElementById('data-whatsapp').value,
-        ar: document.getElementById('check-ar').checked,
-        dataAr: document.getElementById('data-ar').value,
-        pedidoDemissao: document.getElementById('check-pedido-demissao').checked,
-        dataPedidoDemissao: document.getElementById('data-pedido-demissao').value,
-        inicioJustaCausa: document.getElementById('check-inicio-jc').checked,
-        dataInicioJustaCausa: document.getElementById('data-inicio-jc').value,
-        justaCausaExecutada: document.getElementById('check-executa-jc').checked,
-        dataJustaCausaExecutada: document.getElementById('data-executa-jc').value,
-        advogadoParecer: document.getElementById('advogado-parecer').value
-    };
+    const statusGeral = document.getElementById('tratamento-status-geral').value;
 
-    try {
-        await db.collection('casos_sumidos').doc(id).update({ tratamento, status: status, updatedAt: firebase.firestore.FieldValue.serverTimestamp() });
-        mostrarMensagem("Tratamento atualizado!", "success");
-        bootstrap.Modal.getInstance(document.getElementById('modalTratamentoSumido')).hide();
-        carregarListaSumidos();
-    } catch (e) {
-        console.error("Erro ao salvar:", e);
-        mostrarMensagem("Erro ao salvar.", "error");
+    const tipoAcao = document.getElementById('tratamento-acao-tipo').value;
+    const obsAcao = document.getElementById('tratamento-acao-obs').value;
+
+    // Só adiciona ao histórico se uma observação for feita
+    if (obsAcao) {
+        const novaAcao = {
+            tipo: tipoAcao,
+            observacao: obsAcao,
+            data: new Date(),
+            responsavel: firebase.auth().currentUser?.displayName || 'Usuário'
+        };
+
+        try {
+            await db.collection('casos_sumidos').doc(id).update({
+                status: statusGeral,
+                historicoTratamento: firebase.firestore.FieldValue.arrayUnion(novaAcao),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            mostrarMensagem("Ação registrada e status atualizado!", "success");
+        } catch (e) {
+            console.error("Erro ao salvar ação:", e);
+            mostrarMensagem("Erro ao salvar ação.", "error");
+            return;
+        }
+    } else {
+        // Se não houver observação, apenas atualiza o status geral
+        try {
+            await db.collection('casos_sumidos').doc(id).update({
+                status: statusGeral,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            mostrarMensagem("Status do caso atualizado!", "success");
+        } catch (e) {
+            console.error("Erro ao atualizar status:", e);
+            mostrarMensagem("Erro ao atualizar status.", "error");
+            return;
+        }
     }
+
+    bootstrap.Modal.getInstance(document.getElementById('modalTratamentoSumido')).hide();
+    carregarListaSumidos();
 }
 
 async function imprimirHistoricoSumido() {
@@ -456,11 +474,18 @@ async function imprimirHistoricoSumido() {
         const doc = await db.collection('casos_sumidos').doc(id).get();
         if (!doc.exists) return;
         const data = doc.data();
-        const t = data.tratamento || {};
-        const fmt = (d) => d ? new Date(d).toLocaleDateString('pt-BR') : '-';
-        const chk = (v) => v ? '<span style="color:green; font-weight:bold;">✔ Realizado</span>' : '<span style="color:#999;">Pendente</span>';
+        const historico = data.historicoTratamento || [];
 
-        const html = `
+        const linhasHtml = historico.map(item => `
+            <tr>
+                <td>${item.data.toDate().toLocaleString('pt-BR')}</td>
+                <td>${item.tipo}</td>
+                <td>${item.observacao}</td>
+                <td>${item.responsavel}</td>
+            </tr>
+        `).join('');
+
+        const conteudo = `
             <html>
             <head>
                 <title>Histórico - ${data.nome}</title>
@@ -475,7 +500,6 @@ async function imprimirHistoricoSumido() {
                     .table-custom th { background-color: #0d6efd; color: white; padding: 10px; text-align: left; }
                     .table-custom td { padding: 10px; border-bottom: 1px solid #dee2e6; }
                     .footer { margin-top: 50px; text-align: center; font-size: 0.8rem; color: #adb5bd; border-top: 1px solid #dee2e6; padding-top: 20px; }
-                    .advogado-box { margin-top: 20px; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; background-color: #fff3cd; }
                 </style>
             </head>
             <body>
@@ -496,21 +520,9 @@ async function imprimirHistoricoSumido() {
 
                 <h5 class="mb-3">Cronograma de Ações</h5>
                 <table class="table-custom">
-                    <thead><tr><th>Etapa</th><th>Status</th><th>Data de Registro</th></tr></thead>
-                    <tbody>
-                        <tr><td>Comunicado via WhatsApp</td><td>${chk(t.whatsapp)}</td><td>${fmt(t.dataWhatsapp)}</td></tr>
-                        <tr><td>Comunicado via A.R.</td><td>${chk(t.ar)}</td><td>${fmt(t.dataAr)}</td></tr>
-                        <tr><td>Pedido de Demissão</td><td>${chk(t.pedidoDemissao)}</td><td>${fmt(t.dataPedidoDemissao)}</td></tr>
-                        <tr><td>Início de Justa Causa</td><td>${chk(t.inicioJustaCausa)}</td><td>${fmt(t.dataInicioJustaCausa)}</td></tr>
-                        <tr><td>Justa Causa Executada</td><td>${chk(t.justaCausaExecutada)}</td><td>${fmt(t.dataJustaCausaExecutada)}</td></tr>
-                    </tbody>
+                    <thead><tr><th>Data</th><th>Ação</th><th>Observação</th><th>Responsável</th></tr></thead>
+                    <tbody>${linhasHtml}</tbody>
                 </table>
-
-                ${(t.inicioJustaCausa || t.justaCausaExecutada) && t.advogadoParecer ? `
-                <div class="advogado-box">
-                    <strong><i class="fas fa-gavel"></i> Parecer Jurídico:</strong><br>
-                    Advogado Responsável: <strong>${t.advogadoParecer}</strong>
-                </div>` : ''}
 
                 <div class="footer">
                     <p>Documento gerado eletronicamente pelo Sistema Nexter em ${new Date().toLocaleString('pt-BR')}.</p>
@@ -519,8 +531,7 @@ async function imprimirHistoricoSumido() {
             </html>`;
         
         const win = window.open('', '_blank');
-        win.document.write(html);
+        win.document.write(conteudo);
         win.document.close();
-        // win.print(); // Optional auto-print
     } catch (e) { console.error(e); }
 }
