@@ -1070,7 +1070,7 @@ async function abrirNovaReposicaoModal() {
         selectFuncionario.innerHTML = '<option value="">Selecione um funcionário (opcional)</option>';
         
         // Filtra funcionários demitidos e que necessitam de reposição
-        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Demitido').orderBy('nome').get();
+        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Inativo').orderBy('nome').get();
         funcSnap.forEach(doc => {
             const funcionario = doc.data();
             // Filtro em memória para garantir compatibilidade se o campo não existir em registros antigos
