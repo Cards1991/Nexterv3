@@ -2325,6 +2325,9 @@
                             <p class="text-muted mb-0">Aqui o gerente pode solicitar intervalo de horas extras para um funcionário.</p>
                         </div>
                         <div class="d-flex gap-2">
+                            <button class="btn btn-outline-primary" onclick="abrirDashboardSolicitante()">
+                                <i class="fas fa-chart-line"></i> Meu Dashboard
+                            </button>
                             <button class="btn btn-info text-white" onclick="replicarSelecionados()">
                                 <i class="fas fa-copy"></i> Replicar Selecionados (Dia Seguinte)
                             </button>
@@ -2366,6 +2369,144 @@
                         </div>
                         <div class="card-body p-0">
                             <div id="minhas-solicitacoes-container" class="table-responsive" style="max-height: 500px; overflow-y: auto;">Carregando...</div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Dashboard do Solicitante -->
+                <section id="solicitacao-dashboard" class="content-section d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h2 class="page-title mb-0">Dashboard de Desempenho - Minhas Solicitações</h2>
+                        <button class="btn btn-outline-secondary" onclick="showSection('dp-horas-solicitacao')">
+                            <i class="fas fa-arrow-left"></i> Voltar
+                        </button>
+                    </div>
+
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label">Data Início</label>
+                                    <input type="date" id="dash-sol-inicio" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Data Fim</label>
+                                    <input type="date" id="dash-sol-fim" class="form-control">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Colaborador</label>
+                                    <select id="dash-sol-colaborador" class="form-select">
+                                        <option value="">Todos</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-primary w-100" onclick="carregarDadosDashboardSolicitante()">
+                                        <i class="fas fa-filter"></i> Filtrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="card stat-card bg-primary text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">Valor Total Solicitado</h6>
+                                            <h3 class="mb-0" id="dash-sol-kpi-valor">R$ 0,00</h3>
+                                        </div>
+                                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card bg-info text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">Horas Totais</h6>
+                                            <h3 class="mb-0" id="dash-sol-kpi-horas">0h</h3>
+                                        </div>
+                                        <i class="fas fa-clock fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card bg-success text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">Aprovadas</h6>
+                                            <h3 class="mb-0" id="dash-sol-kpi-aprovadas">0</h3>
+                                        </div>
+                                        <i class="fas fa-check-circle fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card stat-card bg-warning text-dark h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <h6 class="mb-0">Pendentes</h6>
+                                            <h3 class="mb-0" id="dash-sol-kpi-pendentes">0</h3>
+                                        </div>
+                                        <i class="fas fa-hourglass-half fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-lg-8">
+                            <div class="card h-100">
+                                <div class="card-header">Evolução de Solicitações (Valor R$)</div>
+                                <div class="card-body">
+                                    <div style="position: relative; height: 300px;">
+                                        <canvas id="dash-sol-chart-evolucao"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4">
+                            <div class="card h-100">
+                                <div class="card-header">Status das Solicitações</div>
+                                <div class="card-body">
+                                    <div style="position: relative; height: 300px;">
+                                        <canvas id="dash-sol-chart-status"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Histórico Detalhado</span>
+                            <button class="btn btn-outline-secondary btn-sm" onclick="imprimirRelatorioDesempenho()">
+                                <i class="fas fa-print"></i> Imprimir Relatório
+                            </button>
+                        </div>
+                        <div class="card-body table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Colaborador</th>
+                                        <th>Motivo</th>
+                                        <th>Horas</th>
+                                        <th>Valor Est.</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="dash-sol-tabela"></tbody>
+                            </table>
                         </div>
                     </div>
                 </section>
@@ -3342,9 +3483,14 @@
                                     </select>
                                 </div>
                                 <div class="col-md-2">
-                                    <button class="btn btn-primary w-100" id="btn-filtrar-dashboard-faltas">
-                                        <i class="fas fa-filter"></i> Filtrar
-                                    </button>
+                                    <div class="d-flex gap-2">
+                                        <button class="btn btn-primary w-100" id="btn-filtrar-dashboard-faltas" title="Filtrar">
+                                            <i class="fas fa-filter"></i>
+                                        </button>
+                                        <button class="btn btn-success w-100" id="btn-exportar-dashboard-faltas" title="Exportar Excel">
+                                            <i class="fas fa-file-excel"></i>
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>

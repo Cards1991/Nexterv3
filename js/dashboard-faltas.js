@@ -1,6 +1,7 @@
 let dashboardFaltasCarregado = false;
 let chartFaltasSexo = null;
 let chartFaltasSetor = null;
+let __dados_dashboard_faltas_cache = { faltas: [], funcionariosMap: new Map() };
 
 /**
  * Inicializa o dashboard de faltas, carregando os dados se ainda não tiverem sido carregados.
@@ -15,6 +16,10 @@ async function inicializarDashboardFaltas() {
         const btnFiltrar = document.getElementById('btn-filtrar-dashboard-faltas');
         if (btnFiltrar) {
             btnFiltrar.addEventListener('click', () => carregarDashboardFaltas(db));
+        }
+        const btnExportar = document.getElementById('btn-exportar-dashboard-faltas');
+        if (btnExportar) {
+            btnExportar.addEventListener('click', exportarDashboardFaltasExcel);
         }
         dashboardFaltasCarregado = true;
     }
@@ -115,6 +120,9 @@ async function carregarDashboardFaltas(db) {
             id: doc.id, 
             ...doc.data() 
         }));
+
+        // Atualizar cache para exportação
+        __dados_dashboard_faltas_cache = { faltas, funcionariosMap };
 
         // 3. Processar os dados para o ranking e KPIs
         const contagemFaltas = {};
@@ -372,4 +380,86 @@ function renderizarGraficoSetor(dados) {
             }
         }
     });
+}
+
+function exportarDashboardFaltasExcel() {
+    const { faltas, funcionariosMap } = __dados_dashboard_faltas_cache;
+
+    if (!faltas || faltas.length === 0) {
+        mostrarMensagem('Não há dados para exportar.', 'warning');
+        return;
+    }
+
+    // Adiciona a biblioteca XLSX se não existir
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarDashboardFaltasExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    // Processar dados para o resumo por setor
+    const resumoSetor = {};
+    let totalFuncionariosComFalta = 0;
+    const funcionariosUnicosGeral = new Set();
+
+    faltas.forEach(f => {
+        const func = funcionariosMap.get(f.funcionarioId);
+        const setor = func ? (func.setor || 'Não Definido') : 'Não Definido';
+        
+        if (!resumoSetor[setor]) {
+            resumoSetor[setor] = {
+                funcionariosUnicos: new Set(),
+                totalFaltas: 0
+            };
+        }
+        
+        resumoSetor[setor].funcionariosUnicos.add(f.funcionarioId);
+        resumoSetor[setor].totalFaltas++;
+        funcionariosUnicosGeral.add(f.funcionarioId);
+    });
+
+    totalFuncionariosComFalta = funcionariosUnicosGeral.size;
+
+    const dadosExportacao = Object.entries(resumoSetor).map(([setor, dados]) => {
+        const qtdFuncionarios = dados.funcionariosUnicos.size;
+        const representatividade = totalFuncionariosComFalta > 0 
+            ? ((qtdFuncionarios / totalFuncionariosComFalta) * 100).toFixed(2) + '%' 
+            : '0%';
+
+        return {
+            'Setor': setor,
+            'Qtd. Funcionários com Faltas': qtdFuncionarios,
+            'Total de Faltas': dados.totalFaltas,
+            '% Representatividade (Funcionários)': representatividade
+        };
+    });
+
+    // Ordenar por quantidade de funcionários com faltas (decrescente)
+    dadosExportacao.sort((a, b) => b['Qtd. Funcionários com Faltas'] - a['Qtd. Funcionários com Faltas']);
+
+    // Adicionar linha de total
+    dadosExportacao.push({
+        'Setor': 'TOTAL GERAL',
+        'Qtd. Funcionários com Faltas': totalFuncionariosComFalta,
+        'Total de Faltas': faltas.length,
+        '% Representatividade (Funcionários)': '100%'
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    
+    // Ajustar largura das colunas
+    const wscols = [
+        {wch: 30}, // Setor
+        {wch: 25}, // Qtd. Funcionários
+        {wch: 15}, // Total Faltas
+        {wch: 30}  // % Representatividade
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(wb, ws, "Resumo Faltas por Setor");
+    XLSX.writeFile(wb, "Dashboard_Faltas_Resumo.xlsx");
+    mostrarMensagem('Exportação concluída com sucesso!', 'success');
 }

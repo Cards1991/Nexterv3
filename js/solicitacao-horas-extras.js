@@ -7,6 +7,8 @@ let __funcionarios_ativos_solicitacao_cache = [];
 let __funcionarios_select_html_cache = '<option value="">Nenhum funcionário ativo encontrado.</option>';
 let __funcionarios_replicacao = []; // Lista temporária para o modal de lote
 let __solicitacoes_lista_cache = []; // Cache para replicação direta
+let __dash_sol_charts = {}; // Cache para gráficos do dashboard
+let __dash_sol_dados_cache = []; // Cache de dados para o relatório
 
 /**
  * Inicializa a tela de solicitação de horas extras.
@@ -640,6 +642,313 @@ async function excluirMinhaSolicitacao(id) {
     }
 }
 
+// =================================================================
+// DASHBOARD DE DESEMPENHO DO SOLICITANTE
+// =================================================================
+
+async function abrirDashboardSolicitante() {
+    showSection('solicitacao-dashboard');
+    
+    // Configurar datas padrão (Mês atual) se estiverem vazias
+    const inicioInput = document.getElementById('dash-sol-inicio');
+    const fimInput = document.getElementById('dash-sol-fim');
+    
+    if (!inicioInput.value || !fimInput.value) {
+        const hoje = new Date();
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+        
+        inicioInput.value = inicioMes.toISOString().split('T')[0];
+        fimInput.value = fimMes.toISOString().split('T')[0];
+    }
+
+    // Popular select de colaboradores (baseado nos funcionários ativos)
+    const selectColab = document.getElementById('dash-sol-colaborador');
+    if (selectColab && selectColab.options.length <= 1) {
+        if (__funcionarios_ativos_solicitacao_cache.length === 0) {
+            await carregarFuncionariosParaCache();
+        }
+        __funcionarios_ativos_solicitacao_cache.forEach(f => {
+            const option = document.createElement('option');
+            option.value = f.id;
+            option.textContent = f.nome;
+            selectColab.appendChild(option);
+        });
+    }
+
+    await carregarDadosDashboardSolicitante();
+}
+
+async function carregarDadosDashboardSolicitante() {
+    const user = firebase.auth().currentUser;
+    if (!user) return;
+
+    const dataInicio = document.getElementById('dash-sol-inicio').value;
+    const dataFim = document.getElementById('dash-sol-fim').value;
+    const colaboradorId = document.getElementById('dash-sol-colaborador').value;
+    const tbody = document.getElementById('dash-sol-tabela');
+
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando dados...</td></tr>';
+
+    try {
+        let query = db.collection('solicitacoes_horas');
+        let solicitacoes = [];
+        
+        // Verifica permissão
+        const isAdmin = typeof currentUserPermissions !== 'undefined' && currentUserPermissions.isAdmin;
+
+        if (isAdmin) {
+            // Admin: Filtra por data no servidor (aproveita índice simples de 'start')
+            if (dataInicio) {
+                query = query.where('start', '>=', firebase.firestore.Timestamp.fromDate(new Date(dataInicio + 'T00:00:00')));
+            }
+            if (dataFim) {
+                query = query.where('start', '<=', firebase.firestore.Timestamp.fromDate(new Date(dataFim + 'T23:59:59')));
+            }
+            query = query.orderBy('start', 'desc');
+            
+            const snapshot = await query.get();
+            solicitacoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } else {
+            // Não-Admin: Filtra por criador no servidor.
+            // Filtro de data e ordenação feitos em memória para evitar necessidade de índice composto (createdByUid + start)
+            query = query.where('createdByUid', '==', user.uid);
+            
+            const snapshot = await query.get();
+            let docs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+            // Filtragem de data em memória
+            if (dataInicio) {
+                const dtIni = new Date(dataInicio + 'T00:00:00');
+                docs = docs.filter(s => s.start && s.start.toDate() >= dtIni);
+            }
+            if (dataFim) {
+                const dtFim = new Date(dataFim + 'T23:59:59');
+                docs = docs.filter(s => s.start && s.start.toDate() <= dtFim);
+            }
+
+            // Ordenação em memória
+            docs.sort((a, b) => {
+                const dateA = a.start && a.start.toDate ? a.start.toDate() : new Date(0);
+                const dateB = b.start && b.start.toDate ? b.start.toDate() : new Date(0);
+                return dateB - dateA;
+            });
+            solicitacoes = docs;
+        }
+        
+        // Filtro de colaborador em memória (se selecionado)
+        if (colaboradorId) {
+            solicitacoes = solicitacoes.filter(s => s.employeeId === colaboradorId);
+        }
+
+        __dash_sol_dados_cache = solicitacoes; // Salva para o relatório
+
+        renderizarKPIsDashboard(solicitacoes);
+        renderizarGraficosDashboard(solicitacoes);
+        renderizarTabelaDashboard(solicitacoes);
+
+    } catch (error) {
+        console.error("Erro ao carregar dashboard:", error);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    }
+}
+
+function renderizarKPIsDashboard(dados) {
+    const totalValor = dados.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    
+    let totalMinutos = 0;
+    dados.forEach(s => {
+        if (s.start && s.end) {
+            const diff = s.end.toDate() - s.start.toDate();
+            totalMinutos += diff / (1000 * 60);
+        }
+    });
+    const totalHoras = (totalMinutos / 60).toFixed(1);
+
+    const aprovadas = dados.filter(s => s.status === 'aprovado').length;
+    const pendentes = dados.filter(s => s.status === 'pendente').length;
+
+    document.getElementById('dash-sol-kpi-valor').textContent = `R$ ${totalValor.toFixed(2).replace('.', ',')}`;
+    document.getElementById('dash-sol-kpi-horas').textContent = `${totalHoras}h`;
+    document.getElementById('dash-sol-kpi-aprovadas').textContent = aprovadas;
+    document.getElementById('dash-sol-kpi-pendentes').textContent = pendentes;
+}
+
+function renderizarTabelaDashboard(dados) {
+    const tbody = document.getElementById('dash-sol-tabela');
+    tbody.innerHTML = '';
+
+    if (dados.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma solicitação encontrada no período.</td></tr>';
+        return;
+    }
+
+    dados.forEach(s => {
+        const data = s.start ? s.start.toDate().toLocaleDateString('pt-BR') : '-';
+        const horas = s.start && s.end ? ((s.end.toDate() - s.start.toDate()) / 3600000).toFixed(2) + 'h' : '-';
+        
+        let statusBadge = 'bg-secondary';
+        if (s.status === 'aprovado') statusBadge = 'bg-success';
+        if (s.status === 'pendente') statusBadge = 'bg-warning text-dark';
+        if (s.status === 'rejeitado') statusBadge = 'bg-danger';
+
+        tbody.innerHTML += `
+            <tr>
+                <td>${data}</td>
+                <td>${s.employeeName}</td>
+                <td>${s.reason || '-'}</td>
+                <td>${horas}</td>
+                <td>R$ ${(s.valorEstimado || 0).toFixed(2).replace('.', ',')}</td>
+                <td><span class="badge ${statusBadge}">${s.status}</span></td>
+            </tr>
+        `;
+    });
+}
+
+function renderizarGraficosDashboard(dados) {
+    // 1. Gráfico de Evolução (Linha)
+    const ctxEvolucao = document.getElementById('dash-sol-chart-evolucao')?.getContext('2d');
+    if (ctxEvolucao) {
+        // Agrupar por dia
+        const dadosPorDia = {};
+        dados.forEach(s => {
+            const dia = s.start.toDate().toLocaleDateString('pt-BR');
+            dadosPorDia[dia] = (dadosPorDia[dia] || 0) + (s.valorEstimado || 0);
+        });
+
+        // Ordenar datas
+        const labels = Object.keys(dadosPorDia).sort((a, b) => {
+            const [da, ma, ya] = a.split('/');
+            const [db, mb, yb] = b.split('/');
+            return new Date(ya, ma-1, da) - new Date(yb, mb-1, db);
+        });
+        const values = labels.map(l => dadosPorDia[l]);
+
+        if (__dash_sol_charts.evolucao) __dash_sol_charts.evolucao.destroy();
+
+        __dash_sol_charts.evolucao = new Chart(ctxEvolucao, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Valor Solicitado (R$)',
+                    data: values,
+                    borderColor: '#0d6efd',
+                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+
+    // 2. Gráfico de Status (Pizza)
+    const ctxStatus = document.getElementById('dash-sol-chart-status')?.getContext('2d');
+    if (ctxStatus) {
+        const statusCount = { aprovado: 0, pendente: 0, rejeitado: 0, cancelado: 0 };
+        dados.forEach(s => {
+            if (statusCount[s.status] !== undefined) statusCount[s.status]++;
+        });
+
+        if (__dash_sol_charts.status) __dash_sol_charts.status.destroy();
+
+        __dash_sol_charts.status = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: ['Aprovado', 'Pendente', 'Rejeitado', 'Cancelado'],
+                datasets: [{
+                    data: [statusCount.aprovado, statusCount.pendente, statusCount.rejeitado, statusCount.cancelado],
+                    backgroundColor: ['#198754', '#ffc107', '#dc3545', '#6c757d']
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false }
+        });
+    }
+}
+
+function imprimirRelatorioDesempenho() {
+    if (!__dash_sol_dados_cache || __dash_sol_dados_cache.length === 0) {
+        mostrarMensagem("Não há dados para imprimir.", "warning");
+        return;
+    }
+
+    const inicio = document.getElementById('dash-sol-inicio').value;
+    const fim = document.getElementById('dash-sol-fim').value;
+    const periodo = `${new Date(inicio).toLocaleDateString('pt-BR')} a ${new Date(fim).toLocaleDateString('pt-BR')}`;
+    const user = firebase.auth().currentUser;
+    const solicitante = user.displayName || user.email;
+
+    let linhasHtml = '';
+    let totalHoras = 0;
+
+    // Ordenar por colaborador e data
+    const dadosOrdenados = __dash_sol_dados_cache.sort((a, b) => a.employeeName.localeCompare(b.employeeName) || a.start - b.start);
+
+    dadosOrdenados.forEach(s => {
+        const data = s.start.toDate().toLocaleDateString('pt-BR');
+        const horaInicio = s.start.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        const horaFim = s.end.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+        const duracao = ((s.end.toDate() - s.start.toDate()) / 3600000);
+        totalHoras += duracao;
+
+        linhasHtml += `
+            <tr>
+                <td>${s.employeeName}</td>
+                <td>${data}</td>
+                <td>${horaInicio} - ${horaFim}</td>
+                <td>${duracao.toFixed(2)}h</td>
+                <td>${s.reason || '-'}</td>
+                <td>${s.status}</td>
+            </tr>
+        `;
+    });
+
+    const conteudo = `
+        <html>
+        <head>
+            <title>Relatório de Horas Extras</title>
+            <style>
+                body { font-family: 'Segoe UI', sans-serif; padding: 20px; }
+                h2 { color: #333; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; font-size: 12px; }
+                th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+                td { border: 1px solid #dee2e6; padding: 6px; }
+                .assinatura-box { margin-top: 50px; display: flex; justify-content: space-between; }
+                .assinatura-linha { border-top: 1px solid #000; width: 40%; text-align: center; padding-top: 5px; }
+            </style>
+        </head>
+        <body>
+            <h2>Relatório de Solicitações de Horas Extras</h2>
+            <p><strong>Solicitante:</strong> ${solicitante} | <strong>Período:</strong> ${periodo}</p>
+            <p><strong>Total de Horas Listadas:</strong> ${totalHoras.toFixed(2)}h</p>
+            
+            <table>
+                <thead><tr><th>Colaborador</th><th>Data</th><th>Horário</th><th>Duração</th><th>Motivo</th><th>Status</th></tr></thead>
+                <tbody>${linhasHtml}</tbody>
+            </table>
+
+            <div class="assinatura-box">
+                <div class="assinatura-linha">
+                    Assinatura do Solicitante<br>
+                    <small>${solicitante}</small>
+                </div>
+                <div class="assinatura-linha">
+                    Assinatura do Colaborador<br>
+                    <small>(Se aplicável para conferência)</small>
+                </div>
+            </div>
+            
+            <div style="margin-top: 30px; font-size: 10px; color: #666; text-align: center;">
+                Gerado pelo Sistema Nexter em ${new Date().toLocaleString('pt-BR')}
+            </div>
+        </body>
+        </html>
+    `;
+
+    openPrintWindow(conteudo, { autoPrint: true });
+}
+
 // Adiciona o listener para o formulário do modal
 document.addEventListener('DOMContentLoaded', () => {
     const form = document.getElementById('form-solicitacao-horas');
@@ -660,6 +969,9 @@ window.excluirMinhaSolicitacao = excluirMinhaSolicitacao;
 window.replicarSelecionados = replicarSelecionados;
 window.toggleTodosCheckboxes = toggleTodosCheckboxes;
 window.editarSolicitacao = editarSolicitacao;
+window.abrirDashboardSolicitante = abrirDashboardSolicitante;
+window.carregarDadosDashboardSolicitante = carregarDadosDashboardSolicitante;
+window.imprimirRelatorioDesempenho = imprimirRelatorioDesempenho;
 
 /**
  * Calcula o valor estimado de uma solicitação de horas extras.
