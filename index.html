@@ -111,6 +111,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-dashboard"><i class="fas fa-gavel"></i> Dashboard Jurídico</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras"><i class="fas fa-clock"></i> Dashboard Horas Extras</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-epi"><i class="fas fa-hard-hat"></i> Análise de EPI</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-lotacao"><i class="fas fa-users-cog"></i> Análise de Lotação</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -1308,7 +1309,8 @@
                                     <thead>
                                         <tr>
                                             <th>Nome do Funcionário</th>
-                                            <th>Empresa/Setor</th>
+                                            <th>Empresa</th>
+                                            <th>Setor</th>
                                             <th>Data da Demissão</th>
                                             <th>Tipo de Demissão</th>
                                             <th class="text-end">Ações</th>
@@ -1649,6 +1651,7 @@
                 <!-- Seção Cadastro de Setores -->
                 <section id="setores" class="content-section d-none">
                     <h2 class="page-title">Cadastro de Setores</h2>
+                    
                     <div class="card">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Setores Cadastrados</span>
@@ -1666,6 +1669,47 @@
                                         </tr>
                                     </thead>
                                     <tbody id="tabela-setores"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Análise de Lotação (Movida e Melhorada) -->
+                <section id="analise-lotacao" class="content-section d-none">
+                    <h2 class="page-title">Análise de Lotação e Vagas</h2>
+                    
+                    <div class="card mb-4">
+                        <div class="card-header bg-light fw-bold d-flex justify-content-between align-items-center">
+                            <span><i class="fas fa-chart-bar me-2"></i> Dashboard de Lotação</span>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success" onclick="exportarDashboardSetoresExcel()">
+                                    <i class="fas fa-file-excel"></i> Excel
+                                </button>
+                                <button class="btn btn-sm btn-primary" onclick="exportarDashboardSetoresWord()">
+                                    <i class="fas fa-file-word"></i> Word
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="table table-sm table-hover table-bordered align-middle" id="table-analise-lotacao">
+                                    <thead class="table-light sticky-top" style="top: 0; z-index: 1;">
+                                        <tr>
+                                            <th>Empresa</th>
+                                            <th>Setor</th>
+                                            <th class="text-center">Qtd. Ideal</th>
+                                            <th class="text-center">Qtd. Atual</th>
+                                            <th class="text-center">Reposições Pend.</th>
+                                            <th class="text-center">Admissões Pend.</th>
+                                            <th class="text-center">Faltas Hoje</th>
+                                            <th class="text-center">Sumidos</th>
+                                            <th class="text-center">Gap (Atual - Ideal)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-dashboard-setores">
+                                        <tr><td colspan="9" class="text-center text-muted">Carregando indicadores...</td></tr>
+                                    </tbody>
                                 </table>
                             </div>
                         </div>

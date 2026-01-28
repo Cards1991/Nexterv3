@@ -315,7 +315,7 @@ class MovimentacoesManager {
             const movimentacaoRef = await db.collection('movimentacoes').add(movimentacaoData);
 
             await db.collection('funcionarios').doc(funcionarioId).update({
-                status: 'Demitido',
+                status: 'Inativo',
                 necessitaReposicao: necessitaReposicao,
                 ultimaMovimentacao: movimentacaoData.data
             });

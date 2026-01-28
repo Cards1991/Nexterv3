@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
-, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos'];
+, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao'];
 
 let currentUserPermissions = {};
 
@@ -92,6 +92,11 @@ async function carregarDadosSecao(sectionName) {
             case 'setores':
                 if (typeof inicializarSetores === 'function') {
                     await inicializarSetores();
+                }
+                break;
+            case 'analise-lotacao':
+                if (typeof carregarDashboardSetores === 'function') {
+                    await carregarDashboardSetores();
                 }
                 break;
             case 'funcionarios':

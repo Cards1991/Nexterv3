@@ -1077,12 +1077,24 @@ async function carregarDashboardConsumoEPI() {
         const ctxSetor = document.getElementById('chart-epi-setor').getContext('2d');
         if (chartEpiSetor) chartEpiSetor.destroy();
         chartEpiSetor = new Chart(ctxSetor, {
-            type: 'doughnut',
+            type: 'bar',
             data: {
                 labels: Object.keys(porSetor),
-                datasets: [{ data: Object.values(porSetor), backgroundColor: ['#4e73df', '#1cc88a', '#36b9cc', '#f6c23e', '#e74a3b'] }]
+                datasets: [{ 
+                    label: 'Quantidade',
+                    data: Object.values(porSetor), 
+                    backgroundColor: '#4e73df' 
+                }]
             },
-            options: { plugins: { title: { display: true, text: 'Consumo por Setor (Qtd)' } } }
+            options: { 
+                plugins: { 
+                    title: { display: true, text: 'Consumo por Setor (Qtd)' },
+                    legend: { display: false }
+                },
+                scales: {
+                    y: { beginAtZero: true }
+                }
+            }
         });
 
         // Gráfico Custo Mensal

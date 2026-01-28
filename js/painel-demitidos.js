@@ -19,7 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 1. Buscar todas as movimentações de demissão
             console.log("Buscando movimentações de demissão...");
-            const movimentacoesSnap = await db.collection('movimentacoes').where('tipo', '==', 'demissao').orderBy('data', 'desc').get();
+            
+            const [movimentacoesSnap, empresasSnap] = await Promise.all([
+                db.collection('movimentacoes').where('tipo', '==', 'demissao').orderBy('data', 'desc').get(),
+                db.collection('empresas').get()
+            ]);
+
+            const empresasMap = new Map();
+            empresasSnap.forEach(doc => empresasMap.set(doc.id, doc.data().nome));
             
             console.log(`Encontradas ${movimentacoesSnap.size} movimentações de demissão`);
             
@@ -62,15 +69,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // 4. Combinar os dados e renderizar
             const demitidos = movimentacoesSnap.docs.map(doc => {
                 const mov = doc.data();
-                const func = funcionariosMap.get(mov.funcionarioId) || {
-                    nome: mov.funcionarioNome || 'Funcionário não encontrado', 
-                    empresaNome: 'N/A', 
-                    setor: 'N/A' 
-                };
+                const func = funcionariosMap.get(mov.funcionarioId) || {};
+                
+                const empresaId = mov.empresaId || func.empresaId;
+                const empresaNome = empresasMap.get(empresaId) || 'N/A';
+                const nome = mov.funcionarioNome || func.nome || 'Funcionário não encontrado';
+                const setor = mov.setor || func.setor || 'N/A';
+
                 return { 
                     id: doc.id, 
                     ...mov, 
-                    ...func 
+                    ...func,
+                    nome,
+                    empresaNome,
+                    setor
                 };
             }).filter(d => 
                 d.nome.toLowerCase().includes(termoBusca) || 
@@ -113,7 +125,8 @@ document.addEventListener('DOMContentLoaded', () => {
         tabelaContainer.innerHTML = demitidos.map(demitido => `
             <tr data-id="${demitido.id}">
                 <td>${demitido.nome || 'Nome não encontrado'}</td>
-                <td>${demitido.empresaNome || 'N/A'} / ${demitido.setor || 'N/A'}</td>
+                <td>${demitido.empresaNome || 'N/A'}</td>
+                <td>${demitido.setor || 'N/A'}</td>
                 <td>${demitido.data.toDate().toLocaleDateString()}</td>
                 <td>${demitido.motivo || 'Não especificado'}</td>
                 <td class="text-end">
@@ -138,7 +151,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const demissao = doc.data();
 
             // Busca os dados do funcionário para complementar as informações
-            let funcionario = { nome: demissao.funcionarioNome || 'Não encontrado', empresaNome: 'N/A', setor: 'N/A' };
+            let funcionario = { nome: demissao.funcionarioNome || 'Não encontrado', setor: 'N/A' };
             if (demissao.funcionarioId) {
                 const funcDoc = await db.collection('funcionarios').doc(demissao.funcionarioId).get();
                 if (funcDoc.exists) {
@@ -146,10 +159,19 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }
 
+            let empresaNome = 'N/A';
+            const empresaId = demissao.empresaId || funcionario.empresaId;
+            if (empresaId) {
+                const empDoc = await db.collection('empresas').doc(empresaId).get();
+                if (empDoc.exists) {
+                    empresaNome = empDoc.data().nome;
+                }
+            }
+
             const corpoModal = `
                 <p><strong>Funcionário:</strong> ${funcionario.nome}</p>
-                <p><strong>Empresa:</strong> ${demissao.empresaNome || 'N/A'}</p>
-                <p><strong>Setor:</strong> ${demissao.setor || 'N/A'}</p>
+                <p><strong>Empresa:</strong> ${empresaNome}</p>
+                <p><strong>Setor:</strong> ${demissao.setor || funcionario.setor || 'N/A'}</p>
                 <hr>
                 <p><strong>Data da Demissão:</strong> ${demissao.data.toDate().toLocaleDateString()}</p>
                 <p><strong>Tipo de Demissão:</strong> ${demissao.motivo || 'Não especificado'}</p>
@@ -164,8 +186,159 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    window.alterarDemissao = (id) => {
-        alert(`Alterando registro de demissão ID: ${id}. Isso pode reabrir a tela de demissão com os dados preenchidos.`);
+    window.alterarDemissao = async (id) => {
+        try {
+            const doc = await db.collection('movimentacoes').doc(id).get();
+            if (!doc.exists) {
+                mostrarMensagem("Registro não encontrado.", "error");
+                return;
+            }
+            const data = doc.data();
+            
+            // Alternar para a seção de demissão
+            showSection('demissao');
+            
+            // Aguardar renderização e popular campos
+            setTimeout(async () => {
+                const form = document.getElementById('form-demissao');
+                if (!form) return;
+
+                // Lidar com Select de Funcionário (adicionar opção se faltar, pois demitidos não aparecem por padrão)
+                const selectFunc = document.getElementById('demissao-funcionario');
+                if (selectFunc) {
+                    let option = selectFunc.querySelector(`option[value="${data.funcionarioId}"]`);
+                    if (!option) {
+                        const funcDoc = await db.collection('funcionarios').doc(data.funcionarioId).get();
+                        if (funcDoc.exists) {
+                            const funcData = funcDoc.data();
+                            option = document.createElement('option');
+                            option.value = data.funcionarioId;
+                            option.text = funcData.nome;
+                            selectFunc.add(option);
+                        }
+                    }
+                    selectFunc.value = data.funcionarioId;
+                    selectFunc.dispatchEvent(new Event('change'));
+                }
+
+                // Popular outros campos
+                if (data.data) {
+                    const dateStr = data.data.toDate().toISOString().split('T')[0];
+                    document.getElementById('demissao-data').value = dateStr;
+                }
+                document.getElementById('demissao-tipo').value = data.motivo || '';
+                document.getElementById('demissao-aviso-previo').value = data.avisoPrevio || '';
+                document.getElementById('demissao-motivo').value = data.motivoDetalhado || '';
+                document.getElementById('demissao-observacoes').value = data.detalhes || '';
+                
+                const avisoSelect = document.getElementById('demissao-aviso-previo');
+                if (avisoSelect) avisoSelect.dispatchEvent(new Event('change'));
+                if (data.motivoDispensaAviso) {
+                    document.getElementById('demissao-motivo-dispensa-aviso').value = data.motivoDispensaAviso;
+                }
+                
+                // Checkbox reposição
+                const funcDoc = await db.collection('funcionarios').doc(data.funcionarioId).get();
+                if (funcDoc.exists) {
+                     document.getElementById('demissao-reposicao').checked = funcDoc.data().necessitaReposicao || false;
+                }
+
+                // Alterar botão para Atualizar
+                const btnRegistrar = document.querySelector('#form-demissao .btn-danger');
+                if (btnRegistrar) {
+                    // Salva o onclick original se ainda não foi salvo
+                    if (!btnRegistrar.dataset.originalOnclick) {
+                        btnRegistrar.dataset.originalOnclick = btnRegistrar.getAttribute('onclick');
+                    }
+                    
+                    btnRegistrar.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
+                    btnRegistrar.onclick = (e) => {
+                        e.preventDefault();
+                        atualizarRegistroDemissao(id);
+                    };
+                    
+                    // Adicionar botão de Cancelar Edição se não existir
+                    let btnCancel = document.getElementById('btn-cancelar-edicao-demissao');
+                    if (!btnCancel) {
+                        btnCancel = document.createElement('button');
+                        btnCancel.id = 'btn-cancelar-edicao-demissao';
+                        btnCancel.className = 'btn btn-secondary ms-2';
+                        btnCancel.innerHTML = 'Cancelar Edição';
+                        btnCancel.onclick = () => {
+                            form.reset();
+                            btnRegistrar.innerHTML = '<i class="fas fa-user-slash"></i> Confirmar e Registrar Demissão';
+                            // Restaura a função original
+                            btnRegistrar.onclick = () => movimentacoesManager.registrarDemissao();
+                            
+                            btnCancel.remove();
+                            document.getElementById('demissao-info-funcionario').style.display = 'none';
+                            showSection('painel-demitidos');
+                        };
+                        btnRegistrar.parentNode.appendChild(btnCancel);
+                    }
+                }
+
+                mostrarMensagem("Modo de edição ativado.", "info");
+
+            }, 500);
+
+        } catch (error) {
+            console.error("Erro ao preparar edição:", error);
+            mostrarMensagem("Erro ao carregar dados.", "error");
+        }
+    };
+
+    window.atualizarRegistroDemissao = async (id) => {
+        const funcionarioId = document.getElementById('demissao-funcionario').value;
+        const data = document.getElementById('demissao-data').value;
+        const tipoDemissao = document.getElementById('demissao-tipo').value;
+        const avisoPrevio = document.getElementById('demissao-aviso-previo').value;
+        const motivo = document.getElementById('demissao-motivo').value;
+        const observacoes = document.getElementById('demissao-observacoes').value;
+        const necessitaReposicao = document.getElementById('demissao-reposicao').checked;
+        const motivoDispensaAviso = document.getElementById('demissao-motivo-dispensa-aviso').value;
+
+        if (!funcionarioId || !data || !tipoDemissao || !motivo) {
+            mostrarMensagem("Preencha todos os campos obrigatórios.", "warning");
+            return;
+        }
+
+        try {
+            const updateData = {
+                data: new Date(data.replace(/-/g, '/')),
+                motivo: tipoDemissao,
+                motivoDetalhado: motivo,
+                detalhes: observacoes,
+                avisoPrevio: avisoPrevio,
+                motivoDispensaAviso: avisoPrevio === 'Dispensado' ? motivoDispensaAviso : null,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            await db.collection('movimentacoes').doc(id).update(updateData);
+            
+            await db.collection('funcionarios').doc(funcionarioId).update({
+                necessitaReposicao: necessitaReposicao
+            });
+
+            mostrarMensagem("Registro de demissão atualizado com sucesso!", "success");
+            
+            // Resetar UI
+            document.getElementById('form-demissao').reset();
+            const btnRegistrar = document.querySelector('#form-demissao .btn-danger');
+            if (btnRegistrar) {
+                btnRegistrar.innerHTML = '<i class="fas fa-user-slash"></i> Confirmar e Registrar Demissão';
+                btnRegistrar.onclick = () => movimentacoesManager.registrarDemissao();
+            }
+            const btnCancel = document.getElementById('btn-cancelar-edicao-demissao');
+            if (btnCancel) btnCancel.remove();
+            document.getElementById('demissao-info-funcionario').style.display = 'none';
+
+            showSection('painel-demitidos');
+            
+        } catch (error) {
+            console.error("Erro ao atualizar demissão:", error);
+            mostrarMensagem("Erro ao atualizar registro.", "error");
+        }
     };
 
     window.excluirDemissao = async (id) => {
