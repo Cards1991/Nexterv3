@@ -27,12 +27,18 @@ async function carregarSetoresPorEmpresa(empresaId, selectId) {
 
         const setoresSnap = await db.collection('setores')
             .where('empresaId', '==', empresaId)
-            .orderBy('descricao')
             .get();
 
+        const setoresDocs = setoresSnap.docs.sort((a, b) => {
+            const descA = a.data().descricao || '';
+            const descB = b.data().descricao || '';
+            return descA.localeCompare(descB);
+        });
+
         select.innerHTML = '<option value="">Selecione um setor</option>';
-        setoresSnap.forEach(doc => {
-            select.innerHTML += `<option value="${doc.data().descricao}">${doc.data().descricao}</option>`;
+        setoresDocs.forEach(doc => {
+            const desc = doc.data().descricao;
+            select.innerHTML += `<option value="${desc}">${desc}</option>`;
         });
     } catch (error) {
         console.error('Erro ao carregar setores:', error);
@@ -1334,6 +1340,6 @@ async function calcularCustoEstimadoContratacao(salario, empresaId) {
     }
 
     const custoTotal = salario + fgts + provisaoFerias + tercoFerias + fgtsSobreFerias + provisao13 + fgtsSobre13 + custoSindicato + custoPatronal + custoRat + custoTerceiros;
-    return parseFloat(custoTotal.toFixed(2));
+    return parseFloat((custoTotal || 0).toFixed(2));
 }
 window.calcularCustoEstimadoContratacao = calcularCustoEstimadoContratacao;

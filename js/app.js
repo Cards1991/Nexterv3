@@ -99,6 +99,7 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'movimentacoes':
                 if (window.movimentacoesManager) await window.movimentacoesManager.carregarDadosIniciais();
+                if (typeof inicializarMovimentacoesDashboard === 'function') await inicializarMovimentacoesDashboard();
                 break;
             case 'admissao':
             case 'demissao':
@@ -1326,9 +1327,9 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
     select.innerHTML = '<option value="">Carregando...</option>';
 
     try {        
+        // CORREÇÃO: Removido orderBy('descricao') para evitar erro de índice composto. Ordenação feita em memória.
         const setoresSnapshot = await db.collection('setores')
             .where('empresaId', '==', empresaId)
-            .orderBy('descricao')
             .get();
 
         if (setoresSnapshot.empty) {
@@ -1338,7 +1339,13 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 
         select.innerHTML = '<option value="">Selecione...</option>';
         
-        setoresSnapshot.forEach(doc => {
+        const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
+            const descA = a.data().descricao || '';
+            const descB = b.data().descricao || '';
+            return descA.localeCompare(descB);
+        });
+
+        setoresDocs.forEach(doc => {
             const setor = doc.data().descricao;
             const option = document.createElement('option');
             option.value = setor;

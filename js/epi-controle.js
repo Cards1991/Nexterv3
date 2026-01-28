@@ -1001,18 +1001,26 @@ async function carregarDashboardConsumoEPI() {
 
         // --- Lógica de Tempo de Reposição (Lead Time) ---
         // Busca compras concluídas no período
+        // CORREÇÃO: Filtro de data em memória para evitar erro de índice composto
         const comprasSnap = await db.collection('epi_compras')
             .where('status', '==', 'Concluido')
-            .where('updatedAt', '>=', new Date(inicio + 'T00:00:00'))
-            .where('updatedAt', '<=', new Date(fim + 'T23:59:59'))
             .get();
 
         let somaDias = 0;
         let totalCompras = 0;
         const demoraPorItem = {};
 
+        const dataInicioObj = new Date(inicio + 'T00:00:00');
+        const dataFimObj = new Date(fim + 'T23:59:59');
+
         comprasSnap.forEach(doc => {
             const c = doc.data();
+            
+            // Filtro de data em memória
+            if (!c.updatedAt) return;
+            const dataUpdate = c.updatedAt.toDate();
+            if (dataUpdate < dataInicioObj || dataUpdate > dataFimObj) return;
+
             if (c.dataSolicitacao && c.updatedAt) {
                 const dtSol = c.dataSolicitacao.toDate();
                 const dtConc = c.updatedAt.toDate();
