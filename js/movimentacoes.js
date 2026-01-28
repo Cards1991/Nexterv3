@@ -47,6 +47,18 @@ class MovimentacoesManager {
     }
 
     init() {
+        // Define as datas padrão para o mês atual
+        const filtroInicioInput = document.getElementById('mov-filtro-inicio');
+        const filtroFimInput = document.getElementById('mov-filtro-fim');
+
+        if(filtroInicioInput && filtroFimInput) {
+            const hoje = new Date();
+            const primeiroDia = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+            const ultimoDia = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+            filtroInicioInput.value = primeiroDia.toISOString().split('T')[0];
+            filtroFimInput.value = ultimoDia.toISOString().split('T')[0];
+        }
+        
         this.bindEvents();
         this.carregarDadosIniciais();
     }
@@ -1283,6 +1295,45 @@ async function visualizarSolicitacao(solicitacaoId, tipo) {
 window.visualizarSolicitacao = visualizarSolicitacao;
 
 async function calcularCustoEstimadoContratacao(salario, empresaId) {
-    // ... (código existente)
+    if (!salario || !empresaId) return 0;
+
+    const fgts = salario * 0.08;
+    const provisaoFerias = salario / 12;
+    const tercoFerias = provisaoFerias / 3;
+    const fgtsSobreFerias = provisaoFerias * 0.08;
+    const provisao13 = salario / 12;
+    const fgtsSobre13 = provisao13 * 0.08;
+
+    let custoSindicato = 0;
+    let custoPatronal = 0;
+    let custoRat = 0;
+    let custoTerceiros = 0;
+
+    try {
+        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
+        if (empresaDoc.exists) {
+            const empresaData = empresaDoc.data();
+            const impostos = empresaData.impostos || {};
+            const baseCalculoContribuicoes = salario + provisaoFerias + provisao13;
+
+            if (impostos.sindicato > 0) {
+                custoSindicato = baseCalculoContribuicoes * (impostos.sindicato / 100);
+            }
+            if (impostos.patronal > 0) {
+                custoPatronal = baseCalculoContribuicoes * (impostos.patronal / 100);
+            }
+            if (empresaData.rat > 0) {
+                custoRat = baseCalculoContribuicoes * (empresaData.rat / 100);
+            }
+            if (impostos.terceiros > 0) {
+                custoTerceiros = baseCalculoContribuicoes * (impostos.terceiros / 100);
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao buscar dados da empresa para cálculo de custo de contratação:", error);
+    }
+
+    const custoTotal = salario + fgts + provisaoFerias + tercoFerias + fgtsSobreFerias + provisao13 + fgtsSobre13 + custoSindicato + custoPatronal + custoRat + custoTerceiros;
+    return parseFloat(custoTotal.toFixed(2));
 }
 window.calcularCustoEstimadoContratacao = calcularCustoEstimadoContratacao;
