@@ -635,6 +635,10 @@ async function carregarAgenda() {
         // Ordenar eventos por data
         todosEventos.sort((a, b) => a.data - b.data);
         
+        // Normalizar hoje para comparação
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+
         // Separar eventos: Minhas vs Equipe
         const eventosMinhas = [];
         const eventosEquipe = [];
@@ -776,7 +780,8 @@ function getCorEvento(tipo) {
         Tarefa: '#198754', 
         'Follow-up': '#0dcaf0', 
         Revisão: '#ffc107', 
-        Outro: '#adb5bd' 
+        Outro: '#adb5bd',
+        Experiencia: '#fd7e14' // Laranja para experiência
     };
     return cores[tipo] || '#6c757d';
 }
@@ -867,7 +872,8 @@ function criarCardEvento(evento) {
         Tarefa: 'fa-clipboard-check',
         'Follow-up': 'fa-calendar-check',
         Revisão: 'fa-magnifying-glass',
-        Outro: 'fa-sticky-note'
+        Outro: 'fa-sticky-note',
+        Experiencia: 'fa-user-clock'
     };
     
     const cores = {
@@ -882,7 +888,8 @@ function criarCardEvento(evento) {
         Tarefa: 'border-success',
         'Follow-up': 'border-info',
         Revisão: 'border-warning',
-        Outro: 'border-secondary'
+        Outro: 'border-secondary',
+        Experiencia: 'border-orange' // Classe CSS personalizada ou fallback
     };
     
     const dataObj = new Date(evento.data);
@@ -1361,90 +1368,6 @@ function preencherFormularioAtividade(dados) {
  * Gera e imprime um vale-pizza de aniversário para um funcionário.
  * @param {string} funcionarioId - O ID do funcionário.
  * @param {string} nomeFuncionario - O nome do funcionário.
- **
-function*emitirValePizza(funcionarioId, nomeFuncionario) {
-    const hojeFormatado  new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const conteudoHTML  `
-        <html>
-            <head>
-                <title>Vale-Pizza de Aniversário</title>
-                <link href"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel"stylesheet">
-                <link rel"stylesheet" href"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-                <style>
-                    @page { size: A5 landscape; margin: 1cm; }
-                    body { font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100%; background-color: #fff3e0; }
-                    .vale-container { text-align: center; border: 5px dashed #ff7043; border-radius: 15px; padding: 2rem; background-color: #fff; width: 100%; max-width: 600px; }
-                    .vale-header h2 { font-weight: 700; color: #d9534f; }
-                    .vale-icon { font-size: 4rem; color: #ff7043; margin-bottom: 1rem; }
-                    .vale-body p { font-size: 1.2rem; }
-                    .vale-footer { margin-top: 2rem; font-size: 0.8rem; color: #6c757d; }
-                </style>
-            </head>
-            <body>
-                <div class"vale-container">
-                    <div class"vale-header">
-                        <i class"fas fa-pizza-slice vale-icon"></i>
-                        <h2>VALE-PIZZA DE ANIVERSÁRIO!</h2>
-                    </div>
-                    <div class"vale-body">
-                        <p class"mt-4">A <strong>Calçados Crival</strong> parabeniza você, <strong>${nomeFuncionario}</strong>, pelo seu dia!</p>
-                        <p>Este vale dá direito a uma pizza grande para celebrar esta data especial.</p>
-                    </div>
-                    <div class="vale-footer">Válido por 30 dias a partir de ${hojeFormatado}.</div>
-                </div>
-            </body>
-        </html>`;
-
-    openPrintWindow(conteudoHTML, { autoPrint: true, name: `vale-pizza-${funcionarioId}` });
-}
-
-// ===========
- * Gera e imprime um vale-pizza de aniversário para um funcionário.
- * @param {string} funcionarioId - O ID do funcionário.
- * @param {string} nomeFuncionario - O nome do funcionário.
- **
-function*emitirValePizza(funcionarioId, nomeFuncionario) {
-    const hojeFormatado  new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-
-    const conteudoHTML  `
-        <html>
-            <head>
-                <title>Vale-Pizza de Aniversário</title>
-                <link href"https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel"stylesheet">
-                <link rel"stylesheet" href"https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-                <style>
-                    @page { size: A5 landscape; margin: 1cm; }
-                    body { font-family: 'Segoe UI', sans-serif; display: flex; align-items: center; justify-content: center; height: 100%; background-color: #fff3e0; }
-                    .vale-container { text-align: center; border: 5px dashed #ff7043; border-radius: 15px; padding: 2rem; background-color: #fff; width: 100%; max-width: 600px; }
-                    .vale-header h2 { font-weight: 700; color: #d9534f; }
-                    .vale-icon { font-size: 4rem; color: #ff7043; margin-bottom: 1rem; }
-                    .vale-body p { font-size: 1.2rem; }
-                    .vale-footer { margin-top: 2rem; font-size: 0.8rem; color: #6c757d; }
-                </style>
-            </head>
-            <body>
-                <div class"vale-container">
-                    <div class"vale-header">
-                        <i class"fas fa-pizza-slice vale-icon"></i>
-                        <h2>VALE-PIZZA DE ANIVERSÁRIO!</h2>
-                    </div>
-                    <div class"vale-body">
-                        <p class"mt-4">A <strong>Calçados Crival</strong> parabeniza você, <strong>${nomeFuncionario}</strong>, pelo seu dia!</p>
-                        <p>Este vale dá direito a uma pizza grande para celebrar esta data especial.</p>
-                    </div>
-                    <div class="vale-footer">Válido por 30 dias a partir de ${hojeFormatado}.</div>
-                </div>
-            </body>
-        </html>`;
-
-    openPrintWindow(conteudoHTML, { autoPrint: true, name: `vale-pizza-${funcionarioId}` });
-}
-
-// ===========
- * Gera e imprime um vale-pizza de aniversário para um funcionário.
- * @param {string} funcionarioId - O ID do funcionário.
- * @param {string} nomeFuncionario - O nome do funcionário.
  */
 function emitirValePizza(funcionarioId, nomeFuncionario) {
     const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -1542,6 +1465,7 @@ function imprimirResumoDoDia() {
                     .border-secondary { border-left-color: #6c757d !important; }
                     .border-dark { border-left-color: #212529 !important; }
                     .border-purple { border-left-color: #6610f2 !important; }
+                    .border-orange { border-left-color: #fd7e14 !important; }
                 </style>
             </head>
             <body>

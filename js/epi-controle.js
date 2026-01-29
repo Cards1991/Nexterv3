@@ -1119,12 +1119,12 @@ async function carregarDashboardConsumoEPI() {
             if (d.funcionarioId) funcionariosSet.add(d.funcionarioId);
 
             // Agrupar por Setor
+            // CORREÇÃO: Agrupando por custo em vez de quantidade
             const s = d.setor || 'Não Definido';
-            porSetor[s] = (porSetor[s] || 0) + qtd;
+            porSetor[s] = (porSetor[s] || 0) + custo;
 
             // Agrupar por Mês (Custo)
-            const data = d.dataEntrega?.toDate ? d.dataEntrega.toDate() : new Date(d.dataEntrega);
-            const mesKey = data.toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
+            const mesKey = d.dataEntrega.toDate().toLocaleString('pt-BR', { month: 'short', year: '2-digit' });
             porMes[mesKey] = (porMes[mesKey] || 0) + custo;
 
             // Ranking Colaboradores
@@ -1208,40 +1208,97 @@ async function carregarDashboardConsumoEPI() {
             </tr>
         `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados de compras concluídas</td></tr>';
 
-        // Gráfico Setor
+        // Gráfico Setor (por Custo)
         const ctxSetor = document.getElementById('chart-epi-setor').getContext('2d');
         if (chartEpiSetor) chartEpiSetor.destroy();
+        
+        // Ordenar dados para melhor visualização
+        const sortedPorSetor = Object.entries(porSetor).sort(([,a],[,b]) => b-a);
+
         chartEpiSetor = new Chart(ctxSetor, {
             type: 'bar',
             data: {
-                labels: Object.keys(porSetor),
+                labels: sortedPorSetor.map(item => item[0]),
                 datasets: [{ 
-                    label: 'Quantidade',
-                    data: Object.values(porSetor), 
-                    backgroundColor: '#4e73df' 
+                    label: 'Custo (R$)',
+                    data: sortedPorSetor.map(item => item[1]), 
+                    backgroundColor: '#4361ee',
+                    borderRadius: 4
                 }]
             },
             options: { 
+                indexAxis: 'y', // Gráfico de barras horizontal
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: { 
-                    title: { display: true, text: 'Consumo por Setor (Qtd)' },
-                    legend: { display: false }
+                    title: { display: false }, // Título já está no card-header
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return ` Custo: R$ ${context.raw.toFixed(2)}`;
+                            }
+                        }
+                    }
                 },
                 scales: {
-                    y: { beginAtZero: true }
+                    x: { 
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value;
+                            }
+                        }
+                    }
                 }
             }
         });
 
-        // Gráfico Custo Mensal
+        // Gráfico Custo Mensal (Evolução)
         const ctxCusto = document.getElementById('chart-epi-custo-mensal').getContext('2d');
         if (chartEpiCusto) chartEpiCusto.destroy();
+
+        // Ordenar os meses para garantir a ordem cronológica
+        const sortedPorMes = Object.entries(porMes).sort((a, b) => {
+            const meses = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+            const [mesAStr, anoA] = a[0].split('/');
+            const [mesBStr, anoB] = b[0].split('/');
+            const dataA = new Date(`20${anoA}`, meses[mesAStr.toLowerCase()]);
+            const dataB = new Date(`20${anoB}`, meses[mesBStr.toLowerCase()]);
+            return dataA - dataB;
+        });
+
         chartEpiCusto = new Chart(ctxCusto, {
-            type: 'bar',
+            type: 'line',
             data: {
-                labels: Object.keys(porMes),
-                datasets: [{ label: 'Custo (R$)', data: Object.values(porMes), backgroundColor: '#4e73df' }]
+                labels: sortedPorMes.map(item => item[0]),
+                datasets: [{ 
+                    label: 'Custo (R$)', 
+                    data: sortedPorMes.map(item => item[1]), 
+                    borderColor: '#f72585',
+                    backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                    fill: true,
+                    tension: 0.3
+                }]
             },
-            options: { plugins: { title: { display: true, text: 'Custo Mensal' } } }
+            options: { 
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { 
+                    title: { display: false }, // Título já está no card-header
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return 'R$ ' + value;
+                            }
+                        }
+                    }
+                }
+            }
         });
 
     } catch (error) {

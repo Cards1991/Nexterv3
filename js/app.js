@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
-, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento'];
+, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia'];
 
 let currentUserPermissions = {};
 
@@ -102,6 +102,11 @@ async function carregarDadosSecao(sectionName) {
             case 'treinamento':
                 if (typeof inicializarTreinamento === 'function') {
                     await inicializarTreinamento();
+                }
+                break;
+            case 'avaliacao-experiencia':
+                if (typeof inicializarAvaliacaoExperiencia === 'function') {
+                    await inicializarAvaliacaoExperiencia();
                 }
                 break;
             case 'funcionarios':

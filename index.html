@@ -149,6 +149,7 @@
                                  <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="funcionarios">Funcionários</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="admissao">Admissão</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="avaliacao-experiencia"><i class="fas fa-user-clock"></i> Avaliação de Experiência</a></li>
                                     <!-- Submenu para Demissão -->
                                     <li class="nav-item">
                                         <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#demissaoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false" aria-controls="demissaoSubmenu">
@@ -638,70 +639,75 @@
                 <section id="analise-epi" class="content-section d-none">
                     <h2 class="page-title">Análise de Consumo de EPI</h2>
                     
-                    <!-- Dashboard de Análise de Consumo -->
                     <div class="card mb-4">
-                        <div class="card-header bg-light">
-                            <i class="fas fa-chart-pie me-2"></i> <strong>Indicadores de Consumo</strong>
-                        </div>
                         <div class="card-body">
                             <!-- Filtros do Dashboard -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-2">
+                            <div class="row g-3 align-items-end">
+                                <div class="col-lg-2 col-md-4">
                                     <label class="form-label small">Data Início</label>
                                     <input type="date" class="form-control form-control-sm" id="dash-epi-inicio">
                                 </div>
-                                <div class="col-md-2">
+                                <div class="col-lg-2 col-md-4">
                                     <label class="form-label small">Data Fim</label>
                                     <input type="date" class="form-control form-control-sm" id="dash-epi-fim">
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-lg-3 col-md-4">
                                     <label class="form-label small">Empresa</label>
                                     <select class="form-select form-select-sm" id="dash-epi-empresa"><option value="">Todas</option></select>
                                 </div>
-                                <div class="col-md-3">
+                                <div class="col-lg-3 col-md-6">
                                     <label class="form-label small">Setor</label>
                                     <select class="form-select form-select-sm" id="dash-epi-setor"><option value="">Todos</option></select>
                                 </div>
-                                <div class="col-md-2 d-flex align-items-end">
+                                <div class="col-lg-2 col-md-6">
                                     <button class="btn btn-primary btn-sm w-100" onclick="carregarDashboardConsumoEPI()">
                                         <i class="fas fa-filter me-1"></i> Analisar
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
 
-                            <!-- KPIs -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-4"><div class="card bg-primary text-white h-100"><div class="card-body text-center py-3"><h3 class="mb-0" id="kpi-epi-total-itens">0</h3><small>Itens Entregues</small></div></div></div>
-                                <div class="col-md-4"><div class="card bg-success text-white h-100"><div class="card-body text-center py-3"><h3 class="mb-0" id="kpi-epi-valor-total">R$ 0,00</h3><small>Custo Total Consumido</small></div></div></div>
-                                <div class="col-md-4"><div class="card bg-warning text-dark h-100"><div class="card-body text-center py-3"><h3 class="mb-0" id="kpi-epi-tempo-reposicao">-</h3><small>Tempo Médio de Reposição</small></div></div></div>
+                    <!-- KPIs -->
+                    <div class="row g-3 mb-4">
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-box-open text-primary"></i><div class="number" id="kpi-epi-total-itens">0</div><div class="label">Itens Entregues</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-dollar-sign text-success"></i><div class="number" id="kpi-epi-valor-total">R$ 0,00</div><div class="label">Custo Total Consumido</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-12">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-shipping-fast text-warning"></i><div class="number" id="kpi-epi-tempo-reposicao">-</div><div class="label">Tempo Médio de Reposição</div></div></div>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos -->
+                    <div class="row">
+                        <div class="col-lg-7 mb-4">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header">Evolução de Custo Mensal</div>
+                                <div class="card-body"><div style="position: relative; height: 300px;"><canvas id="chart-epi-custo-mensal"></canvas></div></div>
                             </div>
-
-                            <!-- Gráficos -->
-                            <div class="row">
-                                <div class="col-md-6 mb-4">
-                                    <div class="card h-100">
-                                        <div class="card-header">Consumo por Setor</div>
-                                        <div class="card-body"><div style="position: relative; height: 250px;"><canvas id="chart-epi-setor"></canvas></div></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-4">
-                                    <div class="card h-100">
-                                        <div class="card-header">Top 5 Colaboradores (Consumo)</div>
-                                        <div class="card-body table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Colaborador</th><th class="text-center">Qtd</th><th class="text-end">Custo Est.</th></tr></thead><tbody id="ranking-epi-colaboradores"></tbody></table></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-4">
-                                    <div class="card h-100">
-                                        <div class="card-header">Itens com Maior Demora na Reposição</div>
-                                        <div class="card-body table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Item</th><th class="text-center">Dias (Médio)</th></tr></thead><tbody id="ranking-epi-demora"></tbody></table></div>
-                                    </div>
-                                </div>
-                                <div class="col-md-6 mb-4">
-                                    <div class="card h-100">
-                                        <div class="card-header">Evolução de Custo Mensal</div>
-                                        <div class="card-body"><div style="position: relative; height: 250px;"><canvas id="chart-epi-custo-mensal"></canvas></div></div>
-                                    </div>
-                                </div>
+                        </div>
+                        <div class="col-lg-5 mb-4">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header">Consumo por Setor (em R$)</div>
+                                <div class="card-body"><div style="position: relative; height: 300px;"><canvas id="chart-epi-setor"></canvas></div></div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Tabelas de Ranking -->
+                    <div class="row">
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header">Top 5 Colaboradores (Consumo)</div>
+                                <div class="card-body table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Colaborador</th><th class="text-center">Qtd</th><th class="text-end">Custo Est.</th></tr></thead><tbody id="ranking-epi-colaboradores"></tbody></table></div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6 mb-4">
+                            <div class="card shadow-sm h-100">
+                                <div class="card-header">Itens com Maior Demora na Reposição</div>
+                                <div class="card-body table-responsive"><table class="table table-sm table-hover"><thead><tr><th>Item</th><th class="text-center">Dias (Médio)</th></tr></thead><tbody id="ranking-epi-demora"></tbody></table></div>
                             </div>
                         </div>
                     </div>
@@ -1740,6 +1746,80 @@
                     <div id="treinamento-container">
                         <!-- Conteúdo injetado via JS -->
                         <div class="text-center py-5"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+                    </div>
+                </section>
+
+                <!-- Seção Avaliação de Experiência -->
+                <section id="avaliacao-experiencia" class="content-section d-none">
+                    <h2 class="page-title">Gestão de Contratos de Experiência</h2>
+                    
+                    <!-- KPIs -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card stat-card h-100 bg-light">
+                                <div class="card-body">
+                                    <i class="fas fa-users text-primary"></i>
+                                    <div class="number" id="exp-kpi-total">0</div>
+                                    <div class="label">Colaboradores em Experiência</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card stat-card h-100 bg-warning text-dark">
+                                <div class="card-body">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <div class="number" id="exp-kpi-pendentes">0</div>
+                                    <div class="label">Avaliações Pendentes (Próximas)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <!-- Lista de Pendências -->
+                        <div class="col-lg-8 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-white">
+                                    <h5 class="mb-0"><i class="fas fa-clock text-warning me-2"></i> Próximos Vencimentos</h5>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th>Colaborador</th>
+                                                    <th>Admissão</th>
+                                                    <th>Período</th>
+                                                    <th>Vencimento</th>
+                                                    <th>Status</th>
+                                                    <th class="text-end">Ação</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="lista-pendencias-experiencia">
+                                                <!-- Inserido via JS -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Dashboard Analítico -->
+                        <div class="col-lg-4 mb-4">
+                            <div class="card h-100">
+                                <div class="card-header bg-white">
+                                    <h5 class="mb-0"><i class="fas fa-chart-pie text-primary me-2"></i> Resultados</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div style="position: relative; height: 250px;">
+                                        <canvas id="grafico-experiencia-resultado"></canvas>
+                                    </div>
+                                    <div class="mt-3 text-center small text-muted">
+                                        Distribuição de Aprovações/Reprovações
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -5604,52 +5684,149 @@
         </div>
     </div>
 
+    <!-- Modal Avaliação de Experiência -->
+    <div class="modal fade" id="modalAvaliacaoExperiencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="aval-exp-titulo">Avaliação de Experiência</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-avaliacao-experiencia">
+                        <input type="hidden" id="aval-exp-funcionario-id">
+                        <input type="hidden" id="aval-exp-periodo">
+                        
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Colaborador</label>
+                                <input type="text" class="form-control bg-light" id="aval-exp-nome" readonly>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Data da Avaliação</label>
+                                <input type="date" class="form-control" id="aval-exp-data" required>
+                            </div>
+                        </div>
+
+                        <h6 class="border-bottom pb-2 mb-3 text-primary">Critérios de Avaliação (1 a 5)</h6>
+                        
+                        <div class="table-responsive mb-3">
+                            <table class="table table-sm table-borderless">
+                                <thead><tr class="text-center"><th>Critério</th><th>1 (Ruim)</th><th>2</th><th>3</th><th>4</th><th>5 (Excelente)</th></tr></thead>
+                                <tbody>
+                                    <tr><td>Assiduidade</td><td class="text-center"><input type="radio" name="aval-assiduidade" value="1"></td><td class="text-center"><input type="radio" name="aval-assiduidade" value="2"></td><td class="text-center"><input type="radio" name="aval-assiduidade" value="3"></td><td class="text-center"><input type="radio" name="aval-assiduidade" value="4"></td><td class="text-center"><input type="radio" name="aval-assiduidade" value="5"></td></tr>
+                                    <tr><td>Pontualidade</td><td class="text-center"><input type="radio" name="aval-pontualidade" value="1"></td><td class="text-center"><input type="radio" name="aval-pontualidade" value="2"></td><td class="text-center"><input type="radio" name="aval-pontualidade" value="3"></td><td class="text-center"><input type="radio" name="aval-pontualidade" value="4"></td><td class="text-center"><input type="radio" name="aval-pontualidade" value="5"></td></tr>
+                                    <tr><td>Produtividade</td><td class="text-center"><input type="radio" name="aval-produtividade" value="1"></td><td class="text-center"><input type="radio" name="aval-produtividade" value="2"></td><td class="text-center"><input type="radio" name="aval-produtividade" value="3"></td><td class="text-center"><input type="radio" name="aval-produtividade" value="4"></td><td class="text-center"><input type="radio" name="aval-produtividade" value="5"></td></tr>
+                                    <tr><td>Relacionamento</td><td class="text-center"><input type="radio" name="aval-relacionamento" value="1"></td><td class="text-center"><input type="radio" name="aval-relacionamento" value="2"></td><td class="text-center"><input type="radio" name="aval-relacionamento" value="3"></td><td class="text-center"><input type="radio" name="aval-relacionamento" value="4"></td><td class="text-center"><input type="radio" name="aval-relacionamento" value="5"></td></tr>
+                                    <tr><td>Iniciativa</td><td class="text-center"><input type="radio" name="aval-iniciativa" value="1"></td><td class="text-center"><input type="radio" name="aval-iniciativa" value="2"></td><td class="text-center"><input type="radio" name="aval-iniciativa" value="3"></td><td class="text-center"><input type="radio" name="aval-iniciativa" value="4"></td><td class="text-center"><input type="radio" name="aval-iniciativa" value="5"></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Parecer Final</label>
+                            <select class="form-select" id="aval-exp-resultado">
+                                <option value="Aprovado">Aprovado (Continuar Contrato)</option>
+                                <option value="Reprovado">Reprovado (Desligamento)</option>
+                                <option value="Prorrogado">Prorrogar (Apenas para 1º período)</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="aval-exp-obs" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar-avaliacao-exp">Salvar Avaliação</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Atribuição de Experiência -->
+    <div class="modal fade" id="modalAtribuicaoExperiencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title" id="attrib-exp-titulo">Atribuir Avaliação</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-atribuicao-experiencia">
+                        <input type="hidden" id="attrib-exp-funcionario-id">
+                        <input type="hidden" id="attrib-exp-periodo">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Colaborador</label>
+                            <input type="text" class="form-control bg-light" id="attrib-exp-nome" readonly>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Atribuir Responsável</label>
+                            <select class="form-select" id="attrib-exp-usuario" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                            <div class="form-text">O usuário selecionado verá esta avaliação na sua agenda.</div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarAtribuicaoExperiencia()">Salvar Atribuição</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts da Aplicação (carregados por último para garantir que o DOM esteja pronto) -->
-    <script src="js/utils.js" defer></script>
-    <script src="js/afd-parser.js" defer></script>    
-    <script src="js/empresas.js" defer></script>
-    <script src="js/setores.js" defer></script>
-    <script src="js/funcionarios.js" defer></script>
-    <script src="js/movimentacoes.js" defer></script>
-    <script src="js/painel-demitidos.js" defer></script>
-    <script src="js/transferencia.js" defer></script>
-    <script src="js/alteracao-funcao.js" defer></script>
-    <script src="js/faltas.js" defer></script>
-    <script src="js/afastamentos.js" defer></script>
-    <script src="js/atestados.js" defer></script>
-    <script src="js/controle-disciplinar.js" defer></script>
-    <script src="js/dp-calculos.js" defer></script>
-    <script src="js/horas-extras.js" defer></script>
-    <script src="js/horas-extras-lancamento.js" defer></script>
-    <script src="js/solicitacao-horas-extras.js" defer></script>
-    <script src="js/autorizacao-horas.js" defer></script>
-    <script src="js/financeiro.js" defer></script>
-    <script src="js/custos.js" defer></script>
-    <script src="js/iso-maquinas.js" defer></script>
-    <script src="js/iso-mecanicos.js" defer></script>
-    <script src="js/iso-manutencao.js" defer></script>
-    <script src="js/iso-organograma.js" defer></script>
-    <script src="js/iso-swot.js" defer></script>
-    <script src="js/iso-avaliacao-colaboradores.js" defer></script>
-    <script src="js/juridico-clientes.js" defer></script>
-    <script src="js/juridico-processos.js" defer></script>
-    <script src="js/juridico-dashboard.js" defer></script>
-    <script src="js/juridico-automacao.js" defer></script>
-    <script src="js/juridico-financeiro.js" defer></script>
-    <script src="js/juridico-documentos.js" defer></script>
-    <script src="js/frota-controle.js" defer></script>
-    <script src="js/epi-controle.js" defer></script>
-    <script src="js/gestao-sumidos.js" defer></script>
-    <script src="js/agenda.js" defer></script>
-    <script src="js/saude-psicossocial.js" defer></script>
-    <script src="js/analise-pessoas.js" defer></script>
-    <script src="js/analise-rescisao.js" defer></script>
-    <script src="js/dashboard-atividades.js" defer></script>
-    <script src="js/dashboard-faltas.js" defer></script>
-    <script src="js/dashboard-manutencao.js" defer></script>
-    <script src="js/admin.js" defer></script>
-    <script src="js/app.js" defer></script>
+    <script src="js/utils.js"></script>
+    <script src="js/afd-parser.js"></script>    
+    <script src="js/empresas.js"></script>
+    <script src="js/setores.js"></script>
+    <script src="js/funcionarios.js"></script>
+    <script src="js/movimentacoes.js"></script>
+    <script src="js/painel-demitidos.js"></script>
+    <script src="js/transferencia.js"></script>
+    <script src="js/alteracao-funcao.js"></script>
+    <script src="js/faltas.js"></script>
+    <script src="js/afastamentos.js"></script>
+    <script src="js/atestados.js"></script>
+    <script src="js/controle-disciplinar.js"></script>
+    <script src="js/dp-calculos.js"></script>
+    <script src="js/horas-extras.js"></script>
+    <script src="js/horas-extras-lancamento.js"></script>
+    <script src="js/solicitacao-horas-extras.js"></script>
+    <script src="js/autorizacao-horas.js"></script>
+    <script src="js/financeiro.js"></script>
+    <script src="js/custos.js"></script>
+    <script src="js/iso-maquinas.js"></script>
+    <script src="js/iso-mecanicos.js"></script>
+    <script src="js/iso-manutencao.js"></script>
+    <script src="js/iso-organograma.js"></script>
+    <script src="js/iso-swot.js"></script>
+    <script src="js/iso-avaliacao-colaboradores.js"></script>
+    <script src="js/juridico-clientes.js"></script>
+    <script src="js/juridico-processos.js"></script>
+    <script src="js/juridico-dashboard.js"></script>
+    <script src="js/juridico-automacao.js"></script>
+    <script src="js/juridico-financeiro.js"></script>
+    <script src="js/juridico-documentos.js"></script>
+    <script src="js/frota-controle.js"></script>
+    <script src="js/epi-controle.js"></script>
+    <script src="js/gestao-sumidos.js"></script>
+    <script src="js/agenda.js"></script>
+    <script src="js/saude-psicossocial.js"></script>
+    <script src="js/analise-pessoas.js"></script>
+    <script src="js/analise-rescisao.js"></script>
+    <script src="js/dashboard-atividades.js"></script>
+    <script src="js/dashboard-faltas.js"></script>
+    <script src="js/dashboard-manutencao.js"></script>
+    <script src="js/admin.js"></script>
     <script src="js/treinamento.js" defer></script>
-    <script src="js/voice-commands.js" defer></script>
+    <script src="js/avaliacao-experiencia.js" defer></script>
+    <script src="js/voice-commands.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
