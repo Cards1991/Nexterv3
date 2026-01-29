@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
-, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao'];
+, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento'];
 
 let currentUserPermissions = {};
 
@@ -97,6 +97,11 @@ async function carregarDadosSecao(sectionName) {
             case 'analise-lotacao':
                 if (typeof carregarDashboardSetores === 'function') {
                     await carregarDashboardSetores();
+                }
+                break;
+            case 'treinamento':
+                if (typeof inicializarTreinamento === 'function') {
+                    await inicializarTreinamento();
                 }
                 break;
             case 'funcionarios':
@@ -1212,16 +1217,6 @@ function inicializarNavegacao() {
             }
         });
     });
-
-    // Lógica de segurança para o menu "Análise"
-    // Garante que o menu inteiro fique oculto se o usuário não for admin
-    const menuAnalise = document.getElementById('menu-analise');
-    if (menuAnalise) {
-        // Se não for admin, força ocultação (sobrescrevendo qualquer lógica anterior)
-        if (!currentUserPermissions.isAdmin) {
-            menuAnalise.style.setProperty('display', 'none', 'important');
-        }
-    }
 
     // Adicionar evento de clique para o novo botão de sair na sidebar
     const btnSairSidebar = document.getElementById('btn-sair-sidebar');

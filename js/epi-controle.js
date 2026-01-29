@@ -256,6 +256,9 @@ async function carregarHistoricoConsumoEPI() {
                     <td><span class="badge bg-primary rounded-pill">${consumo.quantidade}</span></td>
                     <td><small class="text-muted">${consumo.responsavelNome || 'Sistema'}</small></td>
                     <td class="text-end">
+                        <button class="btn btn-sm btn-outline-warning" onclick="atualizarCustoConsumoIndividual('${doc.id}')" title="Atualizar Custo com Valor Atual do Estoque">
+                            <i class="fas fa-sync-alt"></i>
+                        </button>
                         <button class="btn btn-sm btn-outline-primary" onclick="editarConsumoEPI('${doc.id}')" title="Editar Registro">
                             <i class="fas fa-edit"></i>
                         </button>
@@ -300,6 +303,10 @@ async function editarConsumoEPI(id) {
                             <input type="date" class="form-control" id="edit-consumo-data">
                         </div>
                         <div class="mb-3">
+                            <label class="form-label">Custo Unitário (R$)</label>
+                            <input type="number" step="0.01" class="form-control" id="edit-consumo-custo">
+                        </div>
+                        <div class="mb-3">
                             <label class="form-label">Motivo</label>
                             <select class="form-select" id="edit-consumo-motivo">
                                 <option value="Admissão">Admissão</option>
@@ -333,6 +340,7 @@ async function editarConsumoEPI(id) {
         
         document.getElementById('edit-consumo-id').value = id;
         document.getElementById('edit-consumo-data').value = data.dataEntrega.toDate().toISOString().split('T')[0];
+        document.getElementById('edit-consumo-custo').value = data.custoUnitario || 0;
         document.getElementById('edit-consumo-motivo').value = data.motivo;
 
         new bootstrap.Modal(modalEl).show();
@@ -345,11 +353,13 @@ async function editarConsumoEPI(id) {
 async function salvarEdicaoConsumoEPI() {
     const id = document.getElementById('edit-consumo-id').value;
     const novaData = document.getElementById('edit-consumo-data').value;
+    const novoCusto = parseFloat(document.getElementById('edit-consumo-custo').value) || 0;
     const novoMotivo = document.getElementById('edit-consumo-motivo').value;
 
     try {
         await db.collection('epi_consumo').doc(id).update({
             dataEntrega: new Date(novaData.replace(/-/g, '\/')),
+            custoUnitario: novoCusto,
             motivo: novoMotivo
         });
         mostrarMensagem("Registro atualizado com sucesso!", "success");
@@ -358,6 +368,45 @@ async function salvarEdicaoConsumoEPI() {
     } catch (e) {
         console.error(e);
         mostrarMensagem("Erro ao salvar.", "error");
+    }
+}
+
+async function atualizarCustoConsumoIndividual(id) {
+    try {
+        const docRef = db.collection('epi_consumo').doc(id);
+        const docSnap = await docRef.get();
+        
+        if (!docSnap.exists) {
+            mostrarMensagem("Registro não encontrado.", "error");
+            return;
+        }
+        
+        const consumo = docSnap.data();
+        const epiId = consumo.epiId;
+        
+        if (!epiId) {
+            mostrarMensagem("ID do EPI não encontrado no registro.", "error");
+            return;
+        }
+        
+        const epiDoc = await db.collection('epi_estoque').doc(epiId).get();
+        
+        if (!epiDoc.exists) {
+            mostrarMensagem("Cadastro do EPI não encontrado.", "error");
+            return;
+        }
+        
+        const custoAtual = parseFloat(epiDoc.data().custo) || 0;
+        
+        await docRef.update({ custoUnitario: custoAtual });
+        
+        mostrarMensagem(`Custo atualizado para R$ ${custoAtual.toFixed(2)}`, "success");
+        carregarHistoricoConsumoEPI();
+        if (typeof carregarDashboardConsumoEPI === 'function') carregarDashboardConsumoEPI();
+        
+    } catch (error) {
+        console.error("Erro ao atualizar custo individual:", error);
+        mostrarMensagem("Erro ao atualizar custo.", "error");
     }
 }
 
@@ -1631,6 +1680,57 @@ async function excluirCompraEPI(id) {
     }
 }
 
+async function reprocessarCustosEPI() {
+    if (!confirm("Esta ação buscará todos os registros de consumo com custo R$ 0,00 e tentará atualizar com o custo atual do cadastro de EPI.\n\nDeseja continuar?")) return;
+
+    try {
+        mostrarMensagem("Buscando registros com custo zerado...", "info");
+
+        // 1. Carregar Estoque para obter custos atuais
+        const estoqueSnap = await db.collection('epi_estoque').get();
+        const custosAtuais = {};
+        estoqueSnap.forEach(doc => {
+            const data = doc.data();
+            custosAtuais[doc.id] = parseFloat(data.custo) || 0;
+        });
+
+        // 2. Buscar consumos com custo 0
+        const consumosSnap = await db.collection('epi_consumo').where('custoUnitario', '==', 0).get();
+        
+        if (consumosSnap.empty) {
+            mostrarMensagem("Nenhum registro com custo zerado encontrado.", "info");
+            return;
+        }
+
+        const batch = db.batch();
+        let count = 0;
+
+        consumosSnap.forEach(doc => {
+            const consumo = doc.data();
+            const epiId = consumo.epiId;
+            const novoCusto = custosAtuais[epiId];
+
+            if (novoCusto && novoCusto > 0) {
+                batch.update(doc.ref, { custoUnitario: novoCusto });
+                count++;
+            }
+        });
+
+        if (count > 0) {
+            await batch.commit();
+            mostrarMensagem(`${count} registros atualizados com sucesso!`, "success");
+            carregarHistoricoConsumoEPI();
+            if (typeof carregarDashboardConsumoEPI === 'function') carregarDashboardConsumoEPI();
+        } else {
+            mostrarMensagem("Registros encontrados, mas os EPIs correspondentes ainda estão sem custo no cadastro.", "warning");
+        }
+
+    } catch (error) {
+        console.error("Erro ao reprocessar custos:", error);
+        mostrarMensagem("Erro ao processar atualização.", "error");
+    }
+}
+
 // ========================================
 // INICIALIZAÇÃO DOS MÓDULOS
 // ========================================
@@ -1690,6 +1790,8 @@ window.imprimirRelatorioEntrega = imprimirRelatorioEntrega;
 window.excluirCompraEPI = excluirCompraEPI;
 window.inicializarEstoqueEPI = inicializarEstoqueEPI;
 window.inicializarConsumoEPI = inicializarConsumoEPI;
+window.reprocessarCustosEPI = reprocessarCustosEPI;
+window.atualizarCustoConsumoIndividual = atualizarCustoConsumoIndividual;
 
 // Inicializar automaticamente quando a seção for carregada
 document.addEventListener('DOMContentLoaded', function() {

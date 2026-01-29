@@ -115,6 +115,20 @@
                                 </ul>
                             </div>
                         </li>
+                        <!-- Módulo Treinamento -->
+                        <li class="nav-item">
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#treinamentoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                                <i class="fas fa-graduation-cap"></i> Treinamento
+                            </a>
+                            <div class="collapse" id="treinamentoSubmenu">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Informatica')">Informática</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Lideranca')">Liderança</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('LGPD')">LGPD</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Outros')">Outros</a></li>
+                                </ul>
+                            </div>
+                        </li>
                         <li class="nav-item"> <!-- MODIFICADO -->
                             <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#empresasSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
                                 <i class="fas fa-building"></i> Empresas e Setores
@@ -774,9 +788,14 @@
                     <h2 class="page-title">Saúde Ocupacional - Consumo de EPI</h2>
                     
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <button class="btn btn-primary" id="btn-novo-consumo" onclick="abrirModalConsumoEPI()">
-                            <i class="fas fa-hand-holding-medical"></i> Registrar Entrega
-                        </button>
+                        <div>
+                            <button class="btn btn-primary" id="btn-novo-consumo" onclick="abrirModalConsumoEPI()">
+                                <i class="fas fa-hand-holding-medical"></i> Registrar Entrega
+                            </button>
+                            <button class="btn btn-outline-warning ms-2" onclick="reprocessarCustosEPI()" title="Atualizar registros antigos com custo zero">
+                                <i class="fas fa-sync-alt"></i> Reprocessar Custos
+                            </button>
+                        </div>
                         <div class="d-flex gap-2">
                              <input type="date" class="form-control" id="filtro-consumo-inicio">
                              <input type="date" class="form-control" id="filtro-consumo-fim">
@@ -1716,14 +1735,55 @@
                     </div>
                 </section>
 
+                <!-- Seção Treinamento -->
+                <section id="treinamento" class="content-section d-none">
+                    <div id="treinamento-container">
+                        <!-- Conteúdo injetado via JS -->
+                        <div class="text-center py-5"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>
+                    </div>
+                </section>
+
                 <!-- Seção Análise de Rescisões -->
                 <section id="analise-rescisao" class="content-section d-none">
                     <h2 class="page-title">Análise de Rescisões</h2>
-                    <div class="card">
-                        <div class="card-header">Dashboard de Análise Demissional</div>
-                        <div class="card-body" id="analise-rescisao-container">
-                            <p class="text-muted">Carregando análise...</p>
+                    
+                    <!-- Filtros -->
+                    <div class="card mb-4">
+                        <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+                            <span class="fw-bold"><i class="fas fa-filter"></i> Período:</span>
+                            <input type="date" class="form-control form-control-sm" id="rescisao-filtro-inicio" style="width: 180px;">
+                            <label class="form-label mb-0">até</label>
+                            <input type="date" class="form-control form-control-sm" id="rescisao-filtro-fim" style="width: 180px;">
+                            <button class="btn btn-primary btn-sm" id="btn-filtrar-rescisao">
+                                <i class="fas fa-search"></i> Analisar
+                            </button>
                         </div>
+                    </div>
+
+                    <div id="analise-rescisao-container">
+                        <!-- KPIs -->
+                        <div class="row mb-4" id="analise-rescisao-kpis">
+                            <!-- KPI cards serão inseridos aqui -->
+                        </div>
+
+                        <!-- Gráficos -->
+                        <div class="row">
+                            <div class="col-lg-8 mb-4">
+                                <div class="card h-100"><div class="card-header">Evolução Mensal de Rescisões</div><div class="card-body" style="height: 300px;"><canvas id="grafico-evolucao-rescisao"></canvas></div></div>
+                            </div>
+                            <div class="col-lg-4 mb-4">
+                                <div class="card h-100"><div class="card-header">Rescisões por Gênero</div><div class="card-body" style="height: 300px;"><canvas id="grafico-genero-rescisao"></canvas></div></div>
+                            </div>
+                            <div class="col-lg-6 mb-4">
+                                <div class="card h-100"><div class="card-header">Rescisões por Tipo</div><div class="card-body" style="height: 300px;"><canvas id="grafico-tipo-rescisao"></canvas></div></div>
+                            </div>
+                            <div class="col-lg-6 mb-4">
+                                <div class="card h-100"><div class="card-header">Rescisões por Motivo</div><div class="card-body" style="height: 300px;"><canvas id="grafico-motivo-rescisao"></canvas></div></div>
+                            </div>
+                        </div>
+
+                        <!-- Análise por Setor -->
+                        <div class="card"><div class="card-header">Análise de Motivos por Setor</div><div class="card-body" id="analise-rescisao-setores"></div></div>
                     </div>
                 </section>
 
@@ -5476,6 +5536,74 @@
         </div>
     </div>
 
+    <!-- Modal Novo Treinamento (Admin) -->
+    <div class="modal fade" id="modalNovoTreinamento" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Novo Treinamento</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-novo-treinamento">
+                        <div class="row g-3">
+                            <div class="col-md-8">
+                                <label class="form-label">Título do Curso</label>
+                                <input type="text" class="form-control" id="novo-treino-titulo" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Tema</label>
+                                <select class="form-select" id="novo-treino-tema" required>
+                                    <option value="Informatica">Informática</option>
+                                    <option value="Lideranca">Liderança</option>
+                                    <option value="LGPD">LGPD</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Descrição</label>
+                                <textarea class="form-control" id="novo-treino-descricao" rows="2"></textarea>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">URL do Vídeo (YouTube/Vimeo)</label>
+                                <input type="url" class="form-control" id="novo-treino-video" placeholder="https://www.youtube.com/watch?v=..." required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">URL dos Slides (PDF/Link)</label>
+                                <input type="url" class="form-control" id="novo-treino-slides" placeholder="https://...">
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Perguntas da Prova (JSON)</label>
+                                <textarea class="form-control font-monospace small" id="novo-treino-prova-json" rows="6" placeholder='[{"texto": "Pergunta 1?", "opcoes": ["A", "B", "C"], "correta": 0}]'></textarea>
+                                <div class="form-text">Formato: Array de objetos com 'texto', 'opcoes' (array) e 'correta' (índice 0-based).</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarNovoTreinamento()">Salvar Treinamento</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Prova -->
+    <div class="modal fade" id="modalProvaTreinamento" tabindex="-1" data-bs-backdrop="static" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title" id="prova-titulo">Prova</h5>
+                </div>
+                <div class="modal-body bg-light" id="prova-perguntas-container"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-success" onclick="finalizarProva()">Finalizar e Enviar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Scripts da Aplicação (carregados por último para garantir que o DOM esteja pronto) -->
     <script src="js/utils.js" defer></script>
     <script src="js/afd-parser.js" defer></script>    
@@ -5521,6 +5649,7 @@
     <script src="js/dashboard-manutencao.js" defer></script>
     <script src="js/admin.js" defer></script>
     <script src="js/app.js" defer></script>
+    <script src="js/treinamento.js" defer></script>
     <script src="js/voice-commands.js" defer></script>
 </body>
 </html>
