@@ -24,7 +24,7 @@ async function carregarListaTreinamentos() {
     const container = document.getElementById('treinamento-container');
     if (!container) return;
 
-    const tituloTema = temaSelecionado ? `Treinamentos de ${temaSelecionado}` : 'Todos os Treinamentos';
+    const tituloTema = temaSelecionado ? `Treinamentos de ${temaSelecionado}` : 'Painel de Treinamentos';
     
     container.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-4">
@@ -66,9 +66,33 @@ async function carregarListaTreinamentos() {
         }
 
         listaEl.innerHTML = '';
+        
+        // Agrupamento por tema se nenhum tema selecionado
+        const cursosPorTema = {};
+        
         snapshot.forEach(doc => {
             const t = doc.data();
-            const prog = progressos[doc.id] || {};
+            
+            let isVisible = false;
+            if (currentUserPermissions.isAdmin) {
+                isVisible = true; // Admin vê tudo
+            } else {
+                // Se não tiver atribuição, assume 'todos'. Se tiver, verifica se o usuário está na lista ou se é 'todos'
+                if (!t.atribuidoPara || t.atribuidoPara.includes('todos') || (user && t.atribuidoPara.includes(user.uid))) {
+                    isVisible = true;
+                }
+            }
+
+            if (!isVisible) return;
+
+            const tema = t.tema || 'Outros';
+            if (!cursosPorTema[tema]) cursosPorTema[tema] = [];
+            cursosPorTema[tema].push({ id: doc.id, ...t });
+        });
+
+        // Função auxiliar para renderizar card
+        const renderCard = (t, docId) => {
+            const prog = progressos[docId] || {};
             const concluidoModulo = prog.moduloConcluido || false;
             const aprovado = prog.aprovado || false;
             const nota = prog.nota || 0;
@@ -90,25 +114,43 @@ async function carregarListaTreinamentos() {
                 btnLabel = 'Continuar';
             }
 
-            listaEl.innerHTML += `
+            return `
                 <div class="col-md-4">
                     <div class="card h-100 shadow-sm hover-card">
                         <div class="card-body d-flex flex-column">
                             <div class="d-flex justify-content-between align-items-start mb-2">
                                 <h5 class="card-title mb-0">${t.titulo}</h5>
                                 ${currentUserPermissions.isAdmin ? 
-                                    `<button class="btn btn-sm btn-link text-danger p-0" onclick="excluirTreinamento('${doc.id}')"><i class="fas fa-trash"></i></button>` : ''}
+                                    `<button class="btn btn-sm btn-link text-danger p-0" onclick="excluirTreinamento('${docId}')"><i class="fas fa-trash"></i></button>` : ''}
                             </div>
                             <p class="card-text text-muted small flex-grow-1">${t.descricao || 'Sem descrição.'}</p>
                             <div class="mb-3">${statusBadge}</div>
-                            <button class="btn ${btnClass} w-100 mt-auto" onclick="abrirModuloTreinamento('${doc.id}')">
+                            <button class="btn ${btnClass} w-100 mt-auto" onclick="abrirModuloTreinamento('${docId}')">
                                 ${btnLabel}
                             </button>
                         </div>
                     </div>
                 </div>
             `;
-        });
+        };
+
+        if (temaSelecionado) {
+            // Renderiza apenas o tema selecionado (embora o menu agora chame com '' por padrão, mantemos compatibilidade)
+            const cursos = cursosPorTema[temaSelecionado] || [];
+            cursos.forEach(c => { listaEl.innerHTML += renderCard(c, c.id); });
+        } else {
+            // Renderiza todos agrupados
+            for (const [tema, cursos] of Object.entries(cursosPorTema)) {
+                if (cursos.length > 0) {
+                    listaEl.innerHTML += `<div class="col-12"><h4 class="border-bottom pb-2 mb-3 mt-4 text-primary">${tema}</h4></div>`;
+                    cursos.forEach(c => { listaEl.innerHTML += renderCard(c, c.id); });
+                }
+            }
+        }
+        
+        if (listaEl.innerHTML === '') {
+             listaEl.innerHTML = '<div class="col-12 text-center text-muted py-5"><h4><i class="fas fa-book-open opacity-25"></i></h4><p>Nenhum treinamento disponível.</p></div>';
+        }
 
     } catch (error) {
         console.error("Erro ao carregar treinamentos:", error);
@@ -360,8 +402,66 @@ async function finalizarProva() {
 function abrirModalNovoTreinamento() {
     const modalEl = document.getElementById('modalNovoTreinamento');
     document.getElementById('form-novo-treinamento').reset();
+    document.getElementById('container-perguntas').innerHTML = ''; // Limpa perguntas anteriores
+    
+    // Carregar lista de usuários para atribuição
+    const selectAtribuicao = document.getElementById('novo-treino-atribuicao');
+    if (selectAtribuicao) {
+        selectAtribuicao.innerHTML = '<option value="todos" selected>Todos os Usuários</option>';
+        db.collection('usuarios').orderBy('nome').get().then(snap => {
+            snap.forEach(doc => {
+                const u = doc.data();
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = u.nome || u.email;
+                selectAtribuicao.appendChild(option);
+            });
+        }).catch(err => console.error("Erro ao carregar usuários:", err));
+    }
+
     new bootstrap.Modal(modalEl).show();
 }
+
+// --- Funções para Gerenciar Perguntas na UI ---
+
+function adicionarPerguntaUI() {
+    const container = document.getElementById('container-perguntas');
+    const index = container.children.length;
+    const div = document.createElement('div');
+    div.className = 'card mb-3 pergunta-item bg-light';
+    div.innerHTML = `
+        <div class="card-body p-3">
+            <div class="d-flex justify-content-between mb-2">
+                <h6 class="mb-0">Pergunta ${index + 1}</h6>
+                <button type="button" class="btn btn-sm btn-outline-danger border-0" onclick="this.closest('.pergunta-item').remove()"><i class="fas fa-trash"></i></button>
+            </div>
+            <input type="text" class="form-control mb-2 pergunta-texto" placeholder="Digite o enunciado da pergunta" required>
+            <div class="opcoes-container"></div>
+            <button type="button" class="btn btn-sm btn-link text-decoration-none px-0" onclick="adicionarOpcaoUI(this, ${Date.now()})">+ Adicionar Opção</button>
+        </div>
+    `;
+    container.appendChild(div);
+    // Adiciona 2 opções por padrão
+    const btnAddOpcao = div.querySelector('button[onclick^="adicionarOpcaoUI"]');
+    adicionarOpcaoUI(btnAddOpcao, Date.now());
+    adicionarOpcaoUI(btnAddOpcao, Date.now());
+}
+
+function adicionarOpcaoUI(btn, groupName) {
+    const container = btn.previousElementSibling;
+    const div = document.createElement('div');
+    div.className = 'input-group mb-2 opcao-item';
+    div.innerHTML = `
+        <div class="input-group-text">
+            <input class="form-check-input mt-0 opcao-correta" type="radio" name="radio_${groupName}" aria-label="Correta" title="Marcar como correta">
+        </div>
+        <input type="text" class="form-control opcao-texto" placeholder="Texto da opção" required>
+        <button class="btn btn-outline-secondary" type="button" onclick="this.closest('.opcao-item').remove()"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(div);
+}
+
+// --- Fim Funções UI ---
 
 async function salvarNovoTreinamento() {
     const titulo = document.getElementById('novo-treino-titulo').value;
@@ -369,19 +469,38 @@ async function salvarNovoTreinamento() {
     const video = document.getElementById('novo-treino-video').value;
     const slides = document.getElementById('novo-treino-slides').value;
     const descricao = document.getElementById('novo-treino-descricao').value;
-    const jsonProva = document.getElementById('novo-treino-prova-json').value;
+    const atribuicaoSelect = document.getElementById('novo-treino-atribuicao');
+    const atribuidoPara = atribuicaoSelect ? Array.from(atribuicaoSelect.selectedOptions).map(opt => opt.value) : ['todos'];
 
     try {
         let perguntas = [];
-        try {
-            perguntas = JSON.parse(jsonProva);
-        } catch (e) {
-            alert("Erro no formato JSON das perguntas. Verifique a sintaxe.");
-            return;
+        
+        // Coletar perguntas da UI
+        const perguntasEls = document.querySelectorAll('.pergunta-item');
+        perguntasEls.forEach(pEl => {
+            const texto = pEl.querySelector('.pergunta-texto').value;
+            const opcoesEls = pEl.querySelectorAll('.opcao-item');
+            const opcoes = [];
+            let correta = 0;
+            
+            opcoesEls.forEach((optEl, idx) => {
+                opcoes.push(optEl.querySelector('.opcao-texto').value);
+                if (optEl.querySelector('.opcao-correta').checked) {
+                    correta = idx;
+                }
+            });
+            
+            if (texto && opcoes.length > 0) {
+                perguntas.push({ texto, opcoes, correta });
+            }
+        });
+
+        if (perguntas.length === 0) {
+            if(!confirm("Nenhuma pergunta foi cadastrada. Deseja salvar o treinamento sem prova?")) return;
         }
 
         await db.collection('treinamentos').add({
-            titulo, tema, videoUrl: video, slidesUrl: slides, descricao, perguntas,
+            titulo, tema, videoUrl: video, slidesUrl: slides, descricao, perguntas, atribuidoPara,
             createdAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -411,3 +530,5 @@ window.marcarModuloConcluido = marcarModuloConcluido;
 window.abrirModalProva = abrirModalProva;
 window.finalizarProva = finalizarProva;
 window.excluirTreinamento = excluirTreinamento;
+window.adicionarPerguntaUI = adicionarPerguntaUI;
+window.adicionarOpcaoUI = adicionarOpcaoUI;

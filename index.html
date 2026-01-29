@@ -117,17 +117,9 @@
                         </li>
                         <!-- Módulo Treinamento -->
                         <li class="nav-item">
-                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#treinamentoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                            <a class="nav-link d-flex align-items-center justify-content-start gap-2" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('')">
                                 <i class="fas fa-graduation-cap"></i> Treinamento
                             </a>
-                            <div class="collapse" id="treinamentoSubmenu">
-                                <ul class="nav flex-column">
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Informatica')">Informática</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Lideranca')">Liderança</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('LGPD')">LGPD</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('Outros')">Outros</a></li>
-                                </ul>
-                            </div>
                         </li>
                         <li class="nav-item"> <!-- MODIFICADO -->
                             <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#empresasSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
@@ -5688,8 +5680,10 @@
                                 <label class="form-label">Tema</label>
                                 <select class="form-select" id="novo-treino-tema" required>
                                     <option value="Informatica">Informática</option>
+                                    <option value="ISO 9001">ISO 9001</option>
                                     <option value="Lideranca">Liderança</option>
-                                    <option value="LGPD">LGPD</option>
+                                    <option value="Por Setor">Por Setor</option>
+                                    <option value="Medicina e Seguranca">Medicina e Segurança</option>
                                     <option value="Outros">Outros</option>
                                 </select>
                             </div>
@@ -5706,9 +5700,17 @@
                                 <input type="url" class="form-control" id="novo-treino-slides" placeholder="https://...">
                             </div>
                             <div class="col-12">
-                                <label class="form-label">Perguntas da Prova (JSON)</label>
-                                <textarea class="form-control font-monospace small" id="novo-treino-prova-json" rows="6" placeholder='[{"texto": "Pergunta 1?", "opcoes": ["A", "B", "C"], "correta": 0}]'></textarea>
-                                <div class="form-text">Formato: Array de objetos com 'texto', 'opcoes' (array) e 'correta' (índice 0-based).</div>
+                                <label class="form-label fw-bold">Perguntas da Prova</label>
+                                <div id="container-perguntas" class="mb-2"></div>
+                                <button type="button" class="btn btn-outline-secondary btn-sm" onclick="adicionarPerguntaUI()"><i class="fas fa-plus"></i> Adicionar Pergunta</button>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label fw-bold">Atribuir Para</label>
+                                <select class="form-select" id="novo-treino-atribuicao" multiple size="5">
+                                    <option value="todos" selected>Todos os Usuários</option>
+                                    <!-- Usuários serão carregados aqui via JS -->
+                                </select>
+                                <div class="form-text">Segure a tecla Ctrl (ou Cmd) para selecionar múltiplos usuários.</div>
                             </div>
                         </div>
                     </form>
