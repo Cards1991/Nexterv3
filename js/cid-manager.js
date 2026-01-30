@@ -1,5 +1,7 @@
 // js/cid-manager.js
 
+let __cid_manager_cache = [];
+
 async function inicializarCidManager() {
     await carregarFamiliasCid();
 }
@@ -13,25 +15,46 @@ async function carregarFamiliasCid() {
         const snap = await db.collection('cid_familias').orderBy('range_inicio').get();
         if (snap.empty) {
             tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Nenhuma família de CID cadastrada.</td></tr>';
+            __cid_manager_cache = [];
             return;
         }
-        tbody.innerHTML = snap.docs.map(doc => {
-            const cid = doc.data();
-            return `
-                <tr>
-                    <td><strong>${cid.range_inicio} - ${cid.range_fim}</strong></td>
-                    <td>${cid.descricao}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick="abrirModalFamiliaCid('${doc.id}')"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirFamiliaCid('${doc.id}')"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
+        
+        __cid_manager_cache = snap.docs.map(doc => ({id: doc.id, ...doc.data()}));
+        renderizarTabelaCid(__cid_manager_cache);
+
     } catch (e) {
         console.error("Erro ao carregar famílias de CID:", e);
         tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
+}
+
+function renderizarTabelaCid(lista) {
+    const tbody = document.getElementById('tabela-cid-familias');
+    if (!tbody) return;
+    
+    if (lista.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Nenhum registro encontrado.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = lista.map(cid => {
+        return `
+            <tr>
+                <td><strong>${cid.range_inicio} - ${cid.range_fim}</strong></td>
+                <td>${cid.descricao}</td>
+                <td class="text-end">
+                    <button class="btn btn-sm btn-outline-primary" onclick="abrirModalFamiliaCid('${cid.id}')"><i class="fas fa-edit"></i></button>
+                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFamiliaCid('${cid.id}')"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filtrarFamiliasCid() {
+    const termo = document.getElementById('filtro-cid-intervalo').value.toUpperCase();
+    const filtrados = __cid_manager_cache.filter(cid => cid.range_inicio.includes(termo) || cid.range_fim.includes(termo) || cid.descricao.toUpperCase().includes(termo));
+    renderizarTabelaCid(filtrados);
 }
 
 async function abrirModalFamiliaCid(id = null) {
@@ -131,3 +154,4 @@ window.inicializarCidManager = inicializarCidManager;
 window.abrirModalFamiliaCid = abrirModalFamiliaCid;
 window.salvarFamiliaCid = salvarFamiliaCid;
 window.excluirFamiliaCid = excluirFamiliaCid;
+window.filtrarFamiliasCid = filtrarFamiliasCid;
