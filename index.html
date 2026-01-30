@@ -35,8 +35,15 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js" defer></script>
     <!-- PapaParse para processamento de CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
+    <!-- MarkerClusterer -->
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
     <!-- Signature Pad para assinatura eletrônica -->
     <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+
+    <style>
+        /* Previne o "flash" da página antes do redirecionamento de login */
+        .app-container { display: none; }
+    </style>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" defer></script>
     <style>
@@ -185,6 +192,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="afastamentos">Afastamentos</a></li>
                                 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="saude-psicossocial"><i class="fas fa-brain"></i> Gestão Psicossocial</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="atestados">Atestados</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="cid-manager">Cadastro de CIDs</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="epi-compras">Solicitações de Compras</a></li>
@@ -331,6 +339,14 @@
                             <input type="date" class="form-control form-control-sm" id="agenda-filtro-inicio" style="width: 180px;">
                             <label class="form-label mb-0">até</label>
                             <input type="date" class="form-control form-control-sm" id="agenda-filtro-fim" style="width: 180px;">
+                            <select class="form-select form-select-sm" id="agenda-filtro-status" style="width: 180px;">
+                                <option value="">Todos os Status</option>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausado">Pausado</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Atrasado">Atrasado</option>
+                            </select>
                             <button class="btn btn-primary btn-sm" id="btn-filtrar-agenda">
                                 <i class="fas fa-search"></i> Aplicar
                             </button>
@@ -345,7 +361,7 @@
                     </div>
 
                     <!-- Visão de Cards -->
-                    <div id="agenda-cards-view">
+                    <div id="agenda-cards-view" style="max-height: 70vh; overflow-y: auto; padding-right: 15px;">
                         <!-- Seção Minhas Atividades -->
                         <h5 class="mb-3 text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Minhas Atividades</h5>
                         <div class="agenda-container">
@@ -353,6 +369,11 @@
                             <div class="agenda-column">
                                 <div class="agenda-header"><h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger" id="agenda-minhas-count-atraso">0</span></div>
                                 <div class="agenda-cards" id="agenda-minhas-atraso"></div>
+                            </div>
+                            <!-- Coluna Em Andamento -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-spinner fa-spin"></i> Em Andamento</h3><span class="badge bg-info" id="agenda-minhas-count-andamento">0</span></div>
+                                <div class="agenda-cards" id="agenda-minhas-andamento"></div>
                             </div>
                             <!-- Coluna Hoje -->
                             <div class="agenda-column">
@@ -388,6 +409,11 @@
                             <div class="agenda-column">
                                 <div class="agenda-header"><h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger" id="agenda-equipe-count-atraso">0</span></div>
                                 <div class="agenda-cards" id="agenda-equipe-atraso"></div>
+                            </div>
+                            <!-- Coluna Em Andamento -->
+                            <div class="agenda-column">
+                                <div class="agenda-header"><h3><i class="fas fa-spinner fa-spin"></i> Em Andamento</h3><span class="badge bg-info" id="agenda-equipe-count-andamento">0</span></div>
+                                <div class="agenda-cards" id="agenda-equipe-andamento"></div>
                             </div>
                             <!-- Coluna Hoje -->
                             <div class="agenda-column">
@@ -519,9 +545,14 @@
                                 <button class="btn btn-outline-secondary btn-sm" id="btn-filtrar-atestados"><i class="fas fa-filter"></i></button>
                             </div>
                         </div>
-                        <button class="btn btn-primary" id="btn-novo-atestado">
-                            <i class="fas fa-plus-circle"></i> Novo Atestado
-                        </button>
+                        <div class="btn-group">
+                            <button class="btn btn-success" onclick="exportarAtestadosExcel()">
+                                <i class="fas fa-file-excel me-2"></i>Exportar para Excel
+                            </button>
+                            <button class="btn btn-primary" id="btn-novo-atestado">
+                                <i class="fas fa-plus-circle"></i> Novo Atestado
+                            </button>
+                        </div>
                     </div>
                     <div class="row g-2 mb-3">
                         <div class="col-lg col-md-4 col-6">
@@ -618,12 +649,32 @@
                             </div>
                         </div>
                     </div>
-                    <!-- Mapa Corporal -->
-                    <div class="card mt-4">
-                        <div class="card-header">
-                            Mapa Corporal de Incidência por CID
+                </section>
+
+                <!-- Seção Cadastro de Famílias de CID -->
+                <section id="cid-manager" class="content-section d-none">
+                    <h2 class="page-title">Cadastro de Famílias de CID</h2>
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Famílias de CID cadastradas</span>
+                            <button class="btn btn-primary btn-sm" onclick="abrirModalFamiliaCid()">
+                                <i class="fas fa-plus"></i> Nova Família
+                            </button>
                         </div>
-                        <div class="card-body" id="body-map-container"></div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Intervalo (Início-Fim)</th>
+                                            <th>Descrição</th>
+                                            <th class="text-end">Ações</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tabela-cid-familias"></tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
                 </section>
 
@@ -1248,6 +1299,14 @@
                                         <label for="demissao-funcionario" class="form-label">Funcionário a ser Desligado</label>
                                         <select class="form-select" id="demissao-funcionario" required></select>
                                     </div>
+                                    <div class="col-md-6">
+                                        <label for="demissao-setor" class="form-label">Setor</label>
+                                        <input type="text" class="form-control bg-light" id="demissao-setor" readonly>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="demissao-gerente" class="form-label">Gerente</label>
+                                        <input type="text" class="form-control bg-light" id="demissao-gerente" readonly>
+                                    </div>
                                     <div class="col-12">
                                         <div id="demissao-info-funcionario" class="p-3 rounded bg-light" style="display: none;">
                                             <!-- Informações do funcionário serão exibidas aqui -->
@@ -1267,6 +1326,10 @@
                                             <option>Término de Contrato</option>
                                             <option>T.A.C - empregado</option>
                                             <option>T.a.C - empresa</option>
+                                            <option>Acordo P.F.</option>
+                                            <option>Acordo Legal</option>
+                                            <option>Acordo P.F.</option>
+                                            <option>Acordo Legal</option>
                                         </select>
                                     </div>
                                     <div class="col-md-4">
@@ -1298,7 +1361,7 @@
                                 </div>
                                 <div class="d-flex justify-content-end gap-2 mt-4">
                                     <button type="button" class="btn btn-info" id="btn-calcular-rescisao" onclick="movimentacoesManager.calcularRescisao()" disabled>
-                                        <i class="fas fa-calculator"></i> Calcular Rescisão Prévia
+                                        <i class="fas fa-calculator"></i> Gerar Financeiro
                                     </button>
                                     <button type="button" class="btn btn-danger" onclick="movimentacoesManager.registrarDemissao()">
                                         <i class="fas fa-user-slash"></i> Confirmar e Registrar Demissão
@@ -1321,9 +1384,9 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-hover">
-                                    <thead>
+                                    <thead class="sticky-top bg-white">
                                         <tr>
                                             <th>Nome do Funcionário</th>
                                             <th>Empresa</th>
@@ -1677,7 +1740,7 @@
                             </button>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
@@ -1905,6 +1968,14 @@
                             <div class="col-lg-6 mb-4">
                                 <div class="card h-100"><div class="card-header">Rescisões por Motivo</div><div class="card-body" style="height: 300px;"><canvas id="grafico-motivo-rescisao"></canvas></div></div>
                             </div>
+                            <div class="col-lg-6 mb-4">
+                                <div class="card h-100">
+                                    <div class="card-header"><i class="fas fa-crown text-warning me-2"></i> Ranking de Liderança (Pedidos de Demissão)</div>
+                                    <div class="card-body" id="analise-rescisao-lideranca">
+                                        <!-- Content will be injected by JS -->
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Análise por Setor -->
@@ -1923,7 +1994,7 @@
                             </button>
                         </div>
                         <div class="card-body">
-                            <div class="table-responsive">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                 <table class="table table-hover">
                                     <thead>
                                         <tr>
@@ -2281,6 +2352,18 @@
                 <!-- Seção Análise de Pessoas -->
                 <section id="analise-pessoas" class="content-section d-none">
                     <h2 class="page-title">Análise de Pessoas (People Analytics)</h2>
+                    
+                    <!-- Mapa de Distribuição -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-map-marked-alt text-primary"></i> Mapa de Distribuição de Colaboradores</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="carregarMapaColaboradores()"><i class="fas fa-sync-alt"></i> Atualizar Mapa</button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div id="mapa-colaboradores" style="height: 500px; width: 100%;"></div>
+                        </div>
+                    </div>
+
                     <div id="dashboard-analise-pessoas">
                         <!-- KPIs -->
                         <div class="row mb-4" id="analise-pessoas-kpis"></div>
@@ -2348,6 +2431,14 @@
                             </div>
                             <select class="form-select" id="dash-ativ-filtro-usuario" style="max-width: 200px;" onchange="carregarDadosDashboardAtividades()">
                                 <option value="">Todos os Usuários</option>
+                            </select>
+                            <select class="form-select" id="dash-ativ-filtro-status" style="max-width: 150px;" onchange="carregarDadosDashboardAtividades()">
+                                <option value="">Todos Status</option>
+                                <option value="Aberto">Aberto</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausado">Pausado</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Atrasado">Atrasado</option>
                             </select>
                             <div class="btn-group" role="group">
                                 <input type="radio" class="btn-check" name="dash-ativ-modo" id="btn-modo-equipe" autocomplete="off" checked onclick="alternarModoDashboardAtividades('equipe')">
@@ -2432,9 +2523,9 @@
                                     <h5 class="mb-0 text-gray-800">Visão Geral das Atividades</h5>
                                 </div>
                                 <div class="card-body p-0">
-                                    <div class="table-responsive">
+                                    <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                                         <table class="table table-hover align-middle mb-0">
-                                            <thead class="table-light">
+                                            <thead class="table-light sticky-top">
                                                 <tr>
                                                     <th class="ps-4">Status</th>
                                                     <th>Atividade</th>
@@ -4502,6 +4593,7 @@
                         <li class="nav-item" role="presentation"><button class="nav-link" id="qualificacao-tab" data-bs-toggle="tab" data-bs-target="#tab-qualificacao" type="button" role="tab">Qualificação</button></li>
                         <li class="nav-item" role="presentation"><button class="nav-link" id="desempenho-tab" data-bs-toggle="tab" data-bs-target="#tab-desempenho" type="button" role="tab">Desempenho</button></li>
                         <li class="nav-item" role="presentation"><button class="nav-link" id="beneficios-tab" data-bs-toggle="tab" data-bs-target="#tab-beneficios" type="button" role="tab">Benefícios</button></li>
+                        <li class="nav-item" role="presentation"><button class="nav-link" id="endereco-tab" data-bs-toggle="tab" data-bs-target="#tab-endereco" type="button" role="tab">Endereço</button></li>
                     </ul>
 
                     <form id="form-funcionario">
@@ -4576,6 +4668,19 @@
                                     <div class="col-md-6 form-group"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="beneficio-vale-alimentacao"><label class="form-check-label">Vale-Alimentação/Refeição</label></div></div>
                                     <div class="col-md-6 form-group"><div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="beneficio-seguro-vida"><label class="form-check-label">Seguro de Vida</label></div></div>
                                     <div class="col-12 form-group"><label class="form-label">Outros Benefícios ou Incentivos</label><textarea class="form-control" id="beneficio-outros" rows="2" placeholder="Ex: Auxílio-creche, Bônus anual"></textarea></div>
+                                </div>
+                            </div>
+
+                            <!-- Aba Endereço -->
+                            <div class="tab-pane fade" id="tab-endereco" role="tabpanel">
+                                <div class="row g-3 mt-2">
+                                    <div class="col-md-3 form-group"><label class="form-label">CEP</label><input type="text" class="form-control" id="endereco-cep" onblur="buscarCep(this.value)" placeholder="00000-000"></div>
+                                    <div class="col-md-7 form-group"><label class="form-label">Logradouro</label><input type="text" class="form-control" id="endereco-logradouro"></div>
+                                    <div class="col-md-2 form-group"><label class="form-label">Número</label><input type="text" class="form-control" id="endereco-numero"></div>
+                                    <div class="col-md-5 form-group"><label class="form-label">Bairro <span class="text-danger">*</span></label><input type="text" class="form-control" id="endereco-bairro"></div>
+                                    <div class="col-md-5 form-group"><label class="form-label">Cidade <span class="text-danger">*</span></label><input type="text" class="form-control" id="endereco-cidade"></div>
+                                    <div class="col-md-2 form-group"><label class="form-label">UF</label><input type="text" class="form-control" id="endereco-estado" maxlength="2"></div>
+                                    <input type="hidden" id="endereco-latitude"><input type="hidden" id="endereco-longitude">
                                 </div>
                             </div>
                         </div>
@@ -5882,6 +5987,11 @@
     <script src="js/treinamento.js" defer></script>
     <script src="js/avaliacao-experiencia.js" defer></script>
     <script src="js/voice-commands.js"></script>
+    <script src="js/mapaColaboradores.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/cid-manager.js"></script>
+    
+    <!-- Google Maps API - Substitua YOUR_API_KEY pela sua chave real -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initMap" async defer></script>
 </body>
 </html>

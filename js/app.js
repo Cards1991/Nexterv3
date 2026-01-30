@@ -6,7 +6,7 @@
 const TODAS_SECOES = [ 
     'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
-    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial',
+    'analise-rescisao', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao',
@@ -119,6 +119,9 @@ async function carregarDadosSecao(sectionName) {
             case 'admissao':
             case 'demissao':
                 if (window.movimentacoesManager) await window.movimentacoesManager.carregarDadosIniciais();
+                if (typeof configurarListenerDemissao === 'function') {
+                    configurarListenerDemissao();
+                }
                 break;
             case 'afastamentos':
                 await carregarAfastamentos();
@@ -170,7 +173,9 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'agenda':
-                await carregarAgenda();
+                if (typeof carregarAgenda === 'function') {
+                    await carregarAgenda();
+                }
                 break;
             case 'admin-usuarios':
                 if (typeof inicializarAdmin === 'function') {
@@ -332,6 +337,11 @@ async function carregarDadosSecao(sectionName) {
                 break;            case 'saude-psicossocial':
                 if (typeof inicializarSaudePsicossocial === 'function') {
                     await inicializarSaudePsicossocial();
+                }
+                break;
+            case 'cid-manager':
+                if (typeof inicializarCidManager === 'function') {
+                    await inicializarCidManager();
                 }
                 break;
             case 'gestao-sumidos':
@@ -1072,6 +1082,12 @@ document.addEventListener('DOMContentLoaded', function() {
     firebase.auth().onAuthStateChanged(async (user) => {
         if (user) {
             console.log('Usuário logado:', user.email);
+
+            // Torna a aplicação visível para evitar "flash" da tela
+            const appContainer = document.querySelector('.app-container');
+            if (appContainer) {
+                appContainer.style.display = 'flex';
+            }
             
             // Buscar permissões do usuário
             const userDocRef = db.collection('usuarios').doc(user.uid);
@@ -1370,3 +1386,42 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 // Exportar para o window para garantir acesso global
 window.carregarSelectEmpresas = carregarSelectEmpresas;
 window.carregarSetoresPorEmpresa = carregarSetoresPorEmpresa;
+
+// Função para configurar o preenchimento automático na tela de demissão
+function configurarListenerDemissao() {
+    const select = document.getElementById('demissao-funcionario');
+    if (select && !select.dataset.listenerAdded) {
+        select.addEventListener('change', async function() {
+            const funcId = this.value;
+            const setorInput = document.getElementById('demissao-setor');
+            const gerenteInput = document.getElementById('demissao-gerente');
+            
+            if (!funcId) {
+                if(setorInput) setorInput.value = '';
+                if(gerenteInput) gerenteInput.value = '';
+                return;
+            }
+            
+            try {
+                const doc = await db.collection('funcionarios').doc(funcId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    if(setorInput) setorInput.value = data.setor || '';
+                    
+                    if(gerenteInput) {
+                        if (data.liderId) {
+                            const liderDoc = await db.collection('funcionarios').doc(data.liderId).get();
+                            gerenteInput.value = liderDoc.exists ? liderDoc.data().nome : 'Não encontrado';
+                        } else {
+                            gerenteInput.value = 'Não informado';
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Erro ao carregar detalhes do funcionário para demissão:", error);
+            }
+        });
+        select.dataset.listenerAdded = 'true';
+    }
+}
+window.configurarListenerDemissao = configurarListenerDemissao;

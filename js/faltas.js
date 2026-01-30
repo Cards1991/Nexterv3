@@ -312,7 +312,7 @@ async function abrirModalNovaFalta(faltaId = null) {
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Setor</label>
-                            <select class="form-select" id="falta_setor"></select>
+                            <input type="text" class="form-control" id="falta_setor" readonly>
                         </div>
                         <div class="row g-2">
                             <div class="col-6">
@@ -354,7 +354,6 @@ async function abrirModalNovaFalta(faltaId = null) {
     if (btnSalvar) btnSalvar.onclick = salvarFalta;
 
     await popularSelectFuncionariosFalta();
-    await popularSelectSetoresFalta();
 
     const modalTitle = modalEl.querySelector('.modal-title');
     const formFields = {
@@ -399,10 +398,29 @@ async function abrirModalNovaFalta(faltaId = null) {
     }
 
     // Atualiza o setor ao selecionar o funcionário
-    formFields.func.onchange = function() {
-        const selectedOption = this.options[this.selectedIndex];
-        if (selectedOption && selectedOption.dataset.setor) {
-            formFields.setor.value = selectedOption.dataset.setor;
+    const funcSelectElement = document.getElementById('falta_func');
+    if (funcSelectElement) {
+        // Removemos listeners antigos clonando o elemento (garante limpeza)
+        const newFuncSelect = funcSelectElement.cloneNode(true);
+        funcSelectElement.parentNode.replaceChild(newFuncSelect, funcSelectElement);
+        
+        // Atualiza a referência no objeto formFields
+        formFields.func = newFuncSelect;
+
+        newFuncSelect.addEventListener('change', function() {
+            const setorInput = document.getElementById('falta_setor');
+            if (!setorInput) return;
+
+            const selectedOption = this.options[this.selectedIndex];
+            const setorAlvo = selectedOption ? selectedOption.dataset.setor : '';
+
+            setorInput.value = setorAlvo || '';
+        });
+    } else {
+        // Fallback caso a substituição do nó falhe
+        formFields.func.onchange = function() {
+            const selectedOption = this.options[this.selectedIndex];
+            formFields.setor.value = selectedOption && selectedOption.dataset.setor ? selectedOption.dataset.setor : '';
         }
     };
     

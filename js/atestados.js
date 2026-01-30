@@ -2,26 +2,7 @@
 let __atestados_cache = [];
 let __empresasCache = null;
 let __initializedAtestados = false;
-let __filterTimeout;
-
-const CID_BODY_MAP_CONSOLIDADO = {
-    'M54': 'back',      // Dorsalgia
-    'M51': 'back',      // Outras dorsopatias
-    'M75': 'shoulder',  // Lesões do ombro
-    'M25.5': 'arm',     // Dor no braço
-    'S80-S89': 'leg',   // Fratura da perna
-    'S90-S99': 'foot',  // Fratura do pé
-    'S60-S69': 'hand',  // Fratura da mão
-    'S50-S59': 'arm',   // Fratura do antebraço
-    'R51': 'head',      // Cefaleia    'J00-J06': 'head',  // Resfriado    'J09-J18': 'torso', // Influenza
-    'K29': 'torso',     // Gastrite
-    'I10': 'torso',     // Hipertensão
-    'M17': 'leg',       // Osteoartrose joelho
-    'M19': 'hand',      // Outras artroses
-    'M79.6': 'arm',     // Dor membro superior
-    'S13': 'neck',      // Lesão pescoço
-    'S23': 'torso',     // Lesão tórax
-};
+let __cid_familias_cache = null;
 
 const CIDS_PSICOSSOCIAIS_PREFIXOS = ['F', 'Z65'];
 
@@ -40,18 +21,12 @@ function isCidPsicossocial(cid) {
 async function inicializarAtestados() {
     if (__initializedAtestados) return;
 
-    try {
-        adicionarEstilosCorpoHumano();
-        configurarEventListenersAtestados();
-        await preencherFiltroEmpresasAtestados();
-        await renderizarAtestados();
-        await atualizarMetricasAtestados();
-        
-        __initializedAtestados = true;
-    } catch (e) { 
-        console.error('Erro ao inicializar atestados:', e); 
-        mostrarMensagem('Erro ao carregar atestados', 'error');
-    }
+    configurarEventListenersAtestados();
+    await preencherFiltroEmpresasAtestados();
+    await renderizarAtestados();
+    await atualizarMetricasAtestados();
+    
+    __initializedAtestados = true;
 }
 
 function configurarEventListenersAtestados() {
@@ -60,10 +35,7 @@ function configurarEventListenersAtestados() {
         document.addEventListener('click', (e) => {
             // Adicionado listener para o botão de novo atestado
             if (e.target.closest('#btn-novo-atestado')) {
-                abrirModalNovoAtestado();
-            }
-            if (e.target.closest('#btn-rotate-body')) {
-                toggleBodyView();
+                abrirModalAtestado();
             }
         });
     } catch (error) { console.error('Erro ao configurar event listener de clique:', error); }
@@ -114,61 +86,6 @@ function invalidarCacheEmpresas() {
 // Adicionar CSS dinâmico para melhorar o visual
 function adicionarEstilosCorpoHumano() {
     const styleId = 'body-map-styles';
-    if (!document.getElementById(styleId)) {
-        const styles = `
-            .body-map-container {
-                background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-                border-radius: 12px;
-                padding: 20px;
-                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                border: 1px solid #dee2e6;
-            }
-            
-            .body-part {
-                transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            }
-            
-            .body-part:hover {
-                transform: scale(1.02);
-                filter: brightness(1.1) !important;
-            }
-            
-            .legend-item {
-                transition: all 0.2s ease;
-                cursor: pointer;
-            }
-            
-            .legend-item:hover {
-                transform: translateX(4px);
-                background-color: rgba(0, 0, 0, 0.05) !important;
-            }
-            
-            .body-map-controls {
-                background: white;
-                border-radius: 8px;
-                padding: 10px;
-                margin-bottom: 15px;
-                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            }
-            
-            #body-front-view, #body-back-view {
-                transition: opacity 0.3s ease;
-            }
-            
-            .body-map-section {
-                background: white;
-                border-radius: 10px;
-                padding: 15px;
-                margin-bottom: 20px;
-                box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-            }
-        `;
-        
-        const styleSheet = document.createElement('style');
-        styleSheet.id = styleId;
-        styleSheet.textContent = styles;
-        document.head.appendChild(styleSheet);
-    }
 }
 
 function toggleBodyView() {
@@ -269,14 +186,12 @@ async function renderizarAtestados() {
         if (filtrados.length === 0) {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Nenhum atestado encontrado</td></tr>';
             if (totalEl) totalEl.textContent = '0 registros';
-            atualizarGraficoSilhueta(filtrados); // Limpa o gráfico
             return;
         }
         
         // Atualizar UI em paralelo
         await Promise.all([
             atualizarTabelaAtestados(filtrados),
-            atualizarGraficoSilhueta(filtrados)
         ]);
         
         if (totalEl) totalEl.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'registro' : 'registros'}`;
@@ -318,229 +233,6 @@ async function atualizarTabelaAtestados(filtrados) {
         </tr>
         `;
     }).join('');
-}
-
-function getParteDoCorpoPorCID(cid) {
-    if (!cid) return null;
-    
-    const cidUpper = cid.toUpperCase().trim();
-    
-    // 1. Buscar match exato
-    if (CID_BODY_MAP_CONSOLIDADO[cidUpper]) {
-        return CID_BODY_MAP_CONSOLIDADO[cidUpper];
-    }
-    
-    // Buscar por range (ex: S80-S89)
-    for (const [range, bodyPart] of Object.entries(CID_BODY_MAP_CONSOLIDADO)) {
-        if (range.includes('-')) {
-            const [start, end] = range.split('-');
-            if (cidUpper >= start && cidUpper <= end) {
-                return bodyPart;
-            }
-        }
-    }
-
-    // 3. Buscar por prefixo (para CIDs mais genéricos)
-    for (const [prefix, bodyPart] of Object.entries(CID_BODY_MAP_CONSOLIDADO)) {
-        if (!prefix.includes('-') && cidUpper.startsWith(prefix)) {
-            return bodyPart;
-        }
-    }
-    
-    return null;
-}
-
-// FUNÇÃO PRINCIPAL MELHORADA - Atualizar gráfico da silhueta
-function atualizarGraficoSilhueta(atestados) {
-    const legendContainer = document.getElementById('body-map-legend');
-    const frontView = document.getElementById('body-front-view');
-    const backView = document.getElementById('body-back-view');
-    
-    // Reset para estilo padrão melhorado
-    document.querySelectorAll('.body-part').forEach(part => {
-        part.style.fill = '#e9ecef';
-        part.style.stroke = '#adb5bd';
-        part.style.strokeWidth = '1.5';
-        part.style.transition = 'all 0.3s ease';
-        part.style.cursor = 'pointer';
-    });
-
-    if (!legendContainer) return;
-
-    const partCounts = {};
-    atestados.forEach(atestado => {
-        const bodyPart = getParteDoCorpoPorCID(atestado.cid);
-        if (bodyPart) {
-            partCounts[bodyPart] = (partCounts[bodyPart] || 0) + 1;
-        }
-    });
-
-    // Header da legenda melhorado
-    legendContainer.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center mb-2">
-            <h6 class="mb-0"><i class="fas fa-notes-medical text-primary"></i> Incidência por Região</h6>
-            <small class="text-muted">${atestados.length} atestados</small>
-        </div>
-    `;
-    
-    if (Object.keys(partCounts).length === 0) {
-        legendContainer.innerHTML += `
-            <div class="text-center py-3">
-                <i class="fas fa-info-circle text-muted fa-2x mb-2"></i>
-                <p class="text-muted small mb-0">Nenhum CID mapeado no período</p>
-            </div>
-        `;
-        return;
-    }
-
-    const sortedParts = Object.entries(partCounts).sort(([, a], [, b]) => b - a);
-    const maxCount = sortedParts.length > 0 ? sortedParts[0][1] : 1;
-
-    // Aplicar cores às partes do corpo
-    sortedParts.forEach(([part, count]) => {
-        const intensity = count / maxCount;
-        const color = getColorForIntensity(intensity);
-        const opacity = 0.6 + (intensity * 0.4); // Varia opacidade baseada na intensidade
-
-        // Selecionar todas as variações da parte do corpo
-        const selectors = [
-            `#front-${part}`, `#back-${part}`,
-            `#front-${part}-left`, `#front-${part}-right`,
-            `#back-${part}-left`, `#back-${part}-right`
-        ];
-
-        selectors.forEach(selector => {
-            const elements = document.querySelectorAll(selector);
-            elements.forEach(el => {
-                if (el) {
-                    el.style.fill = color;
-                    el.style.fillOpacity = opacity;
-                    el.style.stroke = darkenColor(color, 20);
-                    el.style.strokeWidth = '2';
-                    el.style.filter = `drop-shadow(0 2px 4px ${color}40)`;
-                    
-                    // Adicionar tooltip
-                    el.setAttribute('title', `${formatarNomeParte(part)}: ${count} ocorrência(s)`);
-                }
-            });
-        });
-
-        // Adicionar item na legenda com estilo melhorado
-        const percentage = ((count / atestados.length) * 100).toFixed(1);
-        legendContainer.innerHTML += `
-            <div class="legend-item d-flex justify-content-between align-items-center py-1 px-2 rounded mb-1" 
-                 style="background-color: ${color}15; border-left: 3px solid ${color};"
-                 onmouseover="highlightBodyPart('${part}')"
-                 onmouseout="resetBodyPart('${part}')">
-                <div class="d-flex align-items-center">
-                    <div class="color-indicator me-2" style="background-color: ${color}; width: 12px; height: 12px; border-radius: 50%;"></div>
-                    <span class="small">${formatarNomeParte(part)}</span>
-                </div>
-                <div class="d-flex align-items-center">
-                    <span class="badge rounded-pill me-2" style="background-color: ${color}; font-size: 0.7em;">${count}</span>
-                    <small class="text-muted">${percentage}%</small>
-                </div>
-            </div>
-        `;
-    });
-
-    // Adicionar estatísticas resumidas
-    const totalRegioes = Object.keys(partCounts).length;
-    const regiaoMaisAfetada = sortedParts[0];
-    
-    if (regiaoMaisAfetada) {
-        legendContainer.innerHTML += `
-            <div class="mt-3 p-2 bg-light rounded">
-                <small class="text-muted d-block">
-                    <i class="fas fa-chart-line me-1"></i>
-                    Região mais afetada: <strong>${formatarNomeParte(regiaoMaisAfetada[0])}</strong>
-                </small>
-                <small class="text-muted">
-                    <i class="fas fa-map-marked-alt me-1"></i>
-                    ${totalRegioes} região(ões) mapeada(s)
-                </small>
-            </div>
-        `;
-    }
-}
-
-// Funções auxiliares para efeitos de hover
-function highlightBodyPart(part) {
-    const selectors = [
-        `#front-${part}`, `#back-${part}`,
-        `#front-${part}-left`, `#front-${part}-right`,
-        `#back-${part}-left`, `#back-${part}-right`
-    ];
-
-    selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-            if (el) {
-                el.style.strokeWidth = '3';
-                el.style.stroke = '#000';
-                el.style.filter = 'drop-shadow(0 4px 8px rgba(0,0,0,0.3))';
-            }
-        });
-    });
-}
-
-function resetBodyPart(part) {
-    const selectors = [
-        `#front-${part}`, `#back-${part}`,
-        `#front-${part}-left`, `#front-${part}-right`,
-        `#back-${part}-left`, `#back-${part}-right`
-    ];
-
-    selectors.forEach(selector => {
-        const elements = document.querySelectorAll(selector);
-        elements.forEach(el => {
-            if (el) {
-                el.style.strokeWidth = '2';
-                el.style.filter = 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))';
-                // A cor do stroke será resetada quando o mapa for atualizado
-            }
-        });
-    });
-}
-
-// Função para escurecer cor (para contornos)
-function darkenColor(color, percent) {
-    const num = parseInt(color.replace("#", ""), 16);
-    const amt = Math.round(2.55 * percent);
-    const R = (num >> 16) - amt;
-    const G = (num >> 8 & 0x00FF) - amt;
-    const B = (num & 0x0000FF) - amt;
-    return "#" + (
-        0x1000000 +
-        (R < 255 ? (R < 1 ? 0 : R) : 255) * 0x10000 +
-        (G < 255 ? (G < 1 ? 0 : G) : 255) * 0x100 +
-        (B < 255 ? (B < 1 ? 0 : B) : 255)
-    ).toString(16).slice(1);
-}
-
-// Melhorar a função de cores para gradiente mais suave
-function getColorForIntensity(intensity) {
-    if (intensity < 0.2) return '#4CAF50'; // Verde claro - baixa incidência
-    if (intensity < 0.4) return '#8BC34A'; // Verde
-    if (intensity < 0.6) return '#FFC107'; // Amarelo
-    if (intensity < 0.8) return '#FF9800'; // Laranja
-    return '#F44336'; // Vermelho - alta incidência
-}
-
-// Melhorar formatação de nomes das partes
-function formatarNomeParte(partName) {
-    const names = {
-        head: 'Cabeça',
-        neck: 'Pescoço',
-        torso: 'Torso/Abdômen',
-        back: 'Costas/Coluna',
-        shoulder: 'Ombros',
-        arm: 'Braços',
-        hand: 'Mãos/Pulsos',
-        leg: 'Pernas',
-        foot: 'Pés/Tornozelos'
-    };
-    return names[partName] || partName;
 }
 
 async function carregarAlertasPericia() {
@@ -703,8 +395,8 @@ function classeStatus(s) {
 }
 
 // Abrir modal de novo atestado
-function abrirModalNovoAtestado() {
-    const id = 'novoAtestadoModal';
+function abrirModalAtestado(atestadoId = null) {
+    const id = 'atestadoModal';
     let modalEl = document.getElementById(id);
     
     if (!modalEl) {
@@ -715,7 +407,7 @@ function abrirModalNovoAtestado() {
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Novo Atestado</h5>
+                        <h5 class="modal-title" id="atestadoModalTitle">Novo Atestado</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -762,18 +454,37 @@ function abrirModalNovoAtestado() {
                                     <label class="form-label">Tipo</label>
                                     <select class="form-select" id="at_tipo" required>
                                         <option value="">Selecione</option>
-                                        <option>Doença</option>
-                                        <option>Acidente</option>
-                                        <option>Consulta</option>
-                                        <option>Exame</option>
-                                        <option>Outros</option>
+                                        <option value="Doença">Doença</option>
+                                        <option value="Acidente de trabalho">Acidente de trabalho</option>
+                                        <option value="Acidente de Trajeto">Acidente de Trajeto</option>
+                                        <option value="Acompanhamento">Acompanhamento</option>
+                                        <option value="Licensa Maternidade">Licensa Maternidade</option>
+                                        <option value="Licensa Paternidade">Licensa Paternidade</option>
+                                        <option value="Serviço Militar">Serviço Militar</option>
+                                        <option value="Consulta">Consulta</option>
+                                        <option value="Exame">Exame</option>
+                                        <option value="Outros">Outros</option>
                                     </select>
                                 </div>
                                 <div class="col-6">
                                     <label class="form-label">CID</label>
-                                    <input class="form-control" id="at_cid" placeholder="J06.9">
+                                    <input class="form-control" id="at_cid" placeholder="A00.0" maxlength="5" oninput="formatarInputCID(this)">
                                 </div>
                             </div>
+                            <!-- Campos Condicionais -->
+                            <div id="container-acompanhamento" class="mt-2" style="display: none;">
+                                <label class="form-label">Tipo de Acompanhamento</label>
+                                <select class="form-select" id="at_tipo_acompanhamento">
+                                    <option value="Acompanhamento de Filho">Acompanhamento de Filho</option>
+                                    <option value="Acompanhamento de Conjuge">Acompanhamento de Cônjuge</option>
+                                </select>
+                            </div>
+                            <div id="container-cat" class="mt-2" style="display: none;">
+                                <button type="button" class="btn btn-warning w-100" onclick="abrirModalCAT()">
+                                    <i class="fas fa-file-medical-alt me-2"></i> Preencher CAT
+                                </button>
+                            </div>
+                            <div id="at_cid_descricao" class="form-text bg-light p-2 rounded mt-2" style="display: none;"></div>
                             <div class="mb-2 mt-1">
                                 <label class="form-label">Médico</label>
                                 <input class="form-control" id="at_medico">
@@ -782,7 +493,7 @@ function abrirModalNovoAtestado() {
                     </div>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button class="btn btn-primary" onclick="salvarNovoAtestado()">Salvar</button>
+                        <button class="btn btn-primary" onclick="salvarAtestado()">Salvar</button>
                     </div>
                 </div>
             </div>`;
@@ -790,6 +501,15 @@ function abrirModalNovoAtestado() {
     }
     
     document.getElementById('form-atestado').reset();
+
+    // Listener para campos condicionais
+    const tipoSelect = document.getElementById('at_tipo');
+    tipoSelect.addEventListener('change', function() {
+        const containerAcompanhamento = document.getElementById('container-acompanhamento');
+        const containerCAT = document.getElementById('container-cat');
+        containerAcompanhamento.style.display = this.value === 'Acompanhamento' ? 'block' : 'none';
+        containerCAT.style.display = this.value === 'Acidente de trabalho' ? 'block' : 'none';
+    });
 
     // Adicionar listeners para os radio buttons de duração
     document.getElementById('duracao_dias').addEventListener('change', () => {
@@ -855,8 +575,81 @@ function abrirModalNovoAtestado() {
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
+function abrirModalCAT() {
+    mostrarMensagem("Funcionalidade para preenchimento da CAT será implementada.", "info");
+}
+
+async function getCidFamilias() {
+    if (!__cid_familias_cache) {
+        const snap = await db.collection('cid_familias').get();
+        __cid_familias_cache = snap.docs.map(doc => doc.data());
+    }
+    return __cid_familias_cache;
+}
+
+async function atualizarDescricaoCID(cidInput) {
+    const cid = cidInput.value.trim().toUpperCase();
+    const descEl = document.getElementById('at_cid_descricao');
+    if (!descEl) return;
+
+    if (!cid) {
+        descEl.textContent = '';
+        descEl.style.display = 'none';
+        return;
+    }
+
+    const letra = cid.charAt(0);
+    const numero = parseInt(cid.substring(1, 3), 10);
+
+    if (!letra.match(/[A-Z]/) || isNaN(numero)) {
+        descEl.textContent = 'Formato de CID inválido.';
+        descEl.style.display = 'block';
+        return;
+    }
+
+    const familias = await getCidFamilias();
+    const familiaEncontrada = familias.find(f => {
+        const startLetra = f.range_inicio.charAt(0);
+        const endLetra = f.range_fim.charAt(0);
+        const startNum = parseInt(f.range_inicio.substring(1, 3), 10);
+        const endNum = parseInt(f.range_fim.substring(1, 3), 10);
+        
+        if (letra < startLetra || letra > endLetra) return false;
+        
+        if (startLetra === endLetra) {
+            return numero >= startNum && numero <= endNum;
+        }
+        if (letra === startLetra) return numero >= startNum;
+        if (letra === endLetra) return numero <= endNum;
+        return true; // Letra intermediária
+    });
+
+    descEl.textContent = familiaEncontrada ? familiaEncontrada.descricao : 'Família de CID não encontrada.';
+    descEl.style.display = 'block';
+}
+
+function formatarInputCID(input) {
+    // Remove tudo que não for letra ou número
+    let value = input.value.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    
+    // Garante que começa com letra
+    if (value.length > 0 && !/[A-Z]/.test(value[0])) {
+        value = value.substring(1);
+    }
+    
+    // Aplica a máscara LNN.N
+    if (value.length > 3) {
+        value = value.substring(0, 3) + '.' + value.substring(3, 4);
+    }
+    
+    input.value = value;
+    
+    // Chama a função original para buscar a descrição
+    atualizarDescricaoCID(input);
+}
+
 // Salvar novo atestado
-async function salvarNovoAtestado() {
+async function salvarAtestado() {
     try {
         const colabSelect = document.getElementById('at_colab');
         const colabNome = colabSelect.options[colabSelect.selectedIndex].text;
@@ -866,6 +659,7 @@ async function salvarNovoAtestado() {
         const duracaoValor = duracaoTipo === 'dias' ? parseInt(document.getElementById('at_dias').value, 10) : parseInt(document.getElementById('at_horas').value, 10);
         const dias = duracaoTipo === 'dias' ? duracaoValor : (duracaoValor / 8); // Converte horas para dias para os cálculos
         const tipo = document.getElementById('at_tipo').value;
+        const tipoAcompanhamento = document.getElementById('at_tipo_acompanhamento').value;
         const cid = document.getElementById('at_cid').value.trim();
         const medico = document.getElementById('at_medico').value.trim();
         
@@ -886,6 +680,23 @@ async function salvarNovoAtestado() {
             return;
         }
         
+        // Checagem de cota de acompanhamento
+        if (tipo === 'Acompanhamento') {
+            const atestadosAcompanhamento = await db.collection('atestados')
+                .where('funcionarioId', '==', colabSelect.value)
+                .where('tipo', '==', 'Acompanhamento')
+                .get();
+
+            if (atestadosAcompanhamento.size >= 2) {
+                const datasAnteriores = atestadosAcompanhamento.docs.map(doc => doc.data().data_atestado.toDate().toLocaleDateString('pt-BR'));
+                const continuar = await abrirModalAlertaAcompanhamento(datasAnteriores);
+                if (!continuar) {
+                    mostrarMensagem("Lançamento cancelado pelo usuário.", "info");
+                    return; // Para a execução se o usuário cancelar
+                }
+            }
+        }
+
         let afastamentoId = null;
 
         const dataAtestadoObj = parseDateSafe(data);
@@ -953,6 +764,7 @@ async function salvarNovoAtestado() {
             duracaoValor: duracaoValor,
             dias: dias,
             tipo: tipo,
+            tipoAcompanhamento: tipo === 'Acompanhamento' ? tipoAcompanhamento : null,
             cid: cid || '',
             medico: medico || '',
             status: 'Válido',            
@@ -962,7 +774,7 @@ async function salvarNovoAtestado() {
             afastamentoId: afastamentoId // Salva o ID do afastamento vinculado
         });
         
-        const modalEl = document.getElementById('novoAtestadoModal');
+        const modalEl = document.getElementById('atestadoModal');
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
         
@@ -974,6 +786,48 @@ async function salvarNovoAtestado() {
         console.error('Erro ao salvar atestado:', e);
         mostrarMensagem('Erro ao salvar atestado', 'error');
     }
+}
+
+async function abrirModalAlertaAcompanhamento(datasAnteriores) {
+    return new Promise((resolve) => {
+        const modalId = 'alertaAcompanhamentoModal';
+        let modalEl = document.getElementById(modalId);
+
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = modalId;
+            modalEl.className = 'modal fade';
+            modalEl.innerHTML = `
+                <div class="modal-dialog">
+                    <div class="modal-content border-warning">
+                        <div class="modal-header bg-warning text-dark">
+                            <h5 class="modal-title"><i class="fas fa-exclamation-triangle"></i> Alerta de Cota de Acompanhamento</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <p>Este colaborador já utilizou ou excedeu a cota de 2 atestados para acompanhamento.</p>
+                            <p><strong>Datas dos registros anteriores:</strong></p>
+                            <ul id="datas-acompanhamento-anteriores" class="list-group"></ul>
+                            <p class="mt-3 fw-bold">Deseja continuar com o lançamento mesmo assim?</p>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="btn-cancelar-acomp">Cancelar Lançamento</button>
+                            <button type="button" class="btn btn-primary" id="btn-continuar-acomp">Sim, Continuar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalEl);
+        }
+
+        document.getElementById('datas-acompanhamento-anteriores').innerHTML = datasAnteriores.map(data => `<li class="list-group-item">${data}</li>`).join('');
+
+        const modal = new bootstrap.Modal(modalEl);
+        document.getElementById('btn-continuar-acomp').onclick = () => { modal.hide(); resolve(true); };
+        document.getElementById('btn-cancelar-acomp').onclick = () => { modal.hide(); resolve(false); };
+        modalEl.addEventListener('hidden.bs.modal', () => resolve(false), { once: true });
+        modal.show();
+    });
 }
 
 function validarAtestado(formData) {
@@ -1361,6 +1215,59 @@ async function imprimirHistoricoPsicossocial() {
     openPrintWindow(conteudo, { autoPrint: true });
 }
 
+async function exportarAtestadosExcel() {
+    // Adiciona a biblioteca XLSX se não existir
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarAtestadosExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    const filtrados = aplicarFiltrosAtestados(__atestados_cache);
+
+    if (filtrados.length === 0) {
+        mostrarMensagem("Não há dados para exportar com os filtros atuais.", "warning");
+        return;
+    }
+
+    const funcSnap = await db.collection('funcionarios').get();
+    const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data()]));
+
+    const dadosExportacao = filtrados.map(a => {
+        const func = funcMap.get(a.funcionarioId);
+        return {
+            'Colaborador': a.colaborador_nome,
+            'Setor': func ? func.setor : 'N/A',
+            'Data': formatarData(a.data_atestado),
+            'Motivo': a.tipo,
+            'Duracao': `${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'}`,
+            'CID': a.cid || ''
+        };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Atestados");
+
+    // Ajustar largura das colunas
+    ws['!cols'] = [
+        { wch: 30 }, // Colaborador
+        { wch: 20 }, // Setor
+        { wch: 12 }, // Data
+        { wch: 20 }, // Motivo
+        { wch: 15 }, // Duração
+        { wch: 10 }  // CID
+    ];
+
+    XLSX.writeFile(wb, "Relatorio_Atestados.xlsx");
+    mostrarMensagem("Relatório de atestados exportado com sucesso!", "success");
+}
+
+window.exportarAtestadosExcel = exportarAtestadosExcel;
+window.atualizarDescricaoCID = atualizarDescricaoCID;
+window.formatarInputCID = formatarInputCID;
 /**
  * Popula um select com a lista de usuários do sistema.
  * @param {string} selectId O ID do elemento select.

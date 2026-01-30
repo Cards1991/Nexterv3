@@ -238,6 +238,11 @@ function criarModalNovaAtividade() {
                                 <label for="atividade-atribuido-para" class="form-label">Atribuir para (Opcional)</label>
                                 <select class="form-select" id="atividade-atribuido-para"></select>
                             </div>
+                            <!-- Seção de Histórico de Tempo (Visível apenas na edição) -->
+                            <div id="atividade-timelog-section" style="display: none;" class="mt-3 border-top pt-3">
+                                <label class="form-label fw-bold"><i class="fas fa-history"></i> Histórico de Execução (Pausas e Retornos)</label>
+                                <div id="atividade-timelog-container"></div>
+                            </div>
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -282,6 +287,7 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
         if (form) {
             delete form.dataset.editId;
             delete form.dataset.editCollection;
+            getElement('atividade-timelog-section').style.display = 'none';
         }
     } else {
         // Modo edição - atualizar textos
@@ -397,6 +403,24 @@ async function salvarNovaAtividade() {
     const repetirDias = parseInt(getElement('atividade-repetir-dias')?.value, 10);
     const atribuidoParaSelect = getElement('atividade-atribuido-para');
     
+    // Coletar dados do histórico de tempo (se houver)
+    let timeLog = [];
+    const timeLogRows = document.querySelectorAll('.timelog-row');
+    if (timeLogRows.length > 0) {
+        timeLogRows.forEach(row => {
+            const startInput = row.querySelector('.timelog-start');
+            const endInput = row.querySelector('.timelog-end');
+            if (startInput && startInput.value) {
+                timeLog.push({
+                    start: new Date(startInput.value),
+                    end: endInput && endInput.value ? new Date(endInput.value) : null
+                });
+            }
+        });
+        // Ordenar por data de início
+        timeLog.sort((a, b) => a.start - b.start);
+    }
+
     let atribuidoParaId = atribuidoParaSelect.value;
     let atribuidoParaNome = atribuidoParaId ? atribuidoParaSelect.options[atribuidoParaSelect.selectedIndex].dataset.nome : null;
 
@@ -488,6 +512,9 @@ async function salvarNovaAtividade() {
                 descricao,
                 atribuidoParaId: atribuidoParaId || null,
                 atribuidoParaNome: atribuidoParaNome || null,
+                // Se estiver editando e tivermos coletado logs de tempo, salvamos
+                // Caso contrário, mantemos o que já existe (tratado em salvarAlteracoes se mesclarmos, mas aqui sobrescrevemos o objeto)
+                ...(timeLog.length > 0 ? { timeLog } : {})
             };
 
             if (editId && editCollection) {
@@ -556,6 +583,7 @@ async function carregarAgenda() {
     console.log("Carregando agenda...");
     
     const containersMinhas = {
+        andamento: getElement('agenda-minhas-andamento'),
         hoje: getElement('agenda-minhas-hoje'),
         amanha: getElement('agenda-minhas-amanha'),
         atraso: getElement('agenda-minhas-atraso'),
@@ -565,6 +593,7 @@ async function carregarAgenda() {
     };
 
     const containersEquipe = {
+        andamento: getElement('agenda-equipe-andamento'),
         hoje: getElement('agenda-equipe-hoje'),
         amanha: getElement('agenda-equipe-amanha'),
         atraso: getElement('agenda-equipe-atraso'),
@@ -612,13 +641,31 @@ async function carregarAgenda() {
             atividades: atividades.length
         });
 
-        const todosEventos = [
+        let todosEventos = [
             ...vencimentos, 
             ...pericias, 
             ...aniversariantes, 
             ...aniversariosEmpresa,
             ...atividades
         ];
+
+        const statusFiltro = getElement('agenda-filtro-status').value;
+        if (statusFiltro) {
+            const hoje = new Date();
+            hoje.setHours(0, 0, 0, 0);
+            todosEventos = todosEventos.filter(evento => {
+                if (evento.collection !== 'agenda_atividades') {
+                    return false; // Hide non-activities when status is filtered
+                }
+                
+                let effectiveStatus = evento.status;
+                if ((effectiveStatus === 'Aberto' || effectiveStatus === 'Pendente') && new Date(evento.data) < hoje) {
+                    effectiveStatus = 'Atrasado';
+                }
+
+                return effectiveStatus === statusFiltro;
+            });
+        }
         
         console.log("Total de eventos:", todosEventos.length);
 
@@ -806,11 +853,20 @@ function distribuirEventosNosCards(eventos, containers, prefixoId) {
     const trintaDias = new Date(hoje);
     trintaDias.setDate(hoje.getDate() + 30);
 
-    let counts = { hoje: 0, amanha: 0, '7dias': 0, '30dias': 0, atraso: 0, futuro: 0 };
+    let counts = { andamento: 0, hoje: 0, amanha: 0, '7dias': 0, '30dias': 0, atraso: 0, futuro: 0 };
 
     eventos.forEach(evento => {
         const eventoData = new Date(evento.data);
         eventoData.setHours(0, 0, 0, 0);
+
+        // Lógica para tarefas Em Andamento ou Pausadas - Vão para a coluna específica
+        if (evento.status === 'Em Andamento' || evento.status === 'Pausado') {
+            if (containers.andamento) {
+                containers.andamento.innerHTML += criarCardEvento(evento);
+                counts.andamento++;
+            }
+            return;
+        }
 
         // Lógica para tarefas atrasadas - PRIORIDADE MÁXIMA
         if ((evento.status === 'Aberto' || evento.status === 'Pendente') && eventoData < hoje) {
@@ -926,6 +982,10 @@ function criarCardEvento(evento) {
                 <button class="btn btn-sm btn-icon" onclick="iniciarAtividadeAgenda('${evento.id}')" title="Iniciar Execução">
                     <i class="fas fa-play text-warning"></i>
                 </button>` : ''}
+                ${evento.collection === 'agenda_atividades' && evento.status === 'Em Andamento' ? `
+                <button class="btn btn-sm btn-icon" onclick="pausarAtividadeAgenda('${evento.id}')" title="Pausar Atividade">
+                    <i class="fas fa-pause text-secondary"></i>
+                </button>` : ''}
                 <button class="btn btn-sm btn-icon" onclick="visualizarEvento('${evento.id}', '${evento.collection}')" title="Visualizar">
                     <i class="fas fa-eye text-info"></i>
                 </button>
@@ -943,9 +1003,13 @@ function criarCardEvento(evento) {
     } else if (evento.collection && currentUser) {
         acoesHTML = `
             <div class="agenda-card-actions">
-                ${evento.collection === 'agenda_atividades' && (evento.status === 'Aberto' || evento.status === 'Pendente' || !evento.status) ? `
+                ${evento.collection === 'agenda_atividades' && (evento.status === 'Aberto' || evento.status === 'Pendente' || evento.status === 'Pausado' || !evento.status) ? `
                 <button class="btn btn-sm btn-icon" onclick="iniciarAtividadeAgenda('${evento.id}')" title="Iniciar Execução">
                     <i class="fas fa-play text-warning"></i>
+                </button>` : ''}
+                ${evento.collection === 'agenda_atividades' && evento.status === 'Em Andamento' ? `
+                <button class="btn btn-sm btn-icon" onclick="pausarAtividadeAgenda('${evento.id}')" title="Pausar Atividade">
+                    <i class="fas fa-pause text-secondary"></i>
                 </button>` : ''}
                 <button class="btn btn-sm btn-icon" onclick="visualizarEvento('${evento.id}', '${evento.collection}')" title="Visualizar">
                     <i class="fas fa-eye text-info"></i>
@@ -988,6 +1052,9 @@ function criarCardEvento(evento) {
         } else if (evento.status === 'Em Andamento') {
             statusClass = 'bg-info text-white';
             statusText = 'Em Andamento';
+        } else if (evento.status === 'Pausado') {
+            statusClass = 'bg-secondary text-white';
+            statusText = 'Pausado';
         } else if (evento.status === 'Concluído' || evento.status === 'Encerrado') {
             statusClass = 'bg-secondary'; // Cinza para concluído
             statusText = 'Concluído';
@@ -1355,6 +1422,47 @@ function preencherFormularioAtividade(dados) {
         form.dataset.editId = dados.id;
         form.dataset.editCollection = dados.collection;
 
+        // Preencher Histórico de Tempo (TimeLog)
+        const timelogSection = getElement('atividade-timelog-section');
+        const timelogContainer = getElement('atividade-timelog-container');
+        
+        if (timelogSection && timelogContainer) {
+            timelogSection.style.display = 'block';
+            timelogContainer.innerHTML = '';
+
+            let logs = dados.timeLog || [];
+            
+            // Se não tem timeLog mas tem executionStartTime (legado), cria um log inicial
+            if (logs.length === 0 && dados.executionStartTime) {
+                const start = dados.executionStartTime.toDate ? dados.executionStartTime.toDate() : new Date(dados.executionStartTime);
+                const end = dados.concluidoEm ? (dados.concluidoEm.toDate ? dados.concluidoEm.toDate() : new Date(dados.concluidoEm)) : null;
+                logs.push({ start, end });
+            }
+
+            if (logs.length === 0) {
+                timelogContainer.innerHTML = '<p class="text-muted small">Nenhum registro de tempo ainda.</p>';
+            } else {
+                logs.forEach((log, index) => {
+                    const startVal = log.start ? (log.start.toDate ? log.start.toDate() : new Date(log.start)).toISOString().slice(0, 16) : '';
+                    const endVal = log.end ? (log.end.toDate ? log.end.toDate() : new Date(log.end)).toISOString().slice(0, 16) : '';
+                    
+                    const row = document.createElement('div');
+                    row.className = 'row g-2 mb-2 timelog-row align-items-center';
+                    row.innerHTML = `
+                        <div class="col-5">
+                            <label class="small text-muted">Início</label>
+                            <input type="datetime-local" class="form-control form-control-sm timelog-start" value="${startVal}">
+                        </div>
+                        <div class="col-5">
+                            <label class="small text-muted">Fim (Pausa)</label>
+                            <input type="datetime-local" class="form-control form-control-sm timelog-end" value="${endVal}">
+                        </div>
+                    `;
+                    timelogContainer.appendChild(row);
+                });
+            }
+        }
+
         console.log("Formulário de atividade preenchido com sucesso para data:", dataInput.value);
 
     } catch (error) {
@@ -1481,15 +1589,27 @@ function imprimirResumoDoDia() {
 }
 
 function calcularTempoResolucao(dataCriacao) {
-    if (!dataCriacao) return null;
+    // Esta função agora é um wrapper simplificado. 
+    // O cálculo real deve considerar o timeLog se disponível.
+    // Se chamado sem contexto de timeLog, retorna null ou cálculo simples.
+    return null; 
+}
 
-    // CORREÇÃO: Garante que a data seja um objeto Date válido
-    const inicio = dataCriacao?.toDate ? dataCriacao.toDate() : new Date(dataCriacao);
-    if (isNaN(inicio.getTime())) return null;
+function calcularTempoTotalMs(timeLog) {
+    if (!timeLog || !Array.isArray(timeLog)) return 0;
+    let totalMs = 0;
+    const agora = new Date();
 
-    const fim = new Date();
+    timeLog.forEach(log => {
+        const start = log.start.toDate ? log.start.toDate() : new Date(log.start);
+        const end = log.end ? (log.end.toDate ? log.end.toDate() : new Date(log.end)) : agora;
+        totalMs += (end - start);
+    });
+    return totalMs;
+}
 
-    let diffMs = fim - inicio;
+function formatarTempoMs(diffMs) {
+    if (diffMs < 0) diffMs = 0;
 
     const dias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     diffMs -= dias * (1000 * 60 * 60 * 24);
@@ -1543,6 +1663,19 @@ async function iniciarAtividadeAgenda(id) {
     } catch (error) {
         console.error("Erro ao iniciar atividade:", error);
         mostrarMensagem("Erro ao iniciar atividade.", "error");
+    }
+}
+
+async function pausarAtividadeAgenda(id) {
+    try {
+        await db.collection('agenda_atividades').doc(id).update({
+            status: 'Pausado'
+        });
+        mostrarMensagem("Atividade pausada.", "info");
+        await carregarAgenda();
+    } catch (error) {
+        console.error("Erro ao pausar atividade:", error);
+        mostrarMensagem("Erro ao pausar atividade.", "error");
     }
 }
 
@@ -1737,3 +1870,4 @@ window.configurarFiltrosParaAno = configurarFiltrosParaAno;
 window.emitirValePizza = emitirValePizza;
 window.openPrintWindow = openPrintWindow;
 window.iniciarAtividadeAgenda = iniciarAtividadeAgenda;
+window.pausarAtividadeAgenda = pausarAtividadeAgenda;
