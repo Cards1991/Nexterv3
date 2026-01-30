@@ -21,6 +21,17 @@ function isCidPsicossocial(cid) {
 async function inicializarAtestados() {
     if (__initializedAtestados) return;
 
+    // Configurar datas padrão (mês atual)
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const filtroInicio = document.getElementById('filtro-data-inicio-atestados');
+    const filtroFim = document.getElementById('filtro-data-fim-atestados');
+
+    if (filtroInicio && !filtroInicio.value) filtroInicio.value = inicioMes;
+    if (filtroFim && !filtroFim.value) filtroFim.value = fimMes;
+
     configurarEventListenersAtestados();
     await preencherFiltroEmpresasAtestados();
     await renderizarAtestados();
@@ -416,11 +427,15 @@ function abrirModalAtestado(atestadoId = null) {
                                 <label class="form-label">Colaborador</label>
                                 <select class="form-select" id="at_colab" required><option value="">Selecione...</option></select>
                             </div>
-                            <div class="mb-2">
-                                <label class="form-label">Empresa</label>
-                                <select class="form-select" id="at_empresa" required>
-                                    <option value="">Selecione</option>
-                                </select> 
+                            <div class="row g-2 mb-2">
+                                <div class="col-6">
+                                    <label class="form-label">Empresa</label>
+                                    <select class="form-select" id="at_empresa" required><option value="">Selecione</option></select> 
+                                </div>
+                                <div class="col-6">
+                                    <label class="form-label">Setor</label>
+                                    <input type="text" class="form-control" id="at_setor" readonly>
+                                </div>
                             </div>
                             <div class="row g-2">
                                 <div class="col-12 mb-2">
@@ -555,18 +570,23 @@ function abrirModalAtestado(atestadoId = null) {
                 const opt = document.createElement('option');
                 opt.value = doc.id;
                 opt.dataset.empresaId = doc.data().empresaId || '';
+                opt.dataset.setor = doc.data().setor || '';
                 opt.textContent = doc.data().nome;
                 funcSelect.appendChild(opt);
             });
 
-            // Adiciona o listener para preencher a empresa automaticamente
+            // Adiciona o listener para preencher a empresa e setor automaticamente
             funcSelect.addEventListener('change', function() {
                 const selectedOption = this.options[this.selectedIndex];
-                const empresaId = selectedOption.dataset.empresaId;
+                const empresaId = selectedOption.dataset.empresaId || '';
+                const setor = selectedOption.dataset.setor || '';
                 
                 empresaSelect.value = empresaId;
                 // Desabilita o campo de empresa se um funcionário for selecionado
                 empresaSelect.disabled = !!empresaId;
+                
+                const setorInput = document.getElementById('at_setor');
+                if (setorInput) setorInput.value = setor;
             });
         }
         
@@ -654,6 +674,7 @@ async function salvarAtestado() {
         const colabSelect = document.getElementById('at_colab');
         const colabNome = colabSelect.options[colabSelect.selectedIndex].text;
         const empId = document.getElementById('at_empresa').value;
+        const setor = document.getElementById('at_setor').value;
         const data = document.getElementById('at_data').value;
         const duracaoTipo = document.querySelector('input[name="duracaoTipo"]:checked').value;
         const duracaoValor = duracaoTipo === 'dias' ? parseInt(document.getElementById('at_dias').value, 10) : parseInt(document.getElementById('at_horas').value, 10);
@@ -742,6 +763,7 @@ async function salvarAtestado() {
                 colaborador_nome: colabNome,
                 funcionarioId: colabSelect.value,                
                 empresaId: empId,
+                setor: setor,
                 data_inicio: dataAtestadoObj,
                 data_termino_prevista: null, // Fica em aberto até a perícia
                 dias_atestado_inicial: dias,
@@ -759,6 +781,7 @@ async function salvarAtestado() {
             colaborador_nome: colabNome,
             funcionarioId: colabSelect.value,
             empresaId: empId,            
+            setor: setor,
             data_atestado: dataAtestadoObj,            
             duracaoTipo: duracaoTipo,
             duracaoValor: duracaoValor,

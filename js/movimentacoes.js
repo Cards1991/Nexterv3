@@ -1069,12 +1069,23 @@ async function abrirNovaReposicaoModal() {
         const selectFuncionario = document.getElementById('rep-nova-funcionario');
         selectFuncionario.innerHTML = '<option value="">Selecione um funcionário (opcional)</option>';
         
+        // Buscar reposições já existentes para evitar duplicidade
+        const reposicoesSnap = await db.collection('reposicoes').get();
+        const funcionariosComReposicao = new Set();
+        reposicoesSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.funcionarioId) {
+                funcionariosComReposicao.add(data.funcionarioId);
+            }
+        });
+
         // Filtra funcionários demitidos e que necessitam de reposição
         const funcSnap = await db.collection('funcionarios').where('status', '==', 'Inativo').orderBy('nome').get();
         funcSnap.forEach(doc => {
             const funcionario = doc.data();
             // Filtro em memória para garantir compatibilidade se o campo não existir em registros antigos
-            if (funcionario.necessitaReposicao === true) {
+            // E verifica se já não existe solicitação para este funcionário
+            if (funcionario.necessitaReposicao === true && !funcionariosComReposicao.has(doc.id)) {
                 const option = document.createElement('option');
                 option.value = doc.id;
                 option.textContent = `${funcionario.nome}`;

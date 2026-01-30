@@ -447,10 +447,54 @@ async function atualizarAlteracao(id) {
 }
 
 async function excluirAlteracao(id) {
-    if (!confirm("Tem certeza que deseja excluir este registro de alteração?")) return;
+    if (!confirm("Tem certeza que deseja excluir este registro de alteração? O cadastro do funcionário será revertido para o setor/cargo anterior.")) return;
+    
     try {
-        await db.collection('alteracoes_funcao').doc(id).delete();
-        mostrarMensagem("Registro de alteração excluído com sucesso.", "success");
+        const docRef = db.collection('alteracoes_funcao').doc(id);
+        const docSnap = await docRef.get();
+
+        if (!docSnap.exists) {
+            mostrarMensagem("Registro de alteração não encontrado.", "error");
+            return;
+        }
+
+        const alteracao = docSnap.data();
+        const funcionarioId = alteracao.funcionarioId;
+
+        if (funcionarioId) {
+            const funcRef = db.collection('funcionarios').doc(funcionarioId);
+            
+            await db.runTransaction(async (transaction) => {
+                const funcDoc = await transaction.get(funcRef);
+                if (funcDoc.exists) {
+                    const funcData = funcDoc.data();
+                    
+                    // Reverte os dados cadastrais para a origem
+                    const updateData = {
+                        setor: alteracao.setorOrigem,
+                        cargo: alteracao.cargoOrigem,
+                        empresaId: alteracao.empresaIdOrigem
+                    };
+
+                    // Remove do histórico de movimentações do funcionário
+                    let historico = funcData.historicoMovimentacoes || [];
+                    const novoHistorico = historico.filter(h => h.alteracaoFuncaoId !== id);
+
+                    transaction.update(funcRef, {
+                        ...updateData,
+                        historicoMovimentacoes: novoHistorico
+                    });
+                }
+                
+                // Exclui o registro de alteração
+                transaction.delete(docRef);
+            });
+        } else {
+            // Se não tiver funcionário vinculado, apenas exclui o registro
+            await docRef.delete();
+        }
+
+        mostrarMensagem("Registro de alteração excluído e cadastro revertido com sucesso.", "success");
         await carregarHistoricoAlteracoes();
     } catch (error) {
         console.error("Erro ao excluir alteração:", error);
