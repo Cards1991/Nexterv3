@@ -1,0 +1,5 @@
+
+window.visualizarSolicitacaoMovimentacao = visualizarSolicitacaoMovimentacao;
+window.editarSolicitacaoMovimentacao = editarSolicitacaoMovimentacao;
+window.preencherVagaMovimentacao = preencherVagaMovimentacao;
+window.excluirSolicitacaoMovimentacao = excluirSolicitacaoMovimentacao;
