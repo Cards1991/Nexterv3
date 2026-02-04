@@ -57,7 +57,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirecionar após breve delay para mostrar mensagem de sucesso
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = 'index.html'; // CORREÇÃO AQUI
                 }, 1000);
                 
             } catch (error) {
@@ -126,7 +126,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirecionar após breve delay
                 setTimeout(() => {
-                    window.location.href = 'index.html';
+                    window.location.href = 'index.html'; // CORREÇÃO AQUI
                 }, 1000);
                 
             } catch (error) {
@@ -233,13 +233,3 @@ function toggleSenhaVisibility() {
         toggleIcon.className = 'fas fa-eye';
     }
 }
-
-// Se quiser adicionar botão para mostrar/ocultar senha, adicione este HTML no seu form:
-/*
-<div class="input-group mb-3">
-    <input type="password" class="form-control" id="login-senha" placeholder="••••••••" required>
-    <button class="btn btn-outline-secondary" type="button" onclick="toggleSenhaVisibility()">
-        <i class="fas fa-eye" id="toggle-senha-icon"></i>
-    </button>
-</div>
-*/
