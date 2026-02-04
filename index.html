@@ -525,22 +525,24 @@
                         </div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center mb-3">
-                        <div class="row g-2 align-items-end">
-                            <div class="col-auto">
-                                <label class="form-label mb-1">De:</label>
+                    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-3 gap-3">
+                        <div class="row g-2 align-items-end w-100">
+                            <div class="col-6 col-md-auto">
+                                <label class="form-label mb-1 small">De:</label>
                                 <input type="date" class="form-control form-control-sm" id="filtro-data-inicio-atestados">
                             </div>
-                             <div class="col-auto">
-                                <label class="form-label mb-1">Até:</label>
+                             <div class="col-6 col-md-auto">
+                                <label class="form-label mb-1 small">Até:</label>
                                 <input type="date" class="form-control form-control-sm" id="filtro-data-fim-atestados">
                             </div>
-                            <div class="col-auto">
+                            <div class="col-12 col-md-auto">
+                                <label class="form-label mb-1 small d-md-none">Empresa:</label>
                                 <select class="form-select form-select-sm" id="filtro-empresa-atestados">
                                     <option value="">Todas as empresas</option>
                                 </select>
                             </div>
-                            <div class="col-auto">
+                            <div class="col-6 col-md-auto">
+                                <label class="form-label mb-1 small d-md-none">Tipo:</label>
                                 <select class="form-select form-select-sm" id="filtro-tipo-atestados">
                                     <option value="">Todos os tipos</option>
                                     <option value="Doença">Doença</option>
@@ -550,7 +552,8 @@
                                     <option value="Outros">Outros</option>
                                 </select>
                             </div>
-                            <div class="col-auto">
+                            <div class="col-6 col-md-auto">
+                                <label class="form-label mb-1 small d-md-none">Status:</label>
                                 <select class="form-select form-select-sm" id="filtro-status-atestados">
                                     <option value="">Todos</option>
                                     <option value="Válido">Válidos</option>
@@ -558,16 +561,16 @@
                                     <option value="Analise">Em Análise</option>
                                 </select>
                             </div>
-                            <div class="col-auto">
-                                <button class="btn btn-outline-secondary btn-sm" id="btn-filtrar-atestados"><i class="fas fa-filter"></i></button>
+                            <div class="col-12 col-md-auto">
+                                <button class="btn btn-outline-secondary btn-sm w-100" id="btn-filtrar-atestados"><i class="fas fa-filter"></i> <span class="d-md-none">Filtrar</span></button>
                             </div>
                         </div>
-                        <div class="btn-group">
-                            <button class="btn btn-success" onclick="exportarAtestadosExcel()">
-                                <i class="fas fa-file-excel me-2"></i>Exportar para Excel
+                        <div class="d-flex gap-2 w-100 w-xl-auto justify-content-end">
+                            <button class="btn btn-success flex-grow-1 flex-xl-grow-0" onclick="exportarAtestadosExcel()">
+                                <i class="fas fa-file-excel me-2"></i><span class="d-none d-sm-inline">Exportar</span>
                             </button>
-                            <button class="btn btn-primary" id="btn-novo-atestado">
-                                <i class="fas fa-plus-circle"></i> Novo Atestado
+                            <button class="btn btn-primary flex-grow-1 flex-xl-grow-0" id="btn-novo-atestado">
+                                <i class="fas fa-plus-circle me-2"></i><span class="d-none d-sm-inline">Novo</span>
                             </button>
                         </div>
                     </div>
