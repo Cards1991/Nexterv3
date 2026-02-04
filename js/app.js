@@ -1215,7 +1215,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
         } else {
             // Redirecionar para login se não estiver autenticado
-            window.location.href = 'login.html';
+            // Verifica se já não está na página de login para evitar loops
+            if (!window.location.href.includes('login.html')) {
+                 window.location.replace('login.html');
+            }
         }
     });
 });
@@ -1469,38 +1472,4 @@ window.carregarSetoresPorEmpresa = carregarSetoresPorEmpresa;
 // Função para configurar o preenchimento automático na tela de demissão
 function configurarListenerDemissao() {
     const select = document.getElementById('demissao-funcionario');
-    if (select && !select.dataset.listenerAdded) {
-        select.addEventListener('change', async function() {
-            const funcId = this.value;
-            const setorInput = document.getElementById('demissao-setor');
-            const gerenteInput = document.getElementById('demissao-gerente');
-            
-            if (!funcId) {
-                if(setorInput) setorInput.value = '';
-                if(gerenteInput) gerenteInput.value = '';
-                return;
-            }
-            
-            try {
-                const doc = await db.collection('funcionarios').doc(funcId).get();
-                if (doc.exists) {
-                    const data = doc.data();
-                    if(setorInput) setorInput.value = data.setor || '';
-                    
-                    if(gerenteInput) {
-                        if (data.liderId) {
-                            const liderDoc = await db.collection('funcionarios').doc(data.liderId).get();
-                            gerenteInput.value = liderDoc.exists ? liderDoc.data().nome : 'Não encontrado';
-                        } else {
-                            gerenteInput.value = 'Não informado';
-                        }
-                    }
-                }
-            } catch (error) {
-                console.error("Erro ao carregar detalhes do funcionário para demissão:", error);
-            }
-        });
-        select.dataset.listenerAdded = 'true';
-    }
-}
-window.configurarListenerDemissao = configurarListenerDemissao;
+    if (select && !select.dataset.listenerAdd

@@ -6,7 +6,9 @@ document.addEventListener('DOMContentLoaded', function() {
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
             console.log('Usuário já autenticado, redirecionando para sistema...');
-            window.location.href = 'index.html';
+            if (!window.location.href.includes('index.html') && window.location.pathname !== '/') {
+                window.location.replace('index.html');
+            }
         }
     });
 
