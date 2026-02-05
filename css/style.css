@@ -1047,6 +1047,17 @@ body {
         font-weight: bold;
         color: #6c757d;
     }
+
+    /* Ajuste específico para a coluna de ações em mobile */
+    .table-responsive td:last-child {
+        padding-left: 0.5rem !important;
+        text-align: right;
+        display: flex;
+        justify-content: flex-end;
+    }
+    .table-responsive td:last-child:before {
+        display: none;
+    }
     
     /* KPIs responsivos */
     .row-cols-md-2 > * {
@@ -1059,6 +1070,10 @@ body {
         width: 50%;
     }
     
+    .row-cols-lg-3 > * {
+        width: 33.33333333%;
+    }
+
     /* Cards de KPIs menores */
     .card-body .h4 {
         font-size: 1.25rem;

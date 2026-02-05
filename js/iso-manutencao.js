@@ -11,19 +11,41 @@ const WHATSAPP_CONFIG = {
     mensagemPadrao: '🚨 *NOVO CHAMADO DE MANUTENÇÃO*\n\nMáquina: {maquina}\nMotivo: {motivo}\nPrioridade: {prioridade}\nStatus: {status}\n\nClique para acessar: {link}'
 };
 
+// ============ VERIFICAÇÕES INICIAIS ============
+if (typeof firebase === 'undefined' || !firebase.apps.length) {
+    console.error('Firebase não foi inicializado. Certifique-se de que firebase.js foi carregado.');
+}
+
+if (typeof db === 'undefined') {
+    console.error('Variável db não definida. Certifique-se de inicializar o Firestore.');
+}
+
 // ============ INICIALIZAÇÃO ============
 async function inicializarManutencao() {
     try {
+        // Verificar se Firebase está disponível
+        if (typeof firebase === 'undefined' || !firebase.apps.length) {
+            mostrarMensagem("Firebase não inicializado. Recarregue a página.", "error");
+            return;
+        }
+        
+        if (typeof db === 'undefined') {
+            mostrarMensagem("Banco de dados não disponível.", "error");
+            return;
+        }
+
         // Configurar botões
         const btnNovo = document.getElementById('btn-novo-chamado-manutencao');
-        if (btnNovo && !btnNovo.__bound) {
-            btnNovo.addEventListener('click', () => abrirModalChamado(null));
-            btnNovo.__bound = true;
-        }
         const btnFiltrar = document.getElementById('btn-filtrar-manutencao');
-        if (btnFiltrar && !btnFiltrar.__bound) {
+        
+        if (btnNovo && !btnNovo.hasAttribute('data-listener-bound')) {
+            btnNovo.addEventListener('click', () => abrirModalChamado(null));
+            btnNovo.setAttribute('data-listener-bound', 'true');
+        }
+        
+        if (btnFiltrar && !btnFiltrar.hasAttribute('data-listener-bound')) {
             btnFiltrar.addEventListener('click', carregarChamadosManutencao);
-            btnFiltrar.__bound = true;
+            btnFiltrar.setAttribute('data-listener-bound', 'true');
         }
 
         // Carregar configurações do gerente
@@ -85,6 +107,11 @@ function enviarNotificacaoWhatsApp(chamadoData) {
 
     try {
         const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
+        if (!telefone) {
+            console.warn('Número de telefone inválido para WhatsApp');
+            return false;
+        }
+        
         // URL do sistema (para acesso rápido)
         const urlSistema = window.location.origin;
         
@@ -135,17 +162,21 @@ function enviarNotificacaoWhatsApp(chamadoData) {
 }
 
 function mostrarLinkWhatsAppManual(link) {
+    // Remove alerta anterior se existir
+    const alertaAnterior = document.getElementById('whatsapp-manual-alert');
+    if (alertaAnterior) alertaAnterior.remove();
+    
     const linkManual = document.createElement('div');
     linkManual.className = 'alert alert-info mt-3';
     linkManual.id = 'whatsapp-manual-alert';
     linkManual.innerHTML = `
         <div class="d-flex justify-content-between align-items-center">
             <div>
-                <h6><i class="fab fa-whatsapp"></i> Notificação WhatsApp</h6>
+                <h6 class="mb-1"><i class="fab fa-whatsapp"></i> Notificação WhatsApp</h6>
                 <p class="mb-0">Clique para enviar notificação ao gerente:</p>
             </div>
             <div>
-                <a href="${link}" target="_blank" class="btn btn-success">
+                <a href="${link}" target="_blank" class="btn btn-success btn-sm">
                     <i class="fab fa-whatsapp"></i> Enviar WhatsApp
                 </a>
                 <button class="btn btn-sm btn-outline-secondary ms-2" onclick="document.getElementById('whatsapp-manual-alert').remove()">
@@ -165,10 +196,12 @@ function mostrarLinkWhatsAppManual(link) {
 }
 
 function enviarAlertaCriticoWhatsApp(chamadoData) {
-    if (!chamadoData.maquinaParada || !WHATSAPP_CONFIG.enabled) return;
+    if (!chamadoData.maquinaParada || !WHATSAPP_CONFIG.enabled) return false;
     
     try {
         const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
+        if (!telefone) return false;
+        
         const mensagemAlerta = `🔥 *ALERTA CRÍTICO - MÁQUINA PARADA* 🔥\n\n` +
             `🚫 MÁQUINA: ${chamadoData.maquinaId}\n` +
             `📋 MOTIVO: ${chamadoData.motivo}\n` +
@@ -222,6 +255,7 @@ async function reenviarNotificacao(chamadoId) {
             mostrarMensagem("Notificação reenviada com sucesso!", "success");
         } catch (error) {
             console.error("Erro ao atualizar status da notificação:", error);
+            mostrarMensagem("Notificação enviada, mas erro ao atualizar status", "warning");
         }
     }
 }
@@ -253,11 +287,11 @@ function abrirConfigWhatsApp() {
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Telefone do Gerente</label>
+                            <label class="form-label">Telefone do Gerente *</label>
                             <div class="input-group">
                                 <span class="input-group-text">+55</span>
                                 <input type="text" class="form-control" id="config-whatsapp-telefone" 
-                                       placeholder="11999999999" value="${WHATSAPP_CONFIG.gerenteTelefone}">
+                                       placeholder="11999999999" value="${WHATSAPP_CONFIG.gerenteTelefone || ''}" required>
                             </div>
                             <div class="form-text">Número com DDD, sem espaços ou caracteres especiais</div>
                         </div>
@@ -265,12 +299,12 @@ function abrirConfigWhatsApp() {
                         <div class="mb-3">
                             <label class="form-label">Nome do Destinatário (opcional)</label>
                             <input type="text" class="form-control" id="config-whatsapp-nome" 
-                                   placeholder="Nome do gerente" value="${WHATSAPP_CONFIG.gerenteNome}">
+                                   placeholder="Nome do gerente" value="${WHATSAPP_CONFIG.gerenteNome || ''}">
                         </div>
                         
                         <div class="mb-3">
-                            <label class="form-label">Mensagem Padrão</label>
-                            <textarea class="form-control" id="config-whatsapp-mensagem" rows="5">${WHATSAPP_CONFIG.mensagemPadrao}</textarea>
+                            <label class="form-label">Mensagem Padrão *</label>
+                            <textarea class="form-control" id="config-whatsapp-mensagem" rows="5" required>${WHATSAPP_CONFIG.mensagemPadrao}</textarea>
                             <div class="form-text">
                                 <small>
                                     <strong>Variáveis disponíveis:</strong><br>
@@ -284,7 +318,7 @@ function abrirConfigWhatsApp() {
                             </div>
                         </div>
                         
-                        <div class="form-check form-switch">
+                        <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" id="config-whatsapp-ativo" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''}>
                             <label class="form-check-label" for="config-whatsapp-ativo">
                                 Ativar notificações por WhatsApp
@@ -314,14 +348,37 @@ function abrirConfigWhatsApp() {
 }
 
 async function salvarConfigWhatsApp() {
-    const telefone = document.getElementById('config-whatsapp-telefone').value;
-    const mensagem = document.getElementById('config-whatsapp-mensagem').value;
-    const nome = document.getElementById('config-whatsapp-nome').value;
-    const ativo = document.getElementById('config-whatsapp-ativo').checked;
+    const telefoneInput = document.getElementById('config-whatsapp-telefone');
+    const mensagemInput = document.getElementById('config-whatsapp-mensagem');
+    const nomeInput = document.getElementById('config-whatsapp-nome');
+    const ativoInput = document.getElementById('config-whatsapp-ativo');
+    
+    if (!telefoneInput || !mensagemInput) {
+        mostrarMensagem("Elementos do formulário não encontrados", "error");
+        return;
+    }
+    
+    const telefone = telefoneInput.value.trim();
+    const mensagem = mensagemInput.value.trim();
+    const nome = nomeInput ? nomeInput.value.trim() : '';
+    const ativo = ativoInput ? ativoInput.checked : false;
 
-    // Validação básica
+    // Validação
     if (ativo && !telefone) {
         mostrarMensagem("Informe o telefone para ativar as notificações", "warning");
+        telefoneInput.focus();
+        return;
+    }
+    
+    if (!mensagem) {
+        mostrarMensagem("A mensagem padrão é obrigatória", "warning");
+        mensagemInput.focus();
+        return;
+    }
+    
+    if (ativo && !formatarTelefoneWhatsApp(telefone)) {
+        mostrarMensagem("Número de telefone inválido", "warning");
+        telefoneInput.focus();
         return;
     }
 
@@ -338,29 +395,45 @@ async function salvarConfigWhatsApp() {
             nomeDestinatario: nome,
             ativo,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-            atualizadoPor: firebase.auth().currentUser?.uid
+            atualizadoPor: firebase.auth().currentUser?.uid || 'sistema'
         }, { merge: true });
         
         mostrarMensagem("Configurações do WhatsApp salvas com sucesso!", "success");
         bootstrap.Modal.getInstance(document.getElementById('configWhatsAppModal')).hide();
     } catch (error) {
         console.error("Erro ao salvar configurações:", error);
-        mostrarMensagem("Configurações salvas localmente", "info");
+        mostrarMensagem("Erro ao salvar no banco de dados. Configurações salvas apenas localmente.", "warning");
     }
 }
 
 function testarWhatsApp() {
-    const telefone = document.getElementById('config-whatsapp-telefone').value;
+    const telefoneInput = document.getElementById('config-whatsapp-telefone');
+    if (!telefoneInput) {
+        mostrarMensagem("Campo de telefone não encontrado", "error");
+        return;
+    }
+    
+    const telefone = telefoneInput.value.trim();
     if (!telefone) {
         mostrarMensagem("Informe um telefone para testar", "warning");
+        telefoneInput.focus();
         return;
     }
 
+    const telefoneFormatado = formatarTelefoneWhatsApp(telefone);
+    if (!telefoneFormatado) {
+        mostrarMensagem("Número de telefone inválido", "warning");
+        return;
+    }
+    
     const mensagemTeste = "🔔 *TESTE DE NOTIFICAÇÃO*\n\nEsta é uma mensagem de teste do sistema de manutenção.\n\n✅ Sistema funcionando corretamente!\n\nHora: " + new Date().toLocaleTimeString('pt-BR');
     const mensagemCodificada = encodeURIComponent(mensagemTeste);
-    const telefoneFormatado = formatarTelefoneWhatsApp(telefone);
     const whatsappLink = `https://wa.me/${telefoneFormatado}?text=${mensagemCodificada}`;
-    window.open(whatsappLink, '_blank');
+    
+    const janelaTeste = window.open(whatsappLink, '_blank');
+    if (!janelaTeste) {
+        mostrarLinkWhatsAppManual(whatsappLink);
+    }
 }
 
 function adicionarBotaoConfigWhatsApp() {
@@ -371,7 +444,7 @@ function adicionarBotaoConfigWhatsApp() {
         const btnConfig = document.createElement('button');
         btnConfig.id = 'btn-config-whatsapp';
         btnConfig.className = 'btn btn-success';
-        btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar Notificações';
+        btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar WhatsApp';
         btnConfig.title = 'Configurar notificações por WhatsApp';
         btnConfig.onclick = abrirConfigWhatsApp;
         
@@ -382,11 +455,18 @@ function adicionarBotaoConfigWhatsApp() {
 
 // ============ FUNÇÕES PRINCIPAIS DE MANUTENÇÃO ============
 async function carregarChamadosManutencao() {
+    // Limpar listener anterior se existir
     if (__unsubscribe_manutencao) {
         __unsubscribe_manutencao();
+        __unsubscribe_manutencao = null;
     }
 
     const tbody = document.getElementById('tabela-chamados-manutencao');
+    if (!tbody) {
+        console.error("Elemento tabela-chamados-manutencao não encontrado");
+        return;
+    }
+    
     tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
@@ -395,8 +475,8 @@ async function carregarChamadosManutencao() {
 
         let query = db.collection('manutencao_chamados');
 
-        const dataInicio = document.getElementById('filtro-manut-inicio').value;
-        const dataFim = document.getElementById('filtro-manut-fim').value;
+        const dataInicio = document.getElementById('filtro-manut-inicio')?.value;
+        const dataFim = document.getElementById('filtro-manut-fim')?.value;
 
         if (dataInicio) {
             query = query.where('dataAbertura', '>=', new Date(dataInicio));
@@ -473,13 +553,13 @@ async function carregarChamadosManutencao() {
                 let prioridadeConteudo;
                 if (chamado.status === 'Aberto' || chamado.status === 'Em Andamento') {
                     prioridadeConteudo = `
-                        <select class="form-select form-select-sm ${prioridadeBadgeClass}" style="max-width: 120px; line-height: 1;" onchange="atualizarPrioridade('${chamado.id}', this.value)">
+                        <select class="form-select form-select-sm w-auto d-inline-block ${prioridadeBadgeClass}" onchange="atualizarPrioridade('${chamado.id}', this.value)">
                             <option value="Normal" ${chamado.prioridade === 'Normal' ? 'selected' : ''}>Normal</option>
                             <option value="Prioritário" ${chamado.prioridade === 'Prioritário' ? 'selected' : ''}>Prioritário</option>
                             <option value="Urgente" ${chamado.prioridade === 'Urgente' ? 'selected' : ''}>Urgente</option>
                         </select>`;
                 } else {
-                    prioridadeConteudo = '';
+                    prioridadeConteudo = `<span class="badge ${prioridadeBadgeClass}">${chamado.prioridade || 'Normal'}</span>`;
                 }
 
                 let tempoParadaConteudo;
@@ -507,7 +587,7 @@ async function carregarChamadosManutencao() {
                             ${chamado.maquinaId}
                             ${isCritica ? '<span class="badge bg-dark ms-1" title="Máquina Crítica">Crítica</span>' : ''}
                         </td>
-                        <td>${chamado.motivo}</td>
+                        <td>${chamado.motivo || ''}</td>
                         <td>${abertura ? abertura.toLocaleString('pt-BR') : '-'}</td>
                         <td>${encerramento ? encerramento.toLocaleString('pt-BR') : '-'}</td>
                         <td>${tempoParadaConteudo}</td>
@@ -520,18 +600,18 @@ async function carregarChamadosManutencao() {
                         </td>
                         <td class="text-end">
                             ${botaoWhatsApp}
-                            <button class="btn btn-outline-secondary" title="Imprimir Chamado" onclick="imprimirChamado('${chamado.id}')">
+                            <button class="btn btn-outline-secondary btn-sm" title="Imprimir Chamado" onclick="imprimirChamado('${chamado.id}')">
                                 <i class="fas fa-print"></i>
                             </button>
                             ${chamado.status === 'Aberto' ? `
-                                <button class="btn btn-outline-info" title="Iniciar Atendimento" onclick="iniciarAtendimento('${chamado.id}')">
+                                <button class="btn btn-outline-info btn-sm" title="Iniciar Atendimento" onclick="iniciarAtendimento('${chamado.id}')">
                                     <i class="fas fa-play-circle"></i>
                                 </button>` : ''}
                             ${chamado.status === 'Aberto' || chamado.status === 'Em Andamento' ? `
-                                <button class="btn btn-outline-success" title="Finalizar Chamado" onclick="abrirModalFinalizar('${chamado.id}')">
+                                <button class="btn btn-outline-success btn-sm" title="Finalizar Chamado" onclick="abrirModalFinalizar('${chamado.id}')">
                                     <i class="fas fa-check-circle"></i>
                                 </button>` : ''}
-                            <button class="btn btn-outline-danger" title="Excluir Chamado" onclick="excluirChamado('${chamado.id}')">
+                            <button class="btn btn-outline-danger btn-sm" title="Excluir Chamado" onclick="excluirChamado('${chamado.id}')">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </td>
@@ -542,10 +622,15 @@ async function carregarChamadosManutencao() {
 
             tbody.innerHTML = tableHtml;
             renderizarMetricasManutencao(__chamados_cache);
+        }, error => {
+            console.error("Erro no listener de chamados:", error);
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar chamados.</td></tr>';
         });
     } catch (error) {
         console.error("Erro ao carregar chamados de manutenção:", error);
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar chamados.</td></tr>';
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar chamados.</td></tr>';
+        }
     }
 }
 
@@ -564,38 +649,38 @@ function renderizarMetricasManutencao(chamados) {
 
     container.innerHTML = `
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-danger text-white">
-                <div class="card-body">
-                    <i class="fas fa-exclamation-circle"></i>
-                    <div class="number">${abertos}</div>
-                    <div class="label">Chamados em Aberto</div>
+            <div class="card stat-card bg-warning text-dark">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
+                    <div class="number display-6 fw-bold">${abertos}</div>
+                    <div class="label text-uppercase small">Chamados em Aberto</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3 mb-4">
             <div class="card stat-card bg-success text-white">
-                <div class="card-body">
-                    <i class="fas fa-check-circle"></i>
-                    <div class="number">${concluidos}</div>
-                    <div class="label">Concluídos</div>
+                <div class="card-body text-center">
+                    <i class="fas fa-check-circle fa-2x mb-2"></i>
+                    <div class="number display-6 fw-bold">${concluidos}</div>
+                    <div class="label text-uppercase small">Concluídos</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-warning text-dark ${classUrgentes}">
-                <div class="card-body">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <div class="number">${urgentes}</div>
-                    <div class="label">Urgentes</div>
+            <div class="card stat-card bg-danger text-white ${classUrgentes}">
+                <div class="card-body text-center">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
+                    <div class="number display-6 fw-bold">${urgentes}</div>
+                    <div class="label text-uppercase small">Urgentes</div>
                 </div>
             </div>
         </div>
         <div class="col-md-3 mb-4">
             <div class="card stat-card bg-dark text-white ${classParadas}">
-                <div class="card-body">
-                    <i class="fas fa-industry"></i>
-                    <div class="number">${paradas}</div>
-                    <div class="label">Máquinas Paradas</div>
+                <div class="card-body text-center">
+                    <i class="fas fa-industry fa-2x mb-2"></i>
+                    <div class="number display-6 fw-bold">${paradas}</div>
+                    <div class="label text-uppercase small">Máquinas Paradas</div>
                 </div>
             </div>
         </div>
@@ -616,13 +701,13 @@ async function abrirModalChamado(chamadoId = null) {
                 <div class="modal-content">
                     <div class="modal-header bg-primary text-white">
                         <h5 class="modal-title">
-                            <i class="fas fa-tools"></i> Abrir Chamado de Manutenção
+                            <i class="fas fa-tools"></i> ${chamadoId ? 'Editar' : 'Abrir'} Chamado de Manutenção
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
                         <form id="form-chamado-manutencao">
-                            <input type="hidden" id="chamado-id">
+                            <input type="hidden" id="chamado-id" value="${chamadoId || ''}">
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label class="form-label">Máquina *</label>
@@ -679,7 +764,7 @@ async function abrirModalChamado(chamadoId = null) {
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-primary" onclick="salvarChamado()">
-                            <i class="fas fa-paper-plane"></i> Abrir Chamado
+                            <i class="fas fa-paper-plane"></i> ${chamadoId ? 'Atualizar' : 'Abrir'} Chamado
                         </button>
                     </div>
                 </div>
@@ -688,22 +773,48 @@ async function abrirModalChamado(chamadoId = null) {
         document.body.appendChild(modalEl);
     }
 
-    document.getElementById('form-chamado-manutencao').reset();
+    const form = document.getElementById('form-chamado-manutencao');
+    if (form) form.reset();
+    
     document.getElementById('chamado-id').value = chamadoId || '';
     document.getElementById('chamado-prioridade').value = 'Normal';
     document.getElementById('chamado-enviar-whatsapp').checked = WHATSAPP_CONFIG.enabled;
     document.getElementById('chamado-enviar-whatsapp').disabled = !WHATSAPP_CONFIG.enabled;
 
+    // Se for edição, carrega os dados existentes
+    if (chamadoId) {
+        try {
+            const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
+            if (chamadoDoc.exists) {
+                const data = chamadoDoc.data();
+                document.getElementById('chamado-maquina').value = data.maquinaId || '';
+                document.getElementById('chamado-motivo').value = data.motivo || '';
+                document.getElementById('chamado-obs').value = data.observacoes || '';
+                document.getElementById('chamado-prioridade').value = data.prioridade || 'Normal';
+                document.getElementById('chamado-maquina-parada').checked = data.maquinaParada || false;
+            }
+        } catch (error) {
+            console.error("Erro ao carregar dados do chamado:", error);
+        }
+    }
+
     // Popular select de máquinas
     const maquinaSelect = document.getElementById('chamado-maquina');
+    if (!maquinaSelect) return;
+    
     maquinaSelect.innerHTML = '<option value="">Carregando máquinas...</option>';
 
     if (!__maquinas_cache) {
-        const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
-        __maquinas_cache = maquinasSnap.docs.map(doc => doc.data());
+        try {
+            const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
+            __maquinas_cache = maquinasSnap.docs.map(doc => doc.data());
+        } catch (error) {
+            console.error("Erro ao carregar máquinas:", error);
+            __maquinas_cache = [];
+        }
     }
 
-    if (__maquinas_cache) {
+    if (__maquinas_cache && __maquinas_cache.length > 0) {
         maquinaSelect.innerHTML = '<option value="">Selecione uma máquina</option>';
         __maquinas_cache.forEach(maquina => {
             maquinaSelect.innerHTML += `<option value="${maquina.codigo}">${maquina.nome} (Cód: ${maquina.codigo})</option>`;
@@ -717,12 +828,13 @@ async function abrirModalChamado(chamadoId = null) {
 }
 
 async function salvarChamado() {
-    const maquinaId = document.getElementById('chamado-maquina').value;
-    const motivo = document.getElementById('chamado-motivo').value;
-    const observacoes = document.getElementById('chamado-obs').value;
-    const maquinaParada = document.getElementById('chamado-maquina-parada').checked;
-    const prioridade = document.getElementById('chamado-prioridade').value;
-    const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp').checked && WHATSAPP_CONFIG.enabled;
+    const maquinaId = document.getElementById('chamado-maquina')?.value;
+    const motivo = document.getElementById('chamado-motivo')?.value;
+    const observacoes = document.getElementById('chamado-obs')?.value;
+    const maquinaParada = document.getElementById('chamado-maquina-parada')?.checked || false;
+    const prioridade = document.getElementById('chamado-prioridade')?.value || 'Normal';
+    const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp')?.checked && WHATSAPP_CONFIG.enabled;
+    const chamadoId = document.getElementById('chamado-id')?.value;
 
     if (!maquinaId || !motivo) {
         mostrarMensagem("Selecione a máquina e descreva o motivo.", "warning");
@@ -742,52 +854,63 @@ async function salvarChamado() {
             maquinaParada,
             prioridade,
             paradaInicioTimestamp: maquinaParada ? firebase.firestore.FieldValue.serverTimestamp() : null,
-            status: 'Aberto',
             dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
-            dataEncerramento: null,
-            tempoParada: null,
-            pecasUtilizadas: null,
-            tipoManutencao: null,
-            mecanicoResponsavelNome: null,
             createdByUid: firebase.auth().currentUser?.uid,
             createdByNome: firebase.auth().currentUser?.displayName || 'Usuário',
             notificacaoEnviada: false
         };
 
-        // Salva o chamado
-        const docRef = await db.collection('manutencao_chamados').add(chamadoData);
-        const chamadoId = docRef.id;
-        const chamadoCompleto = { id: chamadoId, ...chamadoData };
-
-        // ENVIA NOTIFICAÇÃO WHATSAPP
-        let notificacaoEnviada = false;
-        if (enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
-            // Envia notificação principal
-            notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto);
+        let docRef;
+        let chamadoCompleto;
+        
+        if (chamadoId) {
+            // Atualizar chamado existente
+            await db.collection('manutencao_chamados').doc(chamadoId).update(chamadoData);
+            docRef = db.collection('manutencao_chamados').doc(chamadoId);
+            chamadoCompleto = { id: chamadoId, ...chamadoData };
+            mostrarMensagem("Chamado atualizado com sucesso!", "success");
+        } else {
+            // Criar novo chamado
+            chamadoData.status = 'Aberto';
+            chamadoData.dataEncerramento = null;
+            chamadoData.tempoParada = null;
+            chamadoData.pecasUtilizadas = null;
+            chamadoData.tipoManutencao = null;
+            chamadoData.mecanicoResponsavelNome = null;
             
-            // Se for máquina parada, envia alerta crítico
-            if (maquinaParada) {
-                setTimeout(() => enviarAlertaCriticoWhatsApp(chamadoCompleto), 1000);
-            }
+            docRef = await db.collection('manutencao_chamados').add(chamadoData);
+            const novoId = docRef.id;
+            chamadoCompleto = { id: novoId, ...chamadoData };
             
-            // Atualiza status da notificação
-            if (notificacaoEnviada) {
-                await docRef.update({ 
-                    notificacaoEnviada: true,
-                    notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
-                });
+            // ENVIA NOTIFICAÇÃO WHATSAPP
+            let notificacaoEnviada = false;
+            if (enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
+                // Envia notificação principal
+                notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto);
+                
+                // Se for máquina parada, envia alerta crítico
+                if (maquinaParada) {
+                    setTimeout(() => enviarAlertaCriticoWhatsApp(chamadoCompleto), 1000);
+                }
+                
+                // Atualiza status da notificação
+                if (notificacaoEnviada) {
+                    await docRef.update({ 
+                        notificacaoEnviada: true,
+                        notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
             }
-        }
 
-        // Feedback para o usuário
-        let mensagemSucesso = "✅ Chamado de manutenção aberto com sucesso!";
-        if (enviarWhatsapp && notificacaoEnviada) {
-            mensagemSucesso += " 📱 Notificação WhatsApp enviada.";
-        } else if (enviarWhatsapp && !notificacaoEnviada) {
-            mensagemSucesso += " ⚠️ Pop-up do WhatsApp bloqueado. Clique no botão WhatsApp na lista para enviar manualmente.";
+            // Feedback para o usuário
+            let mensagemSucesso = "✅ Chamado de manutenção aberto com sucesso!";
+            if (enviarWhatsapp && notificacaoEnviada) {
+                mensagemSucesso += " 📱 Notificação WhatsApp enviada.";
+            } else if (enviarWhatsapp && !notificacaoEnviada) {
+                mensagemSucesso += " ⚠️ Pop-up do WhatsApp bloqueado. Clique no botão WhatsApp na lista para enviar manualmente.";
+            }
+            mostrarMensagem(mensagemSucesso, "success");
         }
-
-        mostrarMensagem(mensagemSucesso, "success");
         
         // Fecha o modal
         bootstrap.Modal.getInstance(document.getElementById('manutencaoChamadoModal')).hide();
@@ -797,11 +920,11 @@ async function salvarChamado() {
 
     } catch (error) {
         console.error("Erro ao salvar chamado:", error);
-        mostrarMensagem("Erro ao abrir chamado: " + error.message, "error");
+        mostrarMensagem("Erro ao salvar chamado: " + error.message, "error");
     } finally {
         const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
         if (btnSalvar) {
-            btnSalvar.innerHTML = '<i class="fas fa-paper-plane"></i> Abrir Chamado';
+            btnSalvar.innerHTML = textoOriginal || '<i class="fas fa-paper-plane"></i> Salvar';
             btnSalvar.disabled = false;
         }
     }
@@ -809,6 +932,11 @@ async function salvarChamado() {
 
 // ============ FUNÇÕES DE GERENCIAMENTO ============
 async function atualizarPrioridade(chamadoId, novaPrioridade) {
+    if (!chamadoId || !novaPrioridade) {
+        mostrarMensagem("Dados inválidos para atualizar prioridade", "warning");
+        return;
+    }
+    
     try {
         await db.collection('manutencao_chamados').doc(chamadoId).update({
             prioridade: novaPrioridade,
@@ -822,7 +950,7 @@ async function atualizarPrioridade(chamadoId, novaPrioridade) {
             setTimeout(() => enviarAlertaCriticoWhatsApp({...chamado, prioridade: 'Urgente'}), 500);
         }
         
-        mostrarMensagem("Prioridade atualizada para " + novaPrioridade + "!", "info");
+        mostrarMensagem(`Prioridade atualizada para ${novaPrioridade}!`, "info");
     } catch (error) {
         console.error("Erro ao atualizar prioridade:", error);
         mostrarMensagem("Falha ao atualizar a prioridade.", "error");
@@ -847,7 +975,7 @@ async function iniciarAtendimento(chamadoId) {
                     <div class="modal-body">
                         <input type="hidden" id="iniciar-atendimento-id">
                         <div class="mb-3">
-                            <label class="form-label">Mecânico Responsável</label>
+                            <label class="form-label">Mecânico Responsável *</label>
                             <select class="form-select" id="iniciar-atendimento-mecanico" required></select>
                         </div>
                         <div class="form-check form-switch mb-3">
@@ -862,6 +990,7 @@ async function iniciarAtendimento(chamadoId) {
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-primary" onclick="confirmarInicioAtendimento()">Confirmar Início</button>
                     </div>
                 </div>
@@ -911,13 +1040,17 @@ async function iniciarAtendimento(chamadoId) {
     }
 
     // VERIFICAÇÃO DA MÁQUINA PARADA
-    const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
-    const perguntaContainer = document.getElementById('pergunta-parada-container');
+    try {
+        const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
+        const perguntaContainer = document.getElementById('pergunta-parada-container');
 
-    if (chamadoDoc.exists && chamadoDoc.data().maquinaParada) {
-        perguntaContainer.style.display = 'none'; // Esconde a pergunta
-    } else {
-        perguntaContainer.style.display = 'block'; // Mostra a pergunta
+        if (chamadoDoc.exists && chamadoDoc.data().maquinaParada) {
+            perguntaContainer.style.display = 'none'; // Esconde a pergunta
+        } else {
+            perguntaContainer.style.display = 'block'; // Mostra a pergunta
+        }
+    } catch (error) {
+        console.error("Erro ao verificar máquina parada:", error);
     }
 
     const modal = new bootstrap.Modal(modalEl);
@@ -955,7 +1088,7 @@ async function confirmarInicioAtendimento() {
             updateData.maquinaParada = true;
             // Apenas atualiza o timestamp se ele ainda não existir (para não sobrescrever o da abertura)
             const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
-            if (!chamadoDoc.data().paradaInicioTimestamp) {
+            if (chamadoDoc.exists && !chamadoDoc.data().paradaInicioTimestamp) {
                 updateData.paradaInicioTimestamp = new Date(inicioPrevisto);
             }
             
@@ -971,9 +1104,11 @@ async function confirmarInicioAtendimento() {
                         `Preparem-se para a parada programada!`;
                     
                     const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
-                    const mensagemCodificada = encodeURIComponent(mensagem);
-                    const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
-                    window.open(whatsappLink, '_blank');
+                    if (telefone) {
+                        const mensagemCodificada = encodeURIComponent(mensagem);
+                        const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
+                        window.open(whatsappLink, '_blank');
+                    }
                 }, 500);
             }
         }
@@ -1065,21 +1200,27 @@ async function abrirModalFinalizar(chamadoId) {
     }
 
     // Preencher dados do chamado no modal de finalização
-    const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
-    if (chamadoDoc.exists) {
-        const chamadoData = chamadoDoc.data();
-        // Se a máquina estava parada, o campo de observações do mecânico se torna obrigatório
-        const obsMecanicoInput = document.getElementById('finalizar-obs');
-        obsMecanicoInput.required = chamadoData.maquinaParada || false;
-        
-        // Preencher tempo de parada se existir
-        if (chamadoData.tempoParada) {
-            const tempoMatch = chamadoData.tempoParada.match(/(\d+)h\s*(\d+)?m?/);
-            if (tempoMatch) {
-                document.getElementById('finalizar-tempo-horas').value = tempoMatch[1] || 0;
-                document.getElementById('finalizar-tempo-minutos').value = tempoMatch[2] || 0;
+    try {
+        const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
+        if (chamadoDoc.exists) {
+            const chamadoData = chamadoDoc.data();
+            // Se a máquina estava parada, o campo de observações do mecânico se torna obrigatório
+            const obsMecanicoInput = document.getElementById('finalizar-obs');
+            if (obsMecanicoInput) {
+                obsMecanicoInput.required = chamadoData.maquinaParada || false;
+            }
+            
+            // Preencher tempo de parada se existir
+            if (chamadoData.tempoParada) {
+                const tempoMatch = chamadoData.tempoParada.match(/(\d+)h\s*(\d+)?m?/);
+                if (tempoMatch) {
+                    document.getElementById('finalizar-tempo-horas').value = tempoMatch[1] || 0;
+                    document.getElementById('finalizar-tempo-minutos').value = tempoMatch[2] || 0;
+                }
             }
         }
+    } catch (error) {
+        console.error("Erro ao carregar dados do chamado:", error);
     }
 
     document.getElementById('finalizar-chamado-id').value = chamadoId;
@@ -1092,13 +1233,20 @@ async function abrirModalFinalizar(chamadoId) {
 
     // Popular select de mecânicos
     const mecanicoSelect = document.getElementById('finalizar-mecanico');
-    mecanicoSelect.innerHTML = '<option value="">Carregando...</option>';
-    const mecanicosSnap = await db.collection('funcionarios').where('isMecanico', '==', true).orderBy('nome').get();
-    mecanicoSelect.innerHTML = '<option value="">Selecione o mecânico</option>';
-    mecanicosSnap.forEach(doc => {
-        const funcionario = doc.data();
-        mecanicoSelect.innerHTML += `<option value="${doc.id}">${funcionario.nome} - ${funcionario.matricula || ''}</option>`;
-    });
+    if (mecanicoSelect) {
+        mecanicoSelect.innerHTML = '<option value="">Carregando...</option>';
+        try {
+            const mecanicosSnap = await db.collection('funcionarios').where('isMecanico', '==', true).orderBy('nome').get();
+            mecanicoSelect.innerHTML = '<option value="">Selecione o mecânico</option>';
+            mecanicosSnap.forEach(doc => {
+                const funcionario = doc.data();
+                mecanicoSelect.innerHTML += `<option value="${doc.id}">${funcionario.nome} - ${funcionario.matricula || ''}</option>`;
+            });
+        } catch (error) {
+            console.error("Erro ao carregar mecânicos:", error);
+            mecanicoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
 
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
@@ -1106,15 +1254,15 @@ async function abrirModalFinalizar(chamadoId) {
 
 async function finalizarChamado() {
     const chamadoId = document.getElementById('finalizar-chamado-id').value;
-    const tipoManutencao = document.getElementById('finalizar-tipo-manutencao').value;
-    const observacoesMecanico = document.getElementById('finalizar-obs').value;
-    const pecasUtilizadas = document.getElementById('finalizar-pecas').value;
+    const tipoManutencao = document.getElementById('finalizar-tipo-manutencao')?.value;
+    const observacoesMecanico = document.getElementById('finalizar-obs')?.value;
+    const pecasUtilizadas = document.getElementById('finalizar-pecas')?.value;
     const mecanicoSelect = document.getElementById('finalizar-mecanico');
-    const mecanicoId = mecanicoSelect.value;
-    const mecanicoNome = mecanicoSelect.options[mecanicoSelect.selectedIndex].text.split(' - ')[0];
-    const horas = parseInt(document.getElementById('finalizar-tempo-horas').value) || 0;
-    const minutos = parseInt(document.getElementById('finalizar-tempo-minutos').value) || 0;
-    const enviarWhatsapp = document.getElementById('finalizar-enviar-whatsapp').checked;
+    const mecanicoId = mecanicoSelect?.value;
+    const mecanicoNome = mecanicoSelect ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text.split(' - ')[0] : '';
+    const horas = parseInt(document.getElementById('finalizar-tempo-horas')?.value) || 0;
+    const minutos = parseInt(document.getElementById('finalizar-tempo-minutos')?.value) || 0;
+    const enviarWhatsapp = document.getElementById('finalizar-enviar-whatsapp')?.checked;
 
     if (!tipoManutencao) {
         mostrarMensagem("Selecione o tipo de manutenção realizada.", "warning");
@@ -1186,9 +1334,11 @@ async function finalizarChamado() {
                     `🔧 *SERVIÇO REALIZADO:*\n${observacoesMecanico.substring(0, 200)}${observacoesMecanico.length > 200 ? '...' : ''}`;
                 
                 const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
-                const mensagemCodificada = encodeURIComponent(mensagemConclusao);
-                const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
-                window.open(whatsappLink, '_blank');
+                if (telefone) {
+                    const mensagemCodificada = encodeURIComponent(mensagemConclusao);
+                    const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
+                    window.open(whatsappLink, '_blank');
+                }
             }, 1000);
         }
 
@@ -1202,13 +1352,13 @@ async function finalizarChamado() {
         const btn = document.querySelector('#finalizarChamadoModal .btn-success');
         if (btn) {
             btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check"></i> Finalizar Chamado';
+            btn.innerHTML = textoOriginal || '<i class="fas fa-check"></i> Finalizar Chamado';
         }
     }
 }
 
 async function excluirChamado(chamadoId) {
-    if (!confirm("Tem certeza que deseja excluir este chamado permanentemente?\n\nEsta ação não pode ser desfeita!")) {
+    if (!confirm("Tem certeza que deseja excluir este chamado permanentemente?\n\n⚠️ Esta ação não pode ser desfeita!")) {
         return;
     }
     
@@ -1254,7 +1404,9 @@ async function imprimirChamado(chamadoId) {
             patrimonio = maquinaData.patrimonio || 'N/A';
             maquinaNome = maquinaData.nome || chamado.maquinaId;
         }
-    } catch (e) { console.error("Erro ao buscar patrimônio da máquina:", e); }
+    } catch (e) { 
+        console.error("Erro ao buscar patrimônio da máquina:", e); 
+    }
 
     const conteudo = `
         <html>
@@ -1263,21 +1415,23 @@ async function imprimirChamado(chamadoId) {
                 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
                 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
                 <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
-                    .print-container { max-width: 800px; margin: auto; padding: 20px; }
-                    .os-header { text-align: center; margin-bottom: 2rem; border-bottom: 2px solid #dee2e6; padding-bottom: 1rem; }
-                    @page { size: A4; margin: 0; }
-                    .os-header h3 { font-weight: 600; }
-                    .section-title { font-weight: 500; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 1.5rem; margin-bottom: 1rem; }
-                    .field-label { font-weight: bold; color: #6c757d; }
-                    .field-value { font-size: 1.1rem; }
-                    .field-box { border: 1px solid #e9ecef; background-color: #f8f9fa; padding: 1rem; border-radius: .5rem; min-height: 100px; }
-                    .signature-area { margin-top: 5rem; }
-                    .signature-line { border-bottom: 1px solid #343a40; margin-top: 3rem; }
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; font-size: 12px; }
+                    .print-container { max-width: 800px; margin: auto; padding: 15px; }
+                    .os-header { text-align: center; margin-bottom: 1.5rem; border-bottom: 2px solid #dee2e6; padding-bottom: 0.75rem; }
+                    @page { size: A4; margin: 0.5cm; }
+                    .os-header h3 { font-weight: 600; font-size: 1.5rem; }
+                    .section-title { font-weight: 500; border-bottom: 1px solid #eee; padding-bottom: 3px; margin-top: 1rem; margin-bottom: 0.75rem; font-size: 1rem; }
+                    .field-label { font-weight: bold; color: #6c757d; font-size: 0.85rem; }
+                    .field-value { font-size: 0.95rem; }
+                    .field-box { border: 1px solid #e9ecef; background-color: #f8f9fa; padding: 0.75rem; border-radius: .25rem; min-height: 80px; font-size: 0.9rem; }
+                    .signature-area { margin-top: 3rem; }
+                    .signature-line { border-bottom: 1px solid #343a40; margin-top: 2rem; }
+                    .table td, .table th { padding: 0.3rem; font-size: 0.85rem; }
                     @media print {
-                        body { margin: 1cm; }
+                        body { margin: 0; }
                         body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
                         .alert-danger { background-color: #f8d7da !important; color: #721c24 !important; border-color: #f5c6cb !important; }
+                        .btn { display: none; }
                     }
                 </style>
             </head>
@@ -1286,36 +1440,37 @@ async function imprimirChamado(chamadoId) {
                     <div class="os-header">
                         <h3>ORDEM DE SERVIÇO DE MANUTENÇÃO</h3>
                         <p class="text-muted mb-0">Chamado ID: ${chamado.id.substring(0, 8).toUpperCase()}</p>
+                        <p class="text-muted mb-0">Data de impressão: ${new Date().toLocaleString('pt-BR')}</p>
                     </div>
 
-                    ${chamado.maquinaParada ? '<div class="alert alert-danger text-center p-3 mb-4"><h4><i class="fas fa-exclamation-triangle"></i> ATENÇÃO: MÁQUINA PARADA</h4></div>' : ''}
+                    ${chamado.maquinaParada ? '<div class="alert alert-danger text-center p-2 mb-3"><h5 class="mb-0"><i class="fas fa-exclamation-triangle"></i> ATENÇÃO: MÁQUINA PARADA</h5></div>' : ''}
 
                     <h5 class="section-title">1. Identificação do Chamado</h5>
                     <div class="row">
-                        <div class="col-4 mb-3"><div class="field-label">Máquina/Equipamento</div><div class="field-value">${maquinaNome}</div></div>
-                        <div class="col-4 mb-3"><div class="field-label">Código</div><div class="field-value">${chamado.maquinaId}</div></div>
-                        <div class="col-4 mb-3"><div class="field-label">Nº Patrimônio</div><div class="field-value">${patrimonio}</div></div>
-                        <div class="col-4 mb-3"><div class="field-label">Status</div><div class="field-value">${chamado.status}</div></div>
-                        <div class="col-4 mb-3"><div class="field-label">Prioridade</div><div class="field-value">${chamado.prioridade}</div></div>
-                        <div class="col-4 mb-3"><div class="field-label">Tipo</div><div class="field-value">${chamado.tipoManutencao || 'Não informado'}</div></div>
-                        <div class="col-6 mb-3"><div class="field-label">Data de Abertura</div><div class="field-value">${dataAbertura}</div></div>
-                        <div class="col-6 mb-3"><div class="field-label">Data de Encerramento</div><div class="field-value">${dataEncerramento}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Máquina/Equipamento</div><div class="field-value">${maquinaNome}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Código</div><div class="field-value">${chamado.maquinaId}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Nº Patrimônio</div><div class="field-value">${patrimonio}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Status</div><div class="field-value">${chamado.status}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Prioridade</div><div class="field-value">${chamado.prioridade}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Tipo</div><div class="field-value">${chamado.tipoManutencao || 'Não informado'}</div></div>
+                        <div class="col-6 mb-2"><div class="field-label">Data de Abertura</div><div class="field-value">${dataAbertura}</div></div>
+                        <div class="col-6 mb-2"><div class="field-label">Data de Encerramento</div><div class="field-value">${dataEncerramento}</div></div>
                     </div>
 
                     <h5 class="section-title">2. Descrição do Problema</h5>
-                    <div class="field-box">${chamado.motivo}</div>
+                    <div class="field-box">${chamado.motivo || ''}</div>
 
                     <h5 class="section-title">3. Detalhes da Manutenção</h5>
-                    <div class="row">
-                        <div class="col-6 mb-3"><div class="field-label">Mecânico Responsável</div><div class="field-value">${chamado.mecanicoResponsavelNome || 'Não informado'}</div></div>
-                        <div class="col-6 mb-3"><div class="field-label">Tempo de Parada</div><div class="field-value">${chamado.tempoParada || 'N/A'}</div></div>
+                    <div class="row mb-2">
+                        <div class="col-6"><div class="field-label">Mecânico Responsável</div><div class="field-value">${chamado.mecanicoResponsavelNome || 'Não informado'}</div></div>
+                        <div class="col-6"><div class="field-label">Tempo de Parada</div><div class="field-value">${chamado.tempoParada || 'N/A'}</div></div>
                     </div>
 
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <div class="field-label">Serviço Realizado / Observações</div>
                         <div class="field-box">${chamado.observacoesMecanico || 'A preencher...'}</div>
                     </div>
-                    <div class="mb-3">
+                    <div class="mb-2">
                         <div class="field-label">Peças Utilizadas</div>
                         <div class="field-box">${chamado.pecasUtilizadas || 'Nenhuma peça informada.'}</div>
                     </div>
@@ -1333,7 +1488,7 @@ async function imprimirChamado(chamadoId) {
                         </div>
                     </div>
                     
-                    <div class="mt-4 text-center text-muted">
+                    <div class="mt-3 text-center text-muted">
                         <small>Sistema de Gerenciamento de Manutenção - ${new Date().getFullYear()}</small>
                     </div>
                 </div>
@@ -1349,7 +1504,7 @@ async function imprimirChamado(chamadoId) {
     
     setTimeout(() => {
         printWindow.print();
-        printWindow.close();
+        // Não fecha automaticamente para permitir visualização
     }, 500);
 }
 
@@ -1366,22 +1521,23 @@ function mostrarMensagem(mensagem, tipo = "info") {
         right: 20px;
         z-index: 9999;
         min-width: 300px;
+        max-width: 400px;
         box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
         animation: slideIn 0.3s ease-out;
     `;
     
     let icon = '';
     switch(tipo) {
-        case 'success': icon = '<i class="fas fa-check-circle"></i> '; break;
-        case 'error': icon = '<i class="fas fa-exclamation-circle"></i> '; break;
-        case 'warning': icon = '<i class="fas fa-exclamation-triangle"></i> '; break;
-        default: icon = '<i class="fas fa-info-circle"></i> '; break;
+        case 'success': icon = '<i class="fas fa-check-circle me-2"></i>'; break;
+        case 'error': icon = '<i class="fas fa-exclamation-circle me-2"></i>'; break;
+        case 'warning': icon = '<i class="fas fa-exclamation-triangle me-2"></i>'; break;
+        default: icon = '<i class="fas fa-info-circle me-2"></i>'; break;
     }
     
     toast.innerHTML = `
-        <div class="d-flex justify-content-between align-items-center">
-            <div>${icon} ${mensagem}</div>
-            <button type="button" class="btn-close" onclick="this.parentElement.parentElement.remove()"></button>
+        <div class="d-flex justify-content-between align-items-start">
+            <div>${icon} <span>${mensagem}</span></div>
+            <button type="button" class="btn-close ms-2" onclick="this.parentElement.parentElement.remove()"></button>
         </div>
     `;
     
@@ -1396,59 +1552,128 @@ function mostrarMensagem(mensagem, tipo = "info") {
     }, 5000);
 }
 
-// Adicionar estilos CSS para as animações
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn {
-        from {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-        to {
-            transform: translateX(0);
-            opacity: 1;
-        }
-    }
-    
-    @keyframes slideOut {
-        from {
-            transform: translateX(0);
-            opacity: 1;
-        }
-        to {
-            transform: translateX(100%);
-            opacity: 0;
-        }
-    }
-    
-    .card-alert-blink {
-        animation: blink 2s infinite;
-    }
-    
-    @keyframes blink {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.7; }
-    }
-`;
-document.head.appendChild(style);
-
 // Função utilitária para formatar telefone WhatsApp
 function formatarTelefoneWhatsApp(telefone) {
     if (!telefone) return '';
+    
     // Remove tudo que não é número
     const numeros = telefone.replace(/\D/g, '');
     
-    // Se não tem código do país, adiciona 55 (Brasil)
-    if (numeros.length <= 11) {
+    // Validações
+    if (numeros.length < 10 || numeros.length > 13) {
+        console.warn('Número de telefone inválido:', telefone);
+        return '';
+    }
+    
+    // WhatsApp espera: código do país + DDD + número
+    // Ex: 55 (Brasil) + 11 (SP) + 999999999 = 13 dígitos
+    
+    // Se já tem código do país (começa com 55) e tem 13 dígitos
+    if (numeros.startsWith('55') && numeros.length === 13) {
+        return numeros;
+    }
+    
+    // Se tem 11 dígitos (DDD 2 + número 9)
+    if (numeros.length === 11) {
         return '55' + numeros;
     }
     
-    return numeros;
+    // Se tem 10 dígitos (DDD 2 + número 8 - antigo)
+    if (numeros.length === 10) {
+        return '55' + numeros;
+    }
+    
+    // Se tem 12 dígitos (código país + 10 dígitos)
+    if (numeros.length === 12) {
+        return numeros;
+    }
+    
+    console.warn('Formato de telefone não reconhecido:', telefone);
+    return '';
 }
+
+// Função para limpar listener quando sair da página
+function limparListenerManutencao() {
+    if (__unsubscribe_manutencao) {
+        __unsubscribe_manutencao();
+        __unsubscribe_manutencao = null;
+        console.log('Listener de manutenção removido');
+    }
+}
+
+// Adicionar estilos CSS para as animações
+if (!document.querySelector('#manutencao-styles')) {
+    const style = document.createElement('style');
+    style.id = 'manutencao-styles';
+    style.textContent = `
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes slideOut {
+            from {
+                transform: translateX(0);
+                opacity: 1;
+            }
+            to {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+        }
+        
+        .card-alert-blink {
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        .stat-card {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 15px rgba(0,0,0,0.2);
+        }
+        
+        .stat-card .number {
+            font-weight: 700;
+            margin: 8px 0;
+        }
+        
+        .stat-card .label {
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+            opacity: 0.9;
+        }
+        
+        .table-hover tbody tr:hover {
+            background-color: rgba(0,0,0,0.03);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Configurar listeners para limpeza
+window.addEventListener('beforeunload', limparListenerManutencao);
+window.addEventListener('pagehide', limparListenerManutencao);
 
 // Inicializa quando o DOM estiver carregado
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarManutencao);
 } else {
-    inicializarManutencao();
+    setTimeout(inicializarManutencao, 100);
 }

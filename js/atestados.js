@@ -291,7 +291,7 @@ async function atualizarTabelaAtestados(filtrados) {
 
         return `
         <tr class="${a.encaminhadoINSS ? 'table-warning' : ''} ${isCidPsicossocial(a.cid) ? 'border-start border-primary border-3' : ''}">
-            <td class="ps-3">
+            <td class="ps-3" data-label="Colaborador">
                 <div class="d-flex align-items-center">
                     <div class="me-2">
                         <i class="fas ${tipoIcon} text-primary"></i>
@@ -303,12 +303,12 @@ async function atualizarTabelaAtestados(filtrados) {
                     </div>
                 </div>
             </td>
-            <td>
+            <td data-label="Data / Duração">
                 <div class="small fw-bold">${dataFormatada}</div>
                 <div class="small text-muted">${duracaoText}</div>
                 ${a.medico ? `<small class="text-truncate d-block" title="${a.medico}">Médico: ${a.medico}</small>` : ''}
             </td>
-            <td>
+            <td data-label="Tipo / Status">
                 <span class="badge ${classeTipo(a.tipo)} mb-1 d-inline-block">${a.tipo}</span>
                 <span class="badge ${classeStatus(a.status)} d-inline-block">${a.status}</span>
                 ${isCidPsicossocial(a.cid) ? `
@@ -317,7 +317,7 @@ async function atualizarTabelaAtestados(filtrados) {
                     </div>
                 ` : ''}
             </td>
-            <td class="text-center">
+            <td class="text-center" data-label="Ações">
                 <div class="btn-group btn-group-sm" role="group">
                     ${acoesHTML}
                 </div>
