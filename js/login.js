@@ -1,11 +1,9 @@
 // Configuração do Login - VERSÃO CORRIGIDA
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando página de login...');
     
     // Verificar se usuário já está logado
     firebase.auth().onAuthStateChanged((user) => {
         if (user) {
-            console.log('Usuário já autenticado, redirecionando para sistema...');
             if (!window.location.href.includes('index.html') && window.location.pathname !== '/') {
                 window.location.replace('index.html');
             }
@@ -50,11 +48,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Fazer login
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, senha);
-                console.log('Login bem-sucedido:', userCredential.user.email);
                 
                 // Verificar se o email está verificado
                 if (!userCredential.user.emailVerified) {
-                    console.log('Email não verificado, mas permitindo acesso');
                     // Você pode remover esta verificação se quiser permitir acesso sem verificação
                 }
                 
@@ -68,7 +64,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }, 600);
                 
             } catch (error) {
-                console.error('Erro no login:', error);
                 
                 // Remove desfoque
                 document.querySelector('.login-card').style.filter = 'none';

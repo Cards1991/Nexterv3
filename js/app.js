@@ -18,7 +18,6 @@ let currentUserPermissions = {};
 
 // Função showSection
 function showSection(sectionName) {
-    console.log('Mostrando seção:', sectionName);
     
     // Esconder todas as seções
     const sections = document.querySelectorAll('.content-section');
@@ -51,7 +50,6 @@ function showSection(sectionName) {
             window.inicializarLancamentoHorasExtras();
         }
     } else {
-        console.error('Seção não encontrada:', sectionName);
         return; // Sai da função se a seção não for encontrada
     }
     // Carregar dados específicos da seção DEPOIS de torná-la visível
@@ -371,7 +369,6 @@ async function carregarDadosSecao(sectionName) {
                 break;
         }
     } catch (error) {
-        console.error(`Erro ao carregar seção ${sectionName}:`, error);
     }
 }
 
@@ -432,7 +429,6 @@ async function carregarUltimasMovimentacoesDashboard() {
             tbody.appendChild(row);
         });
     } catch (error) {
-        console.error('Erro ao carregar últimas movimentações:', error);
     }
 }
 
@@ -480,7 +476,6 @@ async function carregarUltimasMovimentacoes() {
         });
         
     } catch (error) {
-        console.error('Erro ao carregar últimas movimentações:', error);
     }
 }
 
@@ -507,7 +502,6 @@ async function carregarMetricasSaudeOcupacional() {
         atestadosEl.textContent = atestadosSnapshot.size;
         
     } catch (error) {
-        console.error('Erro ao carregar métricas de saúde:', error);
     }
 }
 
@@ -539,7 +533,6 @@ async function carregarMetricasManutencaoDashboard() {
         document.getElementById('dash-manut-maquinas-criticas').textContent = maquinasCriticasSnap.size;
 
     } catch (error) {
-        console.error('Erro ao carregar métricas de manutenção para o dashboard:', error);
     }
 }
 
@@ -569,7 +562,6 @@ async function carregarMetricasControladoriaDashboard() {
         // document.getElementById('dash-control-folhas-calculadas').textContent = '0';
 
     } catch (error) {
-        console.error('Erro ao carregar métricas de controladoria para o dashboard:', error);
     }
 }
 
@@ -812,7 +804,6 @@ async function carregarDashboardMovimentacoes() {
         await renderizarGraficoMovimentacoesPorSetor(reposicoesPendentesFiltradas, contratacoesPendentesFiltradas);
 
     } catch (error) {
-        console.error('Erro ao carregar dashboard de movimentações:', error);
     }
 }
 
@@ -983,17 +974,14 @@ function mostrarMensagem(mensagem, tipo = 'success') {
 
 // Sair do sistema - FUNÇÃO CORRIGIDA
 function sair() {
-    console.log('Função sair() executada');
     if (confirm('Deseja realmente sair do sistema?')) {
         firebase.auth().signOut().then(() => {
-            console.log('Usuário deslogado com sucesso');
             // Limpar dados locais
             localStorage.clear();
             sessionStorage.clear();
             // Redirecionar para login
             window.location.href = 'login.html';
         }).catch(error => {
-            console.error('Erro ao sair:', error);
             mostrarMensagem('Erro ao sair do sistema: ' + error.message, 'error');
         });
     }
@@ -1058,21 +1046,18 @@ function abrirModalGenerico(titulo, corpo) {
 
 // Configurar menu de usuário com event delegation
 function configurarMenuUsuario() {
-    console.log('Configurando menu de usuário...');
     
     // Event delegation para garantir que os cliques sejam capturados
     document.addEventListener('click', function(e) {
         // Verificar se o clique foi no botão de sair
         if (e.target.id === 'btn-sair' || e.target.closest('#btn-sair')) {
             e.preventDefault();
-            console.log('Botão sair clicado via delegation');
             sair();
         }
         
         // Verificar se o clique foi no botão de configurações
         if (e.target.id === 'btn-configuracoes' || e.target.closest('#btn-configuracoes')) {
             e.preventDefault();
-            console.log('Botão configurações clicado via delegation');
             mostrarMensagem("A tela de configurações ainda será implementada.", "info");
         }
     });
@@ -1082,15 +1067,10 @@ function configurarMenuUsuario() {
         const btnSair = document.getElementById('btn-sair');
         const btnConfig = document.getElementById('btn-configuracoes');
         
-        console.log('Procurando botões:', {
-            btnSair: !!btnSair,
-            btnConfig: !!btnConfig
-        });
         
         if (btnSair) {
             btnSair.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('Botão sair clicado (listener direto)');
                 sair();
             });
         }
@@ -1098,7 +1078,6 @@ function configurarMenuUsuario() {
         if (btnConfig) {
             btnConfig.addEventListener('click', function(e) {
                 e.preventDefault();
-                console.log('Botão configurações clicado (listener direto)');
                 mostrarMensagem("A tela de configurações ainda será implementada.", "info");
             });
         }
@@ -1106,7 +1085,7 @@ function configurarMenuUsuario() {
 }
 
 // Garante que a função de visualização da agenda esteja sempre disponível
-window.visualizarEvento = window.visualizarEvento || function() { console.error("visualizarEvento não carregada"); };
+window.visualizarEvento = window.visualizarEvento || function() { };
 
 // ============================
 // 🎯 INICIALIZAÇÃO DO APP - CORRIGIDA
@@ -1114,11 +1093,9 @@ window.visualizarEvento = window.visualizarEvento || function() { console.error(
 
 // Inicializar quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Inicializando Sistema RH...');
     
     // --- MOCK DA INTERFACE ANDROID (Para testes no navegador) ---
     if (typeof window.AndroidBiometria === 'undefined') {
-        console.warn("⚠️ App Android não detectado. Ativando MOCK de Biometria para testes.");
         window.AndroidBiometria = {
             cadastrarBiometria: function(colaboradorId) {
                 setTimeout(() => {
@@ -1156,7 +1133,6 @@ document.addEventListener('DOMContentLoaded', function() {
     // Verificar autenticação
     firebase.auth().onAuthStateChanged(async (user) => {
         if (user) {
-            console.log('Usuário logado:', user.email);
 
             // Torna a aplicação visível para evitar "flash" da tela
             const appContainer = document.querySelector('.app-container');
@@ -1189,7 +1165,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (JSON.stringify(currentUserPermissions.secoesPermitidas.sort()) !== JSON.stringify(todasAsSecoesAdmin.sort())) {
                     currentUserPermissions.secoesPermitidas = todasAsSecoesAdmin; // Atualiza em memória
                     await userDocRef.update({ 'permissoes.secoesPermitidas': todasAsSecoesAdmin }); // Atualiza no Firestore
-                    console.log('Permissões de administrador atualizadas no Firestore.');
                 } else {
                     currentUserPermissions.secoesPermitidas = todasAsSecoesAdmin; // Apenas atualiza em memória
                 }
@@ -1225,7 +1200,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Verificar se Firebase está carregado (movido para o início do script)
 if (typeof firebase === 'undefined') {
-    console.error('❌ Firebase não carregado!');
     document.body.innerHTML = `
         <div style="padding: 20px; text-align: center;">
             <h2>Erro de Configuração</h2>
@@ -1257,14 +1231,12 @@ async function carregarLogoEmpresa() {
             }
         }
     } catch (error) {
-        console.error("Erro ao carregar logo da empresa:", error);
     }
 }
 // Inicializar navegação
 function inicializarNavegacao() {
     // Verificar se as permissões foram carregadas antes de tentar construir o menu
     if (!currentUserPermissions || !currentUserPermissions.secoesPermitidas) {
-        console.warn('Permissões do usuário ainda não foram carregadas. A navegação não será inicializada agora.');
         // Você pode opcionalmente mostrar um estado de "carregando" no menu aqui
         return;
     }

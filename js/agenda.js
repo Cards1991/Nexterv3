@@ -107,8 +107,6 @@ function openPrintWindow(conteudo, opcoes = {}) {
         
         return janela;
     } catch (error) {
-        console.error("Erro ao abrir janela de impressão:", error);
-        mostrarMensagem("Erro ao preparar impressão.", "error");
         return null;
     }
 }
@@ -266,7 +264,6 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
     const backdrop = getElement('backdrop-novaAtividadeModal');
     
     if (!modal) {
-        console.error('Modal novaAtividadeModal não encontrado');
         return;
     }
     
@@ -355,10 +352,8 @@ async function popularSelectUsuarios(selectId) {
             select.innerHTML += `<option value="${doc.id}" data-nome="${doc.data().nome}">${doc.data().nome}</option>`;
         });
     } catch (error) {
-        console.error("Erro ao carregar usuários para atribuição:", error);
     }
 }
-
 function fecharModal(modalId) {
     const modal = getElement(modalId);
     const backdrop = getElement('backdrop-' + modalId);
@@ -387,7 +382,6 @@ function fecharComESC(event) {
 // ========================================
 
 async function salvarNovaAtividade() {
-    console.log('Iniciando salvamento/edição de nova atividade...');
     
     const form = getElement('form-nova-atividade');
     const editId = form?.dataset.editId;
@@ -433,12 +427,10 @@ async function salvarNovaAtividade() {
         }
     }
 
-    console.log('Dados da atividade:', { assunto, data, tipo, descricao });
 
     // Validação
     if (!assunto || !data || !tipo || !descricao) {
         mostrarMensagem("Preencha todos os campos obrigatórios (*)", "warning");
-        return;
     }
 
     try {
@@ -545,11 +537,9 @@ async function salvarNovaAtividade() {
         }
 
     } catch (error) {
-        console.error("Erro ao salvar atividade:", error);
         mostrarMensagem("Erro ao salvar atividade: " + error.message, "error");
     }
 }
-
 
 async function salvarAlteracoes(id, collection, dados) {
     try {
@@ -570,7 +560,6 @@ async function salvarAlteracoes(id, collection, dados) {
         }
         
     } catch (error) {
-        console.error("Erro ao salvar alterações:", error);
         mostrarMensagem("Erro ao salvar alterações: " + error.message, "error");
     }
 }
@@ -578,9 +567,7 @@ async function salvarAlteracoes(id, collection, dados) {
 // ========================================
 // CARREGAMENTO E EXIBIÇÃO DA AGENDA
 // ========================================
-
 async function carregarAgenda() {
-    console.log("Carregando agenda...");
     
     const containersMinhas = {
         andamento: getElement('agenda-minhas-andamento'),
@@ -589,7 +576,7 @@ async function carregarAgenda() {
         atraso: getElement('agenda-minhas-atraso'),
         '7dias': getElement('agenda-minhas-7dias'),
         '30dias': getElement('agenda-minhas-30dias'),
-        futuro: getElement('agenda-minhas-futuro'),
+        futuro: getElement('agenda-minhas-futuro')
     };
 
     const containersEquipe = {
@@ -617,7 +604,6 @@ async function carregarAgenda() {
     }
 
     try {
-        console.log("Buscando dados da agenda...");
         const currentUser = firebase.auth().currentUser;
         
         const incluirAniversarios = getElement('agenda-filtro-aniversarios').checked;
@@ -627,19 +613,11 @@ async function carregarAgenda() {
             fetchPericiasINSS(),
             fetchAtividades()
         ];
-
         if (incluirAniversarios) {
             promises.push(fetchAniversariantes(), fetchAniversariosDeEmpresa());
         }
 
         const [vencimentos, pericias, atividades, aniversariantes = [], aniversariosEmpresa = []] = await Promise.all(promises);
-        console.log("Dados encontrados:", {
-            vencimentos: vencimentos.length,
-            pericias: pericias.length,
-            aniversariantes: aniversariantes.length,
-            aniversariosEmpresa: aniversariosEmpresa.length,
-            atividades: atividades.length
-        });
 
         let todosEventos = [
             ...vencimentos, 
@@ -653,11 +631,8 @@ async function carregarAgenda() {
         if (statusFiltro) {
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
+
             todosEventos = todosEventos.filter(evento => {
-                if (evento.collection !== 'agenda_atividades') {
-                    return false; // Hide non-activities when status is filtered
-                }
-                
                 let effectiveStatus = evento.status;
                 if ((effectiveStatus === 'Aberto' || effectiveStatus === 'Pendente') && new Date(evento.data) < hoje) {
                     effectiveStatus = 'Atrasado';
@@ -667,7 +642,6 @@ async function carregarAgenda() {
             });
         }
         
-        console.log("Total de eventos:", todosEventos.length);
 
         // Ordenação: 1. Abertos/Atrasados, 2. Concluídos
         todosEventos.sort((a, b) => {
@@ -682,10 +656,6 @@ async function carregarAgenda() {
         // Ordenar eventos por data
         todosEventos.sort((a, b) => a.data - b.data);
         
-        // Normalizar hoje para comparação
-        const hoje = new Date();
-        hoje.setHours(0, 0, 0, 0);
-
         // Separar eventos: Minhas vs Equipe
         const eventosMinhas = [];
         const eventosEquipe = [];
@@ -712,7 +682,6 @@ async function carregarAgenda() {
         inicializarTooltips();
 
     } catch (error) {
-        console.error("Erro ao carregar agenda:", error);
     }
 }
 
@@ -730,7 +699,6 @@ function alternarVisaoAgenda(view) {
         btnCalendario.classList.add('active');
         calendarioDataAtual = new Date();
     } else {
-        viewCards.classList.remove('d-none');
         viewCalendario.classList.add('d-none');
         btnCards.classList.add('active');
         btnCalendario.classList.remove('active');
@@ -834,7 +802,6 @@ function getCorEvento(tipo) {
 }
 
 function distribuirEventosNosCards(eventos, containers, prefixoId) {
-    console.log("Distribuindo eventos nos cards...");
     
     // Limpar containers
     Object.values(containers).forEach(c => { 
@@ -852,8 +819,7 @@ function distribuirEventosNosCards(eventos, containers, prefixoId) {
 
     const trintaDias = new Date(hoje);
     trintaDias.setDate(hoje.getDate() + 30);
-
-    let counts = { andamento: 0, hoje: 0, amanha: 0, '7dias': 0, '30dias': 0, atraso: 0, futuro: 0 };
+    const counts = { andamento: 0, hoje: 0, amanha: 0, '7dias': 0, '30dias': 0, atraso: 0, futuro: 0 };
 
     eventos.forEach(evento => {
         const eventoData = new Date(evento.data);
@@ -1128,7 +1094,6 @@ async function fetchVencimentosFinanceiros() {
             };
         });
     } catch (error) {
-        console.error("Erro ao buscar vencimentos:", error);
         return [];
     }
 }
@@ -1139,7 +1104,6 @@ async function fetchPericiasINSS() {
     dataFim.setHours(23, 59, 59, 999);
 
     if (isNaN(dataInicio) || isNaN(dataFim)) {
-        console.error("Datas de filtro da agenda inválidas.");
         return [];
     }
 
@@ -1149,7 +1113,6 @@ async function fetchPericiasINSS() {
             .where('inssDataPericia', '>=', dataInicio)
             .where('inssDataPericia', '<=', dataFim)
             .get();
-        
         return snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -1162,7 +1125,6 @@ async function fetchPericiasINSS() {
             };
         });
     } catch (error) {
-        console.error("Erro ao buscar perícias:", error);
         return [];
     }
 }
@@ -1173,7 +1135,6 @@ async function fetchAniversariantes() {
     dataFim.setHours(23, 59, 59, 999);
 
     if (isNaN(dataInicio) || isNaN(dataFim)) {
-        console.error("Datas de filtro da agenda inválidas.");
         return [];
     }
 
@@ -1196,7 +1157,6 @@ async function fetchAniversariantes() {
                             sourceCollection: 'funcionarios',
                             tipo: 'aniversario',
                             data: dataAniversario,
-                            titulo: `Aniversário de ${func.nome}`,
                             descricao: `Setor: ${func.setor || 'N/A'}`
                         });
                         break;
@@ -1206,7 +1166,6 @@ async function fetchAniversariantes() {
         });
         return aniversariantes;
     } catch (error) {
-        console.error("Erro ao buscar aniversariantes:", error);
         return [];
     }
 }
@@ -1217,7 +1176,6 @@ async function fetchAniversariosDeEmpresa() {
     dataFim.setHours(23, 59, 59, 999);
 
     if (isNaN(dataInicio) || isNaN(dataFim)) {
-        console.error("Datas de filtro da agenda inválidas.");
         return [];
     }
 
@@ -1250,7 +1208,6 @@ async function fetchAniversariosDeEmpresa() {
         });
         return aniversarios;
     } catch (error) {
-        console.error("Erro ao buscar aniversários de empresa:", error);
         return [];
     }
 }
@@ -1261,7 +1218,6 @@ async function fetchAtividades() {
     dataFim.setHours(23, 59, 59, 999);
 
     if (isNaN(dataInicio) || isNaN(dataFim)) {
-        console.error("Datas de filtro da agenda inválidas.");
         return [];
     }
 
@@ -1276,21 +1232,11 @@ async function fetchAtividades() {
         const atividadesSnap = await db.collection('agenda_atividades')
             .where('data', '>=', dataInicio)
             .where('data', '<=', dataFim)
-            .where('criadoPor', '==', currentUser.uid)
-            .get();
-
+            .where('criadoPor', '==', currentUser.uid).get();
+        
         const atribuidasSnap = await db.collection('agenda_atividades')
             .where('data', '>=', dataInicio)
             .where('data', '<=', dataFim)
-            .where('atribuidoParaId', '==', currentUser.uid)
-            .get();
-
-        // Busca todas as atividades onde o usuário é o criador OU o atribuído
-         const criadasPorMimSnap = await db.collection('agenda_atividades')
-            .where('criadoPor', '==', currentUser.uid)
-            .get();
-
-        const atribuidasParaMimSnap = await db.collection('agenda_atividades')
             .where('atribuidoParaId', '==', currentUser.uid)
             .get();
 
@@ -1324,11 +1270,9 @@ async function fetchAtividades() {
                 };
             });
 
-        console.log("Atividades encontradas:", atividadesFiltradas.length);
         return atividadesFiltradas;
 
     } catch (error) {
-        console.error("Erro ao buscar atividades:", error);
         return [];
     }
 }
@@ -1349,7 +1293,6 @@ async function excluirEvento(id, collection) {
             mostrarMensagem("Item excluído com sucesso!", "success");
             await carregarAgenda();
         } catch (error) {
-            console.error("Erro ao excluir item:", error);
             mostrarMensagem("Erro ao excluir o item: " + error.message, "error");
         }
     }
@@ -1357,7 +1300,7 @@ async function excluirEvento(id, collection) {
 
 async function editarEvento(id, collection) {
     if (!id || !collection) {
-        mostrarMensagem("Informações insuficientes para editar o evento.", "error");
+        mostrarMensagem("ID ou coleção inválidos.", "error");
         return;
     }
 
@@ -1379,9 +1322,7 @@ async function editarEvento(id, collection) {
         if (collection === 'agenda_atividades') {
             abrirModalNovaAtividade(dadosPreenchimento);
         }
-
     } catch (error) {
-        console.error("Erro ao carregar dados para edição:", error);
         mostrarMensagem("Erro ao carregar dados para edição: " + error.message, "error");
     }
 }
@@ -1397,7 +1338,6 @@ function preencherFormularioAtividade(dados) {
         const form = getElement('form-nova-atividade');
 
         if (!assuntoInput || !dataInput || !horaInput || !tipoSelect || !descricaoTextarea || !form || !atribuidoParaSelect) {
-            console.error('Um ou mais elementos do formulário de atividade não foram encontrados.');
             mostrarMensagem("Erro ao carregar formulário de edição.", "error");
             return;
         }
@@ -1429,7 +1369,6 @@ function preencherFormularioAtividade(dados) {
         if (timelogSection && timelogContainer) {
             timelogSection.style.display = 'block';
             timelogContainer.innerHTML = '';
-
             let logs = dados.timeLog || [];
             
             // Se não tem timeLog mas tem executionStartTime (legado), cria um log inicial
@@ -1463,11 +1402,8 @@ function preencherFormularioAtividade(dados) {
             }
         }
 
-        console.log("Formulário de atividade preenchido com sucesso para data:", dataInput.value);
 
     } catch (error) {
-        console.error("Erro detalhado ao preencher formulário de atividade:", error);
-        console.error("Dados recebidos:", dados); // Adiciona log dos dados
         mostrarMensagem("Erro ao preencher formulário de edição.", "error");
     }
 }
@@ -1498,11 +1434,8 @@ function emitirValePizza(funcionarioId, nomeFuncionario) {
             </head>
             <body>
                 <div class="vale-container">
-                    <div class="vale-header">
-                        <i class="fas fa-pizza-slice vale-icon"></i>
-                        <h2>VALE-PIZZA DE ANIVERSÁRIO!</h2>
-                    </div>
-                    <div class="vale-body">
+
+                        <div class="vale-icon"><i class="fas fa-pizza-slice"></i></div>
                         <p class="mt-4">A <strong>Calçados Crival</strong> parabeniza você, <strong>${nomeFuncionario}</strong>, pelo seu dia!</p>
                         <p>Este vale dá direito a uma pizza grande para celebrar esta data especial.</p>
                     </div>
@@ -1647,7 +1580,6 @@ async function concluirEvento(id, collection) {
         mostrarMensagem("Tarefa concluída com sucesso!", "success");
         await carregarAgenda();
     } catch (error) {
-        console.error("Erro ao concluir tarefa:", error);
         mostrarMensagem("Ocorreu um erro ao tentar concluir a tarefa.", "error");
     }
 }
@@ -1661,7 +1593,6 @@ async function iniciarAtividadeAgenda(id) {
         mostrarMensagem("Atividade iniciada! Status alterado para 'Em Andamento'.", "success");
         await carregarAgenda();
     } catch (error) {
-        console.error("Erro ao iniciar atividade:", error);
         mostrarMensagem("Erro ao iniciar atividade.", "error");
     }
 }
@@ -1674,7 +1605,6 @@ async function pausarAtividadeAgenda(id) {
         mostrarMensagem("Atividade pausada.", "info");
         await carregarAgenda();
     } catch (error) {
-        console.error("Erro ao pausar atividade:", error);
         mostrarMensagem("Erro ao pausar atividade.", "error");
     }
 }
@@ -1711,10 +1641,9 @@ async function visualizarEventoExterno(id, sourceCollection, eventType) {
                 break;
         }
     } catch (error) {
-        console.error("Erro ao visualizar evento externo:", error);
         mostrarMensagem("Erro ao tentar visualizar o evento.", "error");
     }
-}
+ }
 
 async function visualizarEvento(id, collection) {
     try {
@@ -1766,7 +1695,6 @@ async function visualizarEvento(id, collection) {
         }
 
     } catch (error) {
-        console.error("Erro ao visualizar atividade:", error);
         mostrarMensagem("Erro ao carregar detalhes da atividade.", "error");
     }
 }
@@ -1806,7 +1734,6 @@ function adicionarCSSModais() {
             top: 0;
             left: 0;
             width: 100%;
-            height: 100%;
             z-index: 1050;
             display: none;
         }
