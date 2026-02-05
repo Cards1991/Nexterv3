@@ -566,6 +566,7 @@ function abrirModalAtestado(atestadoId = null) {
                                         <option value="Serviço Militar">Serviço Militar</option>
                                         <option value="Consulta">Consulta</option>
                                         <option value="Exame">Exame</option>
+                                        <option value="Declaração">Declaração</option>
                                         <option value="Outros">Outros</option>
                                     </select>
                                 </div>
