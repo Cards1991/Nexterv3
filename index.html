@@ -80,6 +80,19 @@
         .agenda-cards::-webkit-scrollbar-thumb:hover {
             background: #aaa;
         }
+
+        /* Animação de alerta para cards de manutenção */
+        @keyframes blink-alert {
+            0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); transform: scale(1); }
+            50% { opacity: 0.9; box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.5); transform: scale(1.02); }
+            100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); transform: scale(1); }
+        }
+        .card-alert-blink {
+            animation: blink-alert 1.5s infinite ease-in-out;
+            border: 2px solid #ff0000 !important;
+            z-index: 10;
+            position: relative;
+        }
     </style>
 </head>
 <body>

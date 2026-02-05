@@ -559,6 +559,10 @@ function renderizarMetricasManutencao(chamados) {
     const paradas = chamados.filter(c => c.maquinaParada).length;
     const urgentes = chamados.filter(c => c.prioridade === 'Urgente' && (c.status === 'Aberto' || c.status === 'Em Andamento')).length;
 
+    // Define classes de alerta se houver itens críticos
+    const classUrgentes = urgentes > 0 ? 'card-alert-blink' : '';
+    const classParadas = paradas > 0 ? 'card-alert-blink' : '';
+
     container.innerHTML = `
         <div class="col-md-3 mb-4">
             <div class="card stat-card bg-danger text-white">
@@ -579,16 +583,22 @@ function renderizarMetricasManutencao(chamados) {
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-warning text-dark">
-                <div class="card-body">
+            <div class="card stat-card bg-warning text-dark ${classUrgentes}">${classUrgentes}">${classUrgentes}">${classUrgentes}">
+                <div<class="card-body">
+         div        <class="card-body">
+         div        <class="card-body">
+         div         class="card-body">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="number">${urgentes}</div>
                     <div class="label">Urgentes</div>
                 </div>
             </div>
         </div>
+                   <i class="fas fa-industry"></i>
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-dark text-white">
+                   <i class="fas fa-industry"></i>
+            <div class="card stat-card 
+      b             <i class="fas fa-industry"></i>g-dark text-white ${classParadas}">
                 <div class="card-body">
                     <i class="fas fa-industry"></i>
                     <div class="number">${paradas}</div>
@@ -1392,41 +1402,61 @@ function mostrarMensagem(mensagem, tipo = "info") {
     }, 5000);
 }
 
-// Adicionar estilos CSS para animações
-if (!document.getElementById('toast-styles')) {
-    const style = document.createElement('style');
-    style.id = 'toast-styles';
-    style.textContent = `
-        @keyframes slideIn {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+// Adicionar estilos CSS para as animações
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
         }
-        @keyframes slideOut {
-            from { transform: translateX(0); opacity: 1; }
-            to { transform: translateX(100%); opacity: 0; }
+        to {
+            transform: translateX(0);
+            opacity: 1;
         }
-    `;
-    document.head.appendChild(style);
+    }
+    
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+    
+    .card-alert-blink {
+        animation: blink 2s infinite;
+    }
+    
+    @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.7; }
+    }
+`;
+document.head.appendChild(style);
+
+// Função utilitária para formatar telefone WhatsApp
+function formatarTelefoneWhatsApp(telefone) {
+    if (!telefone) return '';
+    // Remove tudo que não é número
+    const numeros = telefone.replace(/\D/g, '');
+    
+    // Se não tem código do país, adiciona 55 (Brasil)
+    if (numeros.length <= 11) {
+        return '55' + numeros;
+    }
+    
+    return numeros;
 }
 
-// Inicializar quando o DOM estiver pronto
+// Inicializa quando o DOM estiver carregado
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', inicializarManutencao);
 } else {
     inicializarManutencao();
 }
 
-// Exportar funções para uso global
-window.inicializarManutencao = inicializarManutencao;
-window.abrirModalChamado = abrirModalChamado;
-window.salvarChamado = salvarChamado;
-window.atualizarPrioridade = atualizarPrioridade;
-window.iniciarAtendimento = iniciarAtendimento;
-window.confirmarInicioAtendimento = confirmarInicioAtendimento;
-window.abrirModalFinalizar = abrirModalFinalizar;
-window.finalizarChamado = finalizarChamado;
-window.excluirChamado = excluirChamado;
-window.imprimirChamado = imprimirChamado;
-window.reenviarNotificacao = reenviarNotificacao;
-window.abrirConfigWhatsApp = abrirConfigWhatsApp;
-window.testarWhatsApp = testarWhatsApp;
+// Adicionar estilos 
