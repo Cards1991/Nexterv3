@@ -83,13 +83,21 @@
 
         /* Animação de alerta para cards de manutenção */
         @keyframes blink-alert {
-            0% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); transform: scale(1); }
-            50% { opacity: 0.9; box-shadow: 0 0 20px 5px rgba(255, 0, 0, 0.5); transform: scale(1.02); }
-            100% { opacity: 1; box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); transform: scale(1); }
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+            }
+            50% {
+                transform: scale(1.05);
+                box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.5);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
+            }
         }
         .card-alert-blink {
-            animation: blink-alert 1.5s infinite ease-in-out;
-            border: 2px solid #ff0000 !important;
+            animation: blink-alert 1.3s infinite ease-in-out;
             z-index: 10;
             position: relative;
         }
@@ -100,9 +108,15 @@
         <nav id="sidebar" class="sidebar">
             <div class="position-sticky pt-3">
                     <ul class="nav flex-column">
-                        <div class="sidebar-brand text-center mb-4 mt-2">
-                            <!-- O logo foi removido para evitar o erro 404, você pode adicionar um caminho válido aqui -->
-                            <h5 class="sidebar-slogan mt-2">NEXTER</h5>
+                        <div class="sidebar-brand">
+                            <div class="brand-icon">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <h5 class="sidebar-slogan">NEXTER</h5>
+                            <div class="sidebar-info">
+                                <small>Uso Exclusivo</small>
+                                <small class="fw-bold">Gupo Crival</small>
+                            </div>
                         </div>
                         <!-- Agenda -->
                         <li class="nav-item">

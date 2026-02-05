@@ -1628,15 +1628,6 @@ if (!document.querySelector('#manutencao-styles')) {
             }
         }
         
-        .card-alert-blink {
-            animation: blink 2s infinite;
-        }
-        
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.7; }
-        }
-        
         .stat-card {
             transition: transform 0.3s ease, box-shadow 0.3s ease;
             border: none;
