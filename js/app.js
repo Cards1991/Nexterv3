@@ -1012,6 +1012,7 @@ function inicializarCanalDenuncia() {
 // Adiciona a inicialização ao carregar o DOM
 document.addEventListener('DOMContentLoaded', () => {
     inicializarCanalDenuncia();
+    configurarSidebarToggle();
 });
 
 // Função genérica para abrir um modal com título e corpo customizados
@@ -1345,6 +1346,27 @@ function inicializarModais() {
                 carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
             });
         }
+    }
+}
+
+// Configurar Toggle do Menu Lateral (Desktop)
+function configurarSidebarToggle() {
+    const toggleBtn = document.getElementById('desktop-sidebar-toggle');
+    if (toggleBtn) {
+        // Recuperar estado salvo
+        const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
+        if (isCollapsed) {
+            document.body.classList.add('sidebar-collapsed');
+        }
+
+        toggleBtn.addEventListener('click', () => {
+            document.body.classList.toggle('sidebar-collapsed');
+            // Salvar preferência
+            localStorage.setItem(
+                'sidebar-collapsed', 
+                document.body.classList.contains('sidebar-collapsed')
+            );
+        });
     }
 }
 

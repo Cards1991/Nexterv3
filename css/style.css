@@ -51,6 +51,7 @@
     /* Layout */
     --sidebar-width: 280px;
     --header-height: 70px;
+    /* Ajustado para um tamanho que acomode bem os ícones centralizados */
     --sidebar-collapsed: 80px;
 }
 
@@ -1202,4 +1203,67 @@ body {
     .btn-group-sm .btn i {
         font-size: 0.75rem;
     }
+}
+
+/* ===== ESTILOS DO MENU RETRÁTIL (COLLAPSED) ===== */
+
+/* Ajuste de largura da sidebar e margem do conteúdo */
+body.sidebar-collapsed .sidebar {
+    width: var(--sidebar-collapsed);
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed);
+}
+
+/* Esconder textos e elementos extras quando recolhido */
+body.sidebar-collapsed .sidebar .sidebar-slogan,
+body.sidebar-collapsed .sidebar .sidebar-info,
+body.sidebar-collapsed .sidebar .collapse {
+    display: none !important;
+}
+
+/* Ajustar links para mostrar apenas ícones centralizados */
+body.sidebar-collapsed .sidebar .nav-link {
+    font-size: 0; /* Esconde o texto */
+    justify-content: center !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    gap: 0 !important; /* Remove espaçamento do d-flex gap-2 */
+}
+
+body.sidebar-collapsed .sidebar .nav-link i {
+    font-size: 1.4rem; /* Aumenta ligeiramente o ícone */
+    margin-right: 0 !important;
+}
+
+/* Remover setas de dropdown se existirem */
+body.sidebar-collapsed .sidebar .nav-link::after {
+    display: none;
+}
+
+/* COMPORTAMENTO DE HOVER (EXPANDIR AO PASSAR O MOUSE) */
+/* Quando o usuário passa o mouse sobre a sidebar recolhida, ela expande temporariamente */
+body.sidebar-collapsed .sidebar:hover {
+    width: var(--sidebar-width);
+    box-shadow: 5px 0 15px rgba(0,0,0,0.3); /* Sombra para destacar sobre o conteúdo */
+}
+
+body.sidebar-collapsed .sidebar:hover .sidebar-slogan,
+body.sidebar-collapsed .sidebar:hover .sidebar-info,
+body.sidebar-collapsed .sidebar:hover .collapse.show {
+    display: block !important; /* Restaura exibição */
+}
+
+body.sidebar-collapsed .sidebar:hover .nav-link {
+    font-size: 0.9rem; /* Restaura tamanho da fonte */
+    justify-content: flex-start !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    gap: 0.5rem !important;
+}
+
+body.sidebar-collapsed .sidebar:hover .nav-link i {
+    font-size: 1.1rem;
+    margin-right: 12px !important;
 }
