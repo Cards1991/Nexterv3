@@ -232,35 +232,100 @@ async function atualizarTabelaAtestados(filtrados) {
     const tbody = document.getElementById('atestados-container');
     const empMap = await getEmpresasCache();
 
+    if (filtrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="4" class="text-center py-4 text-muted">
+                    <i class="fas fa-inbox fa-2x mb-2"></i><br>
+                    Nenhum atestado encontrado
+                </td>
+            </tr>`;
+        return;
+    }
+
     tbody.innerHTML = filtrados.map(a => {
+        const empresaNome = empMap[a.empresaId] || '-';
+        const dataFormatada = formatarData(a.data_atestado);
+        const duracaoText = a.duracaoTipo === 'horas' 
+            ? `${a.duracaoValor} horas` 
+            : `${a.dias} dia${a.dias > 1 ? 's' : ''}`;
+        
+        // Ícone baseado no tipo de atestado
+        let tipoIcon = 'fa-file-medical';
+        if (a.tipo.includes('Acidente')) tipoIcon = 'fa-user-injured';
+        else if (a.tipo.includes('Consulta')) tipoIcon = 'fa-stethoscope';
+        else if (a.tipo.includes('Exame')) tipoIcon = 'fa-microscope';
+        else if (a.tipo === 'Acompanhamento') tipoIcon = 'fa-hands-helping';
+
+        // Ações condicionais
         let acoesHTML = `
-            <button class="btn btn-outline-info" onclick="verDetalhesAtestado('${a.id}')" title="Visualizar"><i class="fas fa-eye"></i></button>
-            <button class="btn btn-outline-primary" onclick="editarAtestado('${a.id}')"><i class="fas fa-edit"></i></button>
-            <button class="btn btn-outline-danger" onclick="excluirAtestado('${a.id}')"><i class="fas fa-trash"></i></button>
+            <button class="btn btn-outline-info btn-sm" onclick="verDetalhesAtestado('${a.id}')" title="Visualizar">
+                <i class="fas fa-eye"></i>
+            </button>
+            <button class="btn btn-outline-primary btn-sm" onclick="editarAtestado('${a.id}')" title="Editar">
+                <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn btn-outline-danger btn-sm" onclick="excluirAtestado('${a.id}')" title="Excluir">
+                <i class="fas fa-trash"></i>
+            </button>
         `;
 
         if (a.encaminhadoINSS && a.afastamentoId) {
-            acoesHTML = `<button class="btn btn-outline-warning" title="Ver Encaminhamento ao INSS" onclick="visualizarEncaminhamentoINSS('${a.afastamentoId}')"><i class="fas fa-notes-medical"></i></button>` + acoesHTML;
+            acoesHTML = `
+                <button class="btn btn-outline-warning btn-sm me-1" title="Ver Encaminhamento ao INSS" onclick="visualizarEncaminhamentoINSS('${a.afastamentoId}')">
+                    <i class="fas fa-notes-medical"></i>
+                </button>
+                ${acoesHTML}
+            `;
+        }
+
+        // Verificar se é psicossocial para adicionar botão de acompanhamento
+        if (isCidPsicossocial(a.cid)) {
+            acoesHTML = `
+                <button class="btn btn-outline-success btn-sm me-1" title="Acompanhamento Psicossocial" onclick="abrirModalAcompanhamentoPsicossocial('${a.id}')">
+                    <i class="fas fa-brain"></i>
+                </button>
+                ${acoesHTML}
+            `;
         }
 
         return `
-        <tr class="${a.encaminhadoINSS ? 'table-warning' : ''}">
-            <td>${a.colaborador_nome}</td>
-            <td><span class="badge bg-light text-dark">${empMap[a.empresaId] || '-'}</span></td>
-            <td>${formatarData(a.data_atestado)}</td>
-            <td><span class="badge ${a.dias > 3 ? 'bg-warning' : 'bg-info'}">${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'}</span></td>
-            <td><span class="badge ${classeTipo(a.tipo)}">${a.tipo}</span></td>
-            <td>${a.cid || '-'}</td>
-            <td><small>${a.medico || '-'}</small></td>
-            <td><span class="badge ${classeStatus(a.status)}">${a.status}</span></td>
-            <td class="text-end text-nowrap">
-                <div class="btn-group btn-group-sm">${acoesHTML}</div>
+        <tr class="${a.encaminhadoINSS ? 'table-warning' : ''} ${isCidPsicossocial(a.cid) ? 'border-start border-primary border-3' : ''}">
+            <td class="ps-3">
+                <div class="d-flex align-items-center">
+                    <div class="me-2">
+                        <i class="fas ${tipoIcon} text-primary"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold">${a.colaborador_nome}</div>
+                        <small class="text-muted d-block">${empresaNome}</small>
+                        ${a.cid ? `<small class="badge bg-light text-dark mt-1">CID: ${a.cid}</small>` : ''}
+                    </div>
+                </div>
+            </td>
+            <td>
+                <div class="small fw-bold">${dataFormatada}</div>
+                <div class="small text-muted">${duracaoText}</div>
+                ${a.medico ? `<small class="text-truncate d-block" title="${a.medico}">Médico: ${a.medico}</small>` : ''}
+            </td>
+            <td>
+                <span class="badge ${classeTipo(a.tipo)} mb-1 d-inline-block">${a.tipo}</span>
+                <span class="badge ${classeStatus(a.status)} d-inline-block">${a.status}</span>
+                ${isCidPsicossocial(a.cid) ? `
+                    <div class="mt-1">
+                        <small class="text-primary"><i class="fas fa-brain me-1"></i> Psicossocial</small>
+                    </div>
+                ` : ''}
+            </td>
+            <td class="text-center">
+                <div class="btn-group btn-group-sm" role="group">
+                    ${acoesHTML}
+                </div>
             </td>
         </tr>
         `;
     }).join('');
 }
-
 async function carregarAlertasPericia() {
     const container = document.getElementById('pericias-proximas-container');
     if (!container) return;

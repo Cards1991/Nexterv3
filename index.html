@@ -524,165 +524,171 @@
                     </div>
                 </section>
 
-                <!-- Saúde Ocupacional: Atestados -->
-                <section id="atestados" class="content-section d-none">
-                    <h2 class="page-title">Gestão de Atestados</h2>
-                    <!-- Dashboard de Alertas Psicossociais -->
-                    <div class="card border-primary mb-4" id="alerta-atestados-psicossociais" style="display: none;">
-                        <div class="card-header bg-primary text-white">
-                            <h5 class="mb-0"><i class="fas fa-brain me-2"></i> Alerta de Saúde Psicossocial</h5>
-                        </div>
-                        <div class="card-body">
-                            <p class="card-text">Os seguintes colaboradores apresentaram atestados recentes com CIDs relacionados a questões psicossociais (F00-F99, Z65). Recomenda-se um acompanhamento próximo.</p>
-                            <div id="atestados-psicossociais-container" style="max-height: 250px; overflow-y: auto;"></div>
-                        </div>
-                    </div>
+              <!-- Seção Saúde Ocupacional: Atestados - ATUALIZADO -->
+<section id="atestados" class="content-section d-none">
+    <h2 class="page-title">Gestão de Atestados</h2>
+    
+    <!-- Dashboard de Alertas Psicossociais -->
+    <div class="card border-primary mb-4" id="alerta-atestados-psicossociais" style="display: none;">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="fas fa-brain me-2"></i> Alerta de Saúde Psicossocial</h5>
+        </div>
+        <div class="card-body">
+            <p class="card-text">Os seguintes colaboradores apresentaram atestados recentes com CIDs relacionados a questões psicossociais (F00-F99, Z65). Recomenda-se um acompanhamento próximo.</p>
+            <div id="atestados-psicossociais-container" style="max-height: 250px; overflow-y: auto;"></div>
+        </div>
+    </div>
 
-                    <div class="d-flex flex-column flex-xl-row justify-content-between align-items-xl-center mb-3 gap-3">
-                        <div class="row g-2 align-items-end w-100">
-                            <div class="col-6 col-md-auto">
-                                <label class="form-label mb-1 small">De:</label>
-                                <input type="date" class="form-control form-control-sm" id="filtro-data-inicio-atestados">
-                            </div>
-                             <div class="col-6 col-md-auto">
-                                <label class="form-label mb-1 small">Até:</label>
-                                <input type="date" class="form-control form-control-sm" id="filtro-data-fim-atestados">
-                            </div>
-                            <div class="col-12 col-md-auto">
-                                <label class="form-label mb-1 small d-md-none">Empresa:</label>
-                                <select class="form-select form-select-sm" id="filtro-empresa-atestados">
-                                    <option value="">Todas as empresas</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-auto">
-                                <label class="form-label mb-1 small d-md-none">Tipo:</label>
-                                <select class="form-select form-select-sm" id="filtro-tipo-atestados">
-                                    <option value="">Todos os tipos</option>
-                                    <option value="Doença">Doença</option>
-                                    <option value="Acidente">Acidente</option>
-                                    <option value="Consulta">Consulta</option>
-                                    <option value="Exame">Exame</option>
-                                    <option value="Outros">Outros</option>
-                                </select>
-                            </div>
-                            <div class="col-6 col-md-auto">
-                                <label class="form-label mb-1 small d-md-none">Status:</label>
-                                <select class="form-select form-select-sm" id="filtro-status-atestados">
-                                    <option value="">Todos</option>
-                                    <option value="Válido">Válidos</option>
-                                    <option value="Expirado">Expirados</option>
-                                    <option value="Analise">Em Análise</option>
-                                </select>
-                            </div>
-                            <div class="col-12 col-md-auto">
-                                <button class="btn btn-outline-secondary btn-sm w-100" id="btn-filtrar-atestados"><i class="fas fa-filter"></i> <span class="d-md-none">Filtrar</span></button>
-                            </div>
+    <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-3 gap-3">
+        <div class="row g-2 align-items-end w-100">
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
+                <label class="form-label mb-1 small">De:</label>
+                <input type="date" class="form-control form-control-sm" id="filtro-data-inicio-atestados">
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
+                <label class="form-label mb-1 small">Até:</label>
+                <input type="date" class="form-control form-control-sm" id="filtro-data-fim-atestados">
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto flex-grow-1">
+                <label class="form-label mb-1 small">Empresa:</label>
+                <select class="form-select form-select-sm" id="filtro-empresa-atestados">
+                    <option value="">Todas as empresas</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
+                <label class="form-label mb-1 small">Tipo:</label>
+                <select class="form-select form-select-sm" id="filtro-tipo-atestados">
+                    <option value="">Todos os tipos</option>
+                    <option value="Doença">Doença</option>
+                    <option value="Acidente">Acidente</option>
+                    <option value="Consulta">Consulta</option>
+                    <option value="Exame">Exame</option>
+                    <option value="Outros">Outros</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
+                <label class="form-label mb-1 small">Status:</label>
+                <select class="form-select form-select-sm" id="filtro-status-atestados">
+                    <option value="">Todos</option>
+                    <option value="Válido">Válidos</option>
+                    <option value="Expirado">Expirados</option>
+                    <option value="Analise">Em Análise</option>
+                </select>
+            </div>
+            <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
+                <button class="btn btn-primary btn-sm w-100" id="btn-filtrar-atestados"><i class="fas fa-filter"></i> Filtrar</button>
+            </div>
+        </div>
+        <div class="d-flex gap-2 w-100 w-lg-auto justify-content-end">
+            <button class="btn btn-success flex-grow-1 flex-lg-grow-0" onclick="exportarAtestadosExcel()">
+                <i class="fas fa-file-excel me-2"></i><span class="d-none d-sm-inline">Exportar</span>
+            </button>
+            <button class="btn btn-primary flex-grow-1 flex-lg-grow-0" id="btn-novo-atestado">
+                <i class="fas fa-plus-circle me-2"></i><span class="d-none d-sm-inline">Novo</span>
+            </button>
+        </div>
+    </div>
+    
+    <!-- KPIs em Cards Responsivos -->
+    <div class="row row-cols-1 row-cols-md-2 row-cols-xl-5 g-2 mb-3">
+        <div class="col">
+            <div class="card bg-primary text-white h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h4 mb-0" id="total-atestados-mes">0</div>
+                            <small>Este mês</small>
                         </div>
-                        <div class="d-flex gap-2 w-100 w-xl-auto justify-content-end">
-                            <button class="btn btn-success flex-grow-1 flex-xl-grow-0" onclick="exportarAtestadosExcel()">
-                                <i class="fas fa-file-excel me-2"></i><span class="d-none d-sm-inline">Exportar</span>
-                            </button>
-                            <button class="btn btn-primary flex-grow-1 flex-xl-grow-0" id="btn-novo-atestado">
-                                <i class="fas fa-plus-circle me-2"></i><span class="d-none d-sm-inline">Novo</span>
-                            </button>
-                        </div>
+                        <i class="fas fa-file-medical fa-2x opacity-50"></i>
                     </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-lg col-md-4 col-6">
-                            <div class="card bg-primary text-white">
-                                <div class="card-body py-3">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="h4 mb-0" id="total-atestados-mes">0</div>
-                                            <small>Atestados este mês</small>
-                                        </div>
-                                        <i class="fas fa-file-medical fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-success text-white h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h4 mb-0" id="total-dias-atestados">0</div>
+                            <small>Dias de atestado</small>
                         </div>
-                        <div class="col-lg col-md-4 col-6">
-                            <div class="card bg-success text-white">
-                                <div class="card-body py-3">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="h4 mb-0" id="total-dias-atestados">0</div>
-                                            <small>Dias de atestado</small>
-                                        </div>
-                                        <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg col-md-4 col-6">
-                            <div class="card bg-warning">
-                                <div class="card-body py-3">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="h4 mb-0" id="media-dias-atestado">0</div>
-                                            <small>Média Dias/Atestado</small>
-                                        </div>
-                                        <i class="fas fa-calculator fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg col-md-4 col-6">
-                            <div class="card bg-info text-white">
-                                <div class="card-body py-3">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="h4 mb-0" id="percentual-afastamento">0%</div>
-                                            <small>Taxa de Absenteísmo</small>
-                                        </div>
-                                        <i class="fas fa-chart-pie fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-lg col-md-4 col-12">
-                            <div class="card bg-danger text-white">
-                                <div class="card-body py-3">
-                                    <div class="d-flex justify-content-between">
-                                        <div>
-                                            <div class="h4 mb-0" id="custo-total-atestados">R$ 0,00</div>
-                                            <small>Custo Estimado Atestados</small>
-                                        </div>
-                                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                        <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
                     </div>
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <span>Atestados Médicos</span>
-                            <small class="text-muted" id="total-atestados">0 registros</small>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-warning text-dark h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h4 mb-0" id="media-dias-atestado">0</div>
+                            <small>Média Dias/Atestado</small>
                         </div>
-                        <div class="card-body">
-                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Colaborador</th>
-                                            <th>Empresa</th>
-                                            <th>Data</th>
-                                            <th>Dias</th>
-                                            <th>Tipo</th>
-                                            <th>CID</th>
-                                            <th>Médico</th>
-                                            <th>Status</th>
-                                            <th></th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="atestados-container">
-                                        <tr><td colspan="9" class="text-center">Carregando...</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
+                        <i class="fas fa-calculator fa-2x opacity-50"></i>
                     </div>
-                </section>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-info text-white h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h4 mb-0" id="percentual-afastamento">0%</div>
+                            <small>Taxa de Absenteísmo</small>
+                        </div>
+                        <i class="fas fa-chart-pie fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col">
+            <div class="card bg-danger text-white h-100">
+                <div class="card-body d-flex flex-column justify-content-center">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="h4 mb-0" id="custo-total-atestados">R$ 0,00</div>
+                            <small>Custo Estimado</small>
+                        </div>
+                        <i class="fas fa-dollar-sign fa-2x opacity-50"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Tabela de Atestados -->
+    <div class="card">
+        <div class="card-header d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-2">
+            <span class="fw-bold">Atestados Médicos</span>
+            <small class="text-muted" id="total-atestados">0 registros</small>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Colaborador</th>
+                            <th>Data / Duração</th>
+                            <th>Tipo / Status</th>
+                            <th class="text-center">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="atestados-container">
+                        <tr>
+                            <td colspan="4" class="text-center py-4">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Carregando...</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
 
                 <!-- Seção Cadastro de Famílias de CID -->
                 <section id="cid-manager" class="content-section d-none">

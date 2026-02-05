@@ -76,7 +76,6 @@ async function carregarConfigGerente() {
     }
 }
 
-
 // ============ WHATSAPP FUNCTIONS ============
 function enviarNotificacaoWhatsApp(chamadoData) {
     if (!WHATSAPP_CONFIG.enabled || !WHATSAPP_CONFIG.gerenteTelefone) {
@@ -371,7 +370,7 @@ function adicionarBotaoConfigWhatsApp() {
     if (actionContainer && !document.getElementById('btn-config-whatsapp')) {
         const btnConfig = document.createElement('button');
         btnConfig.id = 'btn-config-whatsapp';
-        btnConfig.className = 'btn btn-success'; // Classe do botão de configuração
+        btnConfig.className = 'btn btn-success';
         btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar Notificações';
         btnConfig.title = 'Configurar notificações por WhatsApp';
         btnConfig.onclick = abrirConfigWhatsApp;
@@ -583,22 +582,16 @@ function renderizarMetricasManutencao(chamados) {
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-warning text-dark ${classUrgentes}">${classUrgentes}">${classUrgentes}">${classUrgentes}">
-                <div<class="card-body">
-         div        <class="card-body">
-         div        <class="card-body">
-         div         class="card-body">
+            <div class="card stat-card bg-warning text-dark ${classUrgentes}">
+                <div class="card-body">
                     <i class="fas fa-exclamation-triangle"></i>
                     <div class="number">${urgentes}</div>
                     <div class="label">Urgentes</div>
                 </div>
             </div>
         </div>
-                   <i class="fas fa-industry"></i>
         <div class="col-md-3 mb-4">
-                   <i class="fas fa-industry"></i>
-            <div class="card stat-card 
-      b             <i class="fas fa-industry"></i>g-dark text-white ${classParadas}">
+            <div class="card stat-card bg-dark text-white ${classParadas}">
                 <div class="card-body">
                     <i class="fas fa-industry"></i>
                     <div class="number">${paradas}</div>
@@ -718,6 +711,7 @@ async function abrirModalChamado(chamadoId = null) {
     } else {
         maquinaSelect.innerHTML = '<option value="">Nenhuma máquina encontrada</option>';
     }
+    
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 }
@@ -1359,7 +1353,7 @@ async function imprimirChamado(chamadoId) {
     }, 500);
 }
 
-// ============ FUNÇÕES UTILITÁRIAS (continuação) ============
+// ============ FUNÇÕES UTILITÁRIAS ============
 function mostrarMensagem(mensagem, tipo = "info") {
     // Remove mensagens anteriores
     const mensagensAntigas = document.querySelectorAll('.alert-toast');
@@ -1458,5 +1452,3 @@ if (document.readyState === 'loading') {
 } else {
     inicializarManutencao();
 }
-
-// Adicionar estilos 
