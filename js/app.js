@@ -1349,25 +1349,28 @@ function inicializarModais() {
     }
 }
 
-// Configurar Toggle do Menu Lateral (Desktop)
+// Configurar Toggle do Menu Lateral e Fechamento ao Clicar Fora
 function configurarSidebarToggle() {
-    const toggleBtn = document.getElementById('desktop-sidebar-toggle');
-    if (toggleBtn) {
-        // Recuperar estado salvo
-        const isCollapsed = localStorage.getItem('sidebar-collapsed') === 'true';
-        if (isCollapsed) {
-            document.body.classList.add('sidebar-collapsed');
-        }
+    const mobileToggle = document.getElementById('sidebarToggle');
+    const sidebar = document.getElementById('sidebar');
 
-        toggleBtn.addEventListener('click', () => {
-            document.body.classList.toggle('sidebar-collapsed');
-            // Salvar preferência
-            localStorage.setItem(
-                'sidebar-collapsed', 
-                document.body.classList.contains('sidebar-collapsed')
-            );
+    // Configuração para Mobile
+    if (mobileToggle && sidebar) {
+        mobileToggle.addEventListener('click', (e) => {
+            e.stopPropagation(); // Impede que o clique no botão feche o menu imediatamente
+            sidebar.classList.toggle('show');
         });
     }
+
+    // Fechar sidebar ao clicar em qualquer outro lugar (Mobile)
+    document.addEventListener('click', (e) => {
+        if (sidebar && sidebar.classList.contains('show')) {
+            // Se o clique não foi no menu nem no botão de abrir
+            if (!sidebar.contains(e.target) && (!mobileToggle || !mobileToggle.contains(e.target))) {
+                sidebar.classList.remove('show');
+            }
+        }
+    });
 }
 
 // ========================================
