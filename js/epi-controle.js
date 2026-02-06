@@ -47,6 +47,7 @@ async function carregarEstoqueEPI() {
 
     try {
         const termoBusca = document.getElementById('busca-epi')?.value.toLowerCase() || '';
+        const filtroSemCusto = document.getElementById('filtro-epi-sem-custo')?.checked;
         const snapshot = await db.collection('epi_estoque').orderBy('descricao').get();
 
         if (snapshot.empty) {
@@ -63,6 +64,11 @@ async function carregarEstoqueEPI() {
             
             // Filtro de busca local
             if (termoBusca && !epi.descricao.toLowerCase().includes(termoBusca) && !epi.ca.includes(termoBusca)) {
+                return;
+            }
+
+            // Filtro de Custo Zerado/Em Branco
+            if (filtroSemCusto && (epi.custo && parseFloat(epi.custo) > 0)) {
                 return;
             }
 
@@ -144,6 +150,10 @@ async function abrirModalEPI(epiId = null) {
             if (doc.exists) {
                 const data = doc.data();
                 document.getElementById('epi-descricao').value = data.descricao;
+                document.getElementById('epi-classe').value = data.classe || '';
+                toggleModeloEPI(); // Atualiza visibilidade do modelo
+                document.getElementById('epi-modelo').value = data.modelo || '';
+                
                 document.getElementById('epi-ca').value = data.ca;
                 document.getElementById('epi-validade').value = data.validadeCA;
                 document.getElementById('epi-fornecedor').value = data.fornecedor;
@@ -165,10 +175,26 @@ async function abrirModalEPI(epiId = null) {
     modal.show();
 }
 
+function toggleModeloEPI() {
+    const classe = document.getElementById('epi-classe').value;
+    const containerModelo = document.getElementById('container-epi-modelo');
+    if (classe === 'Calçados') {
+        containerModelo.style.display = 'block';
+    } else {
+        containerModelo.style.display = 'none';
+        document.getElementById('epi-modelo').value = '';
+    }
+}
+
 async function salvarEPI() {
     const id = document.getElementById('epi-id').value;
+    const classe = document.getElementById('epi-classe').value;
+    const modelo = document.getElementById('epi-modelo').value;
+    
     const dados = {
         descricao: document.getElementById('epi-descricao').value.trim(),
+        classe: classe,
+        modelo: classe === 'Calçados' ? modelo : null,
         ca: document.getElementById('epi-ca').value.trim(),
         validadeCA: document.getElementById('epi-validade').value,
         fornecedor: document.getElementById('epi-fornecedor').value.trim(),
@@ -180,6 +206,11 @@ async function salvarEPI() {
         custo: parseFloat(document.getElementById('epi-custo').value) || 0,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    if (classe === 'Calçados' && !modelo) {
+        mostrarMensagem("Para a classe Calçados, o Modelo é obrigatório.", "warning");
+        return;
+    }
 
     if (!dados.descricao || !dados.ca || !dados.validadeCA) {
         mostrarMensagem("Preencha os campos obrigatórios (Descrição, CA, Validade).", "warning");
@@ -214,6 +245,122 @@ async function excluirEPI(id) {
     } catch (error) {
         console.error("Erro ao excluir EPI:", error);
         mostrarMensagem("Erro ao excluir EPI.", "error");
+    }
+}
+
+// --- ENTRADA DE ESTOQUE ---
+
+async function abrirModalEntradaEstoque() {
+    const modalEl = document.getElementById('modalEntradaEstoque');
+    const form = document.getElementById('form-entrada-estoque');
+    if (!modalEl || !form) return;
+
+    form.reset();
+    document.getElementById('entrada-data').valueAsDate = new Date();
+    document.getElementById('container-rastreio-epi').style.display = 'none';
+
+    // Carregar EPIs no select
+    const select = document.getElementById('entrada-epi-select');
+    select.innerHTML = '<option value="">Carregando...</option>';
+    
+    try {
+        const snap = await db.collection('epi_estoque').orderBy('descricao').get();
+        select.innerHTML = '<option value="">Selecione o EPI</option>';
+        snap.forEach(doc => {
+            const epi = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = `${epi.descricao} (CA: ${epi.ca})`;
+            // Armazena dados para verificação de rastreio
+            option.dataset.classe = epi.classe || '';
+            option.dataset.modelo = epi.modelo || '';
+            select.appendChild(option);
+        });
+    } catch (e) {
+        console.error(e);
+    }
+
+    new bootstrap.Modal(modalEl).show();
+}
+
+function verificarRastreioEPI() {
+    const select = document.getElementById('entrada-epi-select');
+    const container = document.getElementById('container-rastreio-epi');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (selectedOption) {
+        const classe = selectedOption.dataset.classe;
+        const modelo = selectedOption.dataset.modelo;
+        
+        // Habilita rastreio se for Calçado Bidensidade ou Infinity
+        if (classe === 'Calçados' && (modelo === 'Bidensidade' || modelo === 'Infinity')) {
+            container.style.display = 'block';
+            atualizarChaveRastreio();
+        } else {
+            container.style.display = 'none';
+        }
+    }
+}
+
+function atualizarChaveRastreio() {
+    const data = document.getElementById('entrada-data').value.replace(/-/g, '');
+    const pedido = document.getElementById('entrada-pedido').value.trim();
+    const chave = `${data}${pedido ? '-' + pedido : ''}`;
+    document.getElementById('entrada-chave-rastreio').value = chave;
+}
+
+async function salvarEntradaEstoque() {
+    const epiId = document.getElementById('entrada-epi-select').value;
+    const qtd = parseInt(document.getElementById('entrada-quantidade').value) || 0;
+    const custo = parseFloat(document.getElementById('entrada-custo').value) || 0;
+    
+    if (!epiId || qtd <= 0) {
+        mostrarMensagem("Selecione um EPI e uma quantidade válida.", "warning");
+        return;
+    }
+
+    const dadosEntrada = {
+        epiId: epiId,
+        origem: document.getElementById('entrada-origem').value,
+        numeroPedido: document.getElementById('entrada-pedido').value,
+        dataEntrada: new Date(document.getElementById('entrada-data').value.replace(/-/g, '/')),
+        quantidade: qtd,
+        custoTotal: custo,
+        assinaturaEnvio: document.getElementById('entrada-assinatura-envio').value,
+        assinaturaRecebimento: document.getElementById('entrada-assinatura-recebimento').value,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    // Dados de Rastreio
+    const containerRastreio = document.getElementById('container-rastreio-epi');
+    if (containerRastreio.style.display !== 'none') {
+        dadosEntrada.rastreio = {
+            chave: document.getElementById('entrada-chave-rastreio').value,
+            motivo: document.getElementById('entrada-motivo-rastreio').value
+        };
+    }
+
+    try {
+        const batch = db.batch();
+        // 1. Salvar registro de entrada
+        const entradaRef = db.collection('epi_entradas').doc();
+        batch.set(entradaRef, dadosEntrada);
+
+        // 2. Atualizar estoque
+        const epiRef = db.collection('epi_estoque').doc(epiId);
+        batch.update(epiRef, {
+            quantidade: firebase.firestore.FieldValue.increment(qtd),
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        await batch.commit();
+        
+        mostrarMensagem("Entrada registrada com sucesso!", "success");
+        bootstrap.Modal.getInstance(document.getElementById('modalEntradaEstoque')).hide();
+        carregarEstoqueEPI();
+    } catch (e) {
+        console.error("Erro ao salvar entrada:", e);
+        mostrarMensagem("Erro ao registrar entrada.", "error");
     }
 }
 
@@ -1851,6 +1998,11 @@ window.carregarSelectFuncionariosAtivos = carregarSelectFuncionariosAtivos;
 window.carregarEstoqueEPI = carregarEstoqueEPI;
 window.abrirModalEPI = abrirModalEPI;
 window.salvarEPI = salvarEPI;
+window.toggleModeloEPI = toggleModeloEPI;
+window.abrirModalEntradaEstoque = abrirModalEntradaEstoque;
+window.salvarEntradaEstoque = salvarEntradaEstoque;
+window.verificarRastreioEPI = verificarRastreioEPI;
+window.atualizarChaveRastreio = atualizarChaveRastreio;
 window.excluirEPI = excluirEPI;
 window.carregarHistoricoConsumoEPI = carregarHistoricoConsumoEPI;
 window.abrirModalConsumoEPI = abrirModalConsumoEPI;

@@ -9,7 +9,7 @@ const TODAS_SECOES = [
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
-    'control-horas-autorizacao',
+    'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
 , 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia'];
@@ -333,6 +333,11 @@ async function carregarDadosSecao(sectionName) {
             case 'juridico-documentos':
                 if (typeof inicializarDocumentosJuridicos === 'function') {
                     await inicializarDocumentosJuridicos();
+                }
+                break;
+            case 'juridico-analise-cpf':
+                if (typeof inicializarAnaliseCPF === 'function') {
+                    await inicializarAnaliseCPF();
                 }
                 break;
             case 'compliance-denuncia':

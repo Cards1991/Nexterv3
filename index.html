@@ -318,6 +318,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-financeiro">Financeiro Jurídico</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-documentos">Documentos Inteligentes</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="compliance-denuncia"><i class="fas fa-shield-alt me-2"></i>Canal de Denúncia</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-analise-cpf"><i class="fas fa-search me-2"></i>Análise de CPF</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -831,18 +832,27 @@
                             <button class="btn btn-primary" id="btn-novo-epi" onclick="abrirModalEPI()">
                                 <i class="fas fa-plus-circle"></i> Novo EPI
                             </button>
+                            <button class="btn btn-success ms-2" onclick="abrirModalEntradaEstoque()">
+                                <i class="fas fa-arrow-circle-down"></i> Entrada Estoque
+                            </button>
                             <button class="btn btn-warning ms-2" onclick="gerarSolicitacaoCompraEPI()">
                                 <i class="fas fa-shopping-cart"></i> Solicitação de Compra
                             </button>
                         </div>
-                        <div class="input-group" style="max-width: 300px;">
-                            <input type="text" class="form-control" id="busca-epi" placeholder="Buscar EPI...">
-                            <button class="btn btn-outline-secondary" onclick="carregarEstoqueEPI()"><i class="fas fa-search"></i></button>
+                        <div class="d-flex gap-2 align-items-center">
+                            <div class="form-check form-switch ms-3">
+                                <input class="form-check-input" type="checkbox" id="filtro-epi-sem-custo" onchange="carregarEstoqueEPI()">
+                                <label class="form-check-label" for="filtro-epi-sem-custo">Sem Custo</label>
+                            </div>
+                            <div class="input-group" style="max-width: 300px;">
+                                <input type="text" class="form-control" id="busca-epi" placeholder="Buscar EPI...">
+                                <button class="btn btn-outline-secondary" onclick="carregarEstoqueEPI()"><i class="fas fa-search"></i></button>
+                            </div>
                         </div>
                     </div>
                     
                     <div class="card">
-                        <div class="card-body table-responsive">
+                        <div class="card-body table-responsive" style="max-height: 600px; overflow-y: auto;">
                             <table class="table table-hover align-middle">
                                 <thead>
                                     <tr>
@@ -1120,6 +1130,15 @@
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span>Cadastro de Funcionários</span>
                             <div class="btn-group">
+                                <button class="btn btn-info btn-sm text-white" onclick="abrirModalAumentoColetivo()">
+                                    <i class="fas fa-chart-line"></i> Aumento Coletivo
+                                </button>
+                                <button class="btn btn-warning btn-sm text-dark" onclick="desfazerUltimoAumentoMassa()">
+                                    <i class="fas fa-undo"></i> Desfazer Aumento
+                                </button>
+                                <button class="btn btn-success btn-sm" onclick="exportarFuncionariosExcel()">
+                                    <i class="fas fa-file-excel"></i> Exportar Excel
+                                </button>
                                 <button class="btn btn-outline-secondary btn-sm" onclick="exportarModeloCSV()">
                                     <i class="fas fa-file-csv"></i> Exportar Modelo (CSV)
                                 </button>
@@ -1132,7 +1151,11 @@
                             </div>
                         </div>
                         <div class="card-body">
-                            <div class="mb-3 d-flex justify-content-end gap-3">
+                            <div class="mb-3 d-flex justify-content-end gap-3 align-items-center flex-wrap">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="filtro-sem-setor-funcionarios">
+                                    <label class="form-check-label" for="filtro-sem-setor-funcionarios">Sem Setor</label>
+                                </div>
                                 <div class="input-group" style="max-width: 350px;">
                                     <span class="input-group-text"><i class="fas fa-search"></i></span>
                                     <input type="text" class="form-control" id="filtro-nome-funcionarios" placeholder="Buscar por nome...">
@@ -4581,6 +4604,27 @@
                                 <label for="epi-descricao" class="form-label">Descrição do EPI</label>
                                 <input type="text" class="form-control" id="epi-descricao" required>
                             </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="epi-classe" class="form-label">Classe</label>
+                                    <select class="form-select" id="epi-classe" required onchange="toggleModeloEPI()">
+                                        <option value="">Selecione...</option>
+                                        <option value="Calçados">Calçados</option>
+                                        <option value="Vestuario">Vestuário</option>
+                                        <option value="Protetores">Protetores</option>
+                                        <option value="Máscaras">Máscaras</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6" id="container-epi-modelo" style="display: none;">
+                                    <label for="epi-modelo" class="form-label">Modelo</label>
+                                    <select class="form-select" id="epi-modelo">
+                                        <option value="Mono densidade">Mono densidade</option>
+                                        <option value="Bidensidade">Bidensidade</option>
+                                        <option value="Infinity">Infinity</option>
+                                    </select>
+                                </div>
+                            </div>
                             <div class="row">
                                 <div class="col-md-6 mb-3">
                                     <label for="epi-ca" class="form-label">CA (Certificado de Aprovação)</label>
@@ -4634,6 +4678,70 @@
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-primary" onclick="salvarEPI()">Salvar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Entrada de Estoque EPI -->
+        <div class="modal fade" id="modalEntradaEstoque" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-arrow-circle-down me-2"></i>Entrada de Estoque</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-entrada-estoque">
+                            <div class="mb-3">
+                                <label class="form-label">EPI</label>
+                                <select class="form-select" id="entrada-epi-select" required onchange="verificarRastreioEPI()"></select>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Origem</label>
+                                    <select class="form-select" id="entrada-origem" required>
+                                        <option value="NFE">Nota Fiscal (NFE)</option>
+                                        <option value="Movimentação Interna">Movimentação Interna</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Número do Pedido</label>
+                                    <input type="text" class="form-control" id="entrada-pedido" placeholder="Digite o nº do pedido" oninput="atualizarChaveRastreio()">
+                                </div>
+                                <div class="col-md-4"><label class="form-label">Data</label><input type="date" class="form-control" id="entrada-data" required onchange="atualizarChaveRastreio()"></div>
+                                <div class="col-md-4"><label class="form-label">Quantidade</label><input type="number" class="form-control" id="entrada-quantidade" min="1" required></div>
+                                <div class="col-md-4"><label class="form-label">Custo Total (R$)</label><input type="number" class="form-control" id="entrada-custo" step="0.01"></div>
+                            </div>
+
+                            <!-- Seção de Rastreio (Condicional) -->
+                            <div id="container-rastreio-epi" class="card mt-3 border-warning" style="display: none;">
+                                <div class="card-header bg-warning text-dark fw-bold"><i class="fas fa-search-location"></i> Rastreabilidade</div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Chave de Rastreio (Automática)</label>
+                                        <input type="text" class="form-control bg-light" id="entrada-chave-rastreio" readonly>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Motivo da Entrada</label>
+                                        <select class="form-select" id="entrada-motivo-rastreio">
+                                            <option value="Lote antigo">Lote antigo</option>
+                                            <option value="Defeito de fabricação">Defeito de fabricação</option>
+                                            <option value="Outros">Outros</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-md-6"><label class="form-label">Assinatura (Quem Enviou)</label><input type="text" class="form-control" id="entrada-assinatura-envio"></div>
+                                <div class="col-md-6"><label class="form-label">Assinatura (Quem Recebeu)</label><input type="text" class="form-control" id="entrada-assinatura-recebimento"></div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" onclick="salvarEntradaEstoque()">Confirmar Entrada</button>
                     </div>
                 </div>
             </div>
@@ -5255,6 +5363,42 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="confirmarPreenchimentoVaga()">Confirmar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Aumento Coletivo -->
+    <div class="modal fade" id="modalAumentoColetivo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title"><i class="fas fa-chart-line me-2"></i>Aumento Salarial Coletivo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-light border-info">
+                        <i class="fas fa-info-circle text-info"></i> O aumento será aplicado apenas ao <strong>Salário em Folha</strong> de funcionários ativos admitidos até a data de corte.
+                    </div>
+                    <form id="form-aumento-coletivo">
+                        <div class="mb-3">
+                            <label class="form-label">Porcentagem de Aumento (%)</label>
+                            <input type="number" class="form-control" id="aumento-coletivo-percentual" step="0.01" min="0.01" placeholder="Ex: 5.5" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Data de Corte (Admissão até)</label>
+                            <input type="date" class="form-control" id="aumento-coletivo-data-corte" required>
+                            <div class="form-text">Funcionários admitidos após esta data não receberão o aumento.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo</label>
+                            <input type="text" class="form-control" id="aumento-coletivo-motivo" value="Dissídio Coletivo" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="aplicarAumentoColetivo()">Aplicar Aumento</button>
                 </div>
             </div>
         </div>
@@ -6267,6 +6411,7 @@
     <script src="js/juridico-automacao.js"></script>
     <script src="js/juridico-financeiro.js"></script>
     <script src="js/juridico-documentos.js"></script>
+    <script src="js/juridico-analise-cpf.js"></script>
     <script src="js/frota-controle.js"></script>
     <script src="js/epi-controle.js"></script>
     <script src="js/gestao-sumidos.js"></script>

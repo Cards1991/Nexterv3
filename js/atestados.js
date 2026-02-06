@@ -8,6 +8,45 @@ window.__filterTimeout = null;
 const CIDS_PSICOSSOCIAIS_PREFIXOS = ['F', 'Z65'];
 
 /**
+ * Obtém a data atual no formato YYYY-MM-DD, considerando o fuso horário local
+ * @returns {string} Data no formato YYYY-MM-DD
+ */
+function getDataLocalISO() {
+    const now = new Date();
+    const offset = now.getTimezoneOffset() * 60000; // offset em milissegundos
+    const localDate = new Date(now.getTime() - offset);
+    return localDate.toISOString().split('T')[0];
+}
+
+/**
+ * Converte uma string de data (YYYY-MM-DD) para Date sem problemas de fuso
+ * @param {string} dateString - Data no formato YYYY-MM-DD
+ * @returns {Date} Objeto Date ajustado
+ */
+function parseDataLocal(dateString) {
+    if (!dateString) return null;
+    
+    const [year, month, day] = dateString.split('-').map(Number);
+    // Cria a data no meio do dia para evitar problemas de fuso
+    return new Date(year, month - 1, day, 12, 0, 0);
+}
+
+/**
+ * Formata uma Date para o formato YYYY-MM-DD para inputs type="date"
+ * @param {Date} date - Data a ser formatada
+ * @returns {string} Data no formato YYYY-MM-DD
+ */
+function formatarDataParaInput(date) {
+    if (!date) return '';
+    
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Formata o input de hora para HH:mm
  */
 function formatarHora(input) {
@@ -35,16 +74,20 @@ function isCidPsicossocial(cid) {
 async function inicializarAtestados() {
     if (__initializedAtestados) return;
 
-    // Configurar datas padrão (mês atual)
+    // Configurar datas padrão (mês atual) COM FUSO LOCAL
     const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
-    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
+    
+    // Formatar sem problemas de fuso
+    const inicioMesStr = formatarDataParaInput(inicioMes);
+    const fimMesStr = formatarDataParaInput(fimMes);
 
     const filtroInicio = document.getElementById('filtro-data-inicio-atestados');
     const filtroFim = document.getElementById('filtro-data-fim-atestados');
 
-    if (filtroInicio && !filtroInicio.value) filtroInicio.value = inicioMes;
-    if (filtroFim && !filtroFim.value) filtroFim.value = fimMes;
+    if (filtroInicio && !filtroInicio.value) filtroInicio.value = inicioMesStr;
+    if (filtroFim && !filtroFim.value) filtroFim.value = fimMesStr;
 
     configurarEventListenersAtestados();
     await preencherFiltroEmpresasAtestados();
@@ -85,11 +128,31 @@ function configurarEventListenersAtestados() {
 
 function parseDateSafe(dateInput) {
     if (!dateInput) return null;
+    
     // Se for um objeto Timestamp do Firestore
     if (dateInput.toDate && typeof dateInput.toDate === 'function') {
         return dateInput.toDate();
     }
-    // Se for uma string ou número
+    
+    // Se for uma string no formato YYYY-MM-DD
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        return parseDataLocal(dateInput);
+    }
+    
+    // Se for uma string ISO
+    if (typeof dateInput === 'string' && dateInput.includes('T')) {
+        const date = new Date(dateInput);
+        // Ajusta para fuso local
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() + offset);
+    }
+    
+    // Se for um objeto Date
+    if (dateInput instanceof Date) {
+        return new Date(dateInput.getTime());
+    }
+    
+    // Default
     const date = new Date(dateInput);
     return isNaN(date.getTime()) ? null : date;
 }
@@ -173,8 +236,8 @@ function aplicarFiltrosAtestados(lista) {
         const dataAtestado = parseDateSafe(a.data_atestado);
         if (!dataAtestado) return false;
 
-        const dataInicioObj = parseDateSafe(dataInicio);
-        const dataFimAjustada = dataFim ? new Date(new Date(dataFim).setHours(23, 59, 59, 999)) : null;
+        const dataInicioObj = parseDataLocal(dataInicio);
+        const dataFimAjustada = dataFim ? new Date(parseDataLocal(dataFim).setHours(23, 59, 59, 999)) : null;
 
         return (!emp || a.empresaId === emp) &&
                (!tipo || a.tipo === tipo) &&
@@ -199,12 +262,24 @@ async function renderizarAtestados() {
             .orderBy('data_atestado', 'desc')
             .get();
             
-        __atestados_cache = snap.docs.map(d => ({
-            id: d.id,
-            ...d.data(),
-            data_atestado: parseDateSafe(d.data().data_atestado)
-        })).filter(atestado => atestado.data_atestado);
-
+        __atestados_cache = snap.docs.map(d => {
+            const data = d.data();
+            // Converte Timestamp para Date local corretamente
+            let dataAtestado = null;
+            if (data.data_atestado) {
+                if (data.data_atestado.toDate) {
+                    dataAtestado = data.data_atestado.toDate();
+                } else if (data.data_atestado instanceof Date) {
+                    dataAtestado = data.data_atestado;
+                }
+            }
+            
+            return {
+                id: d.id,
+                ...data,
+                data_atestado: dataAtestado
+            };
+        }).filter(atestado => atestado.data_atestado);
 
         const filtrados = aplicarFiltrosAtestados(__atestados_cache);
         
@@ -646,9 +721,9 @@ function abrirModalAtestado(atestadoId = null) {
             });
         }
         
-        // Data padrão
+        // Data padrão - USANDO FUNÇÃO DE DATA LOCAL
         const dataInput = document.getElementById('at_data');
-        if (dataInput) dataInput.valueAsDate = new Date();
+        if (dataInput) dataInput.value = getDataLocalISO();
 
         // Popular funcionários
         const funcSelect = document.getElementById('at_colab');
@@ -764,7 +839,7 @@ async function salvarAtestado() {
         const colabNome = colabSelect.options[colabSelect.selectedIndex].text;
         const empId = document.getElementById('at_empresa').value;
         const setor = document.getElementById('at_setor').value;
-        const data = document.getElementById('at_data').value;
+        const dataString = document.getElementById('at_data').value;
         const duracaoTipo = document.querySelector('input[name="duracaoTipo"]:checked').value;
         
         let duracaoValor;
@@ -774,9 +849,9 @@ async function salvarAtestado() {
             duracaoValor = parseInt(document.getElementById('at_dias').value, 10);
             dias = duracaoValor;
         } else {
-            duracaoValor = document.getElementById('at_horas').value; // Mantém como string HH:mm
+            duracaoValor = document.getElementById('at_horas').value;
             const [h, m] = duracaoValor.split(':').map(Number);
-            dias = (h + (m / 60)) / 8; // Converte para dias fracionados (base 8h)
+            dias = (h + (m / 60)) / 8;
         }
 
         const tipo = document.getElementById('at_tipo').value;
@@ -784,10 +859,13 @@ async function salvarAtestado() {
         const cid = document.getElementById('at_cid').value.trim();
         const medico = document.getElementById('at_medico').value.trim();
         
+        // Usar parseDataLocal para garantir consistência
+        const dataAtestadoObj = parseDataLocal(dataString);
+        
         const formData = {
             funcionarioId: colabSelect.value,
             empresaId: empId,
-            data_atestado: data,
+            data_atestado: dataAtestadoObj,
             duracaoTipo: duracaoTipo,
             duracaoValor: duracaoValor,
             tipo: tipo,
@@ -825,7 +903,6 @@ async function salvarAtestado() {
 
         let afastamentoId = null;
 
-        const dataAtestadoObj = parseDateSafe(data);
         const sessentaDiasAtras = new Date(dataAtestadoObj);
         sessentaDiasAtras.setDate(sessentaDiasAtras.getDate() - 60);
 
@@ -887,7 +964,7 @@ async function salvarAtestado() {
             funcionarioId: colabSelect.value,
             empresaId: empId,            
             setor: setor,
-            data_atestado: dataAtestadoObj,            
+            data_atestado: firebase.firestore.Timestamp.fromDate(dataAtestadoObj), // SALVA COMO TIMESTAMP
             duracaoTipo: duracaoTipo,
             duracaoValor: duracaoValor,
             dias: dias,
@@ -896,7 +973,7 @@ async function salvarAtestado() {
             cid: cid || '',
             medico: medico || '',
             status: 'Válido',            
-            criado_em: timestamp(),
+            criado_em: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: firebase.auth().currentUser?.uid || null,
             encaminhadoINSS: inssTriggered, // Salva se gerou encaminhamento
             afastamentoId: afastamentoId // Salva o ID do afastamento vinculado
@@ -1122,7 +1199,7 @@ async function editarAtestado(id) {
                     cid: document.getElementById('ed_cid').value.trim(),
                     medico: document.getElementById('ed_medico').value.trim(),
                     status: document.getElementById('ed_status').value,
-                    updatedAt: timestamp() // Usa a função global de app.js
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
                 const modal = bootstrap.Modal.getInstance(document.getElementById(mid));
@@ -1397,6 +1474,10 @@ async function exportarAtestadosExcel() {
 window.exportarAtestadosExcel = exportarAtestadosExcel;
 window.atualizarDescricaoCID = atualizarDescricaoCID;
 window.formatarInputCID = formatarInputCID;
+window.getDataLocalISO = getDataLocalISO;
+window.parseDataLocal = parseDataLocal;
+window.formatarDataParaInput = formatarDataParaInput;
+
 /**
  * Popula um select com a lista de usuários do sistema.
  * @param {string} selectId O ID do elemento select.

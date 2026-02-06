@@ -10,6 +10,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (filtroNome) {
         filtroNome.addEventListener('input', carregarFuncionarios);
     }
+    const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios');
+    if (filtroSemSetor) {
+        filtroSemSetor.addEventListener('change', carregarFuncionarios);
+    }
 });
 
 // Carregar empresas para selects
@@ -107,6 +111,7 @@ async function carregarFuncionarios() {
         // Aplicar filtros
         const filtroEmpresaId = document.getElementById('filtro-empresa-funcionarios').value;
         const filtroNome = document.getElementById('filtro-nome-funcionarios').value.toLowerCase();
+        const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios')?.checked;
 
         let funcionariosFiltrados = funcionarios;
 
@@ -115,6 +120,9 @@ async function carregarFuncionarios() {
         }
         if (filtroNome) {
             funcionariosFiltrados = funcionariosFiltrados.filter(f => f.nome.toLowerCase().includes(filtroNome));
+        }
+        if (filtroSemSetor) {
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => !f.setor || (typeof f.setor === 'string' && f.setor.trim() === ''));
         }
 
         if (funcionariosFiltrados.length === 0) {
@@ -1601,7 +1609,7 @@ function cadastrarBiometriaFuncionario() {
 
 // Callback chamado pelo Android
 window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
-    if (successo || sucesso === 'true') {
+    if (sucesso || sucesso === 'true') {
         try {
             await db.collection('funcionarios').doc(funcionarioId).update({
                 biometriaAtiva: true,
@@ -1622,6 +1630,64 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
         mostrarMensagem("Falha no cadastro biométrico.", "error");
     }
 };
+
+async function exportarFuncionariosExcel() {
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarFuncionariosExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    if (!funcionarios || funcionarios.length === 0) {
+        mostrarMensagem("Nenhum funcionário carregado para exportar.", "warning");
+        return;
+    }
+
+    try {
+        const empresasSnap = await db.collection('empresas').get();
+        const empresasMap = {};
+        empresasSnap.forEach(doc => {
+            empresasMap[doc.id] = doc.data().nome;
+        });
+
+        const dadosExportacao = funcionarios.map(f => {
+            const admissao = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)) : null;
+            const nascimento = f.dataNascimento ? (f.dataNascimento.toDate ? f.dataNascimento.toDate() : new Date(f.dataNascimento)) : null;
+
+            return {
+                "Nome": f.nome,
+                "CPF": f.cpf,
+                "Matrícula": f.matricula || '',
+                "Empresa": empresasMap[f.empresaId] || 'N/A',
+                "Setor": f.setor || '',
+                "Cargo": f.cargo || '',
+                "Salário": f.salario || 0,
+                "Admissão": admissao ? admissao.toLocaleDateString('pt-BR') : '',
+                "Nascimento": nascimento ? nascimento.toLocaleDateString('pt-BR') : '',
+                "Email": f.email || '',
+                "Telefone": f.telefone || '',
+                "Status": f.status || 'Ativo'
+            };
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+        XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+        XLSX.writeFile(wb, "Cadastro_Funcionarios.xlsx");
+
+    } catch (error) {
+        console.error("Erro ao exportar excel:", error);
+        mostrarMensagem("Erro ao exportar para Excel.", "error");
+    }
+}
+
+// Exportar funções globais
+window.abrirModalAumentoColetivo = abrirModalAumentoColetivo;
+window.aplicarAumentoColetivo = aplicarAumentoColetivo;
+window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
+window.exportarFuncionariosExcel = exportarFuncionariosExcel;
 
 // Funções auxiliares para editar e excluir aumentos salariais
 async function editarAumentoSalario(funcionarioId, historicoIndex) {
@@ -1788,6 +1854,101 @@ function openPrintWindow(content, options = {}) {
 
 // --- AUMENTO SALARIAL EM MASSA ---
 
+function abrirModalAumentoColetivo() {
+    const modalEl = document.getElementById('modalAumentoColetivo');
+    if (modalEl) {
+        // Resetar formulário
+        const form = document.getElementById('form-aumento-coletivo');
+        if (form) form.reset();
+        
+        // Definir data de corte como hoje por padrão
+        const dataCorteInput = document.getElementById('aumento-coletivo-data-corte');
+        if (dataCorteInput) dataCorteInput.valueAsDate = new Date();
+        
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } else {
+        mostrarMensagem("Modal de aumento coletivo não encontrado.", "error");
+    }
+}
+
+async function aplicarAumentoColetivo() {
+    const percentualInput = document.getElementById('aumento-coletivo-percentual');
+    const dataCorteInput = document.getElementById('aumento-coletivo-data-corte');
+    const motivoInput = document.getElementById('aumento-coletivo-motivo');
+
+    const percentual = parseFloat(percentualInput.value);
+    const dataCorte = new Date(dataCorteInput.value + 'T23:59:59');
+    const motivo = motivoInput.value.trim();
+
+    if (isNaN(percentual) || percentual <= 0) {
+        mostrarMensagem("Porcentagem inválida.", "warning");
+        return;
+    }
+    if (!dataCorteInput.value) {
+        mostrarMensagem("Data de corte é obrigatória.", "warning");
+        return;
+    }
+
+    if (!confirm(`Confirma o aumento de ${percentual}% para funcionários admitidos até ${dataCorte.toLocaleDateString()}?`)) {
+        return;
+    }
+
+    try {
+        mostrarMensagem("Aplicando aumentos... aguarde.", "info");
+        
+        const funcionariosSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        const batch = db.batch();
+        let count = 0;
+        const dataAumento = new Date();
+
+        funcionariosSnap.forEach(doc => {
+            const func = doc.data();
+            const dataAdmissao = func.dataAdmissao?.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
+            
+            if (dataAdmissao <= dataCorte) {
+                const salarioAtual = parseFloat(func.salario || 0);
+                if (salarioAtual > 0) {
+                    const novoSalario = salarioAtual * (1 + (percentual / 100));
+                    
+                    const funcRef = db.collection('funcionarios').doc(doc.id);
+                    batch.update(funcRef, { 
+                        salario: parseFloat(novoSalario.toFixed(2)),
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+
+                    const registroAumento = {
+                        data: dataAumento,
+                        valor: parseFloat((novoSalario - salarioAtual).toFixed(2)),
+                        motivo: `${motivo} (${percentual}%)`,
+                        assinatura: 'Sistema (Coletivo)',
+                        tipo: 'folha',
+                        salarioAnterior: salarioAtual,
+                        novoSalario: parseFloat(novoSalario.toFixed(2))
+                    };
+                    batch.update(funcRef, {
+                        historicoAumentos: firebase.firestore.FieldValue.arrayUnion(registroAumento)
+                    });
+                    count++;
+                }
+            }
+        });
+
+        if (count > 0) {
+            await batch.commit();
+            mostrarMensagem(`Aumento aplicado com sucesso para ${count} funcionários!`, "success");
+            bootstrap.Modal.getInstance(document.getElementById('modalAumentoColetivo')).hide();
+            carregarFuncionarios();
+        } else {
+            mostrarMensagem("Nenhum funcionário encontrado com os critérios selecionados.", "warning");
+        }
+
+    } catch (error) {
+        console.error("Erro no aumento coletivo:", error);
+        mostrarMensagem("Erro ao aplicar aumento coletivo.", "error");
+    }
+}
+
 async function abrirModalAumentoMassa() {
     const percentual = prompt("Digite a porcentagem de aumento para TODOS os funcionários (apenas salário em folha):", "6.0");
     if (percentual === null) return;
@@ -1871,32 +2032,59 @@ async function desfazerUltimoAumentoMassa() {
     if (!confirm("Deseja desfazer o ÚLTIMO aumento em massa aplicado? Isso reverterá os salários para o valor anterior.")) return;
 
     try {
-        const logsSnap = await db.collection('historico_aumentos_massa').orderBy('data', 'desc').limit(1).get();
-        if (logsSnap.empty) {
+        let logDoc = null;
+        
+        // Tenta buscar ordenado
+        try {
+            const logsSnap = await db.collection('historico_aumentos_massa').orderBy('data', 'desc').limit(1).get();
+            if (!logsSnap.empty) {
+                logDoc = logsSnap.docs[0];
+            }
+        } catch (queryError) {
+            console.warn("Erro na query ordenada, tentando busca simples...", queryError);
+            // Fallback: busca tudo e ordena em memória
+            const allLogsSnap = await db.collection('historico_aumentos_massa').get();
+            if (!allLogsSnap.empty) {
+                const docs = allLogsSnap.docs.sort((a, b) => {
+                    const aDate = a.data().data?.toDate?.() || new Date(a.data().data);
+                    const bDate = b.data().data?.toDate?.() || new Date(b.data().data);
+                    return bDate.getTime() - aDate.getTime();
+                });
+                logDoc = docs[0];
+            }
+        }
+
+        if (!logDoc) {
             mostrarMensagem("Nenhum histórico de aumento em massa encontrado.", "warning");
             return;
         }
 
-        const logDoc = logsSnap.docs[0];
         const logData = logDoc.data();
+        if (!logData.funcionariosAfetados || logData.funcionariosAfetados.length === 0) {
+            mostrarMensagem("Histórico de aumento em massa vazio ou inválido.", "warning");
+            return;
+        }
+
         const batch = db.batch();
+        const dataAtualizacao = firebase.firestore.FieldValue.serverTimestamp();
 
         logData.funcionariosAfetados.forEach(item => {
             const funcRef = db.collection('funcionarios').doc(item.id);
-            batch.update(funcRef, { salario: item.salarioAnterior });
-            // Nota: Remover do array historicoAumentos é complexo via batch sem ler antes, 
-            // aqui estamos revertendo apenas o valor atual do salário.
+            batch.update(funcRef, { 
+                salario: parseFloat(item.salarioAnterior || 0),
+                updatedAt: dataAtualizacao 
+            });
         });
 
-        // Deleta o log
+        // Deleta o log após reverter
         batch.delete(logDoc.ref);
 
         await batch.commit();
-        mostrarMensagem("Último aumento em massa revertido com sucesso.", "success");
-        carregarFuncionarios();
+        mostrarMensagem(`Aumento em massa revertido para ${logData.funcionariosAfetados.length} funcionários.`, "success");
+        await carregarFuncionarios();
 
     } catch (error) {
-        console.error("Erro ao desfazer aumento:", error);
-        mostrarMensagem("Erro ao desfazer aumento.", "error");
+        console.error("Erro ao desfazer aumento em massa:", error);
+        mostrarMensagem("Erro ao desfazer aumento em massa: " + error.message, "error");
     }
 }

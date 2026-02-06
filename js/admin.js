@@ -90,7 +90,7 @@ async function abrirModalPermissoes(uid) {
         ],
         'Jurídico': [
             'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro',
-            'juridico-documentos', 'compliance-denuncia'
+            'juridico-documentos', 'compliance-denuncia', 'juridico-analise-cpf'
         ],
         'Geral / Admin': [
             'agenda', 'empresas', 'relatorios', 'admin-usuarios'
