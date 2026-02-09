@@ -46,12 +46,12 @@ async function carregarPainelExperiencia() {
             const admissao = func.dataAdmissao.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
             admissao.setHours(0, 0, 0, 0); // Normalizar hora para cálculo correto de dias
             
-            // Calcular datas de vencimento
+            // Calcular datas de vencimento (contando o primeiro dia)
             const vencimento45 = new Date(admissao);
-            vencimento45.setDate(admissao.getDate() + 45);
-            
+            vencimento45.setDate(admissao.getDate() + 44);
+
             const vencimento90 = new Date(admissao);
-            vencimento90.setDate(admissao.getDate() + 90);
+            vencimento90.setDate(admissao.getDate() + 89);
 
             // Verificar se está no período de experiência (até 90 dias após admissão)
             if (hoje <= vencimento90) {
@@ -61,18 +61,18 @@ async function carregarPainelExperiencia() {
             // Lógica para identificar pendências
             // Verifica 1º Período (45 dias)
             const diasPara45 = Math.ceil((vencimento45 - hoje) / (1000 * 60 * 60 * 24));
-            
+
             let mostrar45 = false;
-            
+
             // Lógica de filtro
             if (filtroInicio || filtroFim) {
                 // Se tem filtro de data, respeita o intervalo (desde que não esteja vencido há muito tempo, opcional)
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento45 >= dataIni && vencimento45 <= dataFim && diasPara45 >= 0) mostrar45 = true;
+                if (vencimento45 >= dataIni && vencimento45 <= dataFim && diasPara45 >= -2) mostrar45 = true; // Sempre 2 dias antes
             } else {
-                // Padrão: Próximos 10 dias
-                if (diasPara45 <= 10 && diasPara45 >= 0) mostrar45 = true;
+                // Padrão: Próximos 10 dias + 2 dias antes
+                if (diasPara45 <= 10 && diasPara45 >= -2) mostrar45 = true;
             }
 
             if (mostrar45 && (!filtroPeriodo || filtroPeriodo === '45')) {
@@ -92,10 +92,10 @@ async function carregarPainelExperiencia() {
             if (filtroInicio || filtroFim) {
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento90 >= dataIni && vencimento90 <= dataFim && diasPara90 >= 0) mostrar90 = true;
+                if (vencimento90 >= dataIni && vencimento90 <= dataFim && diasPara90 >= -2) mostrar90 = true; // Sempre 2 dias antes
             } else {
-                // Padrão: Próximos 10 dias
-                if (diasPara90 <= 10 && diasPara90 >= 0) mostrar90 = true;
+                // Padrão: Próximos 10 dias + 2 dias antes
+                if (diasPara90 <= 10 && diasPara90 >= -2) mostrar90 = true;
             }
 
             if (mostrar90 && (!filtroPeriodo || filtroPeriodo === '90')) {

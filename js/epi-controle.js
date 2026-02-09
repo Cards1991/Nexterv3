@@ -190,7 +190,7 @@ async function salvarEPI() {
     const id = document.getElementById('epi-id').value;
     const classe = document.getElementById('epi-classe').value;
     const modelo = document.getElementById('epi-modelo').value;
-    
+
     const dados = {
         descricao: document.getElementById('epi-descricao').value.trim(),
         classe: classe,
@@ -200,7 +200,7 @@ async function salvarEPI() {
         fornecedor: document.getElementById('epi-fornecedor').value.trim(),
         lote: document.getElementById('epi-lote').value.trim(),
         unidade: document.getElementById('epi-unidade').value,
-        quantidade: parseInt(document.getElementById('epi-quantidade').value) || 0,
+        quantidade: 0, // Stock entry only through "Entrada de Estoque"
         estoqueMinimo: parseInt(document.getElementById('epi-minimo').value) || 0,
         estoqueIdeal: parseInt(document.getElementById('epi-ideal').value) || 0,
         custo: parseFloat(document.getElementById('epi-custo').value) || 0,
@@ -370,12 +370,20 @@ async function salvarEntradaEstoque() {
 
 async function carregarHistoricoConsumoEPI() {
     const tbody = document.getElementById('tabela-consumo-epi');
+    const container = document.getElementById('container-historico-consumo-epi');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando histórico...</td></tr>';
+    // Make container fixed height with scrollbar
+    if (container) {
+        container.style.maxHeight = '600px';
+        container.style.overflowY = 'auto';
+    }
+
+    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando histórico...</td></tr>';
 
     const dataInicio = document.getElementById('filtro-consumo-inicio').value;
     const dataFim = document.getElementById('filtro-consumo-fim').value;
+    const filtroNome = document.getElementById('filtro-consumo-nome')?.value.toLowerCase().trim() || '';
 
     try {
         let query = db.collection('epi_consumo').orderBy('dataEntrega', 'desc');
@@ -383,10 +391,10 @@ async function carregarHistoricoConsumoEPI() {
         if (dataInicio) query = query.where('dataEntrega', '>=', new Date(dataInicio + 'T00:00:00'));
         if (dataFim) query = query.where('dataEntrega', '<=', new Date(dataFim + 'T23:59:59'));
 
-        const snapshot = await query.limit(100).get();
+        const snapshot = await query.limit(200).get(); // Increased limit for better filtering
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhum registro de consumo no período.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum registro de consumo no período.</td></tr>';
             return;
         }
 
@@ -394,6 +402,11 @@ async function carregarHistoricoConsumoEPI() {
         snapshot.forEach(doc => {
             const consumo = doc.data();
             const dataEntrega = consumo.dataEntrega?.toDate ? consumo.dataEntrega.toDate() : new Date(consumo.dataEntrega);
+
+            // Apply name filter
+            if (filtroNome && !consumo.funcionarioNome.toLowerCase().includes(filtroNome)) {
+                return;
+            }
 
             html += `
                 <tr>
@@ -421,11 +434,15 @@ async function carregarHistoricoConsumoEPI() {
             `;
         });
 
-        tbody.innerHTML = html;
+        if (!html) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum registro encontrado com o filtro aplicado.</td></tr>';
+        } else {
+            tbody.innerHTML = html;
+        }
 
     } catch (error) {
         console.error("Erro ao carregar histórico de consumo:", error);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
     }
 }
 
@@ -1386,22 +1403,29 @@ async function carregarDashboardConsumoEPI() {
         // Ordenar dados para melhor visualização
         const sortedPorSetor = Object.entries(porSetor).sort(([,a],[,b]) => b-a);
 
+        // Adicionar scrollbar ao container do gráfico
+        const canvasSetor = document.getElementById('chart-epi-setor');
+        const containerSetor = canvasSetor.parentElement;
+        containerSetor.style.maxHeight = '400px';
+        containerSetor.style.overflowY = 'auto';
+        canvasSetor.height = 600; // Altura fixa para permitir scrollbar
+
         chartEpiSetor = new Chart(ctxSetor, {
             type: 'bar',
             data: {
                 labels: sortedPorSetor.map(item => item[0]),
-                datasets: [{ 
+                datasets: [{
                     label: 'Custo (R$)',
-                    data: sortedPorSetor.map(item => item[1]), 
+                    data: sortedPorSetor.map(item => item[1]),
                     backgroundColor: '#4361ee',
                     borderRadius: 4
                 }]
             },
-            options: { 
+            options: {
                 indexAxis: 'y', // Gráfico de barras horizontal
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { 
+                plugins: {
                     title: { display: false }, // Título já está no card-header
                     legend: { display: false },
                     tooltip: {
@@ -1413,13 +1437,19 @@ async function carregarDashboardConsumoEPI() {
                     }
                 },
                 scales: {
-                    x: { 
+                    x: {
                         beginAtZero: true,
+                        grid: { display: false },
+                        border: { display: false },
                         ticks: {
                             callback: function(value) {
                                 return 'R$ ' + value;
                             }
                         }
+                    },
+                    y: {
+                        grid: { display: false },
+                        border: { display: false }
                     }
                 }
             }
@@ -1443,25 +1473,29 @@ async function carregarDashboardConsumoEPI() {
             type: 'line',
             data: {
                 labels: sortedPorMes.map(item => item[0]),
-                datasets: [{ 
-                    label: 'Custo (R$)', 
-                    data: sortedPorMes.map(item => item[1]), 
+                datasets: [{
+                    label: 'Custo (R$)',
+                    data: sortedPorMes.map(item => item[1]),
                     borderColor: '#f72585',
                     backgroundColor: 'rgba(247, 37, 133, 0.1)',
                     fill: true,
                     tension: 0.3
                 }]
             },
-            options: { 
+            options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { 
+                plugins: {
                     title: { display: false }, // Título já está no card-header
                     legend: { display: false }
                 },
                 scales: {
+                    x: {
+                        grid: { display: false } // Remove linhas de grade
+                    },
                     y: {
                         beginAtZero: true,
+                        grid: { display: false }, // Remove linhas de grade
                         ticks: {
                             callback: function(value) {
                                 return 'R$ ' + value;
@@ -2072,6 +2106,25 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Se a seção de consumo EPI ficou visível
                 if (target.id === 'consumo-epi' && !target.classList.contains('d-none')) {
                     inicializarConsumoEPI();
+                    // Add scrollbar and remove grid lines from charts
+                    setTimeout(() => {
+                        const containers = document.querySelectorAll('#consumo-epi .chart-container');
+                        containers.forEach(container => {
+                            container.style.maxHeight = '400px';
+                            container.style.overflowY = 'auto';
+                        });
+                        // Remove grid lines from charts
+                        const canvases = document.querySelectorAll('#consumo-epi canvas');
+                        canvases.forEach(canvas => {
+                            const chart = Chart.getChart(canvas);
+                            if (chart) {
+                                chart.options.scales = chart.options.scales || {};
+                                if (chart.options.scales.x) chart.options.scales.x.grid = { display: false };
+                                if (chart.options.scales.y) chart.options.scales.y.grid = { display: false };
+                                chart.update();
+                            }
+                        });
+                    }, 100);
                 }
 
                 // Se a seção de compras EPI ficou visível

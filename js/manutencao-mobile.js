@@ -7,43 +7,55 @@ let db;
 let auth;
 let currentUser = null;
 
+
+
 /**
  * Inicializa o ambiente mobile, conecta ao Firebase e prepara o formulário.
  */
 async function inicializarMobile() {
     try {
         console.log("📱 Inicializando módulo mobile com autenticação...");
-        
-        // 1. Verificar se Firebase está disponível
-        if (typeof firebase === 'undefined' || !firebase.apps.length) {
-            console.error("❌ Firebase não carregado");
+
+        // 1. Verificar se Firebase SDK está disponível
+        if (typeof firebase === 'undefined') {
+            console.error("❌ Firebase SDK não carregado");
             throw new Error("Firebase SDK não encontrado.");
         }
 
         console.log("✅ Firebase SDK carregado");
 
-        // 2. Inicializar serviços
+        // 3. Inicializar Firebase App se necessário
+        if (!firebase.apps.length) {
+            if (!window.__FIREBASE_CONFIG__) {
+                console.error("❌ Configuração do Firebase não encontrada");
+                throw new Error("Configuração do Firebase não encontrada.");
+            }
+            firebase.initializeApp(window.__FIREBASE_CONFIG__);
+            console.log("🚀 Firebase inicializado com sucesso!");
+        }
+
+        // 4. Inicializar serviços
         auth = firebase.auth();
         db = firebase.firestore();
-        
+
         console.log("✅ Serviços Firebase inicializados");
 
-        // 3. Tentar autenticação anônima (obrigatória pelas suas regras)
+        // 5. Tentar autenticação anônima (obrigatória pelas suas regras)
         currentUser = await autenticarUsuario();
-        
+
         if (!currentUser) {
             throw new Error("Não foi possível autenticar no sistema. Tente novamente.");
         }
 
         console.log("✅ Usuário autenticado:", currentUser.uid);
 
-        // 4. Configurar persistência offline
+        // 6. Configurar persistência offline
         await configurarPersistencia();
 
-        // 5. Configurar formulário
+        // 7. Configurar formulário
         configurarFormulario();
 
-        // 6. Testar conexão
+        // 8. Testar conexão
         await testarConexaoFirestore();
 
     } catch (error) {
@@ -433,14 +445,17 @@ function mostrarSucesso(chamadoId, maquinaId) {
  * Mostra erro crítico
  */
 function mostrarErroCritico(error) {
-    document.getElementById('loading-spinner').classList.add('d-none');
-    
+    const loadingSpinner = document.getElementById('loading-spinner');
+    if (loadingSpinner && loadingSpinner.classList) {
+        loadingSpinner.classList.add('d-none');
+    }
+
     const errorDiv = document.createElement('div');
     errorDiv.className = 'alert alert-danger mt-4';
     errorDiv.innerHTML = `
         <h5><i class="fas fa-exclamation-triangle"></i> Erro no Sistema</h5>
         <p class="mb-2"><strong>Mensagem:</strong> ${error.message}</p>
-        
+
         <div class="mb-3">
             <h6>Soluções possíveis:</h6>
             <ul class="mb-2">
@@ -449,7 +464,7 @@ function mostrarErroCritico(error) {
                 <li>Contate o administrador do sistema</li>
             </ul>
         </div>
-        
+
         <div class="d-flex gap-2">
             <button class="btn btn-sm btn-outline-danger" onclick="location.reload()">
                 <i class="fas fa-redo"></i> Tentar Novamente
@@ -459,7 +474,7 @@ function mostrarErroCritico(error) {
             </button>
         </div>
     `;
-    
+
     const container = document.querySelector('.container');
     if (container) {
         container.appendChild(errorDiv);

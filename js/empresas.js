@@ -169,49 +169,77 @@ async function salvarEmpresa() {
 async function editarEmpresa(empresaId) {
     const empresa = empresas.find(e => e.id === empresaId);
     if (empresa) {
-        // Preencher modal com dados da empresa
-        document.getElementById('nome-empresa').value = empresa.nome;
-        document.getElementById('cnpj-empresa').value = empresa.cnpj || '';
-        document.getElementById('funcoes-empresa').value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
-        document.getElementById('rat-empresa').value = empresa.rat || '';
-
-        // Preencher impostos
-        const impostos = empresa.impostos || {};
-        
-        // FGTS
-        document.getElementById('empresa-check-fgts').checked = (impostos.fgts > 0);
-        document.getElementById('empresa-input-fgts').value = impostos.fgts || '';
-        document.getElementById('empresa-input-fgts').classList.toggle('d-none', !(impostos.fgts > 0));
-        
-        // Terceiros
-        document.getElementById('empresa-check-terceiro').checked = (impostos.terceiros > 0);
-        document.getElementById('empresa-input-terceiro').value = impostos.terceiros || '';
-        document.getElementById('empresa-input-terceiro').classList.toggle('d-none', !(impostos.terceiros > 0));
-        
-        // Patronal
-        // Compatibilidade com versão anterior (pagaContribuicaoPatronal booleano)
-        const temPatronal = (impostos.patronal > 0) || (empresa.pagaContribuicaoPatronal === true);
-        document.getElementById('empresa-check-patronal').checked = temPatronal;
-        document.getElementById('empresa-input-patronal').value = impostos.patronal || (temPatronal ? 20 : '');
-        document.getElementById('empresa-input-patronal').classList.toggle('d-none', !temPatronal);
-        
-        // Sindicato
-        document.getElementById('empresa-check-sindicato').checked = (impostos.sindicato > 0);
-        document.getElementById('empresa-input-sindicato').value = impostos.sindicato || '';
-        document.getElementById('empresa-input-sindicato').classList.toggle('d-none', !(impostos.sindicato > 0));
-        
-        // Garante que o título do modal esteja correto para edição
-        const modalTitle = document.querySelector('#empresaModal .modal-title');
-        if (modalTitle) modalTitle.textContent = 'Editar Empresa';
-
-        // Abrir modal
+        // Abrir modal primeiro
         const modal = new bootstrap.Modal(document.getElementById('empresaModal'));
         modal.show();
 
-        // Alterar comportamento do botão salvar
-        const salvarBtn = document.querySelector('#empresaModal .btn-primary');
-        salvarBtn.textContent = 'Atualizar Empresa';
-        salvarBtn.onclick = function() { atualizarEmpresa(empresaId); };
+        // Usar setTimeout para garantir que o modal esteja totalmente renderizado
+        setTimeout(() => {
+            // Preencher modal com dados da empresa
+            const nomeInput = document.getElementById('nome-empresa');
+            if (nomeInput) nomeInput.value = empresa.nome;
+
+            const cnpjInput = document.getElementById('cnpj-empresa');
+            if (cnpjInput) cnpjInput.value = empresa.cnpj || '';
+
+            const funcoesInput = document.getElementById('funcoes-empresa');
+            if (funcoesInput) funcoesInput.value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
+
+            const ratInput = document.getElementById('rat-empresa');
+            if (ratInput) ratInput.value = empresa.rat || '';
+
+            // Preencher impostos
+            const impostos = empresa.impostos || {};
+
+            // FGTS
+            const fgtsCheck = document.getElementById('empresa-check-fgts');
+            const fgtsInput = document.getElementById('empresa-input-fgts');
+            if (fgtsCheck) fgtsCheck.checked = (impostos.fgts > 0);
+            if (fgtsInput) {
+                fgtsInput.value = impostos.fgts || '';
+                fgtsInput.classList.toggle('d-none', !(impostos.fgts > 0));
+            }
+
+            // Terceiros
+            const terceiroCheck = document.getElementById('empresa-check-terceiro');
+            const terceiroInput = document.getElementById('empresa-input-terceiro');
+            if (terceiroCheck) terceiroCheck.checked = (impostos.terceiros > 0);
+            if (terceiroInput) {
+                terceiroInput.value = impostos.terceiros || '';
+                terceiroInput.classList.toggle('d-none', !(impostos.terceiros > 0));
+            }
+
+            // Patronal
+            // Compatibilidade com versão anterior (pagaContribuicaoPatronal booleano)
+            const temPatronal = (impostos.patronal > 0) || (empresa.pagaContribuicaoPatronal === true);
+            const patronalCheck = document.getElementById('empresa-check-patronal');
+            const patronalInput = document.getElementById('empresa-input-patronal');
+            if (patronalCheck) patronalCheck.checked = temPatronal;
+            if (patronalInput) {
+                patronalInput.value = impostos.patronal || (temPatronal ? 20 : '');
+                patronalInput.classList.toggle('d-none', !temPatronal);
+            }
+
+            // Sindicato
+            const sindicatoCheck = document.getElementById('empresa-check-sindicato');
+            const sindicatoInput = document.getElementById('empresa-input-sindicato');
+            if (sindicatoCheck) sindicatoCheck.checked = (impostos.sindicato > 0);
+            if (sindicatoInput) {
+                sindicatoInput.value = impostos.sindicato || '';
+                sindicatoInput.classList.toggle('d-none', !(impostos.sindicato > 0));
+            }
+
+            // Garante que o título do modal esteja correto para edição
+            const modalTitle = document.querySelector('#empresaModal .modal-title');
+            if (modalTitle) modalTitle.textContent = 'Editar Empresa';
+
+            // Alterar comportamento do botão salvar
+            const salvarBtn = document.querySelector('#empresaModal .btn-primary');
+            if (salvarBtn) {
+                salvarBtn.textContent = 'Atualizar Empresa';
+                salvarBtn.onclick = function() { atualizarEmpresa(empresaId); };
+            }
+        }, 100); // Pequeno delay para garantir renderização
     }
 }
 

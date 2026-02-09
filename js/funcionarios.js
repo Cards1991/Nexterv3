@@ -435,7 +435,7 @@ async function editarFuncionario(funcionarioId) {
         const funcionario = funcionarioDoc.data();
         
         // Preencher modal de edição
-        const funcionarioModal = new bootstrap.Modal(document.getElementById('funcionarioModal'));
+        const funcionarioModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('funcionarioModal'));
         const salvarBtn = document.querySelector('#funcionarioModal .btn-primary');
         
         document.querySelector('#funcionarioModal .modal-title').textContent = 'Editar Funcionário';
@@ -503,8 +503,33 @@ async function editarFuncionario(funcionarioId) {
         // Carrega setores e funções e depois seleciona os valores corretos
         await carregarSetoresPorEmpresa(funcionario.empresaId, 'setor-funcionario');
         await carregarFuncoesPorEmpresa(funcionario.empresaId, 'cargo-funcionario');
-        document.getElementById('setor-funcionario').value = funcionario.setor;
-        document.getElementById('cargo-funcionario').value = funcionario.cargo;
+        
+        // Define Setor (com fallback se não existir na lista)
+        const setorSelect = document.getElementById('setor-funcionario');
+        if (setorSelect) {
+            setorSelect.value = funcionario.setor;
+            // Se o valor não foi selecionado (não existe na lista), adiciona manualmente
+            if (funcionario.setor && setorSelect.value !== funcionario.setor) {
+                const option = document.createElement('option');
+                option.value = funcionario.setor;
+                option.textContent = funcionario.setor;
+                option.selected = true;
+                setorSelect.appendChild(option);
+            }
+        }
+
+        // Define Cargo (com fallback se não existir na lista)
+        const cargoSelect = document.getElementById('cargo-funcionario');
+        if (cargoSelect) {
+            cargoSelect.value = funcionario.cargo;
+            if (funcionario.cargo && cargoSelect.value !== funcionario.cargo) {
+                const option = document.createElement('option');
+                option.value = funcionario.cargo;
+                option.textContent = funcionario.cargo;
+                option.selected = true;
+                cargoSelect.appendChild(option);
+            }
+        }
 
         funcionarioModal.show();
         
@@ -677,44 +702,31 @@ async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPor
     try {
         let custoValeRefeicao = 0;
 
-        // Busca dados da empresa e do funcionário em paralelo
-        const [empresaDoc, funcionarioDoc] = await Promise.all([
-            db.collection('empresas').doc(empresaId).get(),
-            db.collection('funcionarios').doc(funcionarioId).get()
-        ]);
-
-        let totalEncargosPercentual = 0;
-
-        if (empresaDoc.exists) {
-            const empresaData = empresaDoc.data();
-            const impostos = empresaData.impostos || {};
-
-            // Soma os percentuais cadastrados na empresa
-            const rat = parseFloat(empresaData.rat) || 0;
-            const fgts = parseFloat(impostos.fgts) || 0;
-            const terceiros = parseFloat(impostos.terceiros) || 0;
-            const patronal = parseFloat(impostos.patronal) || 0;
-            const sindicato = parseFloat(impostos.sindicato) || 0;
-
-            totalEncargosPercentual = rat + fgts + terceiros + patronal + sindicato;
-        }
+        // Busca dados do funcionário para verificar benefícios
+        const funcionarioDoc = await db.collection('funcionarios').doc(funcionarioId).get();
 
         if (funcionarioDoc.exists && funcionarioDoc.data().beneficios?.valeAlimentacao === true) {
             custoValeRefeicao = 260.00;
         }
 
-        // Cálculo das Provisões (Férias + 1/3 + 13º)
+        // Cálculo dos custos padrão para todas as empresas
+        const fgts = salario * 0.08; // FGTS: 8%
+        const sindicato = salario * 0.008; // Sindicato: 0,8%
+
+        // Provisão de Férias
         const provisaoFerias = salario / 12;
-        const tercoFerias = provisaoFerias / 3;
+        const tercoFerias = provisaoFerias / 3; // Terço de Férias
+        const fgtsFerias = provisaoFerias * 0.08; // FGTS s/ Prov. Férias
+
+        // Provisão 13º
         const provisao13 = salario / 12;
-        const totalProvisoes = provisaoFerias + tercoFerias + provisao13;
+        const fgts13 = provisao13 * 0.08; // Provisão de FGTS s/ 13º
 
-        // Cálculo dos Encargos sobre Salário e Provisões
-        const baseCalculoEncargos = salario + totalProvisoes;
-        const valorEncargos = baseCalculoEncargos * (totalEncargosPercentual / 100);
+        // Soma de todos os custos adicionais
+        const totalAdicionais = fgts + sindicato + provisaoFerias + tercoFerias + fgtsFerias + provisao13 + fgts13;
 
-        // Custo Total = Salário + Provisões + Encargos + Benefícios + Salário Por Fora
-        const custoTotal = salario + totalProvisoes + valorEncargos + custoValeRefeicao + salarioPorFora;
+        // Custo Total = Salário + Custos Adicionais + Benefícios + Salário Por Fora
+        const custoTotal = salario + totalAdicionais + custoValeRefeicao + salarioPorFora;
 
         await db.collection('funcionarios').doc(funcionarioId).update({
             custoTotal: parseFloat(custoTotal.toFixed(2))
@@ -1001,7 +1013,10 @@ async function carregarFuncoesPorEmpresa(empresaId, selectId) {
         if (empresa.funcoes && empresa.funcoes.length > 0) {
             select.disabled = false;
             empresa.funcoes.forEach(funcao => {
-                select.innerHTML += `<option value="${funcao}">${funcao}</option>`;
+                    const option = document.createElement('option');
+                    option.value = funcao;
+                    option.textContent = funcao;
+                    select.appendChild(option);
             });
         }
     } catch (error) {
@@ -1683,11 +1698,56 @@ async function exportarFuncionariosExcel() {
     }
 }
 
+// Função para reprocessar custos de todos os funcionários
+async function reprocessarCustosFuncionarios() {
+    if (!confirm("Deseja reprocessar os custos de TODOS os funcionários? Isso pode levar alguns segundos.")) {
+        return;
+    }
+
+    try {
+        mostrarMensagem("Reprocessando custos... aguarde.", "info");
+
+        const funcionariosSnap = await db.collection('funcionarios').get();
+        let processados = 0;
+        let erros = 0;
+
+        for (const doc of funcionariosSnap.docs) {
+            const funcionario = doc.data();
+            const salario = parseFloat(funcionario.salario || 0);
+            const salarioPorFora = parseFloat(funcionario.salarioPorFora || 0);
+            const empresaId = funcionario.empresaId;
+
+            if (salario > 0 || salarioPorFora > 0) {
+                try {
+                    await atualizarCustoTotal(doc.id, salario, empresaId, salarioPorFora);
+                    processados++;
+                } catch (error) {
+                    console.error(`Erro ao reprocessar custo do funcionário ${funcionario.nome}:`, error);
+                    erros++;
+                }
+            }
+        }
+
+        if (erros === 0) {
+            mostrarMensagem(`Custos reprocessados com sucesso para ${processados} funcionários!`, "success");
+        } else {
+            mostrarMensagem(`Custos reprocessados para ${processados} funcionários, com ${erros} erros.`, "warning");
+        }
+
+        await carregarFuncionarios();
+
+    } catch (error) {
+        console.error("Erro ao reprocessar custos:", error);
+        mostrarMensagem("Erro ao reprocessar custos.", "error");
+    }
+}
+
 // Exportar funções globais
 window.abrirModalAumentoColetivo = abrirModalAumentoColetivo;
 window.aplicarAumentoColetivo = aplicarAumentoColetivo;
 window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
 window.exportarFuncionariosExcel = exportarFuncionariosExcel;
+window.reprocessarCustosFuncionarios = reprocessarCustosFuncionarios;
 
 // Funções auxiliares para editar e excluir aumentos salariais
 async function editarAumentoSalario(funcionarioId, historicoIndex) {
@@ -1881,7 +1941,7 @@ async function aplicarAumentoColetivo() {
     const dataCorte = new Date(dataCorteInput.value + 'T23:59:59');
     const motivo = motivoInput.value.trim();
 
-    if (isNaN(percentual) || percentual <= 0) {
+    if (isNaN(percentual) || percentual === 0) {
         mostrarMensagem("Porcentagem inválida.", "warning");
         return;
     }
@@ -2087,4 +2147,317 @@ async function desfazerUltimoAumentoMassa() {
         console.error("Erro ao desfazer aumento em massa:", error);
         mostrarMensagem("Erro ao desfazer aumento em massa: " + error.message, "error");
     }
+}
+
+/**
+ * Processa um arquivo Excel (.xlsx) para atualizar dados de funcionários existentes.
+ * A função lê a primeira planilha do arquivo, converte para JSON e atualiza
+ * os registros no Firestore com base na correspondência de CPF.
+ */
+async function processarArquivoAtualizacaoXLSX() {
+    const fileInput = document.getElementById('csv-atualizacao-file-input');
+    const file = fileInput.files[0];
+    const btn = document.getElementById('btn-iniciar-atualizacao');
+    const resultadoDiv = document.getElementById('atualizacao-resultado');
+    const resumoDiv = document.getElementById('atualizacao-resumo');
+    const errosLista = document.getElementById('atualizacao-erros-lista');
+
+    if (!file) {
+        mostrarMensagem("Por favor, selecione um arquivo Excel (.xlsx).", "warning");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+    resultadoDiv.style.display = 'block';
+    resumoDiv.innerHTML = 'Analisando arquivo...';
+    errosLista.innerHTML = '';
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+        try {
+            const data = new Uint8Array(e.target.result);
+            // Usar {cellDates: true} para que o XLSX tente converter datas automaticamente
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const firstSheetName = workbook.SheetNames[0];
+            const worksheet = workbook.Sheets[firstSheetName];
+            // Usar {raw: false} para obter valores formatados (bom para CPF como texto)
+            const jsonData = XLSX.utils.sheet_to_json(worksheet, { raw: false });
+
+            if (jsonData.length === 0) {
+                resumoDiv.innerHTML = '<span class="text-danger">O arquivo está vazio ou a primeira planilha não contém dados.</span>';
+                btn.disabled = false;
+                btn.innerHTML = 'Iniciar Atualização';
+                return;
+            }
+
+            if (!jsonData[0].hasOwnProperty('cpf')) {
+                resumoDiv.innerHTML = '<span class="text-danger">Arquivo inválido! A coluna "cpf" é obrigatória para a atualização.</span>';
+                btn.disabled = false;
+                btn.innerHTML = 'Iniciar Atualização';
+                return;
+            }
+
+            // Cache de empresas para evitar múltiplas buscas no banco
+            const empresasSnap = await db.collection('empresas').get();
+            const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.data().nome.toLowerCase(), doc.id]));
+
+            let updatedCount = 0;
+            let createdCount = 0;
+            let notFoundCount = 0;
+            let errorCount = 0;
+            const notFoundCpfs = [];
+            const batch = db.batch();
+            let batchSize = 0;
+
+            for (const [i, row] of jsonData.entries()) {
+                // Busca CPF de forma case-insensitive
+                let cpfRaw = null;
+                for (const key in row) {
+                    if (key.toLowerCase().includes('cpf')) {
+                        cpfRaw = row[key]?.toString().trim();
+                        break;
+                    }
+                }
+                const cpf = cpfRaw ? cpfRaw.replace(/\D/g, '') : '';
+
+                if (!cpf) {
+                    errorCount++;
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-danger';
+                    li.textContent = `Linha ${i + 2}: CPF não encontrado ou inválido.`;
+                    errosLista.appendChild(li);
+                    continue;
+                }
+
+                try {
+                    const querySnapshot = await db.collection('funcionarios').where('cpf', '==', cpf).limit(1).get();
+
+                    if (!querySnapshot.empty) {
+                        const doc = querySnapshot.docs[0];
+                        const updateData = {};
+
+                        // Mapeia colunas do Excel para campos do Firestore de forma flexível
+                        for (const key in row) {
+                            if (!row.hasOwnProperty(key) || row[key] === null || row[key] === undefined) {
+                                continue;
+                            }
+
+                            const lowerKey = key.toLowerCase();
+                            let field = null;
+
+                            // Mapeamento flexível baseado em palavras-chave
+                            if (lowerKey.includes('nome') && !lowerKey.includes('empresa')) {
+                                field = 'nome';
+                            } else if (lowerKey.includes('cpf')) {
+                                continue; // CPF já usado para identificação
+                            } else if (lowerKey.includes('matr')) {
+                                field = 'matricula';
+                            } else if (lowerKey.includes('empresa')) {
+                                field = 'empresaNome';
+                            } else if (lowerKey.includes('setor')) {
+                                field = 'setor';
+                            } else if (lowerKey.includes('cargo') || lowerKey.includes('função') || lowerKey.includes('funcao')) {
+                                field = 'cargo';
+                            } else if (lowerKey.includes('sal')) {
+                                field = 'salario';
+                            } else if (lowerKey.includes('admiss')) {
+                                field = 'dataAdmissao';
+                            } else if (lowerKey.includes('nasc')) {
+                                field = 'dataNascimento';
+                            } else if (lowerKey.includes('email')) {
+                                field = 'email';
+                            } else if (lowerKey.includes('telefone') || lowerKey.includes('fone') || lowerKey.includes('celular')) {
+                                field = 'telefone';
+                            } else if (lowerKey === 'sexo' || lowerKey.includes('gênero') || lowerKey.includes('genero')) {
+                                field = 'sexo';
+                            } else if (lowerKey.includes('status')) {
+                                field = 'status';
+                            }
+
+                            if (!field) continue; // Ignora colunas não mapeadas
+
+                            const value = row[key];
+
+                            // Permite atualizar para string vazia apenas para campos de texto
+                            if (value === '' && ['nome', 'matricula', 'setor', 'cargo', 'email', 'telefone', 'sexo', 'endereco.cep', 'endereco.logradouro', 'endereco.numero', 'endereco.bairro', 'endereco.cidade', 'endereco.estado'].includes(field)) {
+                                updateData[field] = '';
+                            } else if (value !== '') {
+                                if (field === 'empresaNome') {
+                                    const empresaId = empresasMap.get(value.toString().toLowerCase());
+                                    if (empresaId) updateData['empresaId'] = empresaId;
+                                } else if (field === 'dataNascimento' || field === 'dataAdmissao') {
+                                    // Tenta parsear data do formato brasileiro dd/mm/yyyy
+                                    let parsedDate = null;
+                                    if (value instanceof Date && !isNaN(value)) {
+                                        parsedDate = value;
+                                    } else if (typeof value === 'string') {
+                                        const dateStr = value.trim();
+                                        const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+                                        const match = dateStr.match(dateRegex);
+                                        if (match) {
+                                            const [, day, month, year] = match;
+                                            parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                            if (isNaN(parsedDate.getTime())) parsedDate = null;
+                                        }
+                                    }
+                                    if (parsedDate) {
+                                        updateData[field] = firebase.firestore.Timestamp.fromDate(parsedDate);
+                                    }
+                                } else if (field === 'salario') {
+                                    const salario = parseFloat(value.toString().replace(',', '.'));
+                                    if (!isNaN(salario)) updateData[field] = salario;
+                                } else if (field === 'status') {
+                                    updateData[field] = value;
+                                } else {
+                                    updateData[field] = value;
+                                }
+                            }
+                        }
+
+                        if (Object.keys(updateData).length > 0) {
+                            updateData.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+                            batch.update(doc.ref, updateData);
+                            updatedCount++;
+                            batchSize++;
+                        }
+
+                        if (batchSize >= 400) {
+                            await batch.commit();
+                            batch = db.batch();
+                            batchSize = 0;
+                        }
+
+                    } else {
+                        // Lógica de Criação (Novo Funcionário)
+                        const newData = {
+                            cpf: cpf,
+                            status: 'Ativo',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            createdByUid: firebase.auth().currentUser?.uid,
+                            endereco: {}
+                        };
+                        
+                        let hasData = false;
+
+                        for (const key in row) {
+                            if (!row.hasOwnProperty(key) || row[key] === null || row[key] === undefined) {
+                                continue;
+                            }
+
+                            const lowerKey = key.toLowerCase();
+                            let field = null;
+
+                            // Mapeamento flexível (mesma lógica da atualização)
+                            if (lowerKey.includes('nome') && !lowerKey.includes('empresa')) {
+                                field = 'nome';
+                            } else if (lowerKey.includes('cpf')) {
+                                continue; 
+                            } else if (lowerKey.includes('matr')) {
+                                field = 'matricula';
+                            } else if (lowerKey.includes('empresa')) {
+                                field = 'empresaNome';
+                            } else if (lowerKey.includes('setor')) {
+                                field = 'setor';
+                            } else if (lowerKey.includes('cargo') || lowerKey.includes('função') || lowerKey.includes('funcao')) {
+                                field = 'cargo';
+                            } else if (lowerKey.includes('sal')) {
+                                field = 'salario';
+                            } else if (lowerKey.includes('admiss')) {
+                                field = 'dataAdmissao';
+                            } else if (lowerKey.includes('nasc')) {
+                                field = 'dataNascimento';
+                            } else if (lowerKey.includes('email')) {
+                                field = 'email';
+                            } else if (lowerKey.includes('telefone') || lowerKey.includes('fone') || lowerKey.includes('celular')) {
+                                field = 'telefone';
+                            } else if (lowerKey.includes('status')) {
+                                field = 'status';
+                            }
+
+                            if (!field) continue;
+
+                            const value = row[key];
+                            let finalValue = value;
+
+                            // Processamento de valores
+                            if (field === 'empresaNome') {
+                                const empresaId = empresasMap.get(value.toString().toLowerCase());
+                                if (empresaId) {
+                                    newData['empresaId'] = empresaId;
+                                    continue; 
+                                }
+                            } else if (field === 'dataNascimento' || field === 'dataAdmissao') {
+                                let parsedDate = null;
+                                if (value instanceof Date && !isNaN(value)) {
+                                    parsedDate = value;
+                                } else if (typeof value === 'string') {
+                                    const dateStr = value.trim();
+                                    const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
+                                    const match = dateStr.match(dateRegex);
+                                    if (match) {
+                                        const [, day, month, year] = match;
+                                        parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                        if (isNaN(parsedDate.getTime())) parsedDate = null;
+                                    }
+                                }
+                                if (parsedDate) {
+                                    finalValue = firebase.firestore.Timestamp.fromDate(parsedDate);
+                                } else {
+                                    continue;
+                                }
+                            } else if (field === 'salario') {
+                                const salario = parseFloat(value.toString().replace(',', '.'));
+                                if (!isNaN(salario)) finalValue = salario;
+                                else continue;
+                            } else {
+                                finalValue = value;
+                            }
+
+                            // Atribuição
+                            newData[field] = finalValue;
+                            hasData = true;
+                        }
+
+                        if (hasData && newData.nome) {
+                            const newDocRef = db.collection('funcionarios').doc();
+                            batch.set(newDocRef, newData);
+                            createdCount++;
+                            batchSize++;
+                            
+                            if (batchSize >= 400) {
+                                await batch.commit();
+                                batch = db.batch();
+                                batchSize = 0;
+                            }
+                        } else {
+                            if (!newData.nome) {
+                                errorCount++;
+                                // Opcional: Logar erro de falta de nome
+                            }
+                        }
+                    }
+                } catch (err) {
+                    errorCount++;
+                    const li = document.createElement('li');
+                    li.className = 'list-group-item list-group-item-danger';
+                    li.textContent = `Linha ${i + 2} (CPF: ${cpf}): Erro - ${err.message}`;
+                    errosLista.appendChild(li);
+                }
+            }
+
+            if (batchSize > 0) await batch.commit();
+
+            resumoDiv.innerHTML = `<p class="mb-1"><strong class="text-success">${updatedCount}</strong> atualizados. <strong class="text-primary">${createdCount}</strong> criados.</p><p class="mb-1"><strong class="text-danger">${errorCount}</strong> erros.</p>`;
+            if (notFoundCpfs.length > 0) errosLista.innerHTML += `<li class="list-group-item list-group-item-warning">CPFs não encontrados: ${notFoundCpfs.join(', ')}</li>`;
+            if (typeof carregarFuncionarios === 'function') carregarFuncionarios();
+
+        } catch (readError) {
+            resumoDiv.innerHTML = `<span class="text-danger">Erro ao ler o arquivo Excel: ${readError.message}</span>`;
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = 'Iniciar Atualização';
+        }
+    };
+    reader.readAsArrayBuffer(file);
 }

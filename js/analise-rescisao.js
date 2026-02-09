@@ -4,6 +4,14 @@ let chartsRescisao = {};
 
 async function inicializarAnaliseRescisao() {
     try {
+        // Definir mês atual como padrão nos filtros
+        const hoje = new Date();
+        const mesAtual = hoje.toISOString().slice(0, 7); // Formato YYYY-MM
+        const filtroMes = document.getElementById('filtro-rescisao-mes');
+        if (filtroMes && !filtroMes.value) {
+            filtroMes.value = mesAtual;
+        }
+
         // Buscar dados de demissões (Movimentações)
         const demissoesSnap = await db.collection('movimentacoes')
             .where('tipo', '==', 'demissao')
@@ -64,10 +72,24 @@ async function inicializarAnaliseRescisao() {
             };
         });
 
-        // Aplicar filtros se houver (implementação futura dos botões de filtro)
-        // Por enquanto usa todos os dados
-        
-        atualizarKPIsRescisao(dadosCompletos);
+        // Aplicar filtros
+        let dadosFiltrados = dadosCompletos;
+        if (filtroMes && filtroMes.value) {
+            const mesAnoFiltro = filtroMes.value; // YYYY-MM
+            dadosFiltrados = dadosCompletos.filter(d => {
+                if (!d.dataDemissao) return false;
+                const mesAnoDemissao = d.dataDemissao.toISOString().slice(0, 7);
+                return mesAnoDemissao === mesAnoFiltro;
+            });
+        }
+
+        // Filtro por tipo de rescisão
+        const filtroTipo = document.getElementById('filtro-rescisao-tipo')?.value;
+        if (filtroTipo) {
+            dadosFiltrados = dadosFiltrados.filter(d => d.motivo === filtroTipo);
+        }
+
+        atualizarKPIsRescisao(dadosFiltrados);
         gerarGraficosRescisao(dadosCompletos);
         gerarAnaliseSetores(dadosCompletos);
         gerarRankingLideranca(dadosCompletos, setoresMap);

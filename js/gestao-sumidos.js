@@ -175,14 +175,9 @@ function atualizarDashboardSumidos(casos) {
     if (!dashboard) return;
 
     const total = casos.length;
-    const criticos = casos.filter(c => {
-        const data = c.dataUltimoPonto?.toDate ? c.dataUltimoPonto.toDate() : new Date(c.dataUltimoPonto);
-        const diff = (new Date() - data) / (1000 * 60 * 60 * 24);
-        return diff > 30;
-    }).length;
-    
     const emTratamento = casos.filter(c => c.tratamento && (c.tratamento.whatsapp || c.tratamento.ar)).length;
     const casosFinalizados = casos.filter(c => c.status === 'Finalizado').length;
+    const casosEmAberto = total - casosFinalizados;
 
     dashboard.innerHTML = `
         <div class="col-md-3 mb-3">
@@ -196,21 +191,21 @@ function atualizarDashboardSumidos(casos) {
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="card bg-warning text-dark h-100">
+            <div class="card bg-info text-white h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div><h6 class="mb-0">Em Tratamento</h6><h2 class="mb-0">${emTratamento}</h2></div>
-                        <i class="fas fa-comments fa-2x opacity-50"></i>
+                        <div><h6 class="mb-0">Casos em Aberto</h6><h2 class="mb-0">${casosEmAberto}</h2></div>
+                        <i class="fas fa-folder-open fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
         </div>
         <div class="col-md-3 mb-3">
-            <div class="card bg-danger text-white h-100">
+            <div class="card bg-warning text-dark h-100">
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
-                        <div><h6 class="mb-0">Abandono (>30 dias)</h6><h2 class="mb-0">${criticos}</h2></div>
-                        <i class="fas fa-exclamation-triangle fa-2x opacity-50"></i>
+                        <div><h6 class="mb-0">Em Tratamento</h6><h2 class="mb-0">${emTratamento}</h2></div>
+                        <i class="fas fa-comments fa-2x opacity-50"></i>
                     </div>
                 </div>
             </div>
