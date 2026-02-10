@@ -142,9 +142,6 @@ async function salvarEmpresa() {
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa')?.value || ''; // Garante que seja uma string vazia se não encontrado
         const funcoesText = document.getElementById('funcoes-empresa').value;
-        const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
-        
-        // Captura dos impostos configuráveis
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
         const percTerceiros = temTerceiros ? (parseFloat(document.getElementById('empresa-input-terceiro').value) || 0) : 0;
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
@@ -162,7 +159,6 @@ async function salvarEmpresa() {
         const empresaData = {
             nome: nome,
             cnpj: cnpj,
-            rat: rat,
             impostos: {
                 terceiros: percTerceiros,
                 patronal: percPatronal
@@ -208,20 +204,13 @@ async function editarEmpresa(empresaId) {
             const funcoesInput = document.getElementById('funcoes-empresa');
             if (funcoesInput) funcoesInput.value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
 
-
-
-
-
-            const ratInput = document.getElementById('rat-empresa');
-            if (ratInput) ratInput.value = empresa.rat || '';
-
             // Preencher impostos
             const impostos = empresa.impostos || {};
 
             // Terceiros
             const terceiroCheck = document.getElementById('empresa-check-terceiro');
             const terceiroInput = document.getElementById('empresa-input-terceiro');
-
+            
             if (terceiroCheck) terceiroCheck.checked = (impostos.terceiros > 0);
             if (terceiroInput) {
                 terceiroInput.value = impostos.terceiros || '';
@@ -229,11 +218,10 @@ async function editarEmpresa(empresaId) {
             }
 
             // Patronal
-            // Compatibilidade com versão anterior (pagaContribuicaoPatronal booleano)
-            const temPatronal = (impostos.patronal > 0) || (empresa.pagaContribuicaoPatronal === true);
-
+            const temPatronal = (impostos.patronal > 0);
             const patronalCheck = document.getElementById('empresa-check-patronal');
             const patronalInput = document.getElementById('empresa-input-patronal');
+
             if (patronalCheck) patronalCheck.checked = temPatronal;
             if (patronalInput) {
                 patronalInput.value = impostos.patronal || (temPatronal ? 20 : '');
@@ -261,7 +249,6 @@ async function atualizarEmpresa(empresaId) {
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa').value;
         const funcoesText = document.getElementById('funcoes-empresa').value;
-        const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         
         // Captura dos impostos configuráveis
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
@@ -271,22 +258,18 @@ async function atualizarEmpresa(empresaId) {
 
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
-
         const updateData = {
             nome: nome,
             cnpj: cnpj,
             funcoes: funcoes,            
-            rat: rat,
             impostos: {
                 terceiros: percTerceiros,
                 patronal: percPatronal
             },
-            updatedAt: timestamp(),
-            updatedByUid: user ? user.uid : null
+            updatedAt: timestamp(), 
         };
 
         await db.collection('empresas').doc(empresaId).update(updateData);
-
         // Fechar modal e resetar
         const modal = bootstrap.Modal.getInstance(document.getElementById('empresaModal'));
         modal.hide();

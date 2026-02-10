@@ -11,7 +11,27 @@
 4. **Fallback Handling**: Add retry mechanism for script loading failures
 
 ## Steps
-- [ ] Modify manutencao-mobile.html to remove static Firebase script tags
-- [ ] Update manutencao-mobile.js to include dynamic script loading function
-- [ ] Add DOM safety checks in mostrarErroCritico
+- [x] Modify manutencao-mobile.html to remove static Firebase script tags
+- [x] Update manutencao-mobile.js to include dynamic script loading function
+- [x] Add DOM safety checks in mostrarErroCritico
 - [ ] Test the changes by running the page
+
+---
+
+## Update: Added New Cost Calculations to Employee Cost Estimation
+
+### Changes Made
+- **js/funcionarios.js**: Updated `atualizarCustoTotal` function to include new patronal (20%) and cont terceiros (7.64%) calculations applied to salary, férias, and 13º.
+- **test-custos.js**: Updated test function and expected values to reflect new cost calculations. For R$ 1000 salary, total cost is now R$ 1608.24.
+
+### New Costs Added
+- Patronal s/ salario: 20% of salary
+- Patronal s/ férias: 20% of férias provision
+- Patronal s/13º: 20% of 13º provision
+- Cont Terceiros s/ salario: 7.64% of salary
+- Cont Terceiros s/ férias: 7.64% of férias provision
+- Cont Terceiros s/13º: 7.64% of 13º provision
+
+### Verification
+- All test cases updated and verified to match new calculations.
+- Total cost for R$ 1000 salary: R$ 1608.24 (as specified).

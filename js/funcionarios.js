@@ -722,8 +722,16 @@ async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPor
         const provisao13 = salario / 12;
         const fgts13 = provisao13 * 0.08; // Provisão de FGTS s/ 13º
 
+        // Novos custos: Patronal e Contribuições Terceiros
+        const patronalSalario = salario * 0.20; // Patronal s/ salario: 20%
+        const patronalFerias = provisaoFerias * 0.20; // Patronal s/ férias: 20%
+        const patronal13 = provisao13 * 0.20; // Patronal s/13º: 20%
+        const contTerceirosSalario = salario * 0.0764; // Cont Terceiros s/ salario: 7,64%
+        const contTerceirosFerias = provisaoFerias * 0.0764; // Cont Terceiros s/ férias: 7,64%
+        const contTerceiros13 = provisao13 * 0.0764; // Cont Terceiros s/13º: 7,64%
+
         // Soma de todos os custos adicionais
-        const totalAdicionais = fgts + sindicato + provisaoFerias + tercoFerias + fgtsFerias + provisao13 + fgts13;
+        const totalAdicionais = fgts + sindicato + provisaoFerias + tercoFerias + fgtsFerias + provisao13 + fgts13 + patronalSalario + patronalFerias + patronal13 + contTerceirosSalario + contTerceirosFerias + contTerceiros13;
 
         // Custo Total = Salário + Custos Adicionais + Benefícios + Salário Por Fora
         const custoTotal = salario + totalAdicionais + custoValeRefeicao + salarioPorFora;

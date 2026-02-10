@@ -7,7 +7,65 @@ let db;
 let auth;
 let currentUser = null;
 
+/**
+ * Carrega dinamicamente os scripts do Firebase SDK
+ */
+async function carregarFirebaseSDK() {
+    return new Promise((resolve, reject) => {
+        // Verificar se já está carregado
+        if (typeof firebase !== 'undefined') {
+            console.log("✅ Firebase SDK já carregado");
+            resolve();
+            return;
+        }
 
+        console.log("📦 Carregando Firebase SDK dinamicamente...");
+
+        const scripts = [
+            'https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js',
+            'https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js',
+            'https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js'
+        ];
+
+        let loadedCount = 0;
+        const totalScripts = scripts.length;
+
+        function onScriptLoad() {
+            loadedCount++;
+            console.log(`📦 Script ${loadedCount}/${totalScripts} carregado`);
+
+            if (loadedCount === totalScripts) {
+                // Aguardar um pouco para garantir que o Firebase esteja totalmente inicializado
+                setTimeout(() => {
+                    if (typeof firebase !== 'undefined') {
+                        console.log("✅ Todos os scripts Firebase carregados com sucesso");
+                        resolve();
+                    } else {
+                        reject(new Error("Firebase não ficou disponível após carregamento"));
+                    }
+                }, 100);
+            }
+        }
+
+        function onScriptError(src, error) {
+            console.error(`❌ Erro ao carregar script: ${src}`, error);
+            reject(new Error(`Falha ao carregar Firebase SDK: ${src}`));
+        }
+
+        scripts.forEach(src => {
+            const script = document.createElement('script');
+            script.src = src;
+            script.onload = () => onScriptLoad();
+            script.onerror = (error) => onScriptError(src, error);
+            document.head.appendChild(script);
+        });
+
+        // Timeout de segurança (30 segundos)
+        setTimeout(() => {
+            reject(new Error("Timeout ao carregar Firebase SDK"));
+        }, 30000);
+    });
+}
 
 /**
  * Inicializa o ambiente mobile, conecta ao Firebase e prepara o formulário.
@@ -16,7 +74,10 @@ async function inicializarMobile() {
     try {
         console.log("📱 Inicializando módulo mobile com autenticação...");
 
-        // 1. Verificar se Firebase SDK está disponível
+        // 1. Carregar Firebase SDK dinamicamente se necessário
+        await carregarFirebaseSDK();
+
+        // 2. Verificar se Firebase SDK está disponível
         if (typeof firebase === 'undefined') {
             console.error("❌ Firebase SDK não carregado");
             throw new Error("Firebase SDK não encontrado.");
@@ -478,6 +539,9 @@ function mostrarErroCritico(error) {
     const container = document.querySelector('.container');
     if (container) {
         container.appendChild(errorDiv);
+    } else {
+        // Fallback: append to body if container not found
+        document.body.appendChild(errorDiv);
     }
 }
 
