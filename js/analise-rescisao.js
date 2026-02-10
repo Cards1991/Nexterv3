@@ -4,18 +4,38 @@ let chartsRescisao = {};
 
 async function inicializarAnaliseRescisao() {
     try {
-        // Definir mês atual como padrão nos filtros
+        // Definir datas padrão nos filtros (último mês)
         const hoje = new Date();
-        const mesAtual = hoje.toISOString().slice(0, 7); // Formato YYYY-MM
-        const filtroMes = document.getElementById('filtro-rescisao-mes');
-        if (filtroMes && !filtroMes.value) {
-            filtroMes.value = mesAtual;
+        const ultimoMes = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+        const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        const filtroInicio = document.getElementById('rescisao-filtro-inicio');
+        const filtroFim = document.getElementById('rescisao-filtro-fim');
+        if (filtroInicio && !filtroInicio.value) {
+            filtroInicio.value = ultimoMes.toISOString().slice(0, 10);
+        }
+        if (filtroFim && !filtroFim.value) {
+            filtroFim.value = inicioMes.toISOString().slice(0, 10);
+        }
+
+        // Adicionar event listeners para atualizar automaticamente ao mudar os filtros
+        if (filtroInicio) {
+            filtroInicio.addEventListener('change', inicializarAnaliseRescisao);
+        }
+        if (filtroFim) {
+            filtroFim.addEventListener('change', inicializarAnaliseRescisao);
+        }
+
+        // Aplicar filtros de data na query
+        let query = db.collection('movimentacoes').where('tipo', '==', 'demissao');
+
+        if (filtroInicio && filtroInicio.value && filtroFim && filtroFim.value) {
+            const dataInicio = new Date(filtroInicio.value + 'T00:00:00');
+            const dataFim = new Date(filtroFim.value + 'T23:59:59');
+            query = query.where('data', '>=', dataInicio).where('data', '<=', dataFim);
         }
 
         // Buscar dados de demissões (Movimentações)
-        const demissoesSnap = await db.collection('movimentacoes')
-            .where('tipo', '==', 'demissao')
-            .get();
+        const demissoesSnap = await query.get();
 
         if (demissoesSnap.empty) {
             // Se não houver dados, não faz nada ou mostra aviso
@@ -74,14 +94,6 @@ async function inicializarAnaliseRescisao() {
 
         // Aplicar filtros
         let dadosFiltrados = dadosCompletos;
-        if (filtroMes && filtroMes.value) {
-            const mesAnoFiltro = filtroMes.value; // YYYY-MM
-            dadosFiltrados = dadosCompletos.filter(d => {
-                if (!d.dataDemissao) return false;
-                const mesAnoDemissao = d.dataDemissao.toISOString().slice(0, 7);
-                return mesAnoDemissao === mesAnoFiltro;
-            });
-        }
 
         // Filtro por tipo de rescisão
         const filtroTipo = document.getElementById('filtro-rescisao-tipo')?.value;
@@ -90,9 +102,9 @@ async function inicializarAnaliseRescisao() {
         }
 
         atualizarKPIsRescisao(dadosFiltrados);
-        gerarGraficosRescisao(dadosCompletos);
-        gerarAnaliseSetores(dadosCompletos);
-        gerarRankingLideranca(dadosCompletos, setoresMap);
+        gerarGraficosRescisao(dadosFiltrados);
+        gerarAnaliseSetores(dadosFiltrados);
+        gerarRankingLideranca(dadosFiltrados, setoresMap);
 
     } catch (e) {
         console.error("Erro ao inicializar análise de rescisões:", e);

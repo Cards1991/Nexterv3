@@ -14,9 +14,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 const salvarBtn = this.querySelector('.btn-primary');
                 salvarBtn.textContent = 'Salvar Empresa';
                 salvarBtn.onclick = salvarEmpresa;
+                
+                // Resetar visibilidade dos campos extras
+                ['patronal', 'terceiro'].forEach(key => {
+                    const input = document.getElementById(`empresa-input-${key}`);
+                    if (input) input.classList.add('d-none');
+                });
             }
         });
     }
+
+    // Listeners para checkboxes de impostos
+    const taxConfigs = [
+        { check: 'empresa-check-patronal', input: 'empresa-input-patronal' },
+        { check: 'empresa-check-terceiro', input: 'empresa-input-terceiro' }
+    ];
+
+    taxConfigs.forEach(config => {
+        const checkEl = document.getElementById(config.check);
+        const inputEl = document.getElementById(config.input);
+        if (checkEl && inputEl) {
+            checkEl.addEventListener('change', () => {
+                if (checkEl.checked) {
+                    inputEl.classList.remove('d-none');
+                    inputEl.required = true;
+                } else {
+                    inputEl.classList.add('d-none');
+                    inputEl.required = false;
+                    inputEl.value = '';
+                }
+            });
+        }
+    });
 });
 
 
@@ -116,18 +145,10 @@ async function salvarEmpresa() {
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         
         // Captura dos impostos configuráveis
-        const temFgts = document.getElementById('empresa-check-fgts')?.checked || false;
-        const percFgts = temFgts ? (parseFloat(document.getElementById('empresa-input-fgts').value) || 0) : 0;
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
         const percTerceiros = temTerceiros ? (parseFloat(document.getElementById('empresa-input-terceiro').value) || 0) : 0;
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
-        const temSindicato = document.getElementById('empresa-check-sindicato')?.checked || false;
-        const percSindicato = temSindicato ? (parseFloat(document.getElementById('empresa-input-sindicato').value) || 0) : 0;
-        const temVr = document.getElementById('empresa-check-vr')?.checked || false;
-        const valorVr = temVr ? (parseFloat(document.getElementById('empresa-input-vr').value) || 0) : 0;
-        const temCesta = document.getElementById('empresa-check-cesta')?.checked || false;
-        const valorCesta = temCesta ? (parseFloat(document.getElementById('empresa-input-cesta').value) || 0) : 0;
 
 
         if (!nome) {
@@ -143,12 +164,8 @@ async function salvarEmpresa() {
             cnpj: cnpj,
             rat: rat,
             impostos: {
-                fgts: percFgts,
                 terceiros: percTerceiros,
-                patronal: percPatronal,
-                sindicato: percSindicato,
-                vr: valorVr,
-                cesta: valorCesta
+                patronal: percPatronal
             },
             funcoes: funcoes,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -191,24 +208,20 @@ async function editarEmpresa(empresaId) {
             const funcoesInput = document.getElementById('funcoes-empresa');
             if (funcoesInput) funcoesInput.value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
 
+
+
+
+
             const ratInput = document.getElementById('rat-empresa');
             if (ratInput) ratInput.value = empresa.rat || '';
 
             // Preencher impostos
             const impostos = empresa.impostos || {};
 
-            // FGTS
-            const fgtsCheck = document.getElementById('empresa-check-fgts');
-            const fgtsInput = document.getElementById('empresa-input-fgts');
-            if (fgtsCheck) fgtsCheck.checked = (impostos.fgts > 0);
-            if (fgtsInput) {
-                fgtsInput.value = impostos.fgts || '';
-                fgtsInput.classList.toggle('d-none', !(impostos.fgts > 0));
-            }
-
             // Terceiros
             const terceiroCheck = document.getElementById('empresa-check-terceiro');
             const terceiroInput = document.getElementById('empresa-input-terceiro');
+
             if (terceiroCheck) terceiroCheck.checked = (impostos.terceiros > 0);
             if (terceiroInput) {
                 terceiroInput.value = impostos.terceiros || '';
@@ -218,39 +231,13 @@ async function editarEmpresa(empresaId) {
             // Patronal
             // Compatibilidade com versão anterior (pagaContribuicaoPatronal booleano)
             const temPatronal = (impostos.patronal > 0) || (empresa.pagaContribuicaoPatronal === true);
+
             const patronalCheck = document.getElementById('empresa-check-patronal');
             const patronalInput = document.getElementById('empresa-input-patronal');
             if (patronalCheck) patronalCheck.checked = temPatronal;
             if (patronalInput) {
                 patronalInput.value = impostos.patronal || (temPatronal ? 20 : '');
                 patronalInput.classList.toggle('d-none', !temPatronal);
-            }
-
-            // Sindicato
-            const sindicatoCheck = document.getElementById('empresa-check-sindicato');
-            const sindicatoInput = document.getElementById('empresa-input-sindicato');
-            if (sindicatoCheck) sindicatoCheck.checked = (impostos.sindicato > 0);
-            if (sindicatoInput) {
-                sindicatoInput.value = impostos.sindicato || '';
-                sindicatoInput.classList.toggle('d-none', !(impostos.sindicato > 0));
-            }
-
-            // V.R.
-            const vrCheck = document.getElementById('empresa-check-vr');
-            const vrInput = document.getElementById('empresa-input-vr');
-            if (vrCheck) vrCheck.checked = (impostos.vr > 0);
-            if (vrInput) {
-                vrInput.value = impostos.vr || '';
-                vrInput.classList.toggle('d-none', !(impostos.vr > 0));
-            }
-
-            // Cesta
-            const cestaCheck = document.getElementById('empresa-check-cesta');
-            const cestaInput = document.getElementById('empresa-input-cesta');
-            if (cestaCheck) cestaCheck.checked = (impostos.cesta > 0);
-            if (cestaInput) {
-                cestaInput.value = impostos.cesta || '';
-                cestaInput.classList.toggle('d-none', !(impostos.cesta > 0));
             }
 
             // Garante que o título do modal esteja correto para edição
@@ -277,14 +264,10 @@ async function atualizarEmpresa(empresaId) {
         const rat = parseFloat(document.getElementById('rat-empresa').value) || 0;
         
         // Captura dos impostos configuráveis
-        const temFgts = document.getElementById('empresa-check-fgts')?.checked || false;
-        const percFgts = temFgts ? (parseFloat(document.getElementById('empresa-input-fgts').value) || 0) : 0;
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
         const percTerceiros = temTerceiros ? (parseFloat(document.getElementById('empresa-input-terceiro').value) || 0) : 0;
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
-        const temSindicato = document.getElementById('empresa-check-sindicato')?.checked || false;
-        const percSindicato = temSindicato ? (parseFloat(document.getElementById('empresa-input-sindicato').value) || 0) : 0;
 
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
@@ -295,10 +278,8 @@ async function atualizarEmpresa(empresaId) {
             funcoes: funcoes,            
             rat: rat,
             impostos: {
-                fgts: percFgts,
                 terceiros: percTerceiros,
-                patronal: percPatronal,
-                sindicato: percSindicato
+                patronal: percPatronal
             },
             updatedAt: timestamp(),
             updatedByUid: user ? user.uid : null

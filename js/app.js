@@ -1471,6 +1471,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 window.carregarSelectEmpresas = carregarSelectEmpresas;
 window.carregarSetoresPorEmpresa = carregarSetoresPorEmpresa;
 
+
 // Função para configurar o preenchimento automático na tela de demissão
 function configurarListenerDemissao() {
     const select = document.getElementById('demissao-funcionario');
