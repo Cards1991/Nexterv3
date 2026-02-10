@@ -3,7 +3,6 @@
 // Autor: Gemini Code Assist
 // ========================================
 
-let psicoChartInstance = null;
 let modoEdicaoAtivo = false;
 let casoIdEditando = null;
 let indiceEditando = null;

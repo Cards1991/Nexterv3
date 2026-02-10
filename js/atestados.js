@@ -1,4 +1,9 @@
 // Atestados - integração com Firestore + filtros e métricas
+
+// =================================================================
+// VARIÁVEIS GLOBAIS E CONSTANTES
+// =================================================================
+
 let __atestados_cache = [];
 let __empresasCache = null;
 let __initializedAtestados = false;
@@ -6,6 +11,10 @@ let __cid_familias_cache = null;
 window.__filterTimeout = null;
 
 const CIDS_PSICOSSOCIAIS_PREFIXOS = ['F', 'Z65'];
+
+// =================================================================
+// FUNÇÕES AUXILIARES GERAIS
+// =================================================================
 
 /**
  * Obtém a data atual no formato YYYY-MM-DD, considerando o fuso horário local
@@ -47,6 +56,17 @@ function formatarDataParaInput(date) {
 }
 
 /**
+ * Formata uma data para exibição (DD/MM/YYYY)
+ * @param {Date} date - Data a ser formatada
+ * @returns {string} Data formatada
+ */
+function formatarData(date) {
+    if (!date) return '';
+    const d = parseDateSafe(date);
+    return d ? d.toLocaleDateString('pt-BR') : '';
+}
+
+/**
  * Formata o input de hora para HH:mm
  */
 function formatarHora(input) {
@@ -57,7 +77,107 @@ function formatarHora(input) {
     }
     input.value = value;
 }
-window.formatarHora = formatarHora;
+
+/**
+ * Escapa caracteres HTML para segurança
+ * @param {string} text - Texto a ser escapado
+ * @returns {string} Texto seguro
+ */
+function escapeHTML(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Abre uma janela para impressão
+ * @param {string} content - Conteúdo HTML para impressão
+ * @param {Object} options - Opções {autoPrint: boolean}
+ */
+function openPrintWindow(content, options = {}) {
+    const printWindow = window.open('', '_blank', 'width=800,height=600');
+    if (!printWindow) {
+        mostrarMensagem('Permita pop-ups para imprimir o relatório', 'warning');
+        return;
+    }
+    
+    printWindow.document.write(content);
+    printWindow.document.close();
+    
+    if (options.autoPrint) {
+        printWindow.focus();
+        setTimeout(() => {
+            printWindow.print();
+            printWindow.close();
+        }, 250);
+    }
+}
+
+// =================================================================
+// FUNÇÕES DE MANIPULAÇÃO DE DATA
+// =================================================================
+
+function parseDateSafe(dateInput) {
+    if (!dateInput) return null;
+    
+    // Se for um objeto Timestamp do Firestore
+    if (dateInput.toDate && typeof dateInput.toDate === 'function') {
+        return dateInput.toDate();
+    }
+    
+    // Se for uma string no formato YYYY-MM-DD
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
+        return parseDataLocal(dateInput);
+    }
+    
+    // Se for uma string ISO
+    if (typeof dateInput === 'string' && dateInput.includes('T')) {
+        const date = new Date(dateInput);
+        // Ajusta para fuso local
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() + offset);
+    }
+    
+    // Se for um objeto Date
+    if (dateInput instanceof Date) {
+        return new Date(dateInput.getTime());
+    }
+    
+    // Default
+    const date = new Date(dateInput);
+    return isNaN(date.getTime()) ? null : date;
+}
+
+// =================================================================
+// FUNÇÕES DE CACHE E DADOS
+// =================================================================
+
+async function getEmpresasCache() {
+    if (!__empresasCache) {
+        const empSnap = await db.collection('empresas').get();
+        __empresasCache = {};
+        empSnap.forEach(d => __empresasCache[d.id] = d.data().nome);
+    }
+    return __empresasCache;
+}
+
+// Função para invalidar o cache quando empresas são adicionadas/editadas
+function invalidarCacheEmpresas() {
+    __empresasCache = null;
+}
+
+async function getCidFamilias() {
+    if (!__cid_familias_cache) {
+        const snap = await db.collection('cid_familias').get();
+        __cid_familias_cache = snap.docs.map(doc => doc.data());
+    }
+    return __cid_familias_cache;
+}
+
+// =================================================================
+// FUNÇÕES DE UTILIDADE PARA ATESTADOS
+// =================================================================
 
 /**
  * Verifica se um CID é classificado como psicossocial.
@@ -69,6 +189,40 @@ function isCidPsicossocial(cid) {
     const cidUpper = cid.toUpperCase().trim();
     return CIDS_PSICOSSOCIAIS_PREFIXOS.some(prefix => cidUpper.startsWith(prefix));
 };
+
+// Classes para tipos de atestado
+function classeTipo(t) {
+    const map = { 
+        'Doença': 'bg-danger', 
+        'Acidente': 'bg-warning', 
+        'Acidente de trabalho': 'bg-warning',
+        'Acidente de Trajeto': 'bg-warning',
+        'Consulta': 'bg-info', 
+        'Exame': 'bg-primary', 
+        'Acompanhamento': 'bg-success',
+        'Licensa Maternidade': 'bg-purple',
+        'Licensa Paternidade': 'bg-purple',
+        'Serviço Militar': 'bg-secondary',
+        'Declaração': 'bg-light text-dark',
+        'Outros': 'bg-secondary' 
+    };
+    return map[t] || 'bg-secondary';
+}
+
+// Classes para status
+function classeStatus(s) {
+    const map = { 
+        'Válido': 'bg-success', 
+        'Expirado': 'bg-secondary', 
+        'Analise': 'bg-warning',
+        'Invalidado': 'bg-danger'
+    };
+    return map[s] || 'bg-secondary';
+}
+
+// =================================================================
+// FUNÇÕES DE INICIALIZAÇÃO
+// =================================================================
 
 // Inicializar atestados
 async function inicializarAtestados() {
@@ -126,84 +280,6 @@ function configurarEventListenersAtestados() {
     });
 }
 
-function parseDateSafe(dateInput) {
-    if (!dateInput) return null;
-    
-    // Se for um objeto Timestamp do Firestore
-    if (dateInput.toDate && typeof dateInput.toDate === 'function') {
-        return dateInput.toDate();
-    }
-    
-    // Se for uma string no formato YYYY-MM-DD
-    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-        return parseDataLocal(dateInput);
-    }
-    
-    // Se for uma string ISO
-    if (typeof dateInput === 'string' && dateInput.includes('T')) {
-        const date = new Date(dateInput);
-        // Ajusta para fuso local
-        const offset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() + offset);
-    }
-    
-    // Se for um objeto Date
-    if (dateInput instanceof Date) {
-        return new Date(dateInput.getTime());
-    }
-    
-    // Default
-    const date = new Date(dateInput);
-    return isNaN(date.getTime()) ? null : date;
-}
-
-async function getEmpresasCache() {
-    if (!__empresasCache) {
-        const empSnap = await db.collection('empresas').get();
-        __empresasCache = {};
-        empSnap.forEach(d => __empresasCache[d.id] = d.data().nome);
-    }
-    return __empresasCache;
-}
-
-// Função para invalidar o cache quando empresas são adicionadas/editadas
-function invalidarCacheEmpresas() {
-    __empresasCache = null;
-}
-
-// Adicionar CSS dinâmico para melhorar o visual
-function adicionarEstilosCorpoHumano() {
-    const styleId = 'body-map-styles';
-}
-
-function toggleBodyView() {
-    const frontView = document.getElementById('body-front-view');
-    const backView = document.getElementById('body-back-view');
-    const btnRotate = document.getElementById('btn-rotate-body');
-    const isFrontVisible = frontView.style.display !== 'none';
-
-    // Animação de transição
-    frontView.style.opacity = '0';
-    backView.style.opacity = '0';
-    
-    setTimeout(() => {
-        frontView.style.display = isFrontVisible ? 'none' : 'block';
-        backView.style.display = isFrontVisible ? 'block' : 'none';
-        
-        setTimeout(() => {
-            frontView.style.opacity = '1';
-            backView.style.opacity = '1';
-            
-            // Atualizar ícone do botão
-            if (btnRotate) {
-                btnRotate.innerHTML = isFrontVisible ? 
-                    '<i class="fas fa-user"></i> Vista Frontal' : 
-                    '<i class="fas fa-user-alt"></i> Vista Posterior';
-            }
-        }, 50);
-    }, 200);
-}
-
 // Preencher filtro de empresas
 async function preencherFiltroEmpresasAtestados() {
     try {
@@ -223,6 +299,10 @@ async function preencherFiltroEmpresasAtestados() {
         console.error('Erro ao preencher filtro de empresas:', e);
     }
 }
+
+// =================================================================
+// FUNÇÕES DE FILTRO E RENDERIZAÇÃO
+// =================================================================
 
 // Aplicar filtros aos atestados
 function aplicarFiltrosAtestados(lista) {
@@ -401,6 +481,88 @@ async function atualizarTabelaAtestados(filtrados) {
         `;
     }).join('');
 }
+
+// =================================================================
+// FUNÇÕES DE MÉTRICAS E CÁLCULOS
+// =================================================================
+
+// Atualizar métricas de atestados
+async function atualizarMetricasAtestados() {
+    const filtrados = aplicarFiltrosAtestados(__atestados_cache);
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    
+    const atestMes = filtrados.filter(a => {
+        const dataAtestado = parseDateSafe(a.data_atestado);
+        return dataAtestado && dataAtestado >= inicioMes;
+    }).length;
+    
+    const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
+    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(2) : '0.00';
+
+    const custoTotal = await calcularCustoAtestados(filtrados);
+    const totalFuncionariosAtivos = (await db.collection('funcionarios').where('status', '==', 'Ativo').get()).size;
+    const taxaAbsenteismo = totalFuncionariosAtivos > 0 ? ((totalDias / (totalFuncionariosAtivos * 22)) * 100).toFixed(1) : 0;
+
+    const totalAtestadosMes = document.getElementById('total-atestados-mes');
+    const totalDiasAtestados = document.getElementById('total-dias-atestados');
+    const mediaDiasAtestado = document.getElementById('media-dias-atestado');
+    const custoTotalAtestados = document.getElementById('custo-total-atestados');
+
+    if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
+    if (totalDiasAtestados) totalDiasAtestados.textContent = totalDias.toFixed(2).replace('.', ',');
+    if (mediaDiasAtestado) mediaDiasAtestado.textContent = media.replace('.', ',');
+    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
+    
+    const percentualAfastamento = document.getElementById('percentual-afastamento');
+    if (percentualAfastamento) {
+        percentualAfastamento.textContent = `${taxaAbsenteismo}%`;
+    }
+}
+
+async function calcularCustoAtestados(atestados) {
+    if (!atestados.length) return 0;
+
+    try {
+        const funcionariosSnap = await db.collection('funcionarios').get();
+        const custoTotalMap = new Map();
+
+        funcionariosSnap.forEach(doc => {
+            const data = doc.data();
+            const custoTotal = data.custoTotal || 0;
+            custoTotalMap.set(doc.id, custoTotal);
+        });
+
+        return atestados.reduce((total, atestado) => {
+            const custoTotalFuncionario = custoTotalMap.get(atestado.funcionarioId);
+            if (custoTotalFuncionario && atestado.dias) {
+                // Converte horas para dias se necessário (8h = 1 dia)
+                let diasDeAtestado = atestado.dias;
+                if (atestado.duracaoTipo === 'horas') {
+                    if (typeof atestado.duracaoValor === 'string' && atestado.duracaoValor.includes(':')) {
+                        const [h, m] = atestado.duracaoValor.split(':').map(Number);
+                        diasDeAtestado = (h + (m / 60)) / 8;
+                    } else {
+                        diasDeAtestado = (parseFloat(atestado.duracaoValor) || 0) / 8;
+                    }
+                }
+
+                const valorHora = custoTotalFuncionario / 220;
+                const horasAtestado = diasDeAtestado * 8;
+                return total + (valorHora * horasAtestado);
+            }
+            return total;
+        }, 0);
+    } catch (error) {
+        console.error('Erro ao calcular custo:', error);
+        return 0;
+    }
+}
+
+// =================================================================
+// FUNÇÕES DE ALERTAS DE PERÍCIA
+// =================================================================
+
 async function carregarAlertasPericia() {
     const container = document.getElementById('pericias-proximas-container');
     if (!container) return;
@@ -467,104 +629,12 @@ function calcularDiasUteis(data1, data2) {
     return diasUteis;
 }
 
-// Atualizar métricas de atestados
-async function atualizarMetricasAtestados() {
-    const filtrados = aplicarFiltrosAtestados(__atestados_cache);
-    const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    
-    const atestMes = filtrados.filter(a => {
-        const dataAtestado = parseDateSafe(a.data_atestado);
-        return dataAtestado && dataAtestado >= inicioMes;
-    }).length;
-    
-    const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
-    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(2) : 0;
-    
-    const custoTotal = await calcularCustoAtestados(filtrados);
-    // Calcula a taxa de absenteísmo (simplificado)
-    const totalFuncionariosAtivos = (await db.collection('funcionarios').where('status', '==', 'Ativo').get()).size;
-    const taxaAbsenteismo = totalFuncionariosAtivos > 0 ? ((totalDias / (totalFuncionariosAtivos * 22)) * 100).toFixed(1) : 0;
-    
-    const totalAtestadosMes = document.getElementById('total-atestados-mes');
-    const totalDiasAtestados = document.getElementById('total-dias-atestados');
-    const mediaDiasAtestado = document.getElementById('media-dias-atestado');
-    const custoTotalAtestados = document.getElementById('custo-total-atestados');
-    
-    if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
-    if (totalDiasAtestados) totalDiasAtestados.textContent = totalDias;
-    if (mediaDiasAtestado) mediaDiasAtestado.textContent = media;
-    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
-    
-    const percentualAfastamento = document.getElementById('percentual-afastamento');
-    if (percentualAfastamento) {
-        percentualAfastamento.textContent = `${taxaAbsenteismo}%`;
-    }
-}
-
-async function calcularCustoAtestados(atestados) {
-    if (!atestados.length) return 0;
-
-    try {
-        const funcionariosSnap = await db.collection('funcionarios').get();
-        const custoTotalMap = new Map();
-
-        funcionariosSnap.forEach(doc => {
-            const data = doc.data();
-            const custoTotal = data.custoTotal || 0;
-            custoTotalMap.set(doc.id, custoTotal);
-        });
-
-        return atestados.reduce((total, atestado) => {
-            const custoTotalFuncionario = custoTotalMap.get(atestado.funcionarioId);
-            if (custoTotalFuncionario && atestado.dias) {
-                // Converte horas para dias se necessário (8h = 1 dia)
-                let diasDeAtestado = atestado.dias;
-                if (atestado.duracaoTipo === 'horas') {
-                    if (typeof atestado.duracaoValor === 'string' && atestado.duracaoValor.includes(':')) {
-                        const [h, m] = atestado.duracaoValor.split(':').map(Number);
-                        diasDeAtestado = (h + (m / 60)) / 8;
-                    } else {
-                        diasDeAtestado = (parseFloat(atestado.duracaoValor) || 0) / 8;
-                    }
-                }
-
-                const valorHora = custoTotalFuncionario / 220;
-                const horasAtestado = diasDeAtestado * 8;
-                return total + (valorHora * horasAtestado);
-            }
-            return total;
-        }, 0);
-    } catch (error) {
-        console.error('Erro ao calcular custo:', error);
-        return 0;
-    }
-}
-
-// Classes para tipos de atestado
-function classeTipo(t) {
-    const map = { 
-        'Doença': 'bg-danger', 
-        'Acidente': 'bg-warning', 
-        'Consulta': 'bg-info', 
-        'Exame': 'bg-primary', 
-        'Outros': 'bg-secondary' 
-    };
-    return map[t] || 'bg-secondary';
-}
-
-// Classes para status
-function classeStatus(s) {
-    const map = { 
-        'Válido': 'bg-success', 
-        'Expirado': 'bg-secondary', 
-        'Analise': 'bg-warning' 
-    };
-    return map[s] || 'bg-secondary';
-}
+// =================================================================
+// FUNÇÕES DO MODAL DE ATESTADO
+// =================================================================
 
 // Abrir modal de novo atestado
-function abrirModalAtestado(atestadoId = null) {
+async function abrirModalAtestado(atestadoId = null) {
     const id = 'atestadoModal';
     let modalEl = document.getElementById(id);
     
@@ -674,97 +744,99 @@ function abrirModalAtestado(atestadoId = null) {
         document.body.appendChild(modalEl);
     }
     
+    // Reset do formulário
     document.getElementById('form-atestado').reset();
+    
+    // Data padrão - USANDO FUNÇÃO DE DATA LOCAL
+    const dataInput = document.getElementById('at_data');
+    if (dataInput) dataInput.value = getDataLocalISO();
+    
+    // Configurar listeners uma única vez
+    if (!modalEl.dataset.listenersConfigurados) {
+        // Listener para campos condicionais
+        const tipoSelect = document.getElementById('at_tipo');
+        tipoSelect.addEventListener('change', function() {
+            const containerAcompanhamento = document.getElementById('container-acompanhamento');
+            const containerCAT = document.getElementById('container-cat');
+            containerAcompanhamento.style.display = this.value === 'Acompanhamento' ? 'block' : 'none';
+            containerCAT.style.display = this.value === 'Acidente de trabalho' ? 'block' : 'none';
+        });
 
-    // Listener para campos condicionais
-    const tipoSelect = document.getElementById('at_tipo');
-    tipoSelect.addEventListener('change', function() {
-        const containerAcompanhamento = document.getElementById('container-acompanhamento');
-        const containerCAT = document.getElementById('container-cat');
-        containerAcompanhamento.style.display = this.value === 'Acompanhamento' ? 'block' : 'none';
-        containerCAT.style.display = this.value === 'Acidente de trabalho' ? 'block' : 'none';
-    });
+        // Adicionar listeners para os radio buttons de duração
+        document.getElementById('duracao_dias').addEventListener('change', () => {
+            document.getElementById('container-dias').classList.remove('d-none');
+            document.getElementById('container-horas').classList.add('d-none');
+            document.getElementById('at_dias').required = true;
+            document.getElementById('at_horas').required = false;
+        });
+        
+        document.getElementById('duracao_horas').addEventListener('change', () => {
+            document.getElementById('container-dias').classList.add('d-none');
+            document.getElementById('container-horas').classList.remove('d-none');
+            document.getElementById('at_dias').required = false;
+            document.getElementById('at_horas').required = true;
+        });
 
-    // Adicionar listeners para os radio buttons de duração
-    document.getElementById('duracao_dias').addEventListener('change', () => {
-        document.getElementById('container-dias').classList.remove('d-none');
-        document.getElementById('container-horas').classList.add('d-none');
-        document.getElementById('at_dias').required = true;
-        document.getElementById('at_horas').required = false;
-    });
-    document.getElementById('duracao_horas').addEventListener('change', () => {
-        document.getElementById('container-dias').classList.add('d-none');
-        document.getElementById('container-horas').classList.remove('d-none');
-        document.getElementById('at_dias').required = false;
-        document.getElementById('at_horas').required = true;
-    });
+        modalEl.dataset.listenersConfigurados = true;
+    }
 
     const empresaSelect = document.getElementById('at_empresa');
     empresaSelect.disabled = false; // Garante que o campo esteja habilitado ao abrir
 
     // Popular empresas no select do modal
-    (async () => {
-        if (empresaSelect) {
-            empresaSelect.innerHTML = '<option value="">Selecione</option>';
-            const empSnap = await db.collection('empresas').get();
-            
-            empSnap.forEach(doc => {
-                const opt = document.createElement('option');
-                opt.value = doc.id;
-                opt.textContent = doc.data().nome;
-                empresaSelect.appendChild(opt);
-            });
-        }
+    if (empresaSelect) {
+        empresaSelect.innerHTML = '<option value="">Selecione</option>';
+        const empSnap = await db.collection('empresas').get();
         
-        // Data padrão - USANDO FUNÇÃO DE DATA LOCAL
-        const dataInput = document.getElementById('at_data');
-        if (dataInput) dataInput.value = getDataLocalISO();
-
-        // Popular funcionários
-        const funcSelect = document.getElementById('at_colab');
-        if (funcSelect) {
-            funcSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa antes de popular
-            const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
-            funcSnap.forEach(doc => {
-                const opt = document.createElement('option');
-                opt.value = doc.id;
-                opt.dataset.empresaId = doc.data().empresaId || '';
-                opt.dataset.setor = doc.data().setor || '';
-                opt.textContent = doc.data().nome;
-                funcSelect.appendChild(opt);
-            });
-
-            // Adiciona o listener para preencher a empresa e setor automaticamente
-            funcSelect.addEventListener('change', function() {
-                const selectedOption = this.options[this.selectedIndex];
-                const empresaId = selectedOption.dataset.empresaId || '';
-                const setor = selectedOption.dataset.setor || '';
-                
-                empresaSelect.value = empresaId;
-                // Desabilita o campo de empresa se um funcionário for selecionado
-                empresaSelect.disabled = !!empresaId;
-                
-                const setorInput = document.getElementById('at_setor');
-                if (setorInput) setorInput.value = setor;
-            });
-        }
-        
-    })();
+        empSnap.forEach(doc => {
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.textContent = doc.data().nome;
+            empresaSelect.appendChild(opt);
+        });
+    }
     
-    bootstrap.Modal.getOrCreateInstance(modalEl).show();
+    // Popular funcionários
+    const funcSelect = document.getElementById('at_colab');
+    if (funcSelect) {
+        funcSelect.innerHTML = '<option value="">Selecione...</option>'; // Limpa antes de popular
+        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+        funcSnap.forEach(doc => {
+            const opt = document.createElement('option');
+            opt.value = doc.id;
+            opt.dataset.empresaId = doc.data().empresaId || '';
+            opt.dataset.setor = doc.data().setor || '';
+            opt.textContent = doc.data().nome;
+            funcSelect.appendChild(opt);
+        });
+
+        // Adiciona o listener para preencher a empresa e setor automaticamente
+        funcSelect.addEventListener('change', function() {
+            const selectedOption = this.options[this.selectedIndex];
+            const empresaId = selectedOption.dataset.empresaId || '';
+            const setor = selectedOption.dataset.setor || '';
+            
+            empresaSelect.value = empresaId;
+            // Desabilita o campo de empresa se um funcionário for selecionado
+            empresaSelect.disabled = !!empresaId;
+            
+            const setorInput = document.getElementById('at_setor');
+            if (setorInput) setorInput.value = setor;
+        });
+    }
+    
+    // Exibir modal
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
 }
 
 function abrirModalCAT() {
     mostrarMensagem("Funcionalidade para preenchimento da CAT será implementada.", "info");
 }
 
-async function getCidFamilias() {
-    if (!__cid_familias_cache) {
-        const snap = await db.collection('cid_familias').get();
-        __cid_familias_cache = snap.docs.map(doc => doc.data());
-    }
-    return __cid_familias_cache;
-}
+// =================================================================
+// FUNÇÕES DE CID
+// =================================================================
 
 async function atualizarDescricaoCID(cidInput) {
     const cid = cidInput.value.trim().toUpperCase();
@@ -827,6 +899,10 @@ function formatarInputCID(input) {
     atualizarDescricaoCID(input);
 }
 
+// =================================================================
+// FUNÇÕES DE SALVAR ATESTADO
+// =================================================================
+
 // Salvar novo atestado
 async function salvarAtestado() {
     try {
@@ -887,7 +963,10 @@ async function salvarAtestado() {
                 .get();
 
             if (atestadosAcompanhamento.size >= 2) {
-                const datasAnteriores = atestadosAcompanhamento.docs.map(doc => doc.data().data_atestado.toDate().toLocaleDateString('pt-BR'));
+                const datasAnteriores = atestadosAcompanhamento.docs.map(doc => {
+                    const data = doc.data().data_atestado;
+                    return data ? formatarData(data) : 'Data não disponível';
+                });
                 const continuar = await abrirModalAlertaAcompanhamento(datasAnteriores);
                 if (!continuar) {
                     mostrarMensagem("Lançamento cancelado pelo usuário.", "info");
@@ -978,7 +1057,6 @@ async function salvarAtestado() {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
         
-        // await carregarAlertasPericia(); // Chamada removida para evitar loops
         renderizarAtestados();
         atualizarMetricasAtestados();
         mostrarMensagem('Atestado cadastrado com sucesso!');
@@ -986,6 +1064,24 @@ async function salvarAtestado() {
         console.error('Erro ao salvar atestado:', e);
         mostrarMensagem('Erro ao salvar atestado', 'error');
     }
+}
+
+function validarAtestado(formData) {
+    const errors = [];
+    
+    if (!formData.funcionarioId) errors.push('Colaborador é obrigatório');
+    if (!formData.empresaId) errors.push('Empresa é obrigatória');
+    if (!formData.data_atestado) errors.push('Data é obrigatória');
+    if (!formData.duracaoValor || formData.duracaoValor < 1) errors.push('A duração (dias ou horas) deve ser maior que 0.');
+    if (!formData.tipo) errors.push('Tipo é obrigatório');
+    
+    // Regex melhorado para CID (letra, 2 dígitos, opcionalmente ponto e mais 1-2 dígitos)
+    // Permite formatos como F41.1 e F411
+    if (formData.cid && !/^[A-Z]\d{2}(\.?\d{1,2})?$/i.test(formData.cid)) {
+        errors.push('Formato de CID inválido. Ex: F41.1 ou F411');
+    }
+    
+    return errors;
 }
 
 async function abrirModalAlertaAcompanhamento(datasAnteriores) {
@@ -1030,23 +1126,9 @@ async function abrirModalAlertaAcompanhamento(datasAnteriores) {
     });
 }
 
-function validarAtestado(formData) {
-    const errors = [];
-    
-    if (!formData.funcionarioId) errors.push('Colaborador é obrigatório');
-    if (!formData.empresaId) errors.push('Empresa é obrigatória');
-    if (!formData.data_atestado) errors.push('Data é obrigatória');
-    if (!formData.duracaoValor || formData.duracaoValor < 1) errors.push('A duração (dias ou horas) deve ser maior que 0.');
-    if (!formData.tipo) errors.push('Tipo é obrigatório');
-    
-    // Regex melhorado para CID (letra, 2 dígitos, opcionalmente ponto e mais 1-2 dígitos)
-    // Permite formatos como F41.1 e F411
-    if (formData.cid && !/^[A-Z]\d{2}(\.?\d{1,2})?$/i.test(formData.cid)) {
-        errors.push('Formato de CID inválido. Ex: F41.1 ou F411');
-    }
-    
-    return errors;
-}
+// =================================================================
+// FUNÇÕES DE VISUALIZAÇÃO, EDIÇÃO E EXCLUSÃO
+// =================================================================
 
 // Ver detalhes do atestado
 async function verDetalhesAtestado(id) {
@@ -1235,6 +1317,10 @@ function visualizarEncaminhamentoINSS(afastamentoId) {
     mostrarMensagem('Funcionalidade de visualização de encaminhamento INSS', 'info');
 }
 
+// =================================================================
+// FUNÇÕES DE ACOMPANHAMENTO PSICOSSOCIAL
+// =================================================================
+
 /**
  * Abre o modal de acompanhamento psicossocial para um atestado específico.
  * @param {string} atestadoId O ID do documento do atestado no Firestore.
@@ -1268,12 +1354,16 @@ async function abrirModalAcompanhamentoPsicossocial(atestadoId) {
     const historicoContainer = document.getElementById('psico-historico-container');
     if (Array.isArray(investigacao.historico) && investigacao.historico.length > 0) {
         historicoContainer.innerHTML = investigacao.historico
-            .sort((a, b) => b.data.seconds - a.data.seconds) // Ordena do mais recente para o mais antigo
+            .sort((a, b) => {
+                const timeA = a.data?.seconds || 0;
+                const timeB = b.data?.seconds || 0;
+                return timeB - timeA; // Mais recente primeiro
+            })
             .map((item, index) => `
                 <div class="p-2 border-bottom d-flex justify-content-between align-items-start">
                     <div>
                         <p class="mb-1"><strong>${item.estagio}:</strong> ${escapeHTML(item.observacoes)}</p>
-                        <small class="text-muted">Por: ${item.responsavelNome || 'Usuário'} em ${item.data.toDate().toLocaleString('pt-BR')}</small>
+                        <small class="text-muted">Por: ${item.responsavelNome || 'Usuário'} em ${item.data?.toDate ? item.data.toDate().toLocaleString('pt-BR') : 'Data não disponível'}</small>
                     </div>
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-secondary" onclick="editarHistoricoPsicossocial('${atestadoId}', ${index})"><i class="fas fa-edit"></i></button>
@@ -1290,6 +1380,31 @@ async function abrirModalAcompanhamentoPsicossocial(atestadoId) {
 }
 
 /**
+ * Popula um select com a lista de usuários do sistema.
+ * @param {string} selectId O ID do elemento select.
+ */
+async function popularSelectUsuariosPsico(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    // Evita repopular se já tiver opções
+    if (select.options.length > 1) return;
+
+    try {
+        const usersSnap = await db.collection('usuarios').orderBy('nome').get();
+        usersSnap.forEach(doc => {
+            const user = doc.data();
+            // Adiciona apenas se o usuário tiver um nome definido
+            if (user.nome) {
+                select.innerHTML += `<option value="${doc.id}">${user.nome}</option>`;
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar usuários para atribuição:", error);
+    }
+}
+
+/**
  * Salva os dados do formulário de acompanhamento psicossocial no documento do atestado.
  */
 async function salvarAcompanhamentoPsicossocial() {
@@ -1300,8 +1415,8 @@ async function salvarAcompanhamentoPsicossocial() {
     const atribuidoParaId = atribuidoParaSelect.value;
     const atribuidoParaNome = atribuidoParaId ? atribuidoParaSelect.options[atribuidoParaSelect.selectedIndex].text : null;
 
-    if (!atestadoId || !observacoes) {
-        mostrarMensagem("As observações são obrigatórias para salvar um novo registro no histórico.", "warning");
+    if (!atestadoId || !observacoes || !estagio) {
+        mostrarMensagem("Todos os campos são obrigatórios para salvar o acompanhamento.", "warning");
         return;
     }    
 
@@ -1345,7 +1460,7 @@ async function salvarAcompanhamentoPsicossocial() {
 
         bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
 
-        await renderizarAtestados(); // Renderiza novamente a tabela e os alertas
+        await renderizarAtestados(); // Renderiza novamente a tabela
     } catch (error) {
         console.error("Erro ao salvar acompanhamento:", error);
         mostrarMensagem("Erro ao salvar acompanhamento.", "error");
@@ -1368,17 +1483,22 @@ async function imprimirHistoricoPsicossocial() {
         return;
     }
 
-    const historicoOrdenado = atestado.investigacaoPsicossocial.historico.sort((a, b) => a.data.seconds - b.data.seconds);
+    const historicoOrdenado = atestado.investigacaoPsicossocial.historico.sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeA - timeB; // Mais antigo primeiro para timeline
+    });
 
     let historicoHtml = '';
     historicoOrdenado.forEach(item => {
+        const dataFormatada = item.data?.toDate ? item.data.toDate().toLocaleDateString('pt-BR') : 'Data não disponível';
         historicoHtml += `
             <div class="timeline-item">
-                <div class="timeline-date">${item.data.toDate().toLocaleDateString('pt-BR')}</div>
+                <div class="timeline-date">${dataFormatada}</div>
                 <div class="timeline-content">
                     <h5>${item.estagio}</h5>
                     <p>${escapeHTML(item.observacoes)}</p>
-                    <small class="text-muted">Registrado por: ${item.responsavelNome}</small>
+                    <small class="text-muted">Registrado por: ${item.responsavelNome || 'Usuário'}</small>
                 </div>
             </div>
         `;
@@ -1404,6 +1524,7 @@ async function imprimirHistoricoPsicossocial() {
             <div class="report-header"><h2>Histórico de Acompanhamento Psicossocial</h2></div>
             <p><strong>Funcionário:</strong> ${atestado.colaborador_nome}</p>
             <p><strong>Atestado Original (CID):</strong> ${atestado.cid}</p>
+            <p><strong>Data do Atestado:</strong> ${formatarData(atestado.data_atestado)}</p>
             <hr>
             ${historicoHtml}
             <div class="signature-area">
@@ -1415,6 +1536,198 @@ async function imprimirHistoricoPsicossocial() {
 
     openPrintWindow(conteudo, { autoPrint: true });
 }
+
+/**
+ * Preenche o formulário para editar um registro específico do histórico.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro no array de histórico.
+ */
+async function editarHistoricoPsicossocial(atestadoId, index) {
+    const atestado = __atestados_cache.find(a => a.id === atestadoId);
+    if (!atestado || !atestado.investigacaoPsicossocial?.historico) {
+        mostrarMensagem("Histórico não encontrado.", "error");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...atestado.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    const historico = historicoOrdenado[index];
+
+    if (!historico) {
+        mostrarMensagem("Registro do histórico não encontrado.", "error");
+        return;
+    }
+
+    // Preenche os campos do formulário
+    document.getElementById('psico-estagio').value = historico.estagio;
+    document.getElementById('psico-observacoes').value = historico.observacoes;
+
+    // Altera o botão para o modo de atualização
+    const btnSalvar = document.querySelector('#acompanhamentoPsicossocialModal .btn-primary');
+    btnSalvar.textContent = 'Atualizar Registro';
+    btnSalvar.onclick = () => atualizarRegistroHistorico(atestadoId, index);
+
+    mostrarMensagem("Modo de edição ativado. Altere os dados e clique em 'Atualizar Registro'.", "info");
+}
+
+/**
+ * Atualiza um registro específico no histórico de acompanhamento.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro a ser atualizado.
+ */
+async function atualizarRegistroHistorico(atestadoId, index) {
+    const atestadoRef = db.collection('atestados').doc(atestadoId);
+    const atestadoDoc = await atestadoRef.get();
+    
+    if (!atestadoDoc.exists) {
+        mostrarMensagem("Atestado não encontrado.", "error");
+        return;
+    }
+
+    const data = atestadoDoc.data();
+    if (!data.investigacaoPsicossocial || !Array.isArray(data.investigacaoPsicossocial.historico)) {
+        mostrarMensagem("Histórico não encontrado.", "error");
+        return;
+    }
+
+    const estagio = document.getElementById('psico-estagio').value;
+    const observacoes = document.getElementById('psico-observacoes').value.trim();
+
+    if (!estagio || !observacoes) {
+        mostrarMensagem("Todos os campos são obrigatórios.", "warning");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...data.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    if (index < 0 || index >= historicoOrdenado.length) {
+        mostrarMensagem("Índice inválido.", "error");
+        return;
+    }
+
+    const itemAntigo = historicoOrdenado[index];
+    const itemAtualizado = {
+        ...itemAntigo,
+        estagio: estagio,
+        observacoes: observacoes,
+        atualizadoEm: new Date(),
+        atualizadoPor: firebase.auth().currentUser?.uid,
+        atualizadoPorNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email
+    };
+
+    try {
+        // Remove o item antigo e adiciona o atualizado
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemAntigo)
+        });
+
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayUnion(itemAtualizado),
+            'investigacaoPsicossocial.estagio': estagio,
+            'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mostrarMensagem("Registro atualizado com sucesso!", "success");
+        
+        // Atualiza o cache local
+        const atestadoIndex = __atestados_cache.findIndex(a => a.id === atestadoId);
+        if (atestadoIndex !== -1) {
+            __atestados_cache[atestadoIndex] = { 
+                ...__atestados_cache[atestadoIndex],
+                ...(await atestadoRef.get()).data() 
+            };
+        }
+
+        // Restaura o botão ao estado normal
+        const btnSalvar = document.querySelector('#acompanhamentoPsicossocialModal .btn-primary');
+        btnSalvar.textContent = 'Salvar Acompanhamento';
+        btnSalvar.onclick = salvarAcompanhamentoPsicossocial;
+
+        // Fecha o modal e reabre para mostrar os dados atualizados
+        bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
+        await abrirModalAcompanhamentoPsicossocial(atestadoId);
+        
+    } catch (error) {
+        console.error("Erro ao atualizar registro:", error);
+        mostrarMensagem("Erro ao atualizar registro.", "error");
+    }
+}
+
+/**
+ * Exclui um registro específico do histórico de acompanhamento.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro a ser excluído.
+ */
+async function excluirHistoricoPsicossocial(atestadoId, index) {
+    if (!confirm("Tem certeza que deseja excluir este registro do histórico?")) return;
+
+    const atestadoRef = db.collection('atestados').doc(atestadoId);
+    const atestadoDoc = await atestadoRef.get();
+    
+    if (!atestadoDoc.exists) {
+        mostrarMensagem("Atestado não encontrado.", "error");
+        return;
+    }
+
+    const data = atestadoDoc.data();
+    if (!data.investigacaoPsicossocial || !Array.isArray(data.investigacaoPsicossocial.historico)) {
+        mostrarMensagem("Não há histórico para excluir.", "warning");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...data.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    if (index < 0 || index >= historicoOrdenado.length) {
+        mostrarMensagem("Índice inválido.", "error");
+        return;
+    }
+
+    const itemParaRemover = historicoOrdenado[index];
+
+    try {
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemParaRemover)
+        });
+
+        mostrarMensagem("Registro do histórico excluído.", "success");
+
+        // Atualiza o cache local
+        const atestadoIndex = __atestados_cache.findIndex(a => a.id === atestadoId);
+        if (atestadoIndex !== -1) {
+            __atestados_cache[atestadoIndex] = { 
+                ...__atestados_cache[atestadoIndex],
+                ...(await atestadoRef.get()).data() 
+            };
+        }
+
+        await renderizarAtestados();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal'));
+        if (modal) modal.hide();
+        
+    } catch (error) {
+        console.error("Erro ao excluir histórico:", error);
+        mostrarMensagem("Erro ao excluir registro.", "error");
+    }
+}
+
+// =================================================================
+// FUNÇÕES DE EXPORTAÇÃO
+// =================================================================
 
 async function exportarAtestadosExcel() {
     // Adiciona a biblioteca XLSX se não existir
@@ -1466,101 +1779,8 @@ async function exportarAtestadosExcel() {
     mostrarMensagem("Relatório de atestados exportado com sucesso!", "success");
 }
 
-window.exportarAtestadosExcel = exportarAtestadosExcel;
-window.atualizarDescricaoCID = atualizarDescricaoCID;
-window.formatarInputCID = formatarInputCID;
-window.getDataLocalISO = getDataLocalISO;
-window.parseDataLocal = parseDataLocal;
-window.formatarDataParaInput = formatarDataParaInput;
-
-/**
- * Popula um select com a lista de usuários do sistema.
- * @param {string} selectId O ID do elemento select.
- */
-async function popularSelectUsuariosPsico(selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-
-    // Evita repopular se já tiver opções
-    if (select.options.length > 1) return;
-
-    try {
-        const usersSnap = await db.collection('usuarios').orderBy('nome').get();
-        usersSnap.forEach(doc => {
-            const user = doc.data();
-            // Adiciona apenas se o usuário tiver um nome definido
-            if (user.nome) {
-                select.innerHTML += `<option value="${doc.id}">${user.nome}</option>`;
-            }
-        });
-    } catch (error) {
-        console.error("Erro ao carregar usuários para atribuição:", error);
-    }
-}
-
-/**
- * Preenche o formulário para editar um registro específico do histórico.
- * @param {string} atestadoId O ID do atestado.
- * @param {number} index O índice do registro no array de histórico.
- */
-async function editarHistoricoPsicossocial(atestadoId, index) {
-    const atestado = __atestados_cache.find(a => a.id === atestadoId);
-    const historico = atestado?.investigacaoPsicossocial?.historico.sort((a, b) => b.data.seconds - a.data.seconds)[index];
-
-    if (!historico) {
-        mostrarMensagem("Registro do histórico não encontrado.", "error");
-        return;
-    }
-
-    // Preenche os campos do formulário
-    document.getElementById('psico-estagio').value = historico.estagio;
-    document.getElementById('psico-observacoes').value = historico.observacoes;
-
-    // Altera o botão para o modo de atualização
-    const btnSalvar = document.querySelector('#acompanhamentoPsicossocialModal .btn-primary');
-    btnSalvar.textContent = 'Atualizar Registro';
-    btnSalvar.onclick = () => atualizarRegistroHistorico(atestadoId, index);
-
-    mostrarMensagem("Modo de edição ativado. Altere os dados e clique em 'Atualizar Registro'.", "info");
-}
-
-/**
- * Atualiza um registro específico no histórico de acompanhamento.
- * @param {string} atestadoId O ID do atestado.
- * @param {number} index O índice do registro a ser atualizado.
- */
-async function atualizarRegistroHistorico(atestadoId, index) {
-    // Implementação da atualização (requer leitura, modificação e escrita do array)
-    mostrarMensagem("Funcionalidade de atualização de histórico em desenvolvimento.", "info");
-    // TODO: Implementar a lógica de ler o array, modificar o item no índice e salvar o array completo de volta.
-}
-
-/**
- * Exclui um registro específico do histórico de acompanhamento.
- * @param {string} atestadoId O ID do atestado.
- * @param {number} index O índice do registro a ser excluído.
- */
-async function excluirHistoricoPsicossocial(atestadoId, index) {
-    if (!confirm("Tem certeza que deseja excluir este registro do histórico?")) return;
-
-    const atestadoRef = db.collection('atestados').doc(atestadoId);
-    const atestadoDoc = await atestadoRef.get();
-    const investigacao = atestadoDoc.data().investigacaoPsicossocial;
-    const historicoOrdenado = investigacao.historico.sort((a, b) => b.data.seconds - a.data.seconds);
-
-    // Remove o item do array
-    const itemParaRemover = historicoOrdenado[index];
-    await atestadoRef.update({
-        'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemParaRemover)
-    });
-
-    mostrarMensagem("Registro do histórico excluído.", "success");
-    await renderizarAtestados();
-    bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
-}
-
 // =================================================================
-// Funções de Análise Psicossocial (Movidas de saude-psicossocial.js)
+// FUNÇÕES DE ANÁLISE PSICOSSOCIAL
 // =================================================================
 
 /**
@@ -1604,7 +1824,7 @@ function renderizarGraficoTendenciaPsicossocial(casos) {
     }
 
     casos.forEach(caso => {
-        const dataAtestado = caso.data_atestado?.toDate ? caso.data_atestado.toDate() : new Date(caso.data_atestado);
+        const dataAtestado = parseDateSafe(caso.data_atestado);
         const seisMesesAtras = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
         
         if (dataAtestado >= seisMesesAtras) {
@@ -1654,3 +1874,30 @@ function renderizarGraficoTendenciaPsicossocial(casos) {
         }
     });
 }
+
+// =================================================================
+// EXPORTAÇÃO DAS FUNÇÕES PARA O ESCOPO GLOBAL
+// =================================================================
+
+window.exportarAtestadosExcel = exportarAtestadosExcel;
+window.atualizarDescricaoCID = atualizarDescricaoCID;
+window.formatarInputCID = formatarInputCID;
+window.getDataLocalISO = getDataLocalISO;
+window.parseDataLocal = parseDataLocal;
+window.formatarDataParaInput = formatarDataParaInput;
+window.formatarHora = formatarHora;
+window.verDetalhesAtestado = verDetalhesAtestado;
+window.editarAtestado = editarAtestado;
+window.excluirAtestado = excluirAtestado;
+window.abrirModalAcompanhamentoPsicossocial = abrirModalAcompanhamentoPsicossocial;
+window.salvarAcompanhamentoPsicossocial = salvarAcompanhamentoPsicossocial;
+window.imprimirHistoricoPsicossocial = imprimirHistoricoPsicossocial;
+window.editarHistoricoPsicossocial = editarHistoricoPsicossocial;
+window.atualizarRegistroHistorico = atualizarRegistroHistorico;
+window.excluirHistoricoPsicossocial = excluirHistoricoPsicossocial;
+window.visualizarEncaminhamentoINSS = visualizarEncaminhamentoINSS;
+window.abrirModalAtestado = abrirModalAtestado;
+window.salvarAtestado = salvarAtestado;
+window.inicializarAtestados = inicializarAtestados;
+window.renderizarAtestados = renderizarAtestados;
+window.atualizarMetricasAtestados = atualizarMetricasAtestados;

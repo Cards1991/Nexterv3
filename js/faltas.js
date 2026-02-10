@@ -312,7 +312,7 @@ async function abrirModalNovaFalta(faltaId = null) {
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Setor</label>
-                            <input type="text" class="form-control" id="falta_setor" readonly>
+                            <select class="form-select" id="falta_setor"></select>
                         </div>
                         <div class="row g-2">
                             <div class="col-6">
@@ -354,6 +354,7 @@ async function abrirModalNovaFalta(faltaId = null) {
     if (btnSalvar) btnSalvar.onclick = salvarFalta;
 
     await popularSelectFuncionariosFalta();
+    await popularSelectSetoresFalta();
 
     const modalTitle = modalEl.querySelector('.modal-title');
     const formFields = {
@@ -453,23 +454,17 @@ async function popularSelectFuncionariosFalta() {
 async function popularSelectSetoresFalta() {
     const sel = document.getElementById('falta_setor');
     if (!sel) return;
-    
+
     sel.innerHTML = '<option value="">Selecione</option>';
-    
+
     try {
-        const snap = await db.collection('empresas').get();
-        const todosSetores = new Set();
-        
+        const snap = await db.collection('setores').orderBy('descricao').get();
+
         snap.forEach(doc => {
-            const setores = doc.data().setores || [];
-            setores.forEach(s => todosSetores.add(s));
-        });
-        
-        const setoresOrdenados = Array.from(todosSetores).sort();
-        setoresOrdenados.forEach(s => {
+            const setor = doc.data();
             const o = document.createElement('option');
-            o.value = s;
-            o.textContent = s;
+            o.value = setor.descricao;
+            o.textContent = setor.descricao;
             sel.appendChild(o);
         });
     } catch (e) {
