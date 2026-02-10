@@ -61,7 +61,7 @@ async function carregarEstoqueEPI() {
 
         snapshot.forEach(doc => {
             const epi = doc.data();
-            
+
             // Filtro de busca local
             if (termoBusca && !epi.descricao.toLowerCase().includes(termoBusca) && !epi.ca.includes(termoBusca)) {
                 return;
@@ -72,13 +72,12 @@ async function carregarEstoqueEPI() {
                 return;
             }
 
+            // Filtrar lotes substituídos para evitar confusão
+            if (epi.status === 'Substituido') return;
+
             const validadeCA = epi.validadeCA ? new Date(epi.validadeCA.replace(/-/g, '\/')) : null;
             const estoqueAtual = parseInt(epi.quantidade) || 0;
             const estoqueMinimo = parseInt(epi.estoqueMinimo) || 0;
-
-            // Ignorar itens substituídos/inativos na listagem padrão se desejar, 
-            // ou apenas marcá-los visualmente. Aqui vou marcá-los.
-            const isSubstituido = epi.status === 'Substituido';
 
             // Definição de Status e Alertas
             let statusBadge = '<span class="badge bg-success">Normal</span>';
@@ -144,6 +143,11 @@ async function abrirModalEPI(epiId = null) {
     document.getElementById('epi-id').value = epiId || '';
     document.getElementById('modalEPITitulo').textContent = epiId ? 'Editar EPI' : 'Novo EPI';
 
+    // O campo de quantidade é sempre somente leitura, pois o estoque é gerenciado por entradas/saídas
+    document.getElementById('epi-quantidade').readOnly = true;
+    document.getElementById('epi-quantidade').classList.add('bg-light');
+    document.getElementById('epi-quantidade').title = 'O estoque é gerenciado através de entradas e saídas. Não edite diretamente.';
+
     if (epiId) {
         try {
             const doc = await db.collection('epi_estoque').doc(epiId).get();
@@ -153,7 +157,7 @@ async function abrirModalEPI(epiId = null) {
                 document.getElementById('epi-classe').value = data.classe || '';
                 toggleModeloEPI(); // Atualiza visibilidade do modelo
                 document.getElementById('epi-modelo').value = data.modelo || '';
-                
+
                 document.getElementById('epi-ca').value = data.ca;
                 document.getElementById('epi-validade').value = data.validadeCA;
                 document.getElementById('epi-fornecedor').value = data.fornecedor;
@@ -169,6 +173,9 @@ async function abrirModalEPI(epiId = null) {
             mostrarMensagem("Erro ao carregar dados do EPI.", "error");
             return;
         }
+    } else {
+        // Para novos EPIs, iniciar com quantidade 0
+        document.getElementById('epi-quantidade').value = 0;
     }
 
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
@@ -200,12 +207,16 @@ async function salvarEPI() {
         fornecedor: document.getElementById('epi-fornecedor').value.trim(),
         lote: document.getElementById('epi-lote').value.trim(),
         unidade: document.getElementById('epi-unidade').value,
-        quantidade: parseInt(document.getElementById('epi-quantidade').value) || 0,
         estoqueMinimo: parseInt(document.getElementById('epi-minimo').value) || 0,
         estoqueIdeal: parseInt(document.getElementById('epi-ideal').value) || 0,
         custo: parseFloat(document.getElementById('epi-custo').value) || 0,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
+
+    // Para EPIs existentes, não atualizar a quantidade (estoque gerenciado por entradas/saídas)
+    if (!id) {
+        dados.quantidade = parseInt(document.getElementById('epi-quantidade').value) || 0;
+    }
 
     if (classe === 'Calçados' && !modelo) {
         mostrarMensagem("Para a classe Calçados, o Modelo é obrigatório.", "warning");
@@ -268,9 +279,11 @@ async function abrirModalEntradaEstoque() {
         select.innerHTML = '<option value="">Selecione o EPI</option>';
         snap.forEach(doc => {
             const epi = doc.data();
+            // Filtrar lotes substituídos para evitar confusão
+            if (epi.status === 'Substituido') return;
             const option = document.createElement('option');
             option.value = doc.id;
-            option.textContent = `${epi.descricao} (CA: ${epi.ca})`;
+            option.textContent = `${epi.descricao} (CA: ${epi.ca}) - Saldo Atual: ${epi.quantidade || 0}`;
             // Armazena dados para verificação de rastreio
             option.dataset.classe = epi.classe || '';
             option.dataset.modelo = epi.modelo || '';

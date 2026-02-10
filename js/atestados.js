@@ -479,7 +479,7 @@ async function atualizarMetricasAtestados() {
     }).length;
     
     const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
-    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(1) : 0;
+    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(2) : 0;
     
     const custoTotal = await calcularCustoAtestados(filtrados);
     // Calcula a taxa de absenteísmo (simplificado)
