@@ -7,7 +7,7 @@ import { CID_TO_BODY_REGION } from './cid-map.js';
 let scene, camera, renderer, controls, raycaster, mouse;
 let bodyModel = null;
 let tooltip;
-let regionData = {}; // Armazena contagem por região
+let regionData = {}; // Armazena contagem por região, cids e colaboradores
 let totalAtestados = 0;
 let labelContainer;
 let activeLabels = [];
@@ -175,14 +175,7 @@ function criarModeloFallback() {
     scene.add(bodyModel);
     criarModeloFallbackLabels(); // Cria etiquetas específicas para o fallback
     
-    // Adiciona um texto informativo na cena
-    const container = renderer.domElement.parentElement;
-    const msg = document.createElement('div');
-    msg.style.position = 'absolute';
-    msg.style.top = '10px';
-    msg.style.left = '10px';
-    msg.innerHTML = '<small class="text-muted">Modelo simplificado (arquivo .glb não encontrado)</small>';
-    container.appendChild(msg);
+    // Remove o texto informativo sobre modelo não encontrado
 
     animate();
 }
@@ -198,25 +191,30 @@ function processarDados(atestados) {
 
     atestados.forEach(atestado => {
         const cid = (atestado.cid || '').toUpperCase().trim();
+        const colaborador = atestado.colaborador_nome || 'Não informado';
         // Busca a região baseada no prefixo do CID
         let region = null;
-        
+
         // Tenta match exato ou por prefixo
         for (const [key, value] of Object.entries(CID_TO_BODY_REGION)) {
             if (cid.startsWith(key)) {
                 region = value;
-                // Se encontrar um match mais específico (ex: M54.5 vs M54), continua buscando? 
-                // Aqui assumimos que a ordem no objeto ou especificidade define. 
+                // Se encontrar um match mais específico (ex: M54.5 vs M54), continua buscando?
+                // Aqui assumimos que a ordem no objeto ou especificidade define.
                 // Para simplicidade, pegamos o primeiro match ou o mais longo.
             }
         }
 
         if (region) {
             if (!regionData[region]) {
-                regionData[region] = { count: 0, cids: {} };
+                regionData[region] = { count: 0, cids: {}, colaboradores: [] };
             }
             regionData[region].count++;
             regionData[region].cids[cid] = (regionData[region].cids[cid] || 0) + 1;
+            // Adiciona colaborador se não estiver na lista
+            if (!regionData[region].colaboradores.includes(colaborador)) {
+                regionData[region].colaboradores.push(colaborador);
+            }
         }
     });
 }
@@ -283,12 +281,12 @@ function onMouseMove(event) {
 
 function showTooltip(event, object) {
     if (!tooltip) return;
-    
+
     const regionName = object.name;
     const data = object.userData.info;
-    
+
     let content = `<strong>Região: ${regionName}</strong>`;
-    
+
     if (data) {
         content += `<br>Incidência: ${data.count}`;
         // Top CIDs
@@ -298,6 +296,12 @@ function showTooltip(event, object) {
             .map(([cid, qtd]) => `${cid} (${qtd})`)
             .join(', ');
         content += `<br><small>Top CIDs: ${topCids}</small>`;
+        // Lista de colaboradores
+        if (data.colaboradores && data.colaboradores.length > 0) {
+            const colaboradoresList = data.colaboradores.slice(0, 10).join(', '); // Limita a 10 para não sobrecarregar
+            const more = data.colaboradores.length > 10 ? ` e mais ${data.colaboradores.length - 10}...` : '';
+            content += `<br><small>Colaboradores: ${colaboradoresList}${more}</small>`;
+        }
     } else {
         content += `<br><span class="text-muted">Sem registros</span>`;
     }

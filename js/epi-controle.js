@@ -98,11 +98,6 @@ async function carregarEstoqueEPI() {
                 }
             }
 
-            if (isSubstituido) {
-                statusBadge = '<span class="badge bg-secondary">Lote Substituído</span>';
-                rowClass = 'text-muted table-light';
-            }
-
             html += `
                 <tr class="${rowClass}">
                     <td><strong>${epi.descricao}</strong></td>
