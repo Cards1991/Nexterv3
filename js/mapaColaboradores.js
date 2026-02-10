@@ -2,6 +2,7 @@
 
 let map;
 let markersCluster;
+let __mapa_funcionarios_cache = []; // Cache para filtragem local
 
 // Inicializa o mapa usando Leaflet
 function initMap() {
@@ -17,7 +18,7 @@ function initMap() {
     }
 
     // Coordenadas iniciais (Centro aproximado de Imbituva, PR - ajuste conforme sua sede)
-    const center = [-25.2278, -50.6033]; 
+    const center = [-25.2278, -50.6033];
 
     // Cria o mapa
     // Verifica se L (Leaflet) está definido
@@ -54,7 +55,7 @@ async function buscarCep(cep) {
             if(document.getElementById('endereco-bairro')) document.getElementById('endereco-bairro').value = data.bairro;
             if(document.getElementById('endereco-cidade')) document.getElementById('endereco-cidade').value = data.localidade;
             if(document.getElementById('endereco-estado')) document.getElementById('endereco-estado').value = data.uf;
-            
+
             // Limpa coordenadas antigas pois o endereço mudou
             if(document.getElementById('endereco-latitude')) document.getElementById('endereco-latitude').value = '';
             if(document.getElementById('endereco-longitude')) document.getElementById('endereco-longitude').value = '';
@@ -109,6 +110,21 @@ async function carregarMapaColaboradores() {
         }, 100);
     }
 
+    try {
+        const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        __mapa_funcionarios_cache = snapshot.docs.map(doc => doc.data());
+
+        // Popula o filtro de bairros e renderiza
+        atualizarFiltrosMapa();
+        renderizarMarcadores();
+
+        console.log(`Mapa atualizado com ${__mapa_funcionarios_cache.length} colaboradores.`);
+    } catch (error) {
+        console.error("Erro ao carregar colaboradores no mapa:", error);
+    }
+}
+
+function renderizarMarcadores() {
     if (markersCluster) {
         markersCluster.clearLayers();
     } else if (map) {
@@ -117,40 +133,83 @@ async function carregarMapaColaboradores() {
         });
     }
 
-    try {
-        const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
-        let count = 0;
-        const markers = [];
+    // Obter valores dos filtros
+    const filtroNome = document.getElementById('filtro-mapa-nome')?.value.toLowerCase() || '';
+    const filtroBairro = document.getElementById('filtro-mapa-bairro')?.value || '';
+    const totalDisplay = document.getElementById('total-mapa-display');
 
-        snapshot.forEach(doc => {
-            const func = doc.data();
-            if (func.endereco && func.endereco.latitude && func.endereco.longitude) {
-                const lat = parseFloat(func.endereco.latitude);
-                const lng = parseFloat(func.endereco.longitude);
-                if (!isNaN(lat) && !isNaN(lng)) {
-                    const marker = L.marker([lat, lng]);
-                    const popupContent = `<div style="min-width: 200px;"><h6 class="mb-1 fw-bold">${func.nome}</h6><p class="mb-0 small text-muted">${func.cargo || ''}</p><hr class="my-2"><p class="mb-1 small"><strong>Setor:</strong> ${func.setor || '-'}</p><p class="mb-1 small"><strong>Bairro:</strong> ${func.endereco.bairro || '-'}</p><p class="mb-0 small"><strong>Cidade:</strong> ${func.endereco.cidade || '-'}</p></div>`;
-                    marker.bindPopup(popupContent);
-                    markers.push(marker);
-                    count++;
-                }
-            }
-        });
+    let count = 0;
+    const markers = [];
 
-        if (markers.length > 0) {
-            if (markersCluster) {
-                markersCluster.addLayers(markers);
-                map.fitBounds(markersCluster.getBounds());
-            } else {
-                markers.forEach(m => m.addTo(map));
-                const group = new L.featureGroup(markers);
-                map.fitBounds(group.getBounds());
+    __mapa_funcionarios_cache.forEach(func => {
+        // Aplica filtros
+        if (filtroNome && !func.nome.toLowerCase().includes(filtroNome)) return;
+
+        const bairroFunc = func.endereco?.bairro || 'Não Informado';
+        if (filtroBairro && bairroFunc !== filtroBairro) return;
+
+        if (func.endereco && func.endereco.latitude && func.endereco.longitude) {
+            const lat = parseFloat(func.endereco.latitude);
+            const lng = parseFloat(func.endereco.longitude);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const marker = L.marker([lat, lng]);
+                const popupContent = `<div style="min-width: 200px;"><h6 class="mb-1 fw-bold">${func.nome}</h6><p class="mb-0 small text-muted">${func.cargo || ''}</p><hr class="my-2"><p class="mb-1 small"><strong>Setor:</strong> ${func.setor || '-'}</p><p class="mb-1 small"><strong>Bairro:</strong> ${func.endereco.bairro || '-'}</p><p class="mb-0 small"><strong>Cidade:</strong> ${func.endereco.cidade || '-'}</p></div>`;
+                marker.bindPopup(popupContent);
+                markers.push(marker);
+                count++;
             }
         }
-        console.log(`Mapa atualizado com ${count} colaboradores.`);
-    } catch (error) {
-        console.error("Erro ao carregar colaboradores no mapa:", error);
+    });
+
+    if (markersCluster) {
+        markersCluster.addLayers(markers);
+        if (markers.length > 0) {
+            map.fitBounds(markersCluster.getBounds());
+        }
+    } else {
+        markers.forEach(m => m.addTo(map));
+        if (markers.length > 0) {
+            const group = new L.featureGroup(markers);
+            map.fitBounds(group.getBounds());
+        }
     }
+
+    if (totalDisplay) {
+        totalDisplay.textContent = `Total: ${count}`;
+    }
+}
+
+function atualizarFiltrosMapa() {
+    const select = document.getElementById('filtro-mapa-bairro');
+    if (!select) return;
+
+    // Salva seleção atual
+    const valorAtual = select.value;
+
+    // Conta colaboradores por bairro
+    const contagem = {};
+    __mapa_funcionarios_cache.forEach(f => {
+        const bairro = f.endereco?.bairro || 'Não Informado';
+        contagem[bairro] = (contagem[bairro] || 0) + 1;
+    });
+
+    // Popula o select
+    select.innerHTML = '<option value="">Todos os Bairros</option>';
+    Object.keys(contagem).sort().forEach(bairro => {
+        const option = document.createElement('option');
+        option.value = bairro;
+        option.textContent = `${bairro} (${contagem[bairro]})`;
+        select.appendChild(option);
+    });
+
+    // Restaura seleção se ainda existir
+    if (valorAtual && contagem[valorAtual]) {
+        select.value = valorAtual;
+    }
+}
+
+function filtrarMapaLocalmente() {
+    renderizarMarcadores();
 }
 
 async function sincronizarGeolocalizacao() {
@@ -166,13 +225,13 @@ async function sincronizarGeolocalizacao() {
         let nomesComErro = [];
 
         const docs = snapshot.docs;
-        
+
         // Função auxiliar para delay (promessa)
         const delay = ms => new Promise(res => setTimeout(res, ms));
 
         for (const doc of docs) {
             const func = doc.data();
-            
+
             // Se já tem coordenadas, pula
             if (func.endereco && func.endereco.latitude && func.endereco.longitude) {
                 continue;
@@ -186,7 +245,7 @@ async function sincronizarGeolocalizacao() {
 
             // Tenta geocodificar
             const coords = await geocodificarEndereco(func.endereco);
-            
+
             if (coords) {
                 // Atualiza no Firestore
                 const novoEndereco = { ...func.endereco, latitude: coords.lat, longitude: coords.lng };
@@ -204,7 +263,7 @@ async function sincronizarGeolocalizacao() {
         }
 
         mostrarMensagem(`Sincronização concluída! Atualizados: ${atualizados}, Não encontrados: ${erros}, Sem endereço: ${ignorados}.`, "success");
-        
+
         if (nomesComErro.length > 0) {
             alert("Não foi possível localizar o endereço para os seguintes colaboradores:\n\n" + nomesComErro.join("\n") + "\n\nVerifique se o endereço está correto e tente novamente.");
         }
@@ -243,12 +302,12 @@ async function buscarEnderecoManual(btnElement) {
         if (data && data.length > 0) {
             const result = data[0];
             const addr = result.address;
-            
+
             // Formata o endereço encontrado para exibição
             const ruaEncontrada = addr.road || addr.pedestrian || addr.footway || logradouro;
             const bairroEncontrado = addr.suburb || addr.neighbourhood || addr.quarter || '';
             const cidadeEncontrada = addr.city || addr.town || addr.village || addr.municipality || cidade;
-            
+
             const msg = `Endereço encontrado:\n\n` +
                         `Rua: ${ruaEncontrada}\n` +
                         `Bairro: ${bairroEncontrado}\n` +
@@ -261,7 +320,7 @@ async function buscarEnderecoManual(btnElement) {
                 if (bairroEncontrado) document.getElementById('endereco-bairro').value = bairroEncontrado;
                 document.getElementById('endereco-cidade').value = cidadeEncontrada;
                 if (addr.postcode) document.getElementById('endereco-cep').value = addr.postcode;
-                
+
                 // Salva as coordenadas encontradas
                 document.getElementById('endereco-latitude').value = result.lat;
                 document.getElementById('endereco-longitude').value = result.lon;
@@ -285,6 +344,7 @@ window.geocodificarEndereco = geocodificarEndereco;
 window.carregarMapaColaboradores = carregarMapaColaboradores;
 window.sincronizarGeolocalizacao = sincronizarGeolocalizacao;
 window.buscarEnderecoManual = buscarEnderecoManual;
+window.filtrarMapaLocalmente = filtrarMapaLocalmente;
 
 // Inicializa o mapa quando o DOM estiver pronto, se o elemento existir
 document.addEventListener('DOMContentLoaded', () => {

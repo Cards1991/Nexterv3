@@ -2537,6 +2537,13 @@
                             </div>
                         </div>
                         <div class="card-body p-0">
+                            <div class="p-2 bg-light border-bottom d-flex gap-2 align-items-center flex-wrap">
+                                <input type="text" id="filtro-mapa-nome" class="form-control form-control-sm" style="max-width: 200px;" placeholder="Filtrar por Nome" oninput="filtrarMapaLocalmente()">
+                                <select id="filtro-mapa-bairro" class="form-select form-select-sm" style="max-width: 250px;" onchange="filtrarMapaLocalmente()">
+                                    <option value="">Todos os Bairros</option>
+                                </select>
+                                <span id="total-mapa-display" class="badge bg-primary">Total: 0</span>
+                            </div>
                             <div id="mapa-colaboradores" style="height: 500px; width: 100%;"></div>
                         </div>
                     </div>

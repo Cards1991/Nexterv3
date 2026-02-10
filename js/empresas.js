@@ -69,7 +69,7 @@ async function carregarEmpresas() {
         });
         funcionariosSnapshot.forEach(doc => {
             const func = doc.data();
-            if (func.empresaId) {
+            if (func.empresaId && func.status === 'Ativo') {
                 contagemFuncionarios[func.empresaId] = (contagemFuncionarios[func.empresaId] || 0) + 1;
             }
         });
@@ -124,6 +124,10 @@ async function salvarEmpresa() {
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
         const temSindicato = document.getElementById('empresa-check-sindicato')?.checked || false;
         const percSindicato = temSindicato ? (parseFloat(document.getElementById('empresa-input-sindicato').value) || 0) : 0;
+        const temVr = document.getElementById('empresa-check-vr')?.checked || false;
+        const valorVr = temVr ? (parseFloat(document.getElementById('empresa-input-vr').value) || 0) : 0;
+        const temCesta = document.getElementById('empresa-check-cesta')?.checked || false;
+        const valorCesta = temCesta ? (parseFloat(document.getElementById('empresa-input-cesta').value) || 0) : 0;
 
 
         if (!nome) {
@@ -142,10 +146,12 @@ async function salvarEmpresa() {
                 fgts: percFgts,
                 terceiros: percTerceiros,
                 patronal: percPatronal,
-                sindicato: percSindicato
+                sindicato: percSindicato,
+                vr: valorVr,
+                cesta: valorCesta
             },
             funcoes: funcoes,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),            
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user ? user.uid : null
         };
 
@@ -227,6 +233,24 @@ async function editarEmpresa(empresaId) {
             if (sindicatoInput) {
                 sindicatoInput.value = impostos.sindicato || '';
                 sindicatoInput.classList.toggle('d-none', !(impostos.sindicato > 0));
+            }
+
+            // V.R.
+            const vrCheck = document.getElementById('empresa-check-vr');
+            const vrInput = document.getElementById('empresa-input-vr');
+            if (vrCheck) vrCheck.checked = (impostos.vr > 0);
+            if (vrInput) {
+                vrInput.value = impostos.vr || '';
+                vrInput.classList.toggle('d-none', !(impostos.vr > 0));
+            }
+
+            // Cesta
+            const cestaCheck = document.getElementById('empresa-check-cesta');
+            const cestaInput = document.getElementById('empresa-input-cesta');
+            if (cestaCheck) cestaCheck.checked = (impostos.cesta > 0);
+            if (cestaInput) {
+                cestaInput.value = impostos.cesta || '';
+                cestaInput.classList.toggle('d-none', !(impostos.cesta > 0));
             }
 
             // Garante que o título do modal esteja correto para edição

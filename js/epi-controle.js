@@ -200,7 +200,7 @@ async function salvarEPI() {
         fornecedor: document.getElementById('epi-fornecedor').value.trim(),
         lote: document.getElementById('epi-lote').value.trim(),
         unidade: document.getElementById('epi-unidade').value,
-        quantidade: 0, // Stock entry only through "Entrada de Estoque"
+        quantidade: parseInt(document.getElementById('epi-quantidade').value) || 0,
         estoqueMinimo: parseInt(document.getElementById('epi-minimo').value) || 0,
         estoqueIdeal: parseInt(document.getElementById('epi-ideal').value) || 0,
         custo: parseFloat(document.getElementById('epi-custo').value) || 0,

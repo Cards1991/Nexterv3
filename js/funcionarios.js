@@ -938,6 +938,9 @@ async function verDetalhesFuncionario(funcionarioId) {
                         <button type="button" class="btn btn-success" onclick="abrirModalAumento('${funcionarioId}', '${funcionario.nome}', '${modalId}')">
                             <i class="fas fa-dollar-sign"></i> Aumentar Salário
                         </button>
+                        <button type="button" class="btn btn-info" onclick="atualizarCustoTotal('${funcionarioId}', ${funcionario.salario || 0}, '${funcionario.empresaId}', ${funcionario.salarioPorFora || 0})">
+                            <i class="fas fa-calculator"></i> Reprocessar Custo
+                        </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
                     </div>
                 </div>
@@ -2207,7 +2210,7 @@ async function processarArquivoAtualizacaoXLSX() {
             let notFoundCount = 0;
             let errorCount = 0;
             const notFoundCpfs = [];
-            const batch = db.batch();
+            let batch = db.batch();
             let batchSize = 0;
 
             for (const [i, row] of jsonData.entries()) {
