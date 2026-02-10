@@ -709,6 +709,17 @@ async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPor
             custoValeRefeicao = 260.00;
         }
 
+        // Busca dados da empresa para verificar se tem patronal e cont terceiros
+        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
+        let hasPatronal = false; // padrão: não tem
+        let hasContTerceiros = false; // padrão: não tem
+
+        if (empresaDoc.exists) {
+            const empresa = empresaDoc.data();
+            hasPatronal = empresa.hasPatronal === true; // só se explicitamente true
+            hasContTerceiros = empresa.hasContTerceiros === true; // só se explicitamente true
+        }
+
         // Cálculo dos custos padrão para todas as empresas
         const fgts = salario * 0.08; // FGTS: 8%
         const sindicato = salario * 0.008; // Sindicato: 0,8%
@@ -722,13 +733,25 @@ async function atualizarCustoTotal(funcionarioId, salario, empresaId, salarioPor
         const provisao13 = salario / 12;
         const fgts13 = provisao13 * 0.08; // Provisão de FGTS s/ 13º
 
-        // Novos custos: Patronal e Contribuições Terceiros
-        const patronalSalario = salario * 0.20; // Patronal s/ salario: 20%
-        const patronalFerias = provisaoFerias * 0.20; // Patronal s/ férias: 20%
-        const patronal13 = provisao13 * 0.20; // Patronal s/13º: 20%
-        const contTerceirosSalario = salario * 0.0764; // Cont Terceiros s/ salario: 7,64%
-        const contTerceirosFerias = provisaoFerias * 0.0764; // Cont Terceiros s/ férias: 7,64%
-        const contTerceiros13 = provisao13 * 0.0764; // Cont Terceiros s/13º: 7,64%
+        // Novos custos: Patronal e Contribuições Terceiros (condicionais por empresa)
+        let patronalSalario = 0;
+        let patronalFerias = 0;
+        let patronal13 = 0;
+        let contTerceirosSalario = 0;
+        let contTerceirosFerias = 0;
+        let contTerceiros13 = 0;
+
+        if (hasPatronal) {
+            patronalSalario = salario * 0.20; // Patronal s/ salario: 20%
+            patronalFerias = provisaoFerias * 0.20; // Patronal s/ férias: 20%
+            patronal13 = provisao13 * 0.20; // Patronal s/13º: 20%
+        }
+
+        if (hasContTerceiros) {
+            contTerceirosSalario = salario * 0.0764; // Cont Terceiros s/ salario: 7,64%
+            contTerceirosFerias = provisaoFerias * 0.0764; // Cont Terceiros s/ férias: 7,64%
+            contTerceiros13 = provisao13 * 0.0764; // Cont Terceiros s/13º: 7,64%
+        }
 
         // Soma de todos os custos adicionais
         const totalAdicionais = fgts + sindicato + provisaoFerias + tercoFerias + fgtsFerias + provisao13 + fgts13 + patronalSalario + patronalFerias + patronal13 + contTerceirosSalario + contTerceirosFerias + contTerceiros13;
@@ -1719,10 +1742,64 @@ async function reprocessarCustosFuncionarios() {
         mostrarMensagem("Reprocessando custos... aguarde.", "info");
 
         const funcionariosSnap = await db.collection('funcionarios').get();
+        const totalFuncionarios = funcionariosSnap.docs.length;
         let processados = 0;
         let erros = 0;
 
-        for (const doc of funcionariosSnap.docs) {
+        // Criar barra de progresso
+        const progressContainer = document.createElement('div');
+        progressContainer.id = 'progress-container';
+        progressContainer.style.cssText = `
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 9999;
+            min-width: 300px;
+        `;
+
+        const progressBar = document.createElement('div');
+        progressBar.style.cssText = `
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        `;
+
+        const progressFill = document.createElement('div');
+        progressFill.style.cssText = `
+            height: 100%;
+            background-color: #007bff;
+            width: 0%;
+            transition: width 0.3s ease;
+        `;
+
+        const progressText = document.createElement('div');
+        progressText.style.cssText = `
+            text-align: center;
+            font-weight: bold;
+            color: #333;
+        `;
+
+        progressBar.appendChild(progressFill);
+        progressContainer.appendChild(progressBar);
+        progressContainer.appendChild(progressText);
+        document.body.appendChild(progressContainer);
+
+        // Função para atualizar progresso
+        const atualizarProgresso = (processado, total) => {
+            const percentual = Math.round((processado / total) * 100);
+            progressFill.style.width = `${percentual}%`;
+            progressText.textContent = `Processando... ${processado}/${total} (${percentual}%)`;
+        };
+
+        for (const [index, doc] of funcionariosSnap.docs.entries()) {
             const funcionario = doc.data();
             const salario = parseFloat(funcionario.salario || 0);
             const salarioPorFora = parseFloat(funcionario.salarioPorFora || 0);
@@ -1737,7 +1814,13 @@ async function reprocessarCustosFuncionarios() {
                     erros++;
                 }
             }
+
+            // Atualizar progresso a cada funcionário processado
+            atualizarProgresso(index + 1, totalFuncionarios);
         }
+
+        // Remover barra de progresso
+        document.body.removeChild(progressContainer);
 
         if (erros === 0) {
             mostrarMensagem(`Custos reprocessados com sucesso para ${processados} funcionários!`, "success");
@@ -1750,6 +1833,12 @@ async function reprocessarCustosFuncionarios() {
     } catch (error) {
         console.error("Erro ao reprocessar custos:", error);
         mostrarMensagem("Erro ao reprocessar custos.", "error");
+
+        // Remover barra de progresso em caso de erro
+        const progressContainer = document.getElementById('progress-container');
+        if (progressContainer) {
+            document.body.removeChild(progressContainer);
+        }
     }
 }
 

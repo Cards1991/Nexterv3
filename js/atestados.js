@@ -504,26 +504,21 @@ async function atualizarMetricasAtestados() {
 
 async function calcularCustoAtestados(atestados) {
     if (!atestados.length) return 0;
-    
+
     try {
         const funcionariosSnap = await db.collection('funcionarios').get();
-        const salariosMap = new Map();
-        
+        const custoTotalMap = new Map();
+
         funcionariosSnap.forEach(doc => {
             const data = doc.data();
-            const salario = typeof data.salario === 'string' 
-                ? parseFloat(data.salario.replace(/[^\d,]/g, '').replace(',', '.'))
-                : data.salario;
-                
-            if (salario && !isNaN(salario)) {
-                salariosMap.set(doc.id, salario);
-            }
+            const custoTotal = data.custoTotal || 0;
+            custoTotalMap.set(doc.id, custoTotal);
         });
 
         return atestados.reduce((total, atestado) => {
-            const salario = salariosMap.get(atestado.funcionarioId);
-            if (salario && atestado.dias) {
-                // Converte horas para dias se necessário (8h = 1 dia) - Correção de variável
+            const custoTotalFuncionario = custoTotalMap.get(atestado.funcionarioId);
+            if (custoTotalFuncionario && atestado.dias) {
+                // Converte horas para dias se necessário (8h = 1 dia)
                 let diasDeAtestado = atestado.dias;
                 if (atestado.duracaoTipo === 'horas') {
                     if (typeof atestado.duracaoValor === 'string' && atestado.duracaoValor.includes(':')) {
@@ -534,7 +529,7 @@ async function calcularCustoAtestados(atestados) {
                     }
                 }
 
-                const valorHora = salario / 220;
+                const valorHora = custoTotalFuncionario / 220;
                 const horasAtestado = diasDeAtestado * 8;
                 return total + (valorHora * horasAtestado);
             }
