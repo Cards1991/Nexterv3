@@ -176,6 +176,11 @@ async function abrirModalEPI(epiId = null) {
 
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
+
+    // Identificação biométrica automática ao abrir o modal
+    setTimeout(() => {
+        identificarPorBiometria();
+    }, 500); // Pequeno delay para garantir que o modal esteja totalmente carregado
 }
 
 function toggleModeloEPI() {
@@ -1412,12 +1417,12 @@ async function carregarDashboardConsumoEPI() {
         // Ordenar dados para melhor visualização
         const sortedPorSetor = Object.entries(porSetor).sort(([,a],[,b]) => b-a);
 
-        // Adicionar scrollbar ao container do gráfico
+        // Adicionar scrollbar ao container do gráfico e altura dinâmica
         const canvasSetor = document.getElementById('chart-epi-setor');
         const containerSetor = canvasSetor.parentElement;
         containerSetor.style.maxHeight = '400px';
         containerSetor.style.overflowY = 'auto';
-        canvasSetor.height = 600; // Altura fixa para permitir scrollbar
+        canvasSetor.height = sortedPorSetor.length * 30; // Altura dinâmica para permitir scrollbar
 
         chartEpiSetor = new Chart(ctxSetor, {
             type: 'bar',
@@ -1447,9 +1452,9 @@ async function carregarDashboardConsumoEPI() {
                 },
                 scales: {
                     x: {
-                        beginAtZero: true,
-                        grid: { display: false },
-                        border: { display: false },
+                        beginAtZero: true, // Começa no zero
+                        grid: { display: false }, // Remove linhas de grade X
+                        border: { display: false }, // Remove borda do eixo X
                         ticks: {
                             callback: function(value) {
                                 return 'R$ ' + value;
@@ -1457,8 +1462,8 @@ async function carregarDashboardConsumoEPI() {
                         }
                     },
                     y: {
-                        grid: { display: false },
-                        border: { display: false }
+                        grid: { display: false }, // Remove linhas de grade Y
+                        border: { display: false } // Remove borda do eixo Y
                     }
                 }
             }
@@ -1500,11 +1505,11 @@ async function carregarDashboardConsumoEPI() {
                 },
                 scales: {
                     x: {
-                        grid: { display: false } // Remove linhas de grade
+                        grid: { display: false }
                     },
                     y: {
-                        beginAtZero: true,
-                        grid: { display: false }, // Remove linhas de grade
+                        beginAtZero: true, // Começa no zero
+                        grid: { display: false }, // Remove linhas de grade Y
                         ticks: {
                             callback: function(value) {
                                 return 'R$ ' + value;
@@ -2114,26 +2119,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Se a seção de consumo EPI ficou visível
                 if (target.id === 'consumo-epi' && !target.classList.contains('d-none')) {
-                    inicializarConsumoEPI();
-                    // Add scrollbar and remove grid lines from charts
-                    setTimeout(() => {
-                        const containers = document.querySelectorAll('#consumo-epi .chart-container');
-                        containers.forEach(container => {
-                            container.style.maxHeight = '400px';
-                            container.style.overflowY = 'auto';
-                        });
-                        // Remove grid lines from charts
-                        const canvases = document.querySelectorAll('#consumo-epi canvas');
-                        canvases.forEach(canvas => {
-                            const chart = Chart.getChart(canvas);
-                            if (chart) {
-                                chart.options.scales = chart.options.scales || {};
-                                if (chart.options.scales.x) chart.options.scales.x.grid = { display: false };
-                                if (chart.options.scales.y) chart.options.scales.y.grid = { display: false };
-                                chart.update();
-                            }
-                        });
-                    }, 100);
+                    // A inicialização agora é chamada pelo app.js, então apenas recarregamos o dashboard
+                    // que redesenha os gráficos com as novas configurações.
+                    if (typeof carregarDashboardConsumoEPI === 'function') {
+                        carregarDashboardConsumoEPI();
+                    } else {
+                        inicializarConsumoEPI();
+                    }
                 }
 
                 // Se a seção de compras EPI ficou visível

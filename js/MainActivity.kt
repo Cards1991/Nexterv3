@@ -61,17 +61,24 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun cadastrarBiometria(colaboradorId: String) {
             runOnUiThread {
+                val biometricManager = BiometricManager.from(mContext)
+                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) != BiometricManager.BIOMETRIC_SUCCESS) {
+                    Toast.makeText(mContext, "Biometria não disponível. Verifique se o dispositivo tem biometria configurada e tela de bloqueio.", Toast.LENGTH_LONG).show()
+                    webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
+                    return
+                }
+
                 val prompt = BiometricPrompt(this@MainActivity, executor,
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                             super.onAuthenticationSucceeded(result)
                             // Salva o vínculo ID -> "Biometria do Dispositivo"
-                            // Nota: Biometria do Android valida o "Dono do Dispositivo". 
+                            // Nota: Biometria do Android valida o "Dono do Dispositivo".
                             // Em um quiosque compartilhado, isso apenas confirma que ALGUÉM autorizado usou o aparelho.
                             // Para identificar 1:N, seria necessário hardware específico ou lógica de app customizada.
                             // Aqui, simulamos salvando o último ID autenticado para este fluxo.
                             prefs.edit().putString("last_enrolled_id", colaboradorId).apply()
-                            
+
                             // Retorna sucesso para o JS
                             webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', true)", null)
                         }
