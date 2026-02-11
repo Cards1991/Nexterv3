@@ -4,6 +4,7 @@
 
 let itensEntregaAtual = []; // Array para armazenar os itens da entrega atual
 let validacaoBiometricaAtual = null; // Armazena dados da validação se ocorrer
+let psicoChartInstance = null;
 
 // Função auxiliar para carregar funcionários ativos
 async function carregarSelectFuncionariosAtivos(selectId) {
@@ -68,7 +69,7 @@ async function carregarEstoqueEPI() {
             }
 
             // Filtro de Custo Zerado/Em Branco
-            if (filtroSemCusto && (epi.custo && parseFloat(epi.custo) > 0)) {
+            if (filtroSemCusto && epi.custo == 0) {
                 return;
             }
 

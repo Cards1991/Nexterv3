@@ -533,23 +533,55 @@ async function calcularCustoAtestados(atestados) {
             custoTotalMap.set(doc.id, custoTotal);
         });
 
+        // Fetch companies for schedule (jornadaTrabalho)
+        const empresasSnap = await db.collection('empresas').get();
+        const empresasMap = new Map();
+        empresasSnap.forEach(doc => {
+            empresasMap.set(doc.id, doc.data());
+        });
+
         return atestados.reduce((total, atestado) => {
             const custoTotalFuncionario = custoTotalMap.get(atestado.funcionarioId);
-            if (custoTotalFuncionario && atestado.dias) {
-                // Converte horas para dias se necessário (8h = 1 dia)
-                let diasDeAtestado = atestado.dias;
+            const empresa = empresasMap.get(atestado.empresaId);
+
+            if (custoTotalFuncionario && empresa) {
+                let horasPerdidas = 0;
+
                 if (atestado.duracaoTipo === 'horas') {
+                    // Parse hours
                     if (typeof atestado.duracaoValor === 'string' && atestado.duracaoValor.includes(':')) {
                         const [h, m] = atestado.duracaoValor.split(':').map(Number);
-                        diasDeAtestado = (h + (m / 60)) / 8;
+                        horasPerdidas = h + (m / 60);
                     } else {
-                        diasDeAtestado = (parseFloat(atestado.duracaoValor) || 0) / 8;
+                        horasPerdidas = parseFloat(atestado.duracaoValor) || 0;
+                    }
+                } else {
+                    // Duration in days - Calculate based on schedule
+                    const dias = parseInt(atestado.dias) || 0;
+                    let dataInicio = parseDateSafe(atestado.data_atestado);
+                    
+                    if (dataInicio && !isNaN(dataInicio.getTime())) {
+                        // Default schedule if not defined (Standard 8.8h Mon-Fri)
+                        const jornada = empresa.jornadaTrabalho || {
+                            segunda: 8.8, terca: 8.8, quarta: 8.8, quinta: 8.8, sexta: 8.8, sabado: 0, domingo: 0
+                        };
+                        
+                        // Map day index (0=Sun, 1=Mon...) to keys
+                        const diasSemanaKeys = ['domingo', 'segunda', 'terca', 'quarta', 'quinta', 'sexta', 'sabado'];
+
+                        for (let i = 0; i < dias; i++) {
+                            const currentDay = new Date(dataInicio);
+                            currentDay.setDate(dataInicio.getDate() + i);
+                            const dayIndex = currentDay.getDay();
+                            const dayKey = diasSemanaKeys[dayIndex];
+                            
+                            horasPerdidas += parseFloat(jornada[dayKey] || 0);
+                        }
                     }
                 }
 
                 const valorHora = custoTotalFuncionario / 220;
-                const horasAtestado = diasDeAtestado * 8;
-                return total + (valorHora * horasAtestado);
+                return total + (valorHora * horasPerdidas);
             }
             return total;
         }, 0);

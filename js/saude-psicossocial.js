@@ -6,6 +6,7 @@
 let modoEdicaoAtivo = false;
 let casoIdEditando = null;
 let indiceEditando = null;
+let psicoChartInstancePsico = null;
 
 async function inicializarSaudePsicossocial() {
     console.log("Inicializando Gestão de Saúde Psicossocial...");
@@ -169,11 +170,11 @@ function renderizarGraficoTendencia(casos) {
     const labels = Object.keys(dadosPorMes);
     const data = Object.values(dadosPorMes);
 
-    if (psicoChartInstance) {
-        psicoChartInstance.destroy();
+    if (psicoChartInstancePsico) {
+        psicoChartInstancePsico.destroy();
     }
 
-    psicoChartInstance = new Chart(ctx, {
+    psicoChartInstancePsico = new Chart(ctx, {
         type: 'line',
         data: {
             labels: labels,

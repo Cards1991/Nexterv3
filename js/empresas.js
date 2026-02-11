@@ -7,6 +7,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (empresaModal) {
         empresaModal.addEventListener('show.bs.modal', function(event) {
             // Verifica se o modal foi acionado pelo botão "Nova Empresa"
+            // INJECT JORNADA FIELDS IF NOT EXIST
+            injetarCamposJornada();
+
             const relatedTarget = event.relatedTarget;
             if (relatedTarget && relatedTarget.getAttribute('data-bs-target') === '#empresaModal') {
                 document.getElementById('form-empresa').reset();
@@ -20,6 +23,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     const input = document.getElementById(`empresa-input-${key}`);
                     if (input) input.classList.add('d-none');
                 });
+
+                // Resetar campos de jornada para o padrão
+                resetarCamposJornada();
             }
         });
     }
@@ -147,6 +153,8 @@ async function salvarEmpresa() {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
+        // Captura jornada
+        const jornadaTrabalho = obterDadosJornada();
 
         if (!nome) {
             mostrarMensagem('Preencha o nome da empresa', 'warning');
@@ -163,6 +171,7 @@ async function salvarEmpresa() {
                 terceiros: percTerceiros,
                 patronal: percPatronal
             },
+            jornadaTrabalho: jornadaTrabalho, // Salva a jornada
             funcoes: funcoes,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user ? user.uid : null
@@ -228,6 +237,9 @@ async function editarEmpresa(empresaId) {
                 patronalInput.classList.toggle('d-none', !temPatronal);
             }
 
+            // Preencher Jornada
+            preencherDadosJornada(empresa.jornadaTrabalho);
+
             // Garante que o título do modal esteja correto para edição
             const modalTitle = document.querySelector('#empresaModal .modal-title');
             if (modalTitle) modalTitle.textContent = 'Editar Empresa';
@@ -256,6 +268,9 @@ async function atualizarEmpresa(empresaId) {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
+        // Captura jornada
+        const jornadaTrabalho = obterDadosJornada();
+
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
         const updateData = {
@@ -266,6 +281,7 @@ async function atualizarEmpresa(empresaId) {
                 terceiros: percTerceiros,
                 patronal: percPatronal
             },
+            jornadaTrabalho: jornadaTrabalho, // Atualiza jornada
             updatedAt: timestamp(), 
         };
 
@@ -488,4 +504,86 @@ async function processarArquivoEmpresasCSV() {
     };
 
     reader.readAsText(file);
+}
+
+// Funções auxiliares para Jornada de Trabalho
+function injetarCamposJornada() {
+    const form = document.getElementById('form-empresa');
+    if (!form || document.getElementById('jornada-container')) return;
+
+    const container = document.createElement('div');
+    container.id = 'jornada-container';
+    container.className = 'mt-3 border-top pt-3';
+    container.innerHTML = `
+        <h6 class="mb-3">Jornada de Trabalho (Horas Diárias)</h6>
+        <div class="row g-2">
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Segunda</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-seg" placeholder="Ex: 9">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Terça</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-ter" placeholder="Ex: 9">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Quarta</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-qua" placeholder="Ex: 9">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Quinta</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-qui" placeholder="Ex: 9">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Sexta</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-sex" placeholder="Ex: 8">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Sábado</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-sab" placeholder="0">
+            </div>
+            <div class="col-md-3 col-4">
+                <label class="form-label small">Domingo</label>
+                <input type="number" step="0.01" class="form-control form-control-sm jornada-input" id="jornada-dom" placeholder="0">
+            </div>
+        </div>
+        <div class="form-text mt-2">Informe a carga horária em horas decimais (ex: 8.8 para 8h48m, ou 9 para 9h).</div>
+    `;
+    
+    form.appendChild(container);
+}
+
+function resetarCamposJornada() {
+    document.getElementById('jornada-seg').value = 8.8;
+    document.getElementById('jornada-ter').value = 8.8;
+    document.getElementById('jornada-qua').value = 8.8;
+    document.getElementById('jornada-qui').value = 8.8;
+    document.getElementById('jornada-sex').value = 8.8;
+    document.getElementById('jornada-sab').value = 0;
+    document.getElementById('jornada-dom').value = 0;
+}
+
+function obterDadosJornada() {
+    return {
+        segunda: parseFloat(document.getElementById('jornada-seg').value) || 0,
+        terca: parseFloat(document.getElementById('jornada-ter').value) || 0,
+        quarta: parseFloat(document.getElementById('jornada-qua').value) || 0,
+        quinta: parseFloat(document.getElementById('jornada-qui').value) || 0,
+        sexta: parseFloat(document.getElementById('jornada-sex').value) || 0,
+        sabado: parseFloat(document.getElementById('jornada-sab').value) || 0,
+        domingo: parseFloat(document.getElementById('jornada-dom').value) || 0
+    };
+}
+
+function preencherDadosJornada(jornada) {
+    if (!jornada) {
+        resetarCamposJornada();
+        return;
+    }
+    document.getElementById('jornada-seg').value = jornada.segunda || 0;
+    document.getElementById('jornada-ter').value = jornada.terca || 0;
+    document.getElementById('jornada-qua').value = jornada.quarta || 0;
+    document.getElementById('jornada-qui').value = jornada.quinta || 0;
+    document.getElementById('jornada-sex').value = jornada.sexta || 0;
+    document.getElementById('jornada-sab').value = jornada.sabado || 0;
+    document.getElementById('jornada-dom').value = jornada.domingo || 0;
 }

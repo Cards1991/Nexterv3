@@ -11,7 +11,7 @@ let __auth_funcionarios_cache = null;
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
  */
-function inicializarTelaAutorizacao() {
+async function inicializarTelaAutorizacao() {
     console.log("🔧 Inicializando tela de autorização...");
 
     // Configura eventos de clique para os botões de ação da tela
@@ -49,8 +49,7 @@ function inicializarTelaAutorizacao() {
     }
 
     // Inicia o carregamento de dados em tempo real
-    popularFiltrosAutorizacao();
-    carregarSolicitacoes();
+    await popularFiltrosAutorizacao();
 }
 
 /**
@@ -71,6 +70,17 @@ async function popularFiltrosAutorizacao() {
         [...setores].sort().forEach(setor => {
             setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
+
+        // Set default filters to current month and approved status
+        const now = new Date();
+        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        document.getElementById('auth-filtro-data-inicio').value = firstDay.toISOString().split('T')[0];
+        document.getElementById('auth-filtro-data-fim').value = lastDay.toISOString().split('T')[0];
+        document.getElementById('auth-filtro-status').value = 'aprovado';
+
+        // Automatically load solicitations with the predefined filters applied
+        await carregarSolicitacoes();
     } catch (error) {
         console.error("Erro ao popular filtro de setores:", error);
     }
@@ -158,6 +168,9 @@ async function carregarSolicitacoes() {
                 solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.setor === setor);
             }
 
+            // Dados completos para análise (KPIs e Gráficos) - Ignora filtro de status da tabela
+            const dadosAnalise = [...solicitacoesProcessadas];
+
             // Aplica filtro de status no lado do cliente para evitar erro de índice e garantir consistência
             if (status) {
                 solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.status === status);
@@ -168,9 +181,9 @@ async function carregarSolicitacoes() {
             console.log(`✅ Processadas ${cacheSolicitacoes.length} solicitações válidas`);
 
             // Atualiza toda a UI
-            atualizarKPIs(cacheSolicitacoes);
+            atualizarKPIs(dadosAnalise);
             renderizarTabela(cacheSolicitacoes, container);
-            renderizarGrafico(cacheSolicitacoes);
+            renderizarGrafico(dadosAnalise);
 
         }, (error) => {
             console.error("❌ Erro no listener do Firestore:", error);
@@ -411,10 +424,7 @@ async function excluirSolicitacaoDeHoras(id) {
     try {
         await db.collection('solicitacoes_horas').doc(id).delete();
         
-        // Remove do cache local e recalcula os KPIs
-        cacheSolicitacoes = cacheSolicitacoes.filter(s => s.id !== id);
-        atualizarKPIs(cacheSolicitacoes);
-        renderizarGrafico(cacheSolicitacoes);
+        // O listener onSnapshot atualizará a interface automaticamente
 
         mostrarMensagem("Solicitação excluída com sucesso.", "success");
     } catch (e) {

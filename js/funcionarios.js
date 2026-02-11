@@ -993,15 +993,14 @@ async function verDetalhesFuncionario(funcionarioId) {
 async function carregarSetoresPorEmpresa(empresaId, selectId) {
     const select = document.getElementById(selectId);
     if (!select) return;
-    
+
     select.innerHTML = '<option value="">Selecione um setor</option>';
-    if (!empresaId) return;
-    
+
     select.disabled = true;
     select.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        const setoresSnap = await db.collection('setores').where('empresaId', '==', empresaId).get();
+        const setoresSnap = await db.collection('setores').orderBy('descricao').get();
 
         if (setoresSnap.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';

@@ -38,14 +38,14 @@ async function carregarPainelExperiencia() {
         let pendencias = [];
         let totalEmExperiencia = 0;
 
-        snapshot.forEach(doc => {
+        for (const doc of snapshot.docs) {
             const func = { id: doc.id, ...doc.data() };
-            
-            if (!func.dataAdmissao) return;
-            
+
+            if (!func.dataAdmissao) continue;
+
             const admissao = func.dataAdmissao.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
             admissao.setHours(0, 0, 0, 0); // Normalizar hora para cálculo correto de dias
-            
+
             // Calcular datas de vencimento (contando o primeiro dia)
             const vencimento45 = new Date(admissao);
             vencimento45.setDate(admissao.getDate() + 44);
@@ -76,18 +76,26 @@ async function carregarPainelExperiencia() {
             }
 
             if (mostrar45 && (!filtroPeriodo || filtroPeriodo === '45')) {
-                pendencias.push({
-                    ...func,
-                    periodo: 45,
-                    vencimento: vencimento45,
-                    diasRestantes: diasPara45,
-                    responsavel: func.responsavelAvaliacao45
-                });
+                // Verificar se já existe avaliação para 45 dias
+                const avaliacao45Snap = await db.collection('avaliacoes_experiencia')
+                    .where('funcionarioId', '==', func.id)
+                    .where('periodo', '==', 45)
+                    .limit(1)
+                    .get();
+                if (avaliacao45Snap.empty) {
+                    pendencias.push({
+                        ...func,
+                        periodo: 45,
+                        vencimento: vencimento45,
+                        diasRestantes: diasPara45,
+                        responsavel: func.responsavelAvaliacao45
+                    });
+                }
             }
 
             // Verifica 2º Período (90 dias)
             const diasPara90 = Math.ceil((vencimento90 - hoje) / (1000 * 60 * 60 * 24));
-            
+
             let mostrar90 = false;
             if (filtroInicio || filtroFim) {
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
@@ -99,15 +107,23 @@ async function carregarPainelExperiencia() {
             }
 
             if (mostrar90 && (!filtroPeriodo || filtroPeriodo === '90')) {
-                pendencias.push({
-                    ...func,
-                    periodo: 90,
-                    vencimento: vencimento90,
-                    diasRestantes: diasPara90,
-                    responsavel: func.responsavelAvaliacao90
-                });
+                // Verificar se já existe avaliação para 90 dias
+                const avaliacao90Snap = await db.collection('avaliacoes_experiencia')
+                    .where('funcionarioId', '==', func.id)
+                    .where('periodo', '==', 90)
+                    .limit(1)
+                    .get();
+                if (avaliacao90Snap.empty) {
+                    pendencias.push({
+                        ...func,
+                        periodo: 90,
+                        vencimento: vencimento90,
+                        diasRestantes: diasPara90,
+                        responsavel: func.responsavelAvaliacao90
+                    });
+                }
             }
-        });
+        }
 
         // Ordenar por urgência (menor dias restantes)
         pendencias.sort((a, b) => a.diasRestantes - b.diasRestantes);
