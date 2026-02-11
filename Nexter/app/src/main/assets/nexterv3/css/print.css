@@ -1,0 +1,58 @@
+/* Estilos Gerais de Impressão */
+body {
+    font-family: 'Segoe UI', sans-serif;
+    color: #333;
+    margin: 1cm;
+}
+
+@media print {
+    body {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+}
+
+/* Estilos para Holerite (dp-calculos.js) */
+.holerite {
+    font-family: 'Courier New', Courier, monospace;
+    border: none;
+}
+
+.holerite-header,
+.holerite-footer {
+    text-align: center;
+    margin-bottom: 15px;
+}
+
+.holerite-body {
+    display: flex;
+    justify-content: space-between;
+}
+
+.holerite-col {
+    width: 48%;
+}
+
+.holerite-table {
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.holerite-table th,
+.holerite-table td {
+    padding: 4px;
+    border-bottom: 1px dashed #eee;
+}
+
+.holerite-table th {
+    text-align: left;
+}
+
+.holerite-table td:last-child {
+    text-align: right;
+}
+
+.total-line {
+    font-weight: bold;
+    border-top: 1px solid #333;
+}

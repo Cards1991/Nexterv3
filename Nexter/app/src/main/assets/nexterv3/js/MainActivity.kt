@@ -1,12 +1,4 @@
-/*
- * ⚠️ IMPORTANTE: ESTE ARQUIVO NÃO É EXECUTADO AQUI!
- *
- * Você deve COPIAR todo o conteúdo deste arquivo e COLAR no arquivo:
- * app/src/main/java/com/nexter/rh/MainActivity.kt (dentro do seu projeto Android Studio)
- *
- * Além disso, copie index.html, css/, js/ e assets/ para a pasta: app/src/main/assets/
- */
-package com.nexter.rh // ⚠️ VERIFIQUE SE ESTE É O NOME DO PACOTE NO SEU PROJETO (AndroidManifest.xml)
+package com.nexter.rh
 
 import android.annotation.SuppressLint
 import android.content.Context
@@ -40,26 +32,16 @@ class MainActivity : AppCompatActivity() {
         // Configuração do WebView
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
-        WebView.setWebContentsDebuggingEnabled(true) // Permite debugar erros pelo Chrome no PC
         webView.webViewClient = WebViewClient()
         
         // Injeta a interface JS
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBiometria")
 
         // Carrega o sistema (Substitua pela URL real ou arquivo local)
-        // webView.loadUrl("file:///android_asset/index.html")
-        webView.loadUrl("https://nexterv3.vercel.app/index.html")
+        // webView.loadUrl("file:///android_asset/index.html") 
+        webView.loadUrl("https://seu-sistema-rh.web.app") 
 
         setupBiometric()
-    }
-
-    // Permite que o botão voltar do Android navegue no histórico do WebView
-    override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
-        }
     }
 
     private fun setupBiometric() {
@@ -79,24 +61,17 @@ class MainActivity : AppCompatActivity() {
         @JavascriptInterface
         fun cadastrarBiometria(colaboradorId: String) {
             runOnUiThread {
-                val biometricManager = BiometricManager.from(mContext)
-                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) != BiometricManager.BIOMETRIC_SUCCESS) {
-                    Toast.makeText(mContext, "Biometria não disponível. Verifique se o dispositivo tem biometria configurada e tela de bloqueio.", Toast.LENGTH_LONG).show()
-                    webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
-                    return
-                }
-
                 val prompt = BiometricPrompt(this@MainActivity, executor,
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                             super.onAuthenticationSucceeded(result)
                             // Salva o vínculo ID -> "Biometria do Dispositivo"
-                            // Nota: Biometria do Android valida o "Dono do Dispositivo".
+                            // Nota: Biometria do Android valida o "Dono do Dispositivo". 
                             // Em um quiosque compartilhado, isso apenas confirma que ALGUÉM autorizado usou o aparelho.
                             // Para identificar 1:N, seria necessário hardware específico ou lógica de app customizada.
                             // Aqui, simulamos salvando o último ID autenticado para este fluxo.
                             prefs.edit().putString("last_enrolled_id", colaboradorId).apply()
-
+                            
                             // Retorna sucesso para o JS
                             webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', true)", null)
                         }

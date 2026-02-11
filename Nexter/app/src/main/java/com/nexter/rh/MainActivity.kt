@@ -15,13 +15,13 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executor
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : FragmentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var executor: Executor
@@ -42,7 +42,7 @@ class MainActivity : AppCompatActivity() {
         webView.settings.domStorageEnabled = true
         WebView.setWebContentsDebuggingEnabled(true) // Permite debugar erros pelo Chrome no PC
         webView.webViewClient = WebViewClient()
-        
+
         // Injeta a interface JS
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBiometria")
 
@@ -64,7 +64,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun setupBiometric() {
         executor = ContextCompat.getMainExecutor(this)
-        
+
         // Configuração do Prompt
         promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Autenticação Biométrica")
@@ -83,7 +83,7 @@ class MainActivity : AppCompatActivity() {
                 if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) != BiometricManager.BIOMETRIC_SUCCESS) {
                     Toast.makeText(mContext, "Biometria não disponível. Verifique se o dispositivo tem biometria configurada e tela de bloqueio.", Toast.LENGTH_LONG).show()
                     webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
-                    return
+                    return@runOnUiThread
                 }
 
                 val prompt = BiometricPrompt(this@MainActivity, executor,
@@ -118,19 +118,19 @@ class MainActivity : AppCompatActivity() {
                     object : BiometricPrompt.AuthenticationCallback() {
                         override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
                             super.onAuthenticationSucceeded(result)
-                            
-                            // Recupera o ID. 
+
+                            // Recupera o ID.
                             // ATENÇÃO: A API padrão do Android não retorna "quem" autenticou, apenas que foi válido.
                             // Para o fluxo solicitado, retornamos o ID salvo no cadastro (simulando 1:1 device-user).
                             val colaboradorId = prefs.getString("last_enrolled_id", null)
-                            
+
                             if (colaboradorId != null) {
                                 webView.evaluateJavascript("window.onBiometriaIdentificada('$colaboradorId')", null)
                             } else {
                                 Toast.makeText(mContext, "Nenhum colaborador vinculado a este dispositivo.", Toast.LENGTH_LONG).show()
                             }
                         }
-                        
+
                         override fun onAuthenticationFailed() {
                             super.onAuthenticationFailed()
                             // Log de falha (opcional enviar para o JS)

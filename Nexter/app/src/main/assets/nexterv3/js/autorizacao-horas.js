@@ -5,13 +5,13 @@
 
 let listenerAutorizacao = null;
 let cacheSolicitacoes = [];
-let __auth_funcionarios_cache_timestamp = null;
-const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutos
+let chartAutorizacao = null;
+let __auth_funcionarios_cache = null;
 
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
  */
-async function inicializarTelaAutorizacao() {
+function inicializarTelaAutorizacao() {
     console.log("🔧 Inicializando tela de autorização...");
 
     // Configura eventos de clique para os botões de ação da tela
@@ -49,7 +49,8 @@ async function inicializarTelaAutorizacao() {
     }
 
     // Inicia o carregamento de dados em tempo real
-    await popularFiltrosAutorizacao();
+    popularFiltrosAutorizacao();
+    carregarSolicitacoes();
 }
 
 /**
@@ -57,14 +58,7 @@ async function inicializarTelaAutorizacao() {
  */
 async function popularFiltrosAutorizacao() {
     const setorSelect = document.getElementById('auth-filtro-setor');
-    const dataInicio = document.getElementById('auth-filtro-data-inicio');
-    const dataFim = document.getElementById('auth-filtro-data-fim');
-    const status = document.getElementById('auth-filtro-status');
-
-    if (!setorSelect || !dataInicio || !dataFim || !status) {
-        console.error("❌ Elementos de filtro não encontrados no DOM!");
-        return;
-    }
+    if (!setorSelect) return;
 
     try {
         const setores = new Set();
@@ -77,25 +71,6 @@ async function popularFiltrosAutorizacao() {
         [...setores].sort().forEach(setor => {
             setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
-
-        // Set default filters to current month and approved status
-        const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        
-        // Helper para formatar data localmente (evita problemas de fuso horário do toISOString)
-        const toLocalISO = (date) => {
-            const offset = date.getTimezoneOffset() * 60000;
-            return new Date(date.getTime() - offset).toISOString().split('T')[0];
-        };
-
-        dataInicio.value = toLocalISO(firstDay);
-        dataFim.value = toLocalISO(lastDay);
-        // 🟢 CORREÇÃO: Para teste, buscar TODOS os status
-        status.value = ''; // Vazio = todos os status
-
-        // Automatically load solicitations with the predefined filters applied
-        await carregarSolicitacoes();
     } catch (error) {
         console.error("Erro ao popular filtro de setores:", error);
     }
@@ -144,11 +119,12 @@ async function carregarSolicitacoes() {
     }
     
     listenerAutorizacao = query.onSnapshot(async (snapshot) => {
-        try {
             console.log(`📊 Snapshot recebido: ${snapshot.docs.length} documentos`);
 
             if (snapshot.empty) {
                 container.innerHTML = '<div class="text-center p-5"><i class="fas fa-inbox fa-3x text-muted mb-3"></i><p>Nenhuma solicitação encontrada</p></div>';
+                atualizarKPIs([]);
+                renderizarGrafico([]);
                 return;
             }
 
@@ -167,26 +143,11 @@ async function carregarSolicitacoes() {
 
                 const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
                 
-                // Tratamento robusto para valorOriginalSolicitado (pode vir como string do banco)
-                let valorOriginal = data.valorOriginalSolicitado;
-                
-                if (valorOriginal === undefined || valorOriginal === null) {
-                    valorOriginal = valorAtual;
-                } else if (typeof valorOriginal === 'string') {
-                    // Limpa formatação R$ 1.000,00 -> 1000.00
-                    let v = valorOriginal.replace(/[R$\s]/g, '').trim();
-                    if (v.includes(',') && v.includes('.')) v = v.replace(/\./g, '').replace(',', '.');
-                    else if (v.includes(',')) v = v.replace(',', '.');
-                    valorOriginal = parseFloat(v);
-                }
-                
-                if (isNaN(Number(valorOriginal))) valorOriginal = valorAtual;
-
                 return { 
                     id: doc.id, 
                     ...data, 
                     valorEstimado: valorAtual, // Valor atual (após edições)
-                    valorOriginalSolicitado: Number(valorOriginal)
+                    valorOriginalSolicitado: typeof data.valorOriginalSolicitado === 'number' ? data.valorOriginalSolicitado : valorAtual
                 };
             });
 
@@ -204,15 +165,12 @@ async function carregarSolicitacoes() {
 
             cacheSolicitacoes = solicitacoesProcessadas;
 
-            console.log(`✅ Processadas ${cacheSolicitacoes.length} solicitações para tabela`);
+            console.log(`✅ Processadas ${cacheSolicitacoes.length} solicitações válidas`);
 
             // Atualiza toda a UI
+            atualizarKPIs(cacheSolicitacoes);
             renderizarTabela(cacheSolicitacoes, container);
-
-        } catch (err) {
-            console.error("❌ Erro ao processar dados de autorização:", err);
-            container.innerHTML = '<div class="alert alert-danger">Erro ao processar dados. Verifique o console.</div>';
-        }
+            renderizarGrafico(cacheSolicitacoes);
 
         }, (error) => {
             console.error("❌ Erro no listener do Firestore:", error);
@@ -281,6 +239,76 @@ function renderizarTabela(solicitacoes, container) {
     container.innerHTML = html;
 }
 
+/**
+ * Atualiza os cards de KPI (Indicadores Chave de Performance).
+ */
+function atualizarKPIs(solicitacoes) {
+    // CORREÇÃO: Usa o valor original se existir, para uma análise de custo precisa.
+    const totalSolicitado = solicitacoes
+        .filter(s => s.status !== 'cancelado')
+        .reduce((acc, s) => acc + (s.valorOriginalSolicitado ?? s.valorEstimado ?? 0), 0);
+
+    const totalAprovado = solicitacoes
+        .filter(s => s.status === 'aprovado')
+        .reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
+    const pendentes = solicitacoes.filter(s => s.status === 'pendente').length;
+
+    document.getElementById('auth-total-solicitado').textContent = `R$ ${totalSolicitado.toFixed(2).replace('.', ',')}`;
+    document.getElementById('auth-total-aprovado').textContent = `R$ ${totalAprovado.toFixed(2).replace('.', ',')}`;
+    document.getElementById('auth-diferenca').textContent = `R$ ${(totalSolicitado - totalAprovado).toFixed(2).replace('.', ',')}`;
+    document.getElementById('auth-pendentes').textContent = pendentes;
+}
+
+/**
+ * Renderiza o gráfico de comparação de valores solicitados vs. aprovados.
+ */
+function renderizarGrafico(solicitacoes) {
+    const ctx = document.getElementById('auth-chart-canvas')?.getContext('2d');
+    if (!ctx) return;
+
+    // Destrói gráficos antigos para evitar sobreposição
+    if (chartAutorizacao) chartAutorizacao.destroy();
+
+    // Usa valor ORIGINAL para o total solicitado
+    const totalSolicitado = solicitacoes
+        .filter(s => s.status !== 'cancelado')
+        .reduce((acc, s) => acc + (s.valorOriginalSolicitado ?? s.valorEstimado ?? 0), 0);
+
+    // Usa valor ATUAL para o total aprovado
+    const totalAprovado = solicitacoes
+        .filter(s => s.status === 'aprovado')
+        .reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
+    chartAutorizacao = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Comparativo de Custos'],
+            datasets: [
+                {
+                    label: 'Valor Solicitado (R$)',
+                    data: [totalSolicitado],
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Valor Aprovado (R$)',
+                    data: [totalAprovado],
+                    backgroundColor: 'rgba(75, 192, 192, 0.7)',
+                    borderColor: 'rgba(75, 192, 192, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { callback: value => `R$ ${value.toFixed(2)}` } } }
+        }
+    });
+}
+
 // =================================================================
 // FUNÇÕES DE AÇÃO (Aprovar, Rejeitar, Excluir, etc.)
 // =================================================================
@@ -340,6 +368,11 @@ async function aprovarSolicitacao(id) {
 
         await batch.commit();
 
+        await db.collection('solicitacoes_horas').doc(id).update({
+            status: 'aprovado',
+            approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            approvedByUid: firebase.auth().currentUser.uid
+        });
         mostrarMensagem("Solicitação aprovada e lançada no dashboard de Horas Extras!", "success");
     } catch (e) {
         console.error("Erro ao aprovar e lançar hora extra:", e);
@@ -378,7 +411,10 @@ async function excluirSolicitacaoDeHoras(id) {
     try {
         await db.collection('solicitacoes_horas').doc(id).delete();
         
-        // O listener onSnapshot atualizará a interface automaticamente
+        // Remove do cache local e recalcula os KPIs
+        cacheSolicitacoes = cacheSolicitacoes.filter(s => s.id !== id);
+        atualizarKPIs(cacheSolicitacoes);
+        renderizarGrafico(cacheSolicitacoes);
 
         mostrarMensagem("Solicitação excluída com sucesso.", "success");
     } catch (e) {
@@ -389,20 +425,11 @@ async function excluirSolicitacaoDeHoras(id) {
     }
 }
 
-async function carregarFuncionariosAuth(forceRefresh = false) {
-    const now = Date.now();
-    
-    if (!forceRefresh && 
-        __auth_funcionarios_cache && 
-        __auth_funcionarios_cache_timestamp &&
-        (now - __auth_funcionarios_cache_timestamp) < CACHE_TIMEOUT) {
-        return __auth_funcionarios_cache;
-    }
-
+async function carregarFuncionariosAuth() {
+    if (__auth_funcionarios_cache) return __auth_funcionarios_cache;
     try {
         const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
         __auth_funcionarios_cache = snap.docs.map(d => ({id: d.id, ...d.data()}));
-        __auth_funcionarios_cache_timestamp = now;
         return __auth_funcionarios_cache;
     } catch (e) { console.error("Erro ao carregar funcionários:", e); return []; }
 }
@@ -532,10 +559,7 @@ async function salvarAjusteSolicitacao() {
 async function calcularValorEstimado(start, end, employeeId, salariosMap = null) {
     try {
         const duracaoMinutos = (end - start) / (1000 * 60);
-        if (duracaoMinutos <= 0) {
-            console.warn("⚠️ Duração inválida:", duracaoMinutos);
-            return 0;
-        }
+        if (duracaoMinutos <= 0) return 0;
 
         let salario = 0;
         if (salariosMap && salariosMap.has(employeeId)) {
@@ -545,15 +569,10 @@ async function calcularValorEstimado(start, end, employeeId, salariosMap = null)
             if (funcDoc.exists) salario = parseFloat(funcDoc.data().salario || 0);
         }
 
-        // 🟢 CORREÇÃO: Se não encontrar salário, usa um valor padrão para teste
-        if (salario <= 0 || isNaN(salario)) {
-            console.warn(`⚠️ Salário não encontrado para funcionário ${employeeId}, usando valor padrão R$ 2000`);
-            salario = 2000; // Valor padrão para testes
-        }
+        if (salario <= 0) return 0;
 
         const valorHora = salario / 220;
-        const horas = duracaoMinutos / 60;
-        const valorExtra = horas * (valorHora * 1.5);
+        const valorExtra = (duracaoMinutos / 60) * (valorHora * 1.5); // Assumindo 50%
         const dsr = valorExtra / 6; // DSR simplificado
 
         return parseFloat((valorExtra + dsr).toFixed(2));
@@ -688,52 +707,3 @@ async function integrarComAnaliseDeCustos() {
         btn.innerHTML = '<i class="fas fa-coins"></i> Integrar com Análise de Custos';
     }
 }
-
-// Funções utilitárias locais (fallback ou específicas para este módulo)
-function mostrarMensagem(mensagem, tipo = 'info') {
-    // Verificar se existe um container de mensagens
-    let container = document.getElementById('auth-mensagens-container');
-    
-    if (!container) {
-        // Criar container se não existir
-        container = document.createElement('div');
-        container.id = 'auth-mensagens-container';
-        container.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999;';
-        document.body.appendChild(container);
-    }
-    
-    const alert = document.createElement('div');
-    alert.className = `alert alert-${tipo} alert-dismissible fade show`;
-    alert.innerHTML = `
-        ${mensagem}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    `;
-    
-    container.appendChild(alert);
-    
-    // Remover após 5 segundos
-    setTimeout(() => alert.remove(), 5000);
-}
-
-function openPrintWindow(content, options = {}) {
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(content);
-    printWindow.document.close();
-    
-    if (options.autoPrint) {
-        printWindow.onload = () => {
-            printWindow.print();
-            printWindow.onafterprint = () => printWindow.close();
-        };
-    }
-}
-
-// Garantir inicialização quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', async () => {
-    // Pequeno atraso para garantir que todos os elementos estejam renderizados
-    setTimeout(async () => {
-        if (document.getElementById('auth-solicitacoes-table')) {
-            await inicializarTelaAutorizacao();
-        }
-    }, 100);
-});
