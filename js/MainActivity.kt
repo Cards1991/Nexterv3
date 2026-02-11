@@ -38,8 +38,8 @@ class MainActivity : AppCompatActivity() {
         webView.addJavascriptInterface(WebAppInterface(this), "AndroidBiometria")
 
         // Carrega o sistema (Substitua pela URL real ou arquivo local)
-        // webView.loadUrl("file:///android_asset/index.html") 
-        webView.loadUrl("https://seu-sistema-rh.web.app") 
+        webView.loadUrl("file:///android_asset/index.html") 
+        // webView.loadUrl("https://seu-sistema-rh.web.app") 
 
         setupBiometric()
     }

@@ -1100,39 +1100,6 @@ window.visualizarEvento = window.visualizarEvento || function() { };
 // Inicializar quando o DOM estiver carregado
 document.addEventListener('DOMContentLoaded', function() {
     
-    // --- MOCK DA INTERFACE ANDROID (Para testes no navegador) ---
-    if (typeof window.AndroidBiometria === 'undefined') {
-        window.AndroidBiometria = {
-            cadastrarBiometria: function(colaboradorId) {
-                setTimeout(() => {
-                    if (confirm("[SIMULAÇÃO ANDROID]\n\nToque no sensor de digital para cadastrar.\n\n(OK = Sucesso | Cancelar = Falha)")) {
-                        if (typeof window.onBiometriaCadastrada === 'function') {
-                            window.onBiometriaCadastrada(colaboradorId, true);
-                        }
-                    } else {
-                        if (typeof window.onBiometriaCadastrada === 'function') {
-                            window.onBiometriaCadastrada(colaboradorId, false);
-                        }
-                    }
-                }, 500);
-            },
-            autenticarBiometria: function() {
-                setTimeout(() => {
-                    if (confirm("[SIMULAÇÃO ANDROID]\n\nToque no sensor para identificar.\n\n(OK = Sucesso)")) {
-                        // Tenta pegar um ID válido do select de consumo para simular
-                        const select = document.getElementById('consumo-funcionario');
-                        // Se houver opções, pega a segunda (índice 1), pois a primeira é "Selecione"
-                        const idSimulado = (select && select.options.length > 1) ? select.options[1].value : 'ID_SIMULADO';
-                        
-                        if (typeof window.onBiometriaIdentificada === 'function') {
-                            window.onBiometriaIdentificada(idSimulado);
-                        }
-                    }
-                }, 500);
-            }
-        };
-    }
-
     // Inicializar modais
     inicializarModais();
     
