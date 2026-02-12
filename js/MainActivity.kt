@@ -15,13 +15,13 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
-import androidx.appcompat.app.AppCompatActivity
+import androidx.fragment.app.FragmentActivity
 import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executor
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : FragmentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var executor: Executor
@@ -70,6 +70,7 @@ class MainActivity : AppCompatActivity() {
             .setTitle("Autenticação Biométrica")
             .setSubtitle("Toque no sensor para confirmar")
             .setNegativeButtonText("Cancelar")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
             .build()
     }
 
@@ -80,10 +81,10 @@ class MainActivity : AppCompatActivity() {
         fun cadastrarBiometria(colaboradorId: String) {
             runOnUiThread {
                 val biometricManager = BiometricManager.from(mContext)
-                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG) != BiometricManager.BIOMETRIC_SUCCESS) {
+                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK) != BiometricManager.BIOMETRIC_SUCCESS) {
                     Toast.makeText(mContext, "Biometria não disponível. Verifique se o dispositivo tem biometria configurada e tela de bloqueio.", Toast.LENGTH_LONG).show()
                     webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
-                    return
+                    return@runOnUiThread
                 }
 
                 val prompt = BiometricPrompt(this@MainActivity, executor,

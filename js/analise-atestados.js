@@ -6,11 +6,11 @@ let chartsAnaliseAtestados = {};
 
 async function inicializarAnaliseAtestados() {
     console.log("Inicializando Dashboard de Análise de Atestados...");
-    
+
     // Configurar datas padrão se vazio
     const inicio = document.getElementById('dash-atest-inicio');
     const fim = document.getElementById('dash-atest-fim');
-    
+
     if (inicio && !inicio.value) {
         const hoje = new Date();
         inicio.value = new Date(hoje.getFullYear(), 0, 1).toISOString().split('T')[0]; // Início do ano
@@ -19,6 +19,9 @@ async function inicializarAnaliseAtestados() {
 
     // Preencher filtro de setores
     await carregarSetoresFiltro();
+
+    // Preencher filtro de colaboradores
+    await carregarColaboradoresFiltro();
 
     await carregarDashboardAtestados();
 }
@@ -31,9 +34,23 @@ async function carregarSetoresFiltro() {
         const snap = await db.collection('setores').get();
         const setores = new Set();
         snap.forEach(doc => setores.add(doc.data().descricao));
-        
+
         [...setores].sort().forEach(s => {
             select.innerHTML += `<option value="${s}">${s}</option>`;
+        });
+    } catch (e) { console.error(e); }
+}
+
+async function carregarColaboradoresFiltro() {
+    const select = document.getElementById('dash-atest-colaborador');
+    if (!select || select.options.length > 1) return;
+
+    try {
+        const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+        select.innerHTML = '<option value="">Todos os colaboradores</option>';
+        snap.forEach(doc => {
+            const func = doc.data();
+            select.innerHTML += `<option value="${doc.id}">${func.nome}</option>`;
         });
     } catch (e) { console.error(e); }
 }
@@ -42,15 +59,17 @@ async function carregarDashboardAtestados() {
     const inicio = document.getElementById('dash-atest-inicio').value;
     const fim = document.getElementById('dash-atest-fim').value;
     const setor = document.getElementById('dash-atest-setor').value;
+    const funcionarioId = document.getElementById('dash-atest-colaborador').value;
 
     try {
         let query = db.collection('atestados');
         
         if (inicio) query = query.where('data_atestado', '>=', new Date(inicio + 'T00:00:00'));
         if (fim) query = query.where('data_atestado', '<=', new Date(fim + 'T23:59:59'));
+        if (funcionarioId) query = query.where('funcionarioId', '==', funcionarioId);
 
         const snapshot = await query.get();
-        let atestados = snapshot.docs.map(doc => doc.data());
+        let atestados = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // Filtro de setor em memória (se necessário)
         if (setor) {

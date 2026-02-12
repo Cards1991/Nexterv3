@@ -3,33 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema de Gestão - Nexter</title>
+    <meta name="description" content="Como transformamos suas fotos · ✓ Correção de cores e iluminação · ✓ Remoção de ruídos e imperfeições · ✓ Ajuste de contraste e saturação · ✓ Melhoria de foco e ...">
+    <title>WebPro Studio: Edição de Fotos Profissionais para Delivery</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/modals.css">
 
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.17.1/firebase-storage-compat.js"></script>
-
-    <!-- Carrega as variáveis de ambiente e inicializa o Firebase -->
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
+    
+    <!-- Configuração do Firebase e Fallback -->
     <script src="js/env-loader.js"></script>
+    <script src="firebase-config.js"></script>
     <script>
-        // Inicializa o Firebase com as configurações carregadas pelo env-loader.js
-        if (window.__FIREBASE_CONFIG__) {
+        // Garante a inicialização do Firebase se o firebase-config.js falhar
+        if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
+            console.warn("⚠️ Inicializando Firebase via env-loader (fallback)...");
             firebase.initializeApp(window.__FIREBASE_CONFIG__);
+        }
+        if (firebase.apps.length && !window.db) {
             window.db = firebase.firestore();
             window.auth = firebase.auth();
-            window.timestamp = firebase.firestore.FieldValue.serverTimestamp;
-            console.log("🚀 Firebase inicializado com sucesso!");
-        } else {
-            console.error("❌ Falha ao carregar as configurações do Firebase.");
-            document.body.innerHTML = "<h1>Erro Crítico: Configuração do Firebase não encontrada.</h1>";
+            console.log("✅ Firebase e DB inicializados globalmente.");
         }
     </script>
+
+    <!-- Local Database for Offline Mode -->
+    <script src="js/local-db.js"></script>
 
     <!-- PapaParse para processamento de CSV -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
@@ -103,6 +108,8 @@
             z-index: 10;
             position: relative;
         }
+
+
     </style>
 </head>
 <body class="sidebar-collapsed">
@@ -358,6 +365,18 @@
                                 </li>
                             </ul>
             </header>
+
+            <section id="user-status-panel" class="content-section card d-none">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Usuários Online</h5>
+                    <button type="button" class="btn-close" id="close-user-status-panel" aria-label="Close"></button>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group" id="user-status-list">
+                        <!-- User status will be populated here -->
+                    </ul>
+                </div>
+            </section>
 
             <main class="content-wrapper">
                 <!-- Seção Agenda -->
@@ -1227,7 +1246,8 @@
                                     <option value="">Todos os Setores</option>
                                 </select>
                                 <select class="form-select form-select-sm" id="mov-filtro-status" title="Filtrar por Status" style="width: 150px;">
-                                    <option value="pendente" selected>Pendentes</option>
+                                    <option value="" selected>Todos</option>
+                                    <option value="pendente">Pendentes</option>
                                     <option value="preenchida">Preenchidas</option>
                                 </select>
                                 <button class="btn btn-primary btn-sm" onclick="filtrarMovimentacoes()">
@@ -1240,6 +1260,9 @@
                                 </button>
                                 <button class="btn btn-info" onclick="abrirNovaContratacaoModal()">
                                     <i class="fas fa-user-plus"></i> Nova Contratação
+                                </button>
+                                <button class="btn btn-secondary" onclick="imprimirReposicoesPendentes()">
+                                    <i class="fas fa-print"></i> Imprimir Reposições
                                 </button>
                             </div>
                         </div>
@@ -1984,8 +2007,19 @@
                                     <select class="form-select" id="dash-atest-setor"><option value="">Todos</option></select>
                                 </div>
                                 <div class="col-md-3">
+                                    <label class="form-label">Colaborador</label>
+                                    <select class="form-select" id="dash-atest-colaborador"><option value="">Todos</option></select>
+                                </div>
+                                <div class="col-md-3">
                                     <button class="btn btn-primary w-100" onclick="carregarDashboardAtestados()">
                                         <i class="fas fa-filter me-2"></i> Filtrar
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-12">
+                                    <button class="btn btn-info" id="open-user-status-panel-btn">
+                                        <i class="fas fa-users me-2"></i> Ver Usuários Online
                                     </button>
                                 </div>
                             </div>
@@ -6153,6 +6187,53 @@
         </div>
     </div>
 
+    <!-- Modal Abrir Chamado Manutenção -->
+    <div class="modal fade" id="modalAbrirChamadoManutencao" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Abrir Chamado de Manutenção</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-novo-chamado">
+                        <div class="mb-3">
+                            <label class="form-label">Máquina / Equipamento</label>
+                            <select class="form-select" id="chamado-maquina" required>
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Descrição do Problema</label>
+                            <textarea class="form-control" id="chamado-motivo" rows="3" required></textarea>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Prioridade</label>
+                                <select class="form-select" id="chamado-prioridade">
+                                    <option value="Baixa">Baixa</option>
+                                    <option value="Normal" selected>Normal</option>
+                                    <option value="Alta">Alta</option>
+                                    <option value="Crítica">Crítica</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3 d-flex align-items-center">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="chamado-parada">
+                                    <label class="form-check-label" for="chamado-parada">Máquina Parada?</label>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="salvarChamadoManutencao()">Abrir Chamado</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal de Assinatura de Horas Extras -->
     <div class="modal fade" id="modalAssinaturaHE" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
         <div class="modal-dialog">
@@ -6321,6 +6402,9 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Container para alertas de faltas/atestados -->
+                    <div id="aval-exp-alerts" class="mb-3"></div>
+
                     <form id="form-avaliacao-experiencia">
                         <input type="hidden" id="aval-exp-funcionario-id">
                         <input type="hidden" id="aval-exp-periodo">
@@ -6382,6 +6466,9 @@
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+                    <!-- Container para alertas de faltas/atestados -->
+                    <div id="aval-exp-alerts" class="mb-3"></div>
+
                     <form id="form-atribuicao-experiencia">
                         <input type="hidden" id="attrib-exp-funcionario-id">
                         <input type="hidden" id="attrib-exp-periodo">
@@ -6461,6 +6548,7 @@
     <script src="js/voice-commands.js"></script>
     <script src="js/mapaColaboradores.js"></script>
     <script src="js/app.js"></script>
+    <script src="js/user-status.js"></script>
     <script src="js/cid-manager.js"></script>
     <script src="js/analise-atestados.js"></script>
     <script type="module" src="js/body-map-3d.js"></script>

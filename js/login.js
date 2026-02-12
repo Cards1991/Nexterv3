@@ -53,6 +53,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (!userCredential.user.emailVerified) {
                     // Você pode remover esta verificação se quiser permitir acesso sem verificação
                 }
+
+                // Set user status to online
+                if (typeof UserStatusManager !== 'undefined') {
+                    await UserStatusManager.setUserOnline(userCredential.user);
+                }
                 
                 // Animação de sucesso (Slide Out)
                 document.querySelector('.login-card').style.filter = 'none';

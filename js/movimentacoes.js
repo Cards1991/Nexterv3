@@ -767,24 +767,24 @@ class MovimentacoesManager {
 
             container.innerHTML = this.createLoadingRow(6);
 
-            const movimentacoesSnapshot = await db.collection('movimentacoes')
-                .orderBy('data', 'desc')
+            const reposicoesSnapshot = await db.collection('reposicoes')
+                .orderBy('abertaEm', 'desc')
                 .limit(50)
                 .get();
 
-            if (movimentacoesSnapshot.empty) {
-                container.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma movimentação registrada</td></tr>';
+            if (reposicoesSnapshot.empty) {
+                container.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma reposição registrada</td></tr>';
                 return;
             }
 
             container.innerHTML = '';
-            movimentacoesSnapshot.forEach(doc => {
-                const mov = doc.data();
-                const dataObj = mov.data?.toDate ? mov.data.toDate() : new Date(mov.data);
-                
+            reposicoesSnapshot.forEach(doc => {
+                const rep = doc.data();
+                const dataObj = rep.abertaEm?.toDate ? rep.abertaEm.toDate() : new Date(rep.abertaEm);
+
                 const row = document.createElement('tr');
                 row.className = 'fade-in';
-                row.innerHTML = this.createHistoricoRow(doc.id, mov, dataObj);
+                row.innerHTML = this.createHistoricoRow(doc.id, rep, dataObj);
                 container.appendChild(row);
             });
 
@@ -797,25 +797,27 @@ class MovimentacoesManager {
         }
     }
 
-    createHistoricoRow(id, movimentacao, data) {
-        const tipoBadge = movimentacao.tipo === 'admissao' 
-            ? '<span class="badge badge-success">Admissão</span>'
-            : '<span class="badge badge-danger">Demissão</span>';
+    createHistoricoRow(id, reposicao, data) {
+        const statusBadge = reposicao.status === 'preenchida'
+            ? '<span class="badge bg-success">Preenchida</span>'
+            : reposicao.status === 'cancelada'
+            ? '<span class="badge bg-secondary">Cancelada</span>'
+            : '<span class="badge bg-warning text-dark">Pendente</span>';
 
         return `
             <td>${this.formatarData(data)}</td>
             <td>
                 <div class="d-flex flex-column">
-                    <strong>${movimentacao.funcionarioNome}</strong>
-                    <small class="text-muted">${movimentacao.cargo || ''}</small>
+                    <strong>${reposicao.funcionarioNome || 'N/A'}</strong>
+                    <small class="text-muted">${reposicao.cargo || ''}</small>
                 </div>
             </td>
-            <td>${movimentacao.setor || '-'}</td>
-            <td>${tipoBadge}</td>
-            <td>${movimentacao.motivo}</td>
+            <td>${reposicao.setor || '-'}</td>
+            <td>${statusBadge}</td>
+            <td>${reposicao.observacoes || '-'}</td>
             <td>
                 <div class="btn-group">
-                    <button class="btn btn-sm btn-outline-danger" onclick="movimentacoesManager.excluirMovimentacao('${id}', '${movimentacao.funcionarioId}', '${movimentacao.tipo}')">
+                    <button class="btn btn-sm btn-outline-danger" onclick="movimentacoesManager.excluirReposicao('${id}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -835,14 +837,14 @@ class MovimentacoesManager {
             // Reverter status do funcionário
             if (funcionarioId) {
                 const novoStatus = tipo === 'demissao' ? 'Ativo' : 'Inativo';
-                await db.collection('funcionarios').doc(funcionarioId).update({ 
+                await db.collection('funcionarios').doc(funcionarioId).update({
                     status: novoStatus,
                     ultimaMovimentacao: null
                 });
             }
 
             this.mostrarMensagem('Movimentação excluída com sucesso!', 'success');
-            
+
             // Recarregar dados
             await Promise.all([
                 this.carregarHistoricoMovimentacoes(),
@@ -853,6 +855,26 @@ class MovimentacoesManager {
         } catch (error) {
             console.error('Erro ao excluir movimentação:', error);
             this.mostrarMensagem('Erro ao excluir movimentação', 'error');
+        }
+    }
+
+    async excluirReposicao(reposicaoId) {
+        if (!confirm('Tem certeza que deseja excluir esta reposição?')) {
+            return;
+        }
+
+        try {
+            // Excluir reposição
+            await db.collection('reposicoes').doc(reposicaoId).delete();
+
+            this.mostrarMensagem('Reposição excluída com sucesso!', 'success');
+
+            // Recarregar dados
+            await this.carregarHistoricoMovimentacoes();
+
+        } catch (error) {
+            console.error('Erro ao excluir reposição:', error);
+            this.mostrarMensagem('Erro ao excluir reposição', 'error');
         }
     }
 
@@ -1119,45 +1141,54 @@ class MovimentacoesManager {
             const setorFiltro = document.getElementById('mov-filtro-setor')?.value;
             const statusFiltro = document.getElementById('mov-filtro-status')?.value;
 
-            let query = db.collection('movimentacoes').orderBy('data', 'desc');
+            let query = db.collection('reposicoes').orderBy('abertaEm', 'desc');
 
+            // Aplicar filtros no servidor quando possível
             if (empresaFiltro) {
                 query = query.where('empresaId', '==', empresaFiltro);
             }
 
-            if (setorFiltro) {
-                query = query.where('setor', '==', setorFiltro);
-            }
-
-            if (statusFiltro) {
-                query = query.where('tipo', '==', statusFiltro);
-            }
-
-            const movimentacoesSnapshot = await query.limit(50).get();
+            const reposicoesSnapshot = await query.limit(50).get();
             const container = document.getElementById('tabela-movimentacoes');
-            
+
             if (!container) return;
 
             container.innerHTML = '';
-            
-            if (movimentacoesSnapshot.empty) {
-                container.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma movimentação encontrada</td></tr>';
+
+            // Filtrar no cliente para status e setor (quando não foi possível no servidor)
+            const docsFiltrados = reposicoesSnapshot.docs.filter(doc => {
+                const data = doc.data();
+
+                // Filtro de Status
+                if (statusFiltro && statusFiltro !== 'ambos') {
+                    const status = data.status || 'pendente';
+                    if (status !== statusFiltro) return false;
+                }
+
+                // Filtro de Setor (se não foi aplicado no servidor)
+                if (setorFiltro && data.setor !== setorFiltro) return false;
+
+                return true;
+            });
+
+            if (docsFiltrados.length === 0) {
+                container.innerHTML = '<tr><td colspan="6" class="text-center">Nenhuma reposição encontrada</td></tr>';
                 return;
             }
 
-            movimentacoesSnapshot.forEach(doc => {
-                const mov = doc.data();
-                const dataObj = mov.data?.toDate ? mov.data.toDate() : new Date(mov.data);
-                
+            docsFiltrados.forEach(doc => {
+                const rep = doc.data();
+                const dataObj = rep.abertaEm?.toDate ? rep.abertaEm.toDate() : new Date(rep.abertaEm);
+
                 const row = document.createElement('tr');
                 row.className = 'fade-in';
-                row.innerHTML = this.createHistoricoRow(doc.id, mov, dataObj);
+                row.innerHTML = this.createHistoricoRow(doc.id, rep, dataObj);
                 container.appendChild(row);
             });
 
         } catch (error) {
-            console.error('Erro ao filtrar movimentações:', error);
-            this.mostrarMensagem('Erro ao filtrar movimentações', 'error');
+            console.error('Erro ao filtrar reposições:', error);
+            this.mostrarMensagem('Erro ao filtrar reposições', 'error');
         }
     }
 
@@ -1978,6 +2009,148 @@ async function testarSolicitacao(id) {
     }
 }
 window.testarSolicitacao = testarSolicitacao;
+
+async function imprimirReposicoesPendentes() {
+    try {
+        const empresaFiltro = document.getElementById('mov-filtro-empresa')?.value;
+        const setorFiltro = document.getElementById('mov-filtro-setor')?.value;
+        const statusFiltro = document.getElementById('mov-filtro-status')?.value; // Captura o status do filtro
+        const dataInicio = document.getElementById('mov-filtro-inicio')?.value;
+        const dataFim = document.getElementById('mov-filtro-fim')?.value;
+
+        let query = db.collection('reposicoes');
+
+        // Filtro de data no servidor (aproveita índice simples de data)
+        if (dataInicio) {
+            query = query.where('abertaEm', '>=', new Date(dataInicio + 'T00:00:00'));
+        }
+        if (dataFim) {
+            query = query.where('abertaEm', '<=', new Date(dataFim + 'T23:59:59'));
+        }
+
+        // Ordenação
+        const snap = await query.orderBy('abertaEm', 'desc').get();
+
+        // Filtragem no cliente para evitar erros de índice composto e suportar "ambos"
+        const docsFiltrados = snap.docs.filter(doc => {
+            const data = doc.data();
+            
+            // Filtro de Status
+            if (statusFiltro) {
+                const status = data.status || 'pendente';
+                if (status !== statusFiltro) return false;
+            }
+
+            // Filtro de Empresa
+            if (empresaFiltro && data.empresaId !== empresaFiltro) return false;
+
+            // Filtro de Setor
+            if (setorFiltro && data.setor !== setorFiltro) return false;
+
+            return true;
+        });
+
+        if (docsFiltrados.length === 0) {
+            mostrarMensagem("Nenhuma reposição encontrada para imprimir com os filtros atuais.", "info");
+            return;
+        }
+
+        // Carregar nomes das empresas
+        const empresasSnap = await db.collection('empresas').get();
+        const empresasMap = {};
+        empresasSnap.forEach(doc => empresasMap[doc.id] = doc.data().nome);
+
+        let html = `
+            <html>
+            <head>
+                <title>Relatório de Reposições</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    @page { size: landscape; margin: 1cm; }
+                    body { font-family: 'Segoe UI', sans-serif; padding: 20px; font-size: 11px; color: #333; }
+                    .header { border-bottom: 2px solid #0d6efd; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+                    .header h2 { margin: 0; color: #0d6efd; font-weight: 700; font-size: 24px; }
+                    .meta-info { text-align: right; font-size: 12px; color: #666; }
+                    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+                    th { background-color: #f8f9fa; border: 1px solid #dee2e6; padding: 10px; text-align: left; font-weight: 700; text-transform: uppercase; font-size: 10px; color: #555; }
+                    td { border: 1px solid #dee2e6; padding: 10px; vertical-align: middle; }
+                    tr:nth-child(even) { background-color: #fcfcfc; }
+                    .badge { padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 600; text-transform: uppercase; }
+                    .badge-pendente { background-color: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+                    .badge-preenchida { background-color: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+                    .badge-cancelada { background-color: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; }
+                    .footer { margin-top: 30px; font-size: 10px; text-align: center; color: #666; border-top: 1px solid #eee; padding-top: 10px; }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h2>Relatório de Reposições</h2>
+                    <div class="meta-info">
+                        <div><strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}</div>
+                        <div><strong>Filtro Status:</strong> ${statusFiltro ? statusFiltro.toUpperCase() : 'TODOS'}</div>
+                        ${dataInicio ? `<div><strong>Período:</strong> ${new Date(dataInicio).toLocaleDateString('pt-BR')} a ${dataFim ? new Date(dataFim).toLocaleDateString('pt-BR') : 'Hoje'}</div>` : ''}
+                    </div>
+                </div>
+                
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Data Abertura</th>
+                            <th>Empresa</th>
+                            <th>Setor</th>
+                            <th>Cargo</th>
+                            <th>Colaborador Substituído</th>
+                            <th>Novo Colaborador</th>
+                            <th>Data Preenchimento</th>
+                            <th>Status</th>
+                            <th>Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        docsFiltrados.forEach(doc => {
+            const data = doc.data();
+            const dataAbertura = data.abertaEm ? new Date(data.abertaEm.toDate()).toLocaleDateString('pt-BR') : '-';
+            const empresaNome = empresasMap[data.empresaId] || 'N/A';
+            
+            const status = data.status || 'pendente';
+            const statusClass = `badge-${status}`;
+            
+            const dataPreenchimento = data.preenchidaEm ? new Date(data.preenchidaEm.toDate()).toLocaleDateString('pt-BR') : '-';
+            const novoColaborador = data.funcionarioPreenchimentoNome || '-';
+
+            html += `
+                <tr>
+                    <td>${dataAbertura}</td>
+                    <td>${empresaNome}</td>
+                    <td>${data.setor || '-'}</td>
+                    <td>${data.cargo || '-'}</td>
+                    <td>${data.funcionarioNome || '-'}</td>
+                    <td><strong>${novoColaborador}</strong></td>
+                    <td>${dataPreenchimento}</td>
+                    <td><span class="badge ${statusClass}">${status}</span></td>
+                    <td>${data.observacoes || '-'}</td>
+                </tr>
+            `;
+        });
+
+        html += `
+                    </tbody>
+                </table>
+                <div class="footer">Gerado pelo Sistema Nexter</div>
+            </body>
+            </html>
+        `;
+
+        openPrintWindow(html, { autoPrint: true });
+
+    } catch (error) {
+        console.error("Erro ao imprimir reposições:", error);
+        mostrarMensagem("Erro ao gerar relatório.", "error");
+    }
+}
+window.imprimirReposicoesPendentes = imprimirReposicoesPendentes;
 
 // Função auxiliar para mostrar mensagens
 function mostrarMensagem(mensagem, tipo = 'info') {

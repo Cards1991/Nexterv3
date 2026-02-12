@@ -66,6 +66,12 @@ async function popularFiltrosAutorizacao() {
         return;
     }
 
+    // Verifica se o DB está disponível antes de tentar acessar
+    if (!window.db || typeof db.collection !== 'function') {
+        console.warn("⚠️ DB não inicializado. Pulando população de filtros.");
+        return;
+    }
+
     try {
         const setores = new Set();
         const empresasSnap = await db.collection('empresas').get();
@@ -117,6 +123,13 @@ async function carregarSolicitacoes() {
     // Cancela o listener anterior para evitar duplicações
     if (listenerAutorizacao) listenerAutorizacao();
 
+    // Verificação de segurança do DB
+    if (!window.db || typeof db.collection !== 'function') {
+        console.error("❌ Erro: 'db' não está inicializado corretamente.");
+        container.innerHTML = '<div class="alert alert-danger">Erro de conexão: Banco de dados não inicializado.</div>';
+        return;
+    }
+
     // Pega os valores dos filtros
     const dataInicio = document.getElementById('auth-filtro-data-inicio').value;
     const dataFim = document.getElementById('auth-filtro-data-fim').value;
@@ -125,6 +138,13 @@ async function carregarSolicitacoes() {
 
     // Cria um novo listener
     let query = db.collection('solicitacoes_horas');
+
+    // Verifica se o objeto query suporta filtragem (evita erro query.where is not a function)
+    if (!query || typeof query.where !== 'function') {
+        console.error("❌ Erro: Objeto 'query' inválido ou driver incompatível.", query);
+        container.innerHTML = '<div class="alert alert-danger">Erro interno: Driver de banco de dados incompatível.</div>';
+        return;
+    }
 
     // Aplica filtros de data se existirem
     if (dataInicio || dataFim) {

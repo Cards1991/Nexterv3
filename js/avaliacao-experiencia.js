@@ -203,6 +203,41 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     document.getElementById('aval-exp-nome').value = nome;
     document.getElementById('aval-exp-data').valueAsDate = new Date();
 
+    // Verificar faltas e atestados no período de experiência
+    const alertContainer = document.getElementById('aval-exp-alerts');
+    if (alertContainer) {
+        alertContainer.innerHTML = '<div class="text-center small text-muted"><i class="fas fa-spinner fa-spin"></i> Verificando histórico...</div>';
+        try {
+            const funcDoc = await db.collection('funcionarios').doc(id).get();
+            if (funcDoc.exists) {
+                const funcData = funcDoc.data();
+                if (!funcData.dataAdmissao) {
+                    alertContainer.innerHTML = ''; // Sem data de admissão não é possível calcular
+                    return;
+                }
+                const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
+
+                // Contar atestados desde a admissão
+                const atestadosSnap = await db.collection('atestados')
+                    .where('funcionarioId', '==', id)
+                    .where('data_atestado', '>=', dataAdmissao)
+                    .get();
+                const numAtestados = atestadosSnap.size;
+
+                if (numAtestados > 0) {
+                    let msg = `<strong>Atenção:</strong> Este colaborador possui <strong>${numAtestados} atestado(s)</strong> durante o período de experiência.`;
+
+                    alertContainer.innerHTML = `<div class="alert alert-warning border-warning"><i class="fas fa-exclamation-triangle me-2"></i>${msg}</div>`;
+                } else {
+                    alertContainer.innerHTML = ''; // Limpa se não houver ocorrências
+                }
+            }
+        } catch (error) {
+            console.error('Erro ao verificar faltas e atestados:', error);
+            alertContainer.innerHTML = '';
+        }
+    }
+
     new bootstrap.Modal(modalEl).show();
 }
 

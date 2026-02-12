@@ -684,8 +684,10 @@ async function carregarDashboardMovimentacoes() {
 
         const clientSideFilter = (doc, statusEsperado) => {
             const data = doc.data();
-            const statusAtual = data.status || 'pendente'; // Assume 'pendente' se o status não existir
-            if (statusEsperado && statusAtual !== statusEsperado) return false;
+            const statusAtual = (data.status || 'pendente').toLowerCase(); // Normaliza para minúsculo
+            const filtro = (statusEsperado || '').toLowerCase();
+
+            if (filtro && filtro !== 'ambos' && statusAtual !== filtro) return false;
             if (filtroEmpresa && data.empresaId !== filtroEmpresa) return false;
             if (filtroSetor && data.setor !== filtroSetor) return false;
             return true;
@@ -1147,6 +1149,11 @@ document.addEventListener('DOMContentLoaded', function() {
             const userDisplayNameEl = document.getElementById('user-display-name');
             if (userDisplayNameEl) {
                 userDisplayNameEl.innerHTML = `<i class="fas fa-user-circle"></i> ${currentUserPermissions.nome || user.email}`;
+            }
+
+            // Start keep-alive for user status
+            if (typeof UserStatusManager !== 'undefined') {
+                UserStatusManager.startKeepAlive(user);
             }
 
             // Configurar navegação

@@ -515,7 +515,7 @@ async function carregarChamadosManutencao() {
             __chamados_cache = chamados;
 
             if (snap.empty) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum chamado de manutenção aberto.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhum chamado de manutenção aberto.</td></tr>';
                 renderizarMetricasManutencao([]);
                 return;
             }
@@ -563,11 +563,31 @@ async function carregarChamadosManutencao() {
                 }
 
                 let tempoParadaConteudo;
-                if (chamado.maquinaParada) {
-                    if (isCritica) {
-                        tempoParadaConteudo = '<strong class="text-danger">ALERTA MÁXIMO</strong>';
+                if (chamado.maquinaParada && chamado.status !== 'Concluído') {
+                    // Calcular tempo atual de parada para máquinas ainda paradas
+                    if (chamado.paradaInicioTimestamp) {
+                        const inicio = chamado.paradaInicioTimestamp.toDate();
+                        const agora = new Date();
+                        const diffMs = agora - inicio;
+                        const horas = Math.floor(diffMs / 3600000);
+                        const minutos = Math.floor((diffMs % 3600000) / 60000);
+
+                        let tempoAtual = '';
+                        if (horas > 0) tempoAtual += `${horas}h `;
+                        if (minutos > 0) tempoAtual += `${minutos}m`;
+                        tempoAtual = tempoAtual.trim() || 'Menos de 1m';
+
+                        if (isCritica) {
+                            tempoParadaConteudo = `<strong class="text-danger">ALERTA MÁXIMO<br><small>${tempoAtual}</small></strong>`;
+                        } else {
+                            tempoParadaConteudo = `<strong class="text-warning">Alerta<br><small>${tempoAtual}</small></strong>`;
+                        }
                     } else {
-                        tempoParadaConteudo = '<strong class="text-warning">Alerta</strong>';
+                        if (isCritica) {
+                            tempoParadaConteudo = '<strong class="text-danger">ALERTA MÁXIMO</strong>';
+                        } else {
+                            tempoParadaConteudo = '<strong class="text-warning">Alerta</strong>';
+                        }
                     }
                 } else {
                     tempoParadaConteudo = chamado.tempoParada || '-';
@@ -593,11 +613,7 @@ async function carregarChamadosManutencao() {
                         <td>${tempoParadaConteudo}</td>
                         <td>${prioridadeConteudo}</td>
                         <td>${statusBadge}</td>
-                        <td>
-                            ${chamado.notificacaoEnviada ? 
-                                '<span class="badge bg-success"><i class="fab fa-whatsapp"></i> Enviado</span>' : 
-                                '<span class="badge bg-secondary"><i class="fab fa-whatsapp"></i> Pendente</span>'}
-                        </td>
+
                         <td class="text-end">
                             ${botaoWhatsApp}
                             <button class="btn btn-outline-secondary btn-sm" title="Imprimir Chamado" onclick="imprimirChamado('${chamado.id}')">
@@ -629,7 +645,7 @@ async function carregarChamadosManutencao() {
     } catch (error) {
         console.error("Erro ao carregar chamados de manutenção:", error);
         if (tbody) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar chamados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar chamados.</td></tr>';
         }
     }
 }
@@ -716,11 +732,38 @@ async function abrirModalChamado(chamadoId = null) {
                                     </select>
                                 </div>
                                 <div class="col-md-6 mb-3">
+                                    <label class="form-label">Tipo de Manutenção *</label>
+                                    <select class="form-select" id="chamado-tipo-manutencao" required>
+                                        <option value="Corretiva">Corretiva</option>
+                                        <option value="Preventiva Mensal">Preventiva Mensal</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
                                     <label class="form-label">Prioridade Inicial</label>
                                     <select class="form-select" id="chamado-prioridade">
                                         <option value="Normal">Normal</option>
                                         <option value="Prioritário">Prioritário</option>
                                         <option value="Urgente">Urgente</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3" id="chamado-mes-container" style="display: none;">
+                                    <label class="form-label">Mês de Referência</label>
+                                    <select class="form-select" id="chamado-mes-referencia">
+                                        <option value="">Selecione o mês...</option>
+                                        <option value="1">Janeiro</option>
+                                        <option value="2">Fevereiro</option>
+                                        <option value="3">Março</option>
+                                        <option value="4">Abril</option>
+                                        <option value="5">Maio</option>
+                                        <option value="6">Junho</option>
+                                        <option value="7">Julho</option>
+                                        <option value="8">Agosto</option>
+                                        <option value="9">Setembro</option>
+                                        <option value="10">Outubro</option>
+                                        <option value="11">Novembro</option>
+                                        <option value="12">Dezembro</option>
                                     </select>
                                 </div>
                             </div>
@@ -791,11 +834,33 @@ async function abrirModalChamado(chamadoId = null) {
                 document.getElementById('chamado-motivo').value = data.motivo || '';
                 document.getElementById('chamado-obs').value = data.observacoes || '';
                 document.getElementById('chamado-prioridade').value = data.prioridade || 'Normal';
+                document.getElementById('chamado-tipo-manutencao').value = data.tipoManutencao || 'Corretiva';
                 document.getElementById('chamado-maquina-parada').checked = data.maquinaParada || false;
             }
         } catch (error) {
             console.error("Erro ao carregar dados do chamado:", error);
         }
+    }
+
+    // Configurar listener para mostrar/esconder campo de mês
+    const tipoManutencaoSelect = document.getElementById('chamado-tipo-manutencao');
+    const mesContainer = document.getElementById('chamado-mes-container');
+    const mesSelect = document.getElementById('chamado-mes-referencia');
+
+    if (tipoManutencaoSelect && mesContainer && mesSelect) {
+        tipoManutencaoSelect.addEventListener('change', function() {
+            if (this.value === 'Preventiva Mensal') {
+                mesContainer.style.display = 'block';
+                mesSelect.required = true;
+                // Definir mês atual como padrão
+                const mesAtual = new Date().getMonth() + 1;
+                mesSelect.value = mesAtual.toString();
+            } else {
+                mesContainer.style.display = 'none';
+                mesSelect.required = false;
+                mesSelect.value = '';
+            }
+        });
     }
 
     // Popular select de máquinas
@@ -833,11 +898,18 @@ async function salvarChamado() {
     const observacoes = document.getElementById('chamado-obs')?.value;
     const maquinaParada = document.getElementById('chamado-maquina-parada')?.checked || false;
     const prioridade = document.getElementById('chamado-prioridade')?.value || 'Normal';
+    const tipoManutencao = document.getElementById('chamado-tipo-manutencao')?.value;
+    const mesReferencia = document.getElementById('chamado-mes-referencia')?.value;
     const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp')?.checked && WHATSAPP_CONFIG.enabled;
     const chamadoId = document.getElementById('chamado-id')?.value;
 
-    if (!maquinaId || !motivo) {
-        mostrarMensagem("Selecione a máquina e descreva o motivo.", "warning");
+    if (!maquinaId || !motivo || !tipoManutencao) {
+        mostrarMensagem("Selecione a máquina, tipo de manutenção e descreva o motivo.", "warning");
+        return;
+    }
+
+    if (tipoManutencao === 'Preventiva Mensal' && !mesReferencia) {
+        mostrarMensagem("Selecione o mês de referência para manutenção preventiva.", "warning");
         return;
     }
 
@@ -1506,6 +1578,88 @@ async function imprimirChamado(chamadoId) {
         printWindow.print();
         // Não fecha automaticamente para permitir visualização
     }, 500);
+}
+
+// ============ FUNÇÕES DE MANUTENÇÃO PREVENTIVA ============
+async function criarChamadosPreventivosMensais(maquinaId, motivo, observacoes, prioridade, mesReferencia, enviarWhatsapp) {
+    try {
+        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
+        const textoOriginal = btnSalvar.innerHTML;
+        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando chamados preventivos...';
+        btnSalvar.disabled = true;
+
+        const anoAtual = new Date().getFullYear();
+        const mesAtual = new Date().getMonth() + 1; // Janeiro = 1
+        const mesInicio = parseInt(mesReferencia);
+
+        let chamadosCriados = 0;
+        let notificacoesEnviadas = 0;
+
+        // Criar chamados de mesReferencia até dezembro
+        for (let mes = mesInicio; mes <= 12; mes++) {
+            const dataAbertura = new Date(anoAtual, mes - 1, 1); // Primeiro dia do mês
+
+            const chamadoData = {
+                maquinaId,
+                motivo: `${motivo} - ${getNomeMes(mes)}/${anoAtual}`,
+                observacoes,
+                maquinaParada: false, // Manutenção preventiva não para a máquina
+                prioridade,
+                tipoManutencao: 'Preventiva Mensal',
+                dataAbertura: firebase.firestore.Timestamp.fromDate(dataAbertura),
+                status: 'Aberto',
+                dataEncerramento: null,
+                tempoParada: null,
+                pecasUtilizadas: null,
+                mecanicoResponsavelNome: null,
+                paradaInicioTimestamp: null,
+                createdByUid: firebase.auth().currentUser?.uid,
+                createdByNome: firebase.auth().currentUser?.displayName || 'Usuário',
+                notificacaoEnviada: false
+            };
+
+            const docRef = await db.collection('manutencao_chamados').add(chamadoData);
+            chamadosCriados++;
+
+            // Para o mês atual, enviar notificação se solicitado
+            if (mes === mesAtual && enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
+                const chamadoCompleto = { id: docRef.id, ...chamadoData };
+                const notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto);
+
+                if (notificacaoEnviada) {
+                    notificacoesEnviadas++;
+                    await docRef.update({
+                        notificacaoEnviada: true,
+                        notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                }
+            }
+        }
+
+        let mensagemSucesso = `✅ ${chamadosCriados} chamados preventivos criados com sucesso!`;
+        if (enviarWhatsapp && notificacoesEnviadas > 0) {
+            mensagemSucesso += ` 📱 ${notificacoesEnviadas} notificação(ões) WhatsApp enviada(s).`;
+        }
+        mostrarMensagem(mensagemSucesso, "success");
+
+    } catch (error) {
+        console.error("Erro ao criar chamados preventivos:", error);
+        mostrarMensagem("Erro ao criar chamados preventivos: " + error.message, "error");
+    } finally {
+        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = textoOriginal || '<i class="fas fa-paper-plane"></i> Abrir Chamado';
+        }
+    }
+}
+
+function getNomeMes(mes) {
+    const meses = [
+        'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+        'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+    ];
+    return meses[mes - 1] || '';
 }
 
 // ============ FUNÇÕES UTILITÁRIAS ============
