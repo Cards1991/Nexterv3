@@ -747,13 +747,3 @@ function openPrintWindow(content, options = {}) {
         };
     }
 }
-
-// Garantir inicialização quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', async () => {
-    // Pequeno atraso para garantir que todos os elementos estejam renderizados
-    setTimeout(async () => {
-        if (document.getElementById('auth-solicitacoes-table')) {
-            await inicializarTelaAutorizacao();
-        }
-    }, 100);
-});

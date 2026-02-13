@@ -11,8 +11,8 @@ const TODAS_SECOES = [
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
-    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
-, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia'];
+    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos',
+    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master'];
 
 let currentUserPermissions = {};
 
@@ -371,6 +371,9 @@ async function carregarDadosSecao(sectionName) {
                 if (typeof inicializarGestaoSumidos === 'function') {
                     await inicializarGestaoSumidos();
                 }
+                break;
+            case 'controle-usuario-master':
+                // Funcionalidade carregada via user-status.js
                 break;
         }
     } catch (error) {

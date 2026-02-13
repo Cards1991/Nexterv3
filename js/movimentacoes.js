@@ -66,7 +66,8 @@ class MovimentacoesManager {
         }
         
         this.bindEvents();
-        this.carregarDadosIniciais();
+        // Removido carregamento automático para evitar erro de permissão antes do login.
+        // O app.js chamará carregarDadosIniciais() quando a seção for exibida.
     }
 
     bindEvents() {

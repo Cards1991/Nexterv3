@@ -332,9 +332,17 @@
                             </div>
                         </li>
                         <li class="nav-item admin-only" style="display: none;">
-                            <a class="nav-link" href="#" data-target="admin-usuarios">
+                            <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#adminSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
                                 <i class="fas fa-user-shield"></i> Admin - Usuários
                             </a>
+                            <div class="collapse" id="adminSubmenu">
+                                <ul class="nav flex-column">
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="admin-usuarios">Gerenciar Usuários</a></li>
+                                    <li class="nav-item">
+                                        <a class="nav-link submenu-link" href="#" data-target="controle-usuario-master">Controle Usuário Master</a>
+                                    </li>
+                                </ul>
+                            </div>
                         </li>
                         <li class="nav-item" id="btn-sair-sidebar" style="display: none;">
                             <a class="nav-link" href="#">
@@ -1851,6 +1859,18 @@
                     </div>
                 </section>
 
+                <!-- Seção Controle Usuário Master -->
+                <section id="controle-usuario-master" class="content-section d-none">
+                    <h2 class="page-title">Controle Usuário Master</h2>
+                    <div class="card">
+                        <div class="card-body">
+                            <button class="btn btn-info" id="open-user-status-panel-btn">
+                                <i class="fas fa-users me-2"></i> Ver Usuários Online
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Seção Treinamento -->
                 <section id="treinamento" class="content-section d-none">
                     <div id="treinamento-container">
@@ -2013,13 +2033,6 @@
                                 <div class="col-md-3">
                                     <button class="btn btn-primary w-100" onclick="carregarDashboardAtestados()">
                                         <i class="fas fa-filter me-2"></i> Filtrar
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="row mt-3">
-                                <div class="col-md-12">
-                                    <button class="btn btn-info" id="open-user-status-panel-btn">
-                                        <i class="fas fa-users me-2"></i> Ver Usuários Online
                                     </button>
                                 </div>
                             </div>
