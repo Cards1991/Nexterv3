@@ -747,3 +747,13 @@ function openPrintWindow(content, options = {}) {
         };
     }
 }
+
+// Função de limpeza para remover o listener ao sair da tela
+function limparListenerAutorizacao() {
+    if (listenerAutorizacao) {
+        listenerAutorizacao();
+        listenerAutorizacao = null;
+        console.log("Listener de autorização de horas removido.");
+    }
+}
+window.limparListenerAutorizacao = limparListenerAutorizacao;

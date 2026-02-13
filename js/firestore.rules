@@ -103,6 +103,14 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Regras para a coleção 'user_status' (Status de usuários online)
+    match /user_status/{userId} {
+      // Usuários autenticados podem ler o status de todos os usuários
+      allow read: if isAuthenticated();
+      // Usuários podem apenas atualizar seu próprio status
+      allow create, update: if isAuthenticated() && request.auth.uid == userId;
+    }
+
     // Regra padrão para negar acesso a coleções não explicitamente permitidas
     match /{document=**} {
       allow read, write: if false;

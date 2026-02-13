@@ -829,10 +829,10 @@ async function abrirModalChamado(chamadoId = null) {
     if (maquinaSelect) {
         maquinaSelect.innerHTML = '<option value="">Carregando máquinas...</option>';
 
-        if (!__maquinas_cache) {
+        if (!__maquinas_cache || __maquinas_cache.length === 0) {
             try {
                 const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
-                __maquinas_cache = maquinasSnap.docs.map(doc => doc.data());
+                __maquinas_cache = maquinasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
             } catch (error) {
                 console.error("Erro ao carregar máquinas:", error);
                 __maquinas_cache = [];
@@ -842,7 +842,8 @@ async function abrirModalChamado(chamadoId = null) {
         if (__maquinas_cache && __maquinas_cache.length > 0) {
             maquinaSelect.innerHTML = '<option value="">Selecione uma máquina</option>';
             __maquinas_cache.forEach(maquina => {
-                maquinaSelect.innerHTML += `<option value="${maquina.codigo}">${maquina.nome} (Cód: ${maquina.codigo})</option>`;
+                const valor = maquina.codigo || maquina.id; // Usa código ou ID como valor
+                maquinaSelect.innerHTML += `<option value="${valor}">${maquina.nome} (Cód: ${maquina.codigo || 'N/A'})</option>`;
             });
         } else {
             maquinaSelect.innerHTML = '<option value="">Nenhuma máquina encontrada</option>';

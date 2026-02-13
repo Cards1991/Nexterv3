@@ -16,8 +16,27 @@ const TODAS_SECOES = [
 
 let currentUserPermissions = {};
 
+// Variável para rastrear a seção atual
+let secaoAtual = null;
+
 // Função showSection
 function showSection(sectionName) {
+    
+    // Cleanup da seção anterior (Gerenciamento de Memória)
+    if (secaoAtual && secaoAtual !== sectionName) {
+        if (secaoAtual === 'controle-usuario-master' && typeof limparControleUsuarioMaster === 'function') {
+            limparControleUsuarioMaster();
+        }
+        if (secaoAtual === 'iso-manutencao' && typeof limparListenerManutencao === 'function') {
+            limparListenerManutencao();
+        }
+        if (secaoAtual === 'control-horas-autorizacao' && typeof limparListenerAutorizacao === 'function') {
+            limparListenerAutorizacao();
+        }
+    }
+    
+    // Atualiza a seção atual
+    secaoAtual = sectionName;
     
     // Esconder todas as seções
     const sections = document.querySelectorAll('.content-section');
@@ -373,7 +392,9 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'controle-usuario-master':
-                // Funcionalidade carregada via user-status.js
+                if (typeof inicializarControleUsuarioMaster === 'function') {
+                    await inicializarControleUsuarioMaster();
+                }
                 break;
         }
     } catch (error) {
@@ -1072,27 +1093,6 @@ function configurarMenuUsuario() {
             mostrarMensagem("A tela de configurações ainda será implementada.", "info");
         }
     });
-    
-    // Também adicionar os event listeners diretamente (backup)
-    setTimeout(() => {
-        const btnSair = document.getElementById('btn-sair');
-        const btnConfig = document.getElementById('btn-configuracoes');
-        
-        
-        if (btnSair) {
-            btnSair.addEventListener('click', function(e) {
-                e.preventDefault();
-                sair();
-            });
-        }
-        
-        if (btnConfig) {
-            btnConfig.addEventListener('click', function(e) {
-                e.preventDefault();
-                mostrarMensagem("A tela de configurações ainda será implementada.", "info");
-            });
-        }
-    }, 1000);
 }
 
 // Garante que a função de visualização da agenda esteja sempre disponível
@@ -1487,3 +1487,236 @@ function configurarListenerDemissao() {
     }
 }
 window.configurarListenerDemissao = configurarListenerDemissao;
+
+// =========================================================
+// 👑 CONTROLE USUÁRIO MASTER (Funcionalidades Adicionais)
+// =========================================================
+
+let chartEvolucaoTarefas = null;
+let unsubscribeTarefasMaster = null;
+let unsubscribeUsuariosOnlineMaster = null; // Listener para usuários online em tempo real
+let controleUsuarioMasterInicializado = false; // Flag para evitar múltiplas inicializações
+
+// Função de LIMPEZA para remover listeners quando sair da seção
+function limparControleUsuarioMaster() {
+    // Remove listener de tarefas
+    if (unsubscribeTarefasMaster) {
+        unsubscribeTarefasMaster();
+        unsubscribeTarefasMaster = null;
+        console.log("Listener de tarefas removido");
+    }
+    
+    // Remove listener de usuários online
+    if (unsubscribeUsuariosOnlineMaster) {
+        unsubscribeUsuariosOnlineMaster();
+        unsubscribeUsuariosOnlineMaster = null;
+        console.log("Listener de usuários online removido");
+    }
+    
+    // Destroi o gráfico
+    if (chartEvolucaoTarefas) {
+        chartEvolucaoTarefas.destroy();
+        chartEvolucaoTarefas = null;
+        console.log("Gráfico destruído");
+    }
+}
+
+/**
+ * Inicializa a seção de Controle de Usuários Master.
+ * Limpa o conteúdo anterior e recria o painel para garantir uma exibição limpa,
+ * iniciando os monitoramentos em tempo real de usuários e tarefas.
+ */
+async function inicializarControleUsuarioMaster() {
+    const container = document.getElementById('controle-usuario-master');
+    if (!container) return;
+
+    // CORREÇÃO: Verifica se já foi inicializado para evitar múltiplas inicializações
+    if (controleUsuarioMasterInicializado) {
+        console.log("Controle Usuário Master já inicializado, limpando listeners anteriores...");
+        limparControleUsuarioMaster();
+    }
+
+    controleUsuarioMasterInicializado = true;
+
+    // CORREÇÃO: Limpa TODO o conteúdo anterior e substitui pelo novo HTML
+    // Isso evita o problema de "conteúdo infinito" onde o HTML era apenas adicionado
+    container.innerHTML = `
+        <h2 class="page-title">Controle Usuário Master</h2>
+        <div class="card">
+            <div class="card-body">
+                <div id="master-panel-content">
+                    <div class="row mb-4">
+                        <div class="col-md-4">
+                            <div class="card h-100 border-primary">
+                                <div class="card-header bg-primary text-white"><i class="fas fa-users"></i> Usuários Online</div>
+                                <div class="card-body p-0">
+                                    <ul class="list-group list-group-flush" id="lista-usuarios-online-master" style="max-height: 300px; overflow-y: auto;">
+                                        <li class="list-group-item text-center text-muted">Carregando...</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="card h-100">
+                                <div class="card-header"><i class="fas fa-chart-line"></i> Evolução de Tarefas em Tempo Real</div>
+                                <div class="card-body">
+                                    <canvas id="grafico-evolucao-tarefas-master" style="height: 300px;"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="alertas-tarefas-master" class="alert alert-info d-none">
+                        <i class="fas fa-info-circle"></i> Aguardando atividades...
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Limpa listeners anteriores para evitar múltiplas instâncias
+    limparControleUsuarioMaster();
+
+    // Inicia o monitoramento em tempo real de usuários online
+    iniciarMonitoramentoUsuariosOnlineMaster();
+    
+    // Inicia o monitoramento de tarefas
+    iniciarMonitoramentoTarefasMaster();
+}
+
+// CORREÇÃO: Agora usa listener em tempo real para atualizar usuários online automaticamente
+function iniciarMonitoramentoUsuariosOnlineMaster() {
+    const lista = document.getElementById('lista-usuarios-online-master');
+    if (!lista) return;
+
+    // Remove listener anterior se existir
+    if (unsubscribeUsuariosOnlineMaster) {
+        unsubscribeUsuariosOnlineMaster();
+    }
+
+    // Define o limite de tempo para considerar usuário online (10 minutos)
+    // CORREÇÃO: Aumentado para 30 minutos para evitar problemas com relógios desajustados
+    const limiteTempo = 30; 
+
+    // Listener em tempo real usando onSnapshot
+    unsubscribeUsuariosOnlineMaster = db.collection('user_status')
+        .orderBy('last_seen', 'desc')
+        .onSnapshot(snapshot => {
+            console.log(`[Master] Snapshot recebido: ${snapshot.size} usuários encontrados no banco.`);
+            let html = '';
+            let onlineCount = 0;
+            const agora = new Date();
+
+            snapshot.forEach(doc => {
+                const user = doc.data();
+                
+                // Verifica se o usuário foi visto nos últimos 10 minutos
+                const lastSeenDate = user.last_seen ? user.last_seen.toDate() : new Date(0);
+                const diffMinutes = (agora - lastSeenDate) / 1000 / 60;
+                const isOnline = diffMinutes < limiteTempo; // Considera online se ativo recentemente
+
+                if (isOnline) {
+                    onlineCount++;
+                    const horaFormatada = lastSeenDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                    html += `
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>
+                                <i class="fas fa-circle text-success small me-2"></i> ${user.displayName || user.email || 'Usuário'}
+                            </span>
+                            <span class="badge bg-light text-dark" title="Visto às ${horaFormatada}">Online</span>
+                        </li>
+                    `;
+                }
+            });
+
+            if (onlineCount === 0) {
+                html = '<li class="list-group-item text-center text-muted">Nenhum usuário online no momento.</li>';
+            }
+            lista.innerHTML = html;
+        }, error => {
+            console.error("Erro ao ouvir status de usuários:", error);
+            lista.innerHTML = '<li class="list-group-item text-center text-danger">Erro ao carregar usuários.</li>';
+        });
+}
+
+function iniciarMonitoramentoTarefasMaster() {
+    const ctx = document.getElementById('grafico-evolucao-tarefas-master')?.getContext('2d');
+    if (!ctx) return;
+
+    // Configuração inicial do gráfico - destrói gráfico anterior primeiro
+    if (chartEvolucaoTarefas) {
+        chartEvolucaoTarefas.destroy();
+        chartEvolucaoTarefas = null;
+    }
+    
+    chartEvolucaoTarefas = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [
+                { label: 'Tarefas Iniciadas', data: [], borderColor: '#0d6efd', tension: 0.4 },
+                { label: 'Tarefas Concluídas', data: [], borderColor: '#198754', tension: 0.4 }
+            ]
+        },
+        options: { responsive: true, maintainAspectRatio: false, animation: { duration: 0 } }
+    });
+
+    // Listener em tempo real
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+
+    // Remove listener anterior se existir
+    if (unsubscribeTarefasMaster) {
+        unsubscribeTarefasMaster();
+    }
+
+    unsubscribeTarefasMaster = db.collection('agenda_atividades')
+        .where('data', '>=', hoje) // Apenas tarefas de hoje em diante
+        .onSnapshot(snapshot => {
+            const iniciadas = snapshot.docs.filter(d => d.data().status === 'Em Andamento').length;
+            const concluidas = snapshot.docs.filter(d => d.data().status === 'Concluído').length;
+            
+            const agora = new Date().toLocaleTimeString();
+
+            // Atualiza gráfico (mantém últimos 10 pontos)
+            if (chartEvolucaoTarefas && chartEvolucaoTarefas.data) {
+                if (chartEvolucaoTarefas.data.labels.length > 10) {
+                    chartEvolucaoTarefas.data.labels.shift();
+                    chartEvolucaoTarefas.data.datasets[0].data.shift();
+                    chartEvolucaoTarefas.data.datasets[1].data.shift();
+                }
+
+                chartEvolucaoTarefas.data.labels.push(agora);
+                chartEvolucaoTarefas.data.datasets[0].data.push(iniciadas);
+                chartEvolucaoTarefas.data.datasets[1].data.push(concluidas);
+                chartEvolucaoTarefas.update();
+            }
+
+            // Alertas de mudança
+            snapshot.docChanges().forEach(change => {
+                if (change.type === 'modified') {
+                    const data = change.doc.data();
+                    const alertaDiv = document.getElementById('alertas-tarefas-master');
+                    if (alertaDiv) {
+                        alertaDiv.classList.remove('d-none');
+                        let msg = '';
+                        if (data.status === 'Em Andamento') {
+                            msg = `<i class="fas fa-play text-primary"></i> <strong>${data.atribuidoParaNome || 'Usuário'}</strong> iniciou: "${data.titulo || 'Tarefa'}"`;
+                        } else if (data.status === 'Concluído') {
+                            msg = `<i class="fas fa-check text-success"></i> <strong>${data.atribuidoParaNome || 'Usuário'}</strong> concluiu: "${data.titulo || 'Tarefa'}"`;
+                        }
+                        
+                        if (msg) {
+                            alertaDiv.innerHTML = msg;
+                            // Efeito visual de flash
+                            alertaDiv.classList.add('bg-light');
+                            setTimeout(() => alertaDiv.classList.remove('bg-light'), 500);
+                        }
+                    }
+                }
+            });
+        });
+}
+
+// Exportar para global
+window.inicializarControleUsuarioMaster = inicializarControleUsuarioMaster;
+window.limparControleUsuarioMaster = limparControleUsuarioMaster;
