@@ -655,7 +655,7 @@ function renderizarMetricasManutencao(chamados) {
     if (!container) return;
 
     const abertos = chamados.filter(c => c.status === 'Aberto' || c.status === 'Em Andamento').length;
-    const concluidos = chamados.filter(c => c.status === 'Concluído').length;
+    const normais = chamados.filter(c => c.prioridade === 'Normal' && (c.status === 'Aberto' || c.status === 'Em Andamento')).length;
     const paradas = chamados.filter(c => c.maquinaParada).length;
     const urgentes = chamados.filter(c => c.prioridade === 'Urgente' && (c.status === 'Aberto' || c.status === 'Em Andamento')).length;
 
@@ -674,11 +674,11 @@ function renderizarMetricasManutencao(chamados) {
             </div>
         </div>
         <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-success text-white">
+            <div class="card stat-card bg-info text-white">
                 <div class="card-body text-center">
-                    <i class="fas fa-check-circle fa-2x mb-2"></i>
-                    <div class="number display-6 fw-bold">${concluidos}</div>
-                    <div class="label text-uppercase small">Concluídos</div>
+                    <i class="fas fa-tools fa-2x mb-2"></i>
+                    <div class="number display-6 fw-bold">${normais}</div>
+                    <div class="label text-uppercase small">Chamados Normais</div>
                 </div>
             </div>
         </div>
@@ -824,6 +824,31 @@ async function abrirModalChamado(chamadoId = null) {
     document.getElementById('chamado-enviar-whatsapp').checked = WHATSAPP_CONFIG.enabled;
     document.getElementById('chamado-enviar-whatsapp').disabled = !WHATSAPP_CONFIG.enabled;
 
+    // Popular select de máquinas (MOVIDO PARA ANTES DA EDIÇÃO)
+    const maquinaSelect = document.getElementById('chamado-maquina');
+    if (maquinaSelect) {
+        maquinaSelect.innerHTML = '<option value="">Carregando máquinas...</option>';
+
+        if (!__maquinas_cache) {
+            try {
+                const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
+                __maquinas_cache = maquinasSnap.docs.map(doc => doc.data());
+            } catch (error) {
+                console.error("Erro ao carregar máquinas:", error);
+                __maquinas_cache = [];
+            }
+        }
+
+        if (__maquinas_cache && __maquinas_cache.length > 0) {
+            maquinaSelect.innerHTML = '<option value="">Selecione uma máquina</option>';
+            __maquinas_cache.forEach(maquina => {
+                maquinaSelect.innerHTML += `<option value="${maquina.codigo}">${maquina.nome} (Cód: ${maquina.codigo})</option>`;
+            });
+        } else {
+            maquinaSelect.innerHTML = '<option value="">Nenhuma máquina encontrada</option>';
+        }
+    }
+
     // Se for edição, carrega os dados existentes
     if (chamadoId) {
         try {
@@ -863,31 +888,6 @@ async function abrirModalChamado(chamadoId = null) {
         });
     }
 
-    // Popular select de máquinas
-    const maquinaSelect = document.getElementById('chamado-maquina');
-    if (!maquinaSelect) return;
-    
-    maquinaSelect.innerHTML = '<option value="">Carregando máquinas...</option>';
-
-    if (!__maquinas_cache) {
-        try {
-            const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
-            __maquinas_cache = maquinasSnap.docs.map(doc => doc.data());
-        } catch (error) {
-            console.error("Erro ao carregar máquinas:", error);
-            __maquinas_cache = [];
-        }
-    }
-
-    if (__maquinas_cache && __maquinas_cache.length > 0) {
-        maquinaSelect.innerHTML = '<option value="">Selecione uma máquina</option>';
-        __maquinas_cache.forEach(maquina => {
-            maquinaSelect.innerHTML += `<option value="${maquina.codigo}">${maquina.nome} (Cód: ${maquina.codigo})</option>`;
-        });
-    } else {
-        maquinaSelect.innerHTML = '<option value="">Nenhuma máquina encontrada</option>';
-    }
-    
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 }
