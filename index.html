@@ -338,9 +338,6 @@
                             <div class="collapse" id="adminSubmenu">
                                 <ul class="nav flex-column">
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="admin-usuarios">Gerenciar Usuários</a></li>
-                                    <li class="nav-item">
-                                        <a class="nav-link submenu-link" href="#" data-target="controle-usuario-master">Controle Usuário Master</a>
-                                    </li>
                                 </ul>
                             </div>
                         </li>
@@ -373,18 +370,6 @@
                                 </li>
                             </ul>
             </header>
-
-            <section id="user-status-panel" class="content-section card d-none">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class="fas fa-users me-2"></i>Usuários Online</h5>
-                    <button type="button" class="btn-close" id="close-user-status-panel" aria-label="Close"></button>
-                </div>
-                <div class="card-body">
-                    <ul class="list-group" id="user-status-list">
-                        <!-- User status will be populated here -->
-                    </ul>
-                </div>
-            </section>
 
             <main class="content-wrapper">
                 <!-- Seção Agenda -->
@@ -1855,18 +1840,6 @@
                                     </tbody>
                                 </table>
                             </div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- Seção Controle Usuário Master -->
-                <section id="controle-usuario-master" class="content-section d-none">
-                    <h2 class="page-title">Controle Usuário Master</h2>
-                    <div class="card">
-                        <div class="card-body">
-                            <button class="btn btn-info" id="open-user-status-panel-btn">
-                                <i class="fas fa-users me-2"></i> Ver Usuários Online
-                            </button>
                         </div>
                     </div>
                 </section>
@@ -6200,52 +6173,6 @@
         </div>
     </div>
 
-    <!-- Modal Abrir Chamado Manutenção -->
-    <div class="modal fade" id="modalAbrirChamadoManutencao" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header bg-danger text-white">
-                    <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Abrir Chamado de Manutenção</h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="form-novo-chamado">
-                        <div class="mb-3">
-                            <label class="form-label">Máquina / Equipamento</label>
-                            <select class="form-select" id="chamado-maquina" required>
-                                <option value="">Carregando...</option>
-                            </select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Descrição do Problema</label>
-                            <textarea class="form-control" id="chamado-motivo" rows="3" required></textarea>
-                        </div>
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label class="form-label">Prioridade</label>
-                                <select class="form-select" id="chamado-prioridade">
-                                    <option value="Baixa">Baixa</option>
-                                    <option value="Normal" selected>Normal</option>
-                                    <option value="Alta">Alta</option>
-                                    <option value="Crítica">Crítica</option>
-                                </select>
-                            </div>
-                            <div class="col-md-6 mb-3 d-flex align-items-center">
-                                <div class="form-check form-switch">
-                                    <input class="form-check-input" type="checkbox" id="chamado-parada">
-                                    <label class="form-check-label" for="chamado-parada">Máquina Parada?</label>
-                                </div>
-                            </div>
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" onclick="salvarChamadoManutencao()">Abrir Chamado</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Modal de Assinatura de Horas Extras -->
     <div class="modal fade" id="modalAssinaturaHE" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
@@ -6561,7 +6488,6 @@
     <script src="js/voice-commands.js"></script>
     <script src="js/mapaColaboradores.js"></script>
     <script src="js/app.js"></script>
-    <script src="js/user-status.js"></script>
     <script src="js/cid-manager.js"></script>
     <script src="js/analise-atestados.js"></script>
     <script type="module" src="js/body-map-3d.js"></script>

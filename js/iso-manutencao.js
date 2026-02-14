@@ -828,26 +828,41 @@ async function abrirModalChamado(chamadoId = null) {
     const maquinaSelect = document.getElementById('chamado-maquina');
     if (maquinaSelect) {
         maquinaSelect.innerHTML = '<option value="">Carregando máquinas...</option>';
+        maquinaSelect.disabled = true;
 
-        if (!__maquinas_cache || __maquinas_cache.length === 0) {
-            try {
-                const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
-                __maquinas_cache = maquinasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-            } catch (error) {
-                console.error("Erro ao carregar máquinas:", error);
-                __maquinas_cache = [];
-            }
-        }
+        db.collection('maquinas').get()
+            .then((snapshot) => {
+                if (snapshot.empty) {
+                    maquinaSelect.innerHTML = '<option value="">Nenhuma máquina cadastrada</option>';
+                    maquinaSelect.disabled = false;
+                    return;
+                }
 
-        if (__maquinas_cache && __maquinas_cache.length > 0) {
-            maquinaSelect.innerHTML = '<option value="">Selecione uma máquina</option>';
-            __maquinas_cache.forEach(maquina => {
-                const valor = maquina.codigo || maquina.id; // Usa código ou ID como valor
-                maquinaSelect.innerHTML += `<option value="${valor}">${maquina.nome} (Cód: ${maquina.codigo || 'N/A'})</option>`;
+                const listaMaquinas = [];
+                snapshot.forEach((doc) => {
+                    const dados = doc.data();
+                    listaMaquinas.push({
+                        id: doc.id,
+                        nome: dados.nome || 'Sem Nome',
+                        codigo: dados.codigo || 'S/C'
+                    });
+                });
+
+                listaMaquinas.sort((a, b) => a.nome.localeCompare(b.nome));
+
+                let optionsHTML = '<option value="">Selecione a máquina...</option>';
+                listaMaquinas.forEach((m) => {
+                    optionsHTML += `<option value="${m.id}">${m.nome} (${m.codigo})</option>`;
+                });
+
+                maquinaSelect.innerHTML = optionsHTML;
+                maquinaSelect.disabled = false;
+            })
+            .catch((error) => {
+                console.error("Erro ao buscar máquinas:", error);
+                maquinaSelect.innerHTML = `<option value="">Erro ao carregar</option>`;
+                maquinaSelect.disabled = false;
             });
-        } else {
-            maquinaSelect.innerHTML = '<option value="">Nenhuma máquina encontrada</option>';
-        }
     }
 
     // Se for edição, carrega os dados existentes

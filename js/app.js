@@ -1329,6 +1329,8 @@ function inicializarModais() {
             });
         }
     }
+
+
 }
 
 // Configurar Toggle do Menu Lateral e Fechamento ao Clicar Fora
