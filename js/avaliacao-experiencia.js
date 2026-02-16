@@ -31,9 +31,14 @@ async function carregarPainelExperiencia() {
         hoje.setHours(0,0,0,0);
 
         // Buscar funcionários ativos
-        const snapshot = await db.collection('funcionarios')
-            .where('status', '==', 'Ativo')
-            .get();
+        let query = db.collection('funcionarios').where('status', '==', 'Ativo');
+
+        // Aplicar filtro de setor se o usuário tiver restrição de setor
+        if (window.currentUserPermissions && window.currentUserPermissions.restricaoSetor) {
+            query = query.where('setor', '==', window.currentUserPermissions.restricaoSetor);
+        }
+
+        const snapshot = await query.get();
 
         let pendencias = [];
         let totalEmExperiencia = 0;

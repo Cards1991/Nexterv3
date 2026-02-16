@@ -19,21 +19,6 @@ android {
         }
     }
 
-    buildTypes {
-        getByName("release") {
-            isMinifyEnabled = false  // Mude para false por enquanto para debug
-            isShrinkResources = false  // Mude para false por enquanto
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-        getByName("debug") {
-            isMinifyEnabled = false
-            isShrinkResources = false
-        }
-    }
-
     // ADICIONE ESTA SEÇÃO para configurar a assinatura do APK
     signingConfigs {
         create("release") {
@@ -54,6 +39,10 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        getByName("debug") {
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 

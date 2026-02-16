@@ -33,10 +33,16 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========================================
 
 function getElement(id) {
-    if (!domCache[id]) {
-        domCache[id] = document.getElementById(id);
+    let el = domCache[id];
+    if (!el || !el.isConnected) {
+        el = document.getElementById(id);
+        if (el) {
+            domCache[id] = el;
+        } else {
+            delete domCache[id];
+        }
     }
-    return domCache[id];
+    return el;
 }
 
 function escapeHTML(str) {
@@ -216,12 +222,13 @@ function criarModalNovaAtividade() {
                                     <select class="form-select" id="atividade-recorrencia">
                                         <option value="nao">Não se repete</option>
                                     <option value="diariamente">Diariamente</option>
+                                        <option value="semanal">Semanalmente</option>
                                         <option value="mensal">Mensalmente</option>
                                     </select>
                                 </div>
                             </div>
                         <div class="mb-3" id="container-repetir-diariamente" style="display: none;">
-                            <label for="atividade-repetir-dias" class="form-label">Repetir por quantos dias?</label>
+                            <label for="atividade-repetir-dias" class="form-label" id="label-repetir-dias">Repetir por quantos dias?</label>
                             <input type="number" class="form-control" id="atividade-repetir-dias" value="7" min="1" max="365">
                         </div>
                             <div class="mb-3 form-check" id="container-gerar-ano-todo-atividade" style="display: none;">
@@ -284,7 +291,10 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
         if (form) {
             delete form.dataset.editId;
             delete form.dataset.editCollection;
-            getElement('atividade-timelog-section').style.display = 'none';
+            const timelogSection = getElement('atividade-timelog-section');
+            if (timelogSection) {
+                timelogSection.style.display = 'none';
+            }
         }
     } else {
         // Modo edição - atualizar textos
@@ -301,7 +311,9 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
     
     // Mostrar modal e backdrop
     modal.style.display = 'block';
-    backdrop.style.display = 'block';
+    if (backdrop) {
+        backdrop.style.display = 'block';
+    }
     
     // Adicionar à lista de modais abertos
     if (!modaisAbertos.includes('novaAtividadeModal')) {
@@ -309,9 +321,11 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
     }
     
     // Adicionar evento para fechar ao clicar no backdrop
-    backdrop.onclick = function() {
-        fecharModal('novaAtividadeModal');
-    };
+    if (backdrop) {
+        backdrop.onclick = function() {
+            fecharModal('novaAtividadeModal');
+        };
+    }
     
     // Adicionar evento para fechar com ESC
     document.addEventListener('keydown', fecharComESC);
@@ -327,15 +341,31 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
         recorrenciaSelect.onchange = function() {
             const containerRepetirDiariamente = getElement('container-repetir-diariamente');
             const containerGerarAnoTodo = getElement('container-gerar-ano-todo-atividade');
+            const labelRepetir = getElement('label-repetir-dias');
             
-            containerRepetirDiariamente.style.display = this.value === 'diariamente' ? 'block' : 'none';
-            containerGerarAnoTodo.style.display = this.value === 'mensal' ? 'block' : 'none';
+            if (this.value === 'diariamente') {
+                if (containerRepetirDiariamente) containerRepetirDiariamente.style.display = 'block';
+                if (containerGerarAnoTodo) containerGerarAnoTodo.style.display = 'none';
+                if (labelRepetir) labelRepetir.textContent = 'Repetir por quantos dias?';
+            } else if (this.value === 'semanal') {
+                if (containerRepetirDiariamente) containerRepetirDiariamente.style.display = 'block';
+                if (containerGerarAnoTodo) containerGerarAnoTodo.style.display = 'none';
+                if (labelRepetir) labelRepetir.textContent = 'Repetir por quantas semanas?';
+            } else if (this.value === 'mensal') {
+                if (containerRepetirDiariamente) containerRepetirDiariamente.style.display = 'none';
+                if (containerGerarAnoTodo) containerGerarAnoTodo.style.display = 'block';
+            } else {
+                if (containerRepetirDiariamente) containerRepetirDiariamente.style.display = 'none';
+                if (containerGerarAnoTodo) containerGerarAnoTodo.style.display = 'none';
+            }
 
-            if (this.value !== 'diariamente') {
-                getElement('atividade-repetir-dias').value = '7';
+            if (this.value !== 'diariamente' && this.value !== 'semanal') {
+                const elDias = getElement('atividade-repetir-dias');
+                if (elDias) elDias.value = '7';
             }
             if (this.value !== 'mensal') { 
-                getElement('atividade-gerar-ano-todo').checked = false;
+                const elAno = getElement('atividade-gerar-ano-todo');
+                if (elAno) elAno.checked = false;
             }
         };
     }
@@ -495,6 +525,35 @@ async function salvarNovaAtividade() {
             }
             await batch.commit();
             mostrarMensagem(`${repetirDias} atividades diárias foram criadas!`, "success");
+        } else if (recorrencia === 'semanal' && repetirDias > 0 && !editId) {
+            // Lógica para criar eventos semanais
+            if (repetirDias > 52) {
+                mostrarMensagem("O número máximo de repetições semanais é 52.", "warning");
+                return;
+            }
+            const batch = db.batch();
+            const dataBase = new Date(`${data}T${hora || '00:00:00'}`);
+
+            for (let i = 0; i < repetirDias; i++) {
+                const dataEvento = new Date(dataBase);
+                dataEvento.setDate(dataBase.getDate() + (i * 7));
+
+                const docRef = db.collection('agenda_atividades').doc();
+                const dadosAtividade = {
+                    assunto: `${assunto} (${i + 1}/${repetirDias})`,
+                    data: dataEvento,
+                    tipo: tipo,
+                    descricao: descricao,
+                    status: 'Aberto',
+                    atribuidoParaId: atribuidoParaId || null,
+                    atribuidoParaNome: atribuidoParaNome || null,
+                    criadoPor: firebase.auth().currentUser?.uid || 'desconhecido',
+                    criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                batch.set(docRef, dadosAtividade);
+            }
+            await batch.commit();
+            mostrarMensagem(`${repetirDias} atividades semanais foram criadas!`, "success");
         } else {
             // Lógica para evento único ou edição
             const atividadeData = {
@@ -1342,7 +1401,7 @@ function preencherFormularioAtividade(dados) {
             return;
         }
 
-        assuntoInput.value = dados.assunto || '';
+        assuntoInput.value = dados.assunto || dados.titulo || '';
         
         // CORREÇÃO: Garante que a data seja um objeto Date válido
         const dataEvento = dados.data?.toDate ? dados.data.toDate() : new Date(dados.data);

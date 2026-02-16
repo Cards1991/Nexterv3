@@ -24,6 +24,10 @@ async function inicializarAnaliseRescisao() {
         if (filtroFim) {
             filtroFim.addEventListener('change', inicializarAnaliseRescisao);
         }
+        const filtroTipoEl = document.getElementById('filtro-rescisao-tipo');
+        if (filtroTipoEl) {
+            filtroTipoEl.addEventListener('change', inicializarAnaliseRescisao);
+        }
 
         // Aplicar filtros de data na query
         let query = db.collection('movimentacoes').where('tipo', '==', 'demissao');
