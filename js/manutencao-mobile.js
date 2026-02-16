@@ -170,7 +170,7 @@ async function autenticarUsuario() {
                 console.error("❌ Erro na autenticação:", error);
                 
                 // Tentar métodos alternativos
-                if (error.code === 'auth/operation-not-allowed') {
+                if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
                     console.log("⚠️ Login anônimo não habilitado, tentando outras opções...");
                     
                     // 1. Tentar usar um usuário genérico compartilhado

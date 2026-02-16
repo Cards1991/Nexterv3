@@ -130,7 +130,7 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'avaliacao-experiencia':
                 if (typeof inicializarAvaliacaoExperiencia === 'function') {
-                    await inicializarAvaliacaoExperiencia();
+                    await inicializarAvaliacaoExperiencia(currentUserPermissions);
                 }
                 break;
             case 'funcionarios':

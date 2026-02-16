@@ -69,7 +69,7 @@ async function carregarEstoqueEPI() {
             }
 
             // Filtro de Custo Zerado/Em Branco
-            if (filtroSemCusto && epi.custo == 0) {
+            if (filtroSemCusto && epi.custo > 0) {
                 return;
             }
 

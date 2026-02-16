@@ -143,6 +143,24 @@ async function abrirModalPermissoes(uid) {
 
     setorSelect.value = permissoes.restricaoSetor || '';
 
+    // Popular funcionários para vínculo
+    const funcSelect = document.getElementById('perm-user-funcionario');
+    if (funcSelect) {
+        funcSelect.innerHTML = '<option value="">Carregando...</option>';
+        try {
+            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+            funcSelect.innerHTML = '<option value="">Sem vínculo</option>';
+            snap.forEach(doc => {
+                const func = doc.data();
+                const selected = (userData.funcionarioId === doc.id) ? 'selected' : '';
+                funcSelect.innerHTML += `<option value="${doc.id}" ${selected}>${func.nome}</option>`;
+            });
+        } catch (e) {
+            console.error("Erro ao carregar funcionários:", e);
+            funcSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+
     const modal = new bootstrap.Modal(document.getElementById('permissoesModal'));
     modal.show();
 }
@@ -152,6 +170,7 @@ async function salvarPermissoes() {
     const nome = document.getElementById('perm-user-nome').value;
     const isAdmin = document.getElementById('perm-is-admin').checked;
     const restricaoSetor = document.getElementById('perm-user-setor').value;
+    const funcionarioId = document.getElementById('perm-user-funcionario')?.value || null;
 
     const secoesPermitidas = [];
     document.querySelectorAll('#perm-secoes-container input[type="checkbox"]:checked').forEach(checkbox => {
@@ -162,6 +181,7 @@ async function salvarPermissoes() {
         await db.collection('usuarios').doc(uid).set({
             nome: nome,
             email: document.getElementById('perm-user-email').textContent, // Manter o email
+            funcionarioId: funcionarioId,
             permissoes: {
                 isAdmin: isAdmin,
                 secoesPermitidas: secoesPermitidas,

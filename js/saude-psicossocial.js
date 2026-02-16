@@ -95,7 +95,10 @@ function renderizarTabelaPsicossocial(tbody, casos) {
 
         const row = `
             <tr>
-                <td>${casoConsolidado.colaborador_nome || 'N/A'} <span class="badge bg-primary ms-2">${casoConsolidado.atestados.length} atestado(s)</span></td>
+                <td>
+                    <div class="fw-bold">${casoConsolidado.colaborador_nome || 'N/A'} <span class="badge bg-primary ms-1">${casoConsolidado.atestados.length}</span></div>
+                    <small class="text-muted"><i class="fas fa-sitemap me-1"></i>${primeiroAtestado.setor || 'Setor não informado'}</small>
+                </td>
                 <td><span class="badge bg-danger">${casoConsolidado.atestados[casoConsolidado.atestados.length - 1].cid || 'N/A'}</span></td>
                 <td>${formatarData(casoConsolidado.primeiroAtestado)}</td>
                 <td>${casoConsolidado.totalDias}</td>

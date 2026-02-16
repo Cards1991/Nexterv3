@@ -44,7 +44,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             try {
                 // Define a persistência da sessão para a aba atual do navegador
-                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.SESSION);
+                await firebase.auth().setPersistence(firebase.auth.Auth.Persistence.LOCAL);
                 
                 // Fazer login
                 const userCredential = await firebase.auth().signInWithEmailAndPassword(email, senha);

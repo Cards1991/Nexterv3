@@ -1647,9 +1647,17 @@ function cadastrarBiometriaFuncionario() {
         return;
     }
 
-    if (typeof AndroidBiometria !== 'undefined') {
+    console.log("🔍 Debug Cadastro Biometria: Verificando interface...");
+    console.log("window.AndroidBiometria:", window.AndroidBiometria);
+
+    if (window.AndroidBiometria && typeof window.AndroidBiometria.cadastrarBiometria === 'function') {
         mostrarMensagem("Solicitando cadastro biométrico no dispositivo...", "info");
-        AndroidBiometria.cadastrarBiometria(funcionarioId);
+        try {
+            window.AndroidBiometria.cadastrarBiometria(funcionarioId);
+        } catch (e) {
+            console.error("Erro ao chamar biometria nativa:", e);
+            mostrarMensagem("Erro ao abrir sensor: " + e.message, "error");
+        }
     } else {
         mostrarMensagem("Funcionalidade disponível apenas no App Android.", "warning");
     }
@@ -1847,6 +1855,7 @@ window.aplicarAumentoColetivo = aplicarAumentoColetivo;
 window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
 window.exportarFuncionariosExcel = exportarFuncionariosExcel;
 window.reprocessarCustosFuncionarios = reprocessarCustosFuncionarios;
+window.cadastrarBiometriaFuncionario = cadastrarBiometriaFuncionario;
 
 // Funções auxiliares para editar e excluir aumentos salariais
 async function editarAumentoSalario(funcionarioId, historicoIndex) {
