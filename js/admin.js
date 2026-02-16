@@ -178,7 +178,7 @@ async function salvarPermissoes() {
     }
 }
 
-function abrirModalNovoUsuario() {
+async function abrirModalNovoUsuario() {
     const modalEl = document.getElementById('novoUsuarioModal');
     if (!modalEl) {
         console.error("Modal de novo usuário não encontrado no HTML.");
@@ -186,6 +186,22 @@ function abrirModalNovoUsuario() {
     }
 
     document.getElementById('form-novo-usuario').reset();
+    
+    const select = document.getElementById('novo-usuario-funcionario');
+    if (select) {
+        select.innerHTML = '<option value="">Carregando...</option>';
+        try {
+            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+            select.innerHTML = '<option value="">Selecione um funcionário</option>';
+            snap.forEach(doc => {
+                select.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
+            });
+        } catch (e) {
+            console.error("Erro ao carregar funcionários:", e);
+            select.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 }
@@ -193,9 +209,11 @@ function abrirModalNovoUsuario() {
 async function salvarNovoUsuario() {
     const email = document.getElementById('novo-usuario-email').value;
     const senha = document.getElementById('novo-usuario-senha').value;
-    const nome = document.getElementById('novo-usuario-nome').value;
+    const select = document.getElementById('novo-usuario-funcionario');
+    const funcionarioId = select.value;
+    const nome = select.options[select.selectedIndex]?.text;
 
-    if (!email || !senha || !nome) {
+    if (!email || !senha || !funcionarioId) {
         mostrarMensagem("Preencha todos os campos.", "warning");
         return;
     }
@@ -214,6 +232,7 @@ async function salvarNovoUsuario() {
         await db.collection('usuarios').doc(user.uid).set({
             email: user.email,
             nome: nome,
+            funcionarioId: funcionarioId,
             permissoes: {
                 isAdmin: false,
                 secoesPermitidas: ['dashboard'], // Acesso inicial apenas ao dashboard

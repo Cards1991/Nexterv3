@@ -7,6 +7,17 @@ async function inicializarAvaliacaoExperiencia(permissoes) {
     console.log("Inicializando Avaliação de Experiência...", permissoes);
     permissoesUsuario = permissoes || {};
     
+    // Configurar datas padrão (Mês atual)
+    const hoje = new Date();
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+    
+    const elInicio = document.getElementById('filtro-exp-inicio');
+    const elFim = document.getElementById('filtro-exp-fim');
+    
+    if (elInicio && !elInicio.value) elInicio.value = inicioMes;
+    if (elFim && !elFim.value) elFim.value = fimMes;
+    
     await carregarSetoresFiltro();
     aplicarRegrasDePermissao();
 
@@ -32,7 +43,7 @@ async function carregarSetoresFiltro() {
         const snapshot = await db.collection('setores').orderBy('descricao').get();
         const setores = new Set();
         snapshot.forEach(doc => {
-            if (doc.data().descricao) setores.add(doc.data().descricao);
+            if (doc.data().descricao) setores.add(doc.data().descricao.trim());
         });
         
         Array.from(setores).sort().forEach(setor => {
@@ -51,7 +62,7 @@ function aplicarRegrasDePermissao() {
     if (filtroSetor) {
         // 1. Define o valor padrão (Setor do usuário)
         if (permissoesUsuario.restricaoSetor) {
-            filtroSetor.value = permissoesUsuario.restricaoSetor;
+            filtroSetor.value = permissoesUsuario.restricaoSetor.trim();
         }
 
         // 2. Aplica bloqueio se NÃO for admin e TIVER restrição
@@ -145,7 +156,7 @@ async function carregarPainelExperiencia() {
                 // Se tem filtro de data, respeita o intervalo (desde que não esteja vencido há muito tempo, opcional)
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento45 >= dataIni && vencimento45 <= dataFim && diasPara45 >= 0) mostrar45 = true;
+                if (vencimento45 >= dataIni && vencimento45 <= dataFim) mostrar45 = true;
             } else {
                 // Padrão: Próximos 10 dias
                 if (diasPara45 <= 10 && diasPara45 >= 0) mostrar45 = true;
@@ -168,7 +179,7 @@ async function carregarPainelExperiencia() {
             if (filtroInicio || filtroFim) {
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento90 >= dataIni && vencimento90 <= dataFim && diasPara90 >= 0) mostrar90 = true;
+                if (vencimento90 >= dataIni && vencimento90 <= dataFim) mostrar90 = true;
             } else {
                 // Padrão: Próximos 10 dias
                 if (diasPara90 <= 10 && diasPara90 >= 0) mostrar90 = true;
@@ -274,13 +285,23 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
             const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
 
             // Contar atestados desde a admissão
+            // Alterado para filtrar em memória e evitar erro de índice composto no Firestore
             const [atestadosSnap, faltasSnap] = await Promise.all([
-                db.collection('atestados').where('funcionarioId', '==', id).where('data_atestado', '>=', dataAdmissao).get(),
-                db.collection('faltas').where('funcionarioId', '==', id).where('data', '>=', dataAdmissao).get()
+                db.collection('atestados').where('funcionarioId', '==', id).get(),
+                db.collection('faltas').where('funcionarioId', '==', id).get()
             ]);
 
-            const numAtestados = atestadosSnap.size;
-            const numFaltas = faltasSnap.size;
+            const numAtestados = atestadosSnap.docs.filter(doc => {
+                const d = doc.data();
+                const data = d.data_atestado?.toDate ? d.data_atestado.toDate() : new Date(d.data_atestado);
+                return data >= dataAdmissao;
+            }).length;
+
+            const numFaltas = faltasSnap.docs.filter(doc => {
+                const d = doc.data();
+                const data = d.data?.toDate ? d.data.toDate() : new Date(d.data);
+                return data >= dataAdmissao;
+            }).length;
 
             let msg = '';
             if (numAtestados > 0) msg += `<div><i class="fas fa-notes-medical me-2 text-warning"></i> <strong>${numAtestados} atestado(s)</strong> registrados desde a admissão.</div>`;
