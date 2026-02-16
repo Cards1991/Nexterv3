@@ -487,6 +487,20 @@ async function editarFuncionario(funcionarioId) {
         if (statusBio) {
             statusBio.className = funcionario.biometriaAtiva ? 'ms-2 badge bg-success' : 'ms-2 badge bg-secondary';
             statusBio.textContent = funcionario.biometriaAtiva ? 'Biometria Cadastrada' : 'Não cadastrada';
+
+            // Botão de Cadastro de Biometria (Injeção Dinâmica)
+            let btnBio = document.getElementById('btn-cadastrar-biometria');
+            if (!btnBio) {
+                btnBio = document.createElement('button');
+                btnBio.id = 'btn-cadastrar-biometria';
+                btnBio.type = 'button';
+                // Insere logo após o badge de status
+                statusBio.parentNode.insertBefore(btnBio, statusBio.nextSibling);
+            }
+            btnBio.style.display = 'inline-block'; // Garante que esteja visível
+            btnBio.className = funcionario.biometriaAtiva ? 'btn btn-sm btn-outline-warning ms-2' : 'btn btn-sm btn-outline-dark ms-2';
+            btnBio.innerHTML = `<i class="fas fa-fingerprint"></i> ${funcionario.biometriaAtiva ? 'Recadastrar' : 'Cadastrar'} Digital`;
+            btnBio.onclick = cadastrarBiometriaFuncionario;
         }
 
         // Carregar e selecionar empresa e setor
