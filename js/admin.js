@@ -129,15 +129,18 @@ async function abrirModalPermissoes(uid) {
     // Popular setores
     const setorSelect = document.getElementById('perm-user-setor');
     setorSelect.innerHTML = '<option value="">Todos os setores</option>';
-    const empresasSnap = await db.collection('empresas').get();
-    const todosSetores = new Set();
-    empresasSnap.forEach(empDoc => {
-        const setores = empDoc.data().setores || [];
-        setores.forEach(s => todosSetores.add(s));
-    });
-    todosSetores.forEach(setor => {
-        setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
-    });
+    
+    try {
+        const setoresSnap = await db.collection('setores').orderBy('descricao').get();
+        const todosSetores = new Set();
+        setoresSnap.forEach(doc => {
+            if (doc.data().descricao) todosSetores.add(doc.data().descricao);
+        });
+        Array.from(todosSetores).sort().forEach(setor => {
+            setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
+        });
+    } catch (e) { console.error("Erro ao carregar setores:", e); }
+
     setorSelect.value = permissoes.restricaoSetor || '';
 
     const modal = new bootstrap.Modal(document.getElementById('permissoesModal'));
