@@ -12,13 +12,8 @@ async function inicializarAvaliacaoExperiencia(permissoes) {
 
     await carregarPainelExperiencia();
     configurarFiltrosExperiencia();
-
-    const btnFiltrar = document.getElementById('btn-filtrar-exp');
-    if (btnFiltrar && !btnFiltrar.bound) {
-        btnFiltrar.addEventListener('click', () => carregarPainelExperiencia());
-        btnFiltrar.bound = true;
-    }
-
+    
+    // Configurar listeners
     const btnSalvar = document.getElementById('btn-salvar-avaliacao-exp');
     if (btnSalvar && !btnSalvar.bound) {
         btnSalvar.textContent = 'Salvar Avaliação';
@@ -79,18 +74,9 @@ function configurarFiltrosExperiencia() {
     const filtros = ['filtro-exp-inicio', 'filtro-exp-fim', 'filtro-exp-periodo', 'filtro-exp-setor'];
     filtros.forEach(id => {
         const el = document.getElementById(id);
-        if (el && el.expListener) {
-            el.removeEventListener('change', el.expListener);
-        }
-    });
-
-    const listener = () => carregarPainelExperiencia();
-
-    filtros.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.addEventListener('change', listener);
-            el.expListener = listener;
+        if (el && !el.expListener) {
+             el.addEventListener('change', carregarPainelExperiencia);
+             el.expListener = true;
         }
     });
 }
@@ -102,6 +88,7 @@ async function carregarPainelExperiencia() {
     container.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando contratos...</td></tr>';
 
     try {
+        // Obter valores dos filtros
         const filtroInicio = document.getElementById('filtro-exp-inicio')?.value;
         const filtroFim = document.getElementById('filtro-exp-fim')?.value;
         const filtroPeriodo = document.getElementById('filtro-exp-periodo')?.value;
@@ -114,15 +101,11 @@ async function carregarPainelExperiencia() {
         let query = db.collection('funcionarios').where('status', '==', 'Ativo');
 
         // Lógica de Filtro de Setor
-        // Se não for admin e tiver restrição, força a restrição.
-        // Se for admin, usa o valor do dropdown (que pode ser "Todos" ou um setor específico).
         let setorEfetivo = filtroSetor;
         if (!permissoesUsuario.isAdmin && permissoesUsuario.restricaoSetor) {
             setorEfetivo = permissoesUsuario.restricaoSetor;
         }
-
         if (setorEfetivo) {
-            console.log(`Aplicando filtro de setor: ${setorEfetivo}`);
             query = query.where('setor', '==', setorEfetivo);
         }
 
@@ -131,89 +114,84 @@ async function carregarPainelExperiencia() {
         let pendencias = [];
         let totalEmExperiencia = 0;
 
-        for (const doc of snapshot.docs) {
+        snapshot.forEach(doc => {
             const func = { id: doc.id, ...doc.data() };
-
-            if (!func.dataAdmissao) continue;
-
+            
+            if (!func.dataAdmissao) return;
+            
             const admissao = func.dataAdmissao.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
-            admissao.setHours(0, 0, 0, 0);
-
+            admissao.setHours(0, 0, 0, 0); // Normalizar hora para cálculo correto de dias
+            
+            // Calcular datas de vencimento
             const vencimento45 = new Date(admissao);
-            vencimento45.setDate(admissao.getDate() + 44);
-
+            vencimento45.setDate(admissao.getDate() + 45);
+            
             const vencimento90 = new Date(admissao);
-            vencimento90.setDate(admissao.getDate() + 89);
+            vencimento90.setDate(admissao.getDate() + 90);
 
+            // Verificar se está no período de experiência (até 90 dias após admissão)
             if (hoje <= vencimento90) {
                 totalEmExperiencia++;
             }
 
+            // Lógica para identificar pendências
+            // Verifica 1º Período (45 dias)
             const diasPara45 = Math.ceil((vencimento45 - hoje) / (1000 * 60 * 60 * 24));
-
+            
             let mostrar45 = false;
-
+            
+            // Lógica de filtro
             if (filtroInicio || filtroFim) {
+                // Se tem filtro de data, respeita o intervalo (desde que não esteja vencido há muito tempo, opcional)
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento45 >= dataIni && vencimento45 <= dataFim && diasPara45 >= -2) mostrar45 = true;
+                if (vencimento45 >= dataIni && vencimento45 <= dataFim && diasPara45 >= 0) mostrar45 = true;
             } else {
-                if (diasPara45 <= 10 && diasPara45 >= -2) mostrar45 = true;
+                // Padrão: Próximos 10 dias
+                if (diasPara45 <= 10 && diasPara45 >= 0) mostrar45 = true;
             }
 
             if (mostrar45 && (!filtroPeriodo || filtroPeriodo === '45')) {
-                const avaliacao45Snap = await db.collection('avaliacoes_experiencia')
-                    .where('funcionarioId', '==', func.id)
-                    .where('periodo', '==', 45)
-                    .limit(1)
-                    .get();
-                if (avaliacao45Snap.empty) {
-                    pendencias.push({
-                        ...func,
-                        periodo: 45,
-                        vencimento: vencimento45,
-                        diasRestantes: diasPara45,
-                        responsavel: func.responsavelAvaliacao45
-                    });
-                }
+                pendencias.push({
+                    ...func,
+                    periodo: 45,
+                    vencimento: vencimento45,
+                    diasRestantes: diasPara45,
+                    responsavel: func.responsavelAvaliacao45
+                });
             }
 
+            // Verifica 2º Período (90 dias)
             const diasPara90 = Math.ceil((vencimento90 - hoje) / (1000 * 60 * 60 * 24));
-
+            
             let mostrar90 = false;
             if (filtroInicio || filtroFim) {
                 const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
                 const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento90 >= dataIni && vencimento90 <= dataFim && diasPara90 >= -2) mostrar90 = true;
+                if (vencimento90 >= dataIni && vencimento90 <= dataFim && diasPara90 >= 0) mostrar90 = true;
             } else {
-                if (diasPara90 <= 10 && diasPara90 >= -2) mostrar90 = true;
+                // Padrão: Próximos 10 dias
+                if (diasPara90 <= 10 && diasPara90 >= 0) mostrar90 = true;
             }
 
             if (mostrar90 && (!filtroPeriodo || filtroPeriodo === '90')) {
-                // Verificar se já existe avaliação para 90 dias
-                const avaliacao90Snap = await db.collection('avaliacoes_experiencia')
-                    .where('funcionarioId', '==', func.id)
-                    .where('periodo', '==', 90)
-                    .limit(1)
-                    .get();
-                if (avaliacao90Snap.empty) {
-                    pendencias.push({
-                        ...func,
-                        periodo: 90,
-                        vencimento: vencimento90,
-                        diasRestantes: diasPara90,
-                        responsavel: func.responsavelAvaliacao90
-                    });
-                }
+                pendencias.push({
+                    ...func,
+                    periodo: 90,
+                    vencimento: vencimento90,
+                    diasRestantes: diasPara90,
+                    responsavel: func.responsavelAvaliacao90
+                });
             }
-        }
+        });
 
+        // Ordenar por urgência (menor dias restantes)
         pendencias.sort((a, b) => a.diasRestantes - b.diasRestantes);
 
         renderizarTabelaExperiencia(pendencias);
         atualizarKPIsExperiencia(totalEmExperiencia, pendencias.length);
-        await carregarDashboardExperienciaAnalitico();
-        await carregarAvaliacoesConcluidas();
+        carregarDashboardExperienciaAnalitico();
+        carregarAvaliacoesConcluidas(); // Carrega o novo histórico
 
     } catch (error) {
         console.error("Erro ao carregar painel de experiência:", error);
@@ -226,12 +204,7 @@ function renderizarTabelaExperiencia(lista) {
     if (!container) return;
 
     if (lista.length === 0) {
-        let mensagem = 'Nenhuma avaliação pendente no momento.';
-        const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
-        if (filtroSetor) {
-            mensagem = `Nenhuma avaliação pendente encontrada para o setor ${filtroSetor}.`;
-        }
-        container.innerHTML = `<tr><td colspan="6" class="text-center text-muted">${mensagem}</td></tr>`;
+        container.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliação pendente no momento.</td></tr>';
         return;
     }
 
@@ -290,37 +263,36 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     document.getElementById('aval-exp-nome').value = nome;
     document.getElementById('aval-exp-data').valueAsDate = new Date();
 
-    // Verificar faltas e atestados no período de experiência
+    // Fetch absences and certificates
     const alertContainer = document.getElementById('aval-exp-alerts');
     if (alertContainer) {
-        alertContainer.innerHTML = '<div class="text-center small text-muted"><i class="fas fa-spinner fa-spin"></i> Verificando histórico...</div>';
+        alertContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando ocorrências...</div>';
+        
         try {
             const funcDoc = await db.collection('funcionarios').doc(id).get();
-            if (funcDoc.exists) {
-                const funcData = funcDoc.data();
-                if (!funcData.dataAdmissao) {
-                    alertContainer.innerHTML = ''; // Sem data de admissão não é possível calcular
-                    return;
-                }
-                const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
+            const funcData = funcDoc.data();
+            const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
 
-                // Contar atestados desde a admissão
-                const atestadosSnap = await db.collection('atestados')
-                    .where('funcionarioId', '==', id)
-                    .where('data_atestado', '>=', dataAdmissao)
-                    .get();
-                const numAtestados = atestadosSnap.size;
+            // Contar atestados desde a admissão
+            const [atestadosSnap, faltasSnap] = await Promise.all([
+                db.collection('atestados').where('funcionarioId', '==', id).where('data_atestado', '>=', dataAdmissao).get(),
+                db.collection('faltas').where('funcionarioId', '==', id).where('data', '>=', dataAdmissao).get()
+            ]);
 
-                if (numAtestados > 0) {
-                    let msg = `<strong>Atenção:</strong> Este colaborador possui <strong>${numAtestados} atestado(s)</strong> durante o período de experiência.`;
+            const numAtestados = atestadosSnap.size;
+            const numFaltas = faltasSnap.size;
 
-                    alertContainer.innerHTML = `<div class="alert alert-warning border-warning"><i class="fas fa-exclamation-triangle me-2"></i>${msg}</div>`;
-                } else {
-                    alertContainer.innerHTML = ''; // Limpa se não houver ocorrências
-                }
+            let msg = '';
+            if (numAtestados > 0) msg += `<div><i class="fas fa-notes-medical me-2 text-warning"></i> <strong>${numAtestados} atestado(s)</strong> registrados desde a admissão.</div>`;
+            if (numFaltas > 0) msg += `<div><i class="fas fa-user-times me-2 text-danger"></i> <strong>${numFaltas} falta(s)</strong> registradas desde a admissão.</div>`;
+
+            if (msg) {
+                alertContainer.innerHTML = `<div class="alert alert-warning border-warning">${msg}</div>`;
+            } else {
+                alertContainer.innerHTML = '<div class="alert alert-success border-success"><i class="fas fa-check-circle me-2"></i> Sem ocorrências (faltas/atestados) no período.</div>';
             }
         } catch (error) {
-            console.error('Erro ao verificar faltas e atestados:', error);
+            console.error("Erro ao buscar ocorrências:", error);
             alertContainer.innerHTML = '';
         }
     }
@@ -407,11 +379,27 @@ async function carregarDashboardExperienciaAnalitico() {
     if (!ctx) return;
 
     try {
+        // Determinar setor efetivo para filtro
+        const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
+        let setorEfetivo = filtroSetor;
+        if (!permissoesUsuario.isAdmin && permissoesUsuario.restricaoSetor) {
+            setorEfetivo = permissoesUsuario.restricaoSetor;
+        }
+
         const snap = await db.collection('avaliacoes_experiencia').get();
+        let avaliacoes = snap.docs.map(d => d.data());
+
+        // Filtrar por setor se necessário
+        if (setorEfetivo) {
+            const funcSnap = await db.collection('funcionarios').where('setor', '==', setorEfetivo).get();
+            const funcIds = new Set(funcSnap.docs.map(d => d.id));
+            avaliacoes = avaliacoes.filter(a => funcIds.has(a.funcionarioId));
+        }
+
         const dados = { Aprovado: 0, Reprovado: 0, Prorrogado: 0 };
         
-        snap.forEach(doc => {
-            const r = doc.data().resultado;
+        avaliacoes.forEach(doc => {
+            const r = doc.resultado;
             if (dados[r] !== undefined) dados[r]++;
         });
 
@@ -572,12 +560,25 @@ async function carregarAvaliacoesConcluidas() {
         }
 
         const funcSnap = await db.collection('funcionarios').get();
-        const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data().nome]));
+        const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data()]));
+
+        // Filtrar avaliações se houver restrição de setor
+        const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
+        let avaliacoesFiltradas = snap.docs;
+
+        if (filtroSetor) {
+            avaliacoesFiltradas = snap.docs.filter(doc => {
+                const avaliacao = doc.data();
+                const funcionario = funcMap.get(avaliacao.funcionarioId);
+                return funcionario && funcionario.setor === filtroSetor;
+            });
+        }
 
         tbody.innerHTML = '';
-        snap.forEach(doc => {
+        avaliacoesFiltradas.forEach(doc => {
             const avaliacao = doc.data();
-            const nomeFunc = funcMap.get(avaliacao.funcionarioId) || 'Funcionário não encontrado';
+            const funcData = funcMap.get(avaliacao.funcionarioId);
+            const nomeFunc = funcData ? funcData.nome : 'Funcionário não encontrado';
             
             const getResultadoClass = (resultado) => {
                 if (resultado === 'Aprovado') return 'bg-success';
@@ -604,6 +605,14 @@ async function carregarAvaliacoesConcluidas() {
             `;
             tbody.appendChild(row);
         });
+
+        if (avaliacoesFiltradas.length === 0) {
+            let mensagem = 'Nenhuma avaliação concluída encontrada.';
+            if (filtroSetor) {
+                mensagem = `Nenhuma avaliação concluída encontrada para o setor ${filtroSetor}.`;
+            }
+            tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">${mensagem}</td></tr>`;
+        }
     } catch (e) {
         console.error("Erro ao carregar avaliações concluídas:", e);
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
