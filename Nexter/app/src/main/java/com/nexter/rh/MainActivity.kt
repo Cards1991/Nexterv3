@@ -12,6 +12,7 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.os.Bundle
 import android.webkit.JavascriptInterface
+import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
@@ -37,9 +38,17 @@ class MainActivity : FragmentActivity() {
         webView = WebView(this)
         setContentView(webView)
 
-        // Configuração do WebView
+        // Configuração do WebView para responsividade
         webView.settings.javaScriptEnabled = true
         webView.settings.domStorageEnabled = true
+        webView.settings.loadWithOverviewMode = true
+        webView.settings.useWideViewPort = true
+        webView.settings.setSupportZoom(true)
+        webView.settings.builtInZoomControls = true
+        webView.settings.displayZoomControls = false
+        webView.settings.cacheMode = WebSettings.LOAD_DEFAULT
+        webView.settings.layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
+        
         WebView.setWebContentsDebuggingEnabled(true) // Permite debugar erros pelo Chrome no PC
         webView.webViewClient = WebViewClient()
         

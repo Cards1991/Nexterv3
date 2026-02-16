@@ -1267,3 +1267,121 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
     font-size: 1.1rem;
     margin-right: 12px !important;
 }
+
+/* ===== AJUSTES ADICIONAIS PARA WEBVIEW MOBILE ===== */
+
+/* Garantir que o app preencha toda a tela no WebView */
+html, body {
+    height: 100%;
+    width: 100%;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    -webkit-tap-highlight-color: transparent;
+}
+
+/* Melhorar scrolling no mobile */
+* {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    -khtml-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+/* Permitir seleção de texto em campos de input */
+input, textarea, .form-control, .form-select {
+    -webkit-user-select: auto;
+    -moz-user-select: auto;
+    -ms-user-select: auto;
+    user-select: auto;
+}
+
+/* Tabelas com scroll horizontal suave no mobile */
+.table-responsive {
+    -webkit-overflow-scrolling: touch;
+    overflow-x: auto;
+}
+
+/* Melhorar experience de scroll */
+.content-wrapper {
+    -webkit-overflow-scrolling: touch;
+    overflow-y: auto;
+}
+
+/* Ajustes específicos para landscape no mobile */
+@media (max-height: 500px) and (orientation: landscape) {
+    .sidebar {
+        width: 200px;
+    }
+    
+    .main-content {
+        margin-left: 200px;
+    }
+    
+    .content-wrapper {
+        padding: 0.5rem 1rem;
+    }
+    
+    .page-title {
+        font-size: 1.2rem;
+        margin-bottom: 1rem;
+    }
+    
+    .card {
+        margin-bottom: 0.5rem;
+    }
+    
+    .card-body {
+        padding: 0.75rem;
+    }
+}
+
+/* Ajustes para dispositivos muito pequenos */
+@media (max-width: 360px) {
+    .page-title {
+        font-size: 1.25rem;
+    }
+    
+    .stat-card {
+        padding: 1rem 0.5rem;
+    }
+    
+    .stat-card .number {
+        font-size: 1.5rem;
+    }
+    
+    .btn {
+        padding: 0.5rem 1rem;
+        font-size: 0.8rem;
+    }
+}
+
+/* Garantir que modais funcionem bem no mobile */
+.modal {
+    -webkit-overflow-scrolling: touch;
+}
+
+.modal-dialog {
+    margin: 0.5rem auto;
+}
+
+/* Dropdowns com scroll no mobile */
+.dropdown-menu {
+    max-height: 300px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Melhorar campos de formulário no mobile */
+@media (pointer: coarse) {
+    .form-control, .form-select, .btn {
+        min-height: 44px;
+    }
+    
+    input[type="checkbox"], 
+    input[type="radio"] {
+        min-width: 24px;
+        min-height: 24px;
+    }
+}
