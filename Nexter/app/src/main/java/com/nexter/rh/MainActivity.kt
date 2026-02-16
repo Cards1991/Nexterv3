@@ -26,7 +26,6 @@ class MainActivity : FragmentActivity() {
 
     private lateinit var webView: WebView
     private lateinit var executor: Executor
-    private lateinit var biometricPrompt: BiometricPrompt
     private lateinit var promptInfo: BiometricPrompt.PromptInfo
 
     // Simulação de armazenamento seguro de vínculo (Em produção, usar EncryptedSharedPreferences ou Keystore)
@@ -73,36 +72,14 @@ class MainActivity : FragmentActivity() {
 
     private fun setupBiometric() {
         executor = ContextCompat.getMainExecutor(this)
-
+        
         // Configuração do Prompt
         promptInfo = BiometricPrompt.PromptInfo.Builder()
             .setTitle("Autenticação Biométrica")
             .setSubtitle("Toque no sensor para confirmar")
-            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
+            .setNegativeButtonText("Cancelar")
+            .setAllowedAuthenticators(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK)
             .build()
-
-        // Inicialização do BiometricPrompt com callbacks
-        biometricPrompt = BiometricPrompt(this, executor, object : BiometricPrompt.AuthenticationCallback() {
-            override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
-                super.onAuthenticationSucceeded(result)
-                val colaboradorId = prefs.getString("last_enrolled_id", null)
-                if (colaboradorId != null) {
-                    webView.evaluateJavascript("window.onBiometriaIdentificada('$colaboradorId')", null)
-                } else {
-                    Toast.makeText(this@MainActivity, "Nenhum colaborador vinculado a este dispositivo.", Toast.LENGTH_LONG).show()
-                }
-            }
-
-            override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
-                super.onAuthenticationError(errorCode, errString)
-                Toast.makeText(this@MainActivity, "Erro na autenticação: $errString", Toast.LENGTH_SHORT).show()
-            }
-
-            override fun onAuthenticationFailed() {
-                super.onAuthenticationFailed()
-                Toast.makeText(this@MainActivity, "Autenticação falhou. Tente novamente.", Toast.LENGTH_SHORT).show()
-            }
-        })
     }
 
     // Interface exposta para o JavaScript
@@ -111,28 +88,64 @@ class MainActivity : FragmentActivity() {
         @JavascriptInterface
         fun cadastrarBiometria(colaboradorId: String) {
             runOnUiThread {
-                // Always proceed with success to avoid crashes
-                prefs.edit().putString("last_enrolled_id", colaboradorId).apply()
-                webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', true)", null)
+                val biometricManager = BiometricManager.from(mContext)
+                if (biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK) != BiometricManager.BIOMETRIC_SUCCESS) {
+                    Toast.makeText(mContext, "Biometria não disponível. Verifique se o dispositivo tem biometria configurada e tela de bloqueio.", Toast.LENGTH_LONG).show()
+                    webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
+                    return@runOnUiThread
+                }
+
+                val prompt = BiometricPrompt(this@MainActivity, executor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            super.onAuthenticationSucceeded(result)
+                            // Salva o vínculo ID -> "Biometria do Dispositivo"
+                            // Nota: Biometria do Android valida o "Dono do Dispositivo".
+                            // Em um quiosque compartilhado, isso apenas confirma que ALGUÉM autorizado usou o aparelho.
+                            // Para identificar 1:N, seria necessário hardware específico ou lógica de app customizada.
+                            // Aqui, simulamos salvando o último ID autenticado para este fluxo.
+                            prefs.edit().putString("last_enrolled_id", colaboradorId).apply()
+
+                            // Retorna sucesso para o JS
+                            webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', true)", null)
+                        }
+
+                        override fun onAuthenticationError(errorCode: Int, errString: CharSequence) {
+                            super.onAuthenticationError(errorCode, errString)
+                            Toast.makeText(mContext, "Erro: $errString", Toast.LENGTH_SHORT).show()
+                            webView.evaluateJavascript("window.onBiometriaCadastrada('$colaboradorId', false)", null)
+                        }
+                    })
+                prompt.authenticate(promptInfo)
             }
         }
 
         @JavascriptInterface
         fun autenticarBiometria() {
             runOnUiThread {
-                val biometricManager = BiometricManager.from(mContext)
-                val canAuthenticate = biometricManager.canAuthenticate(BiometricManager.Authenticators.BIOMETRIC_STRONG or BiometricManager.Authenticators.BIOMETRIC_WEAK or BiometricManager.Authenticators.DEVICE_CREDENTIAL)
-
-                if (canAuthenticate == BiometricManager.BIOMETRIC_SUCCESS) {
-                    val colaboradorId = prefs.getString("last_enrolled_id", null)
-                    if (colaboradorId != null) {
-                        biometricPrompt.authenticate(promptInfo)
-                    } else {
-                        Toast.makeText(mContext, "Nenhum colaborador vinculado a este dispositivo.", Toast.LENGTH_LONG).show()
-                    }
-                } else {
-                    Toast.makeText(mContext, "Autenticação biométrica não disponível neste dispositivo.", Toast.LENGTH_LONG).show()
-                }
+                val prompt = BiometricPrompt(this@MainActivity, executor,
+                    object : BiometricPrompt.AuthenticationCallback() {
+                        override fun onAuthenticationSucceeded(result: BiometricPrompt.AuthenticationResult) {
+                            super.onAuthenticationSucceeded(result)
+                            
+                            // Recupera o ID. 
+                            // ATENÇÃO: A API padrão do Android não retorna "quem" autenticou, apenas que foi válido.
+                            // Para o fluxo solicitado, retornamos o ID salvo no cadastro (simulando 1:1 device-user).
+                            val colaboradorId = prefs.getString("last_enrolled_id", null)
+                            
+                            if (colaboradorId != null) {
+                                webView.evaluateJavascript("window.onBiometriaIdentificada('$colaboradorId')", null)
+                            } else {
+                                Toast.makeText(mContext, "Nenhum colaborador vinculado a este dispositivo.", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                        
+                        override fun onAuthenticationFailed() {
+                            super.onAuthenticationFailed()
+                            // Log de falha (opcional enviar para o JS)
+                        }
+                    })
+                prompt.authenticate(promptInfo)
             }
         }
     }
