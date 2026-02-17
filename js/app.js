@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos',
-    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master'];
+    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf'];
 
 let currentUserPermissions = {};
 
@@ -395,6 +395,9 @@ async function carregarDadosSecao(sectionName) {
                 if (typeof inicializarControleUsuarioMaster === 'function') {
                     await inicializarControleUsuarioMaster();
                 }
+                break;
+            case 'ponto-pf':
+                // Nenhuma inicialização necessária por enquanto, pois o ponto-pf.js usa DOMContentLoaded
                 break;
         }
     } catch (error) {
@@ -1133,6 +1136,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     nome: user.displayName || user.email.split('@')[0],
                     permissoes: currentUserPermissions
                 }, { merge: true });
+            }
+
+            // Garante que a seção 'ponto-pf' esteja sempre disponível se o usuário tiver permissões
+            if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('ponto-pf')) {
+                currentUserPermissions.secoesPermitidas.push('ponto-pf');
             }
 
             if (currentUserPermissions.isAdmin) { // Se o usuário é admin
