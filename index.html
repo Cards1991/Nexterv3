@@ -5159,6 +5159,7 @@
                     </ul>
 
                     <form id="form-funcionario">
+                        <input type="hidden" id="funcionario-id">
                         <div class="tab-content" id="funcionarioTabContent">
                             <!-- Aba de Identificação -->
                             <div class="tab-pane fade show active" id="tab-identificacao" role="tabpanel">
@@ -5191,7 +5192,7 @@
                             </div>
                             <div class="row mt-3">
                                 <div class="col-12 text-end">
-                                    <button type="button" class="btn btn-outline-dark btn-sm" id="btn-cadastrar-biometria" onclick="cadastrarBiometriaFuncionario()"><i class="fas fa-fingerprint"></i> Cadastrar Digital (Android)</button>
+                                    <button type="button" class="btn btn-outline-dark btn-sm" id="btn-cadastrar-biometria" onclick="abrirModalSelecaoDedo()"><i class="fas fa-fingerprint"></i> Gerenciar Digitais</button>
                                     <span id="status-biometria" class="ms-2 badge bg-secondary">Não cadastrada</span>
                                 </div>
                             </div>
@@ -6651,6 +6652,182 @@
             </div>
         </div>
     </div>
+
+    <!-- Modal Seleção de Dedo para Biometria -->
+    <div class="modal fade" id="modalSelecaoBiometria" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-dark text-white">
+                    <h5 class="modal-title"><i class="fas fa-fingerprint me-2"></i>Cadastro de Biometria</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="alert alert-info">
+                        Selecione abaixo qual dedo será cadastrado no leitor biométrico.
+                        <br><small>Dedos já cadastrados aparecerão em verde.</small>
+                    </div>
+                    
+                    <div class="row mt-4">
+                        <!-- Mão Esquerda -->
+                        <div class="col-md-6 border-end">
+                            <h6 class="mb-3 text-primary"><i class="fas fa-hand-paper fa-flip-horizontal me-2"></i>Mão Esquerda</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('mindinho_esquerdo')" data-dedo="mindinho_esquerdo">Mindinho Esquerdo</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('anelar_esquerdo')" data-dedo="anelar_esquerdo">Anelar Esquerdo</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('medio_esquerdo')" data-dedo="medio_esquerdo">Médio Esquerdo</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('indicador_esquerdo')" data-dedo="indicador_esquerdo">Indicador Esquerdo</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('polegar_esquerdo')" data-dedo="polegar_esquerdo">Polegar Esquerdo</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Mão Direita -->
+                        <div class="col-md-6">
+                            <h6 class="mb-3 text-primary"><i class="fas fa-hand-paper me-2"></i>Mão Direita</h6>
+                            <div class="d-grid gap-2">
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('polegar_direito')" data-dedo="polegar_direito">Polegar Direito</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('indicador_direito')" data-dedo="indicador_direito">Indicador Direito</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('medio_direito')" data-dedo="medio_direito">Médio Direito</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('anelar_direito')" data-dedo="anelar_direito">Anelar Direito</button>
+                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('mindinho_direito')" data-dedo="mindinho_direito">Mindinho Direito</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="status-leitura-biometria" class="mt-4 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-2 fw-bold text-primary">Aguardando leitura no sensor...</p>
+                        <small class="text-muted">Peça para o funcionário posicionar o dedo selecionado.</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script de Controle de Biometria -->
+    <script>
+        // Estado global para controlar o processo de cadastro
+        let estadoBiometria = {
+            funcionarioId: null,
+            dedoSelecionado: null
+        };
+
+        // Abre o modal e verifica digitais já existentes
+        function abrirModalSelecaoDedo() {
+            const funcionarioId = document.getElementById('funcionario-id').value;
+            
+            if (!funcionarioId) {
+                alert("Salve o funcionário antes de cadastrar a biometria.");
+                return;
+            }
+
+            estadoBiometria.funcionarioId = funcionarioId;
+            estadoBiometria.dedoSelecionado = null;
+            
+            // Resetar UI
+            document.getElementById('status-leitura-biometria').classList.add('d-none');
+            document.querySelectorAll('.btn-dedo').forEach(btn => {
+                btn.className = 'btn btn-outline-secondary btn-dedo';
+                btn.disabled = false;
+                // Remove ícones anteriores para limpar
+                btn.innerHTML = btn.innerText; 
+            });
+
+            // Verificar no Firestore quais dedos já estão cadastrados
+            verificarBiometriasFuncionario(funcionarioId);
+
+            const modal = new bootstrap.Modal(document.getElementById('modalSelecaoBiometria'));
+            modal.show();
+        }
+
+        // Verifica status das biometrias no Firestore
+        function verificarBiometriasFuncionario(funcionarioId) { // MODIFICADA
+            // Primeiro, reseta todos os botões para o estado padrão de cadastro
+            document.querySelectorAll('.btn-dedo').forEach(btn => {
+                const dedo = btn.dataset.dedo;
+                btn.className = 'btn btn-outline-secondary btn-dedo';
+                btn.innerHTML = btn.textContent; // Limpa ícones
+                btn.onclick = () => selecionarDedo(dedo); // Garante que a ação é de cadastrar
+            });
+
+            // Agora, busca os cadastrados e modifica
+            db.collection('funcionarios').doc(funcionarioId).collection('biometrias').get()
+                .then((querySnapshot) => {
+                    querySnapshot.forEach((doc) => {
+                        const dedo = doc.id;
+                        const btn = document.querySelector(`button[data-dedo="${dedo}"]`);
+                        if (btn) {
+                            btn.className = 'btn btn-success btn-dedo'; // Botão verde para dedo cadastrado
+                            btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.textContent}`;
+                            // ATENÇÃO: Muda a ação do clique para remover
+                            btn.onclick = () => removerBiometria(funcionarioId, dedo);
+                        }
+                    });
+                })
+                .catch(error => console.error("Erro ao verificar biometrias:", error));
+        }
+
+        // Acionado quando o usuário clica em um dedo
+        function selecionarDedo(dedo) {
+            estadoBiometria.dedoSelecionado = dedo;
+            
+            // Feedback visual
+            document.getElementById('status-leitura-biometria').classList.remove('d-none');
+            
+            // Chama a interface Android
+            if (window.AndroidBiometria && window.AndroidBiometria.cadastrarBiometria) {
+                // Passamos o ID e o Dedo para o Android (opcionalmente o Android pode usar o dedo para logs)
+                window.AndroidBiometria.cadastrarBiometria(estadoBiometria.funcionarioId, dedo);
+            } else {
+                console.warn("Interface Android não detectada. Modo de teste.");
+                // Simulação para teste em navegador desktop
+                setTimeout(() => {
+                    window.onBiometriaCadastrada(estadoBiometria.funcionarioId, true, "hash_simulado_teste");
+                }, 2000);
+            }
+        }
+
+        // Callback chamado pelo Android após a leitura
+        window.onBiometriaCadastrada = function(funcionarioId, sucesso, hashTemplate) {
+            document.getElementById('status-leitura-biometria').classList.add('d-none');
+            
+            if (sucesso) {
+                const dedo = estadoBiometria.dedoSelecionado;
+                // Salva no Firestore na subcoleção 'biometrias'
+                db.collection('funcionarios').doc(funcionarioId).collection('biometrias').doc(dedo).set({
+                    data_cadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                    hash: hashTemplate || "registrado_via_android", // Salva o template se o Android enviar
+                    ativo: true
+                }).then(() => {
+                    alert("Biometria cadastrada com sucesso!");
+                    verificarBiometriasFuncionario(funcionarioId); // Atualiza o modal visualmente
+                }).catch((error) => {
+                    alert("Erro ao salvar no banco de dados: " + error.message);
+                });
+            } else {
+                alert("Falha ao capturar biometria. Tente novamente.");
+            }
+        };
+
+        /**
+         * Remove uma biometria específica do Firestore.
+         * @param {string} funcionarioId - O ID do funcionário.
+         * @param {string} dedo - O dedo a ser removido (ex: 'polegar_direito').
+         */
+        function removerBiometria(funcionarioId, dedo) { // NOVA FUNÇÃO
+            const nomeDedo = dedo.replace(/_/g, ' ');
+            if (!confirm(`Tem certeza que deseja remover a digital do ${nomeDedo}?`)) {
+                return;
+            }
+
+            // Deleta o documento do dedo na subcoleção 'biometrias'
+            db.collection('funcionarios').doc(funcionarioId).collection('biometrias').doc(dedo).delete()
+                .then(() => {
+                    alert(`Biometria do ${nomeDedo} removida com sucesso!`);
+                    verificarBiometriasFuncionario(funcionarioId); // Atualiza a UI do modal
+                })
+                .catch((error) => alert("Erro ao remover biometria: " + error.message));
+        }
+    </script>
 
     <!-- Chat Inteligente -->
     <div class="chat-fab" id="ai-chat-fab">

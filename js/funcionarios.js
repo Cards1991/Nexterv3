@@ -500,7 +500,14 @@ async function editarFuncionario(funcionarioId) {
             btnBio.style.display = 'inline-block'; // Garante que esteja visível
             btnBio.className = funcionario.biometriaAtiva ? 'btn btn-sm btn-outline-warning ms-2' : 'btn btn-sm btn-outline-dark ms-2';
             btnBio.innerHTML = `<i class="fas fa-fingerprint"></i> ${funcionario.biometriaAtiva ? 'Recadastrar' : 'Cadastrar'} Digital`;
-            btnBio.onclick = cadastrarBiometriaFuncionario;
+            // Atualizado para abrir o novo modal de seleção de dedo
+            btnBio.onclick = function() {
+                if (typeof abrirModalSelecaoDedo === 'function') {
+                    abrirModalSelecaoDedo();
+                } else {
+                    console.error("Função abrirModalSelecaoDedo não encontrada.");
+                }
+            };
         }
 
         // Carregar e selecionar empresa e setor
@@ -550,6 +557,12 @@ async function editarFuncionario(funcionarioId) {
         // Armazena o ID no formulário para uso na biometria
         const form = document.getElementById('form-funcionario');
         if (form) form.dataset.funcionarioId = funcionarioId;
+
+        // Preenche o campo oculto para o novo modal de biometria
+        const hiddenIdInput = document.getElementById('funcionario-id');
+        if (hiddenIdInput) {
+            hiddenIdInput.value = funcionarioId;
+        }
 
         salvarBtn.textContent = 'Atualizar Funcionário';
         salvarBtn.onclick = function() { atualizarFuncionario(funcionarioId); };
@@ -1651,8 +1664,11 @@ async function visualizarTermoAumento(funcionarioId, historicoIndex) {
 
 // --- Integração Biometria Android ---
 
-function cadastrarBiometriaFuncionario() {
-    // Recupera o ID armazenado no dataset do formulário
+// Variável global para saber qual dedo está sendo cadastrado no momento
+let dedoSelecionadoParaCadastro = null;
+
+// 1. Função para abrir o modal
+function abrirModalSelecaoDedo() {
     const form = document.getElementById('form-funcionario');
     const funcionarioId = form ? form.dataset.funcionarioId : null;
 
@@ -1661,45 +1677,112 @@ function cadastrarBiometriaFuncionario() {
         return;
     }
 
-    console.log("🔍 Debug Cadastro Biometria: Verificando interface...");
-    console.log("window.AndroidBiometria:", window.AndroidBiometria);
+    // Limpa estado anterior
+    dedoSelecionadoParaCadastro = null;
+    document.getElementById('status-leitura-biometria').classList.add('d-none');
+    
+    // Reseta botões
+    document.querySelectorAll('.btn-dedo').forEach(btn => {
+        btn.className = 'btn btn-outline-secondary btn-dedo';
+        btn.disabled = false;
+        // Remove ícones se houver
+        btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim();
+    });
 
+    // Verifica quais dedos já estão cadastrados no Firestore
+    verificarBiometriasFuncionario(funcionarioId);
+
+    // Abre o modal
+    const modal = new bootstrap.Modal(document.getElementById('modalSelecaoBiometria'));
+    modal.show();
+}
+
+// 2. Função chamada ao clicar em um dedo no modal
+function selecionarDedo(dedo) {
+    const form = document.getElementById('form-funcionario');
+    const funcionarioId = form ? form.dataset.funcionarioId : null;
+
+    // Guarda qual dedo foi clicado para usar no callback
+    dedoSelecionadoParaCadastro = dedo;
+
+    // Mostra spinner de carregamento
+    document.getElementById('status-leitura-biometria').classList.remove('d-none');
+
+    // Chama o Android
     if (window.AndroidBiometria && typeof window.AndroidBiometria.cadastrarBiometria === 'function') {
-        mostrarMensagem("Solicitando cadastro biométrico no dispositivo...", "info");
-        try {
-            window.AndroidBiometria.cadastrarBiometria(funcionarioId);
-        } catch (e) {
-            console.error("Erro ao chamar biometria nativa:", e);
-            mostrarMensagem("Erro ao abrir sensor: " + e.message, "error");
-        }
+        window.AndroidBiometria.cadastrarBiometria(funcionarioId);
     } else {
-        mostrarMensagem("Funcionalidade disponível apenas no App Android.", "warning");
+        console.warn("Interface Android não encontrada. Testando no navegador?");
+        // Simulação para teste no PC (remover em produção se desejar)
+        setTimeout(() => {
+            window.onBiometriaCadastrada(funcionarioId, true);
+        }, 2000);
     }
 }
 
-// Callback chamado pelo Android
-window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
-    if (sucesso || sucesso === 'true') {
-        try {
-            await db.collection('funcionarios').doc(funcionarioId).update({
-                biometriaAtiva: true,
-                biometriaData: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            
-            const statusBio = document.getElementById('status-biometria');
-            if (statusBio) {
-                statusBio.className = 'ms-2 badge bg-success';
-                statusBio.textContent = 'Biometria Cadastrada';
-            }
-            mostrarMensagem("Biometria vinculada com sucesso!", "success");
-        } catch (e) {
-            console.error(e);
-            mostrarMensagem("Erro ao salvar status da biometria.", "error");
-        }
+// 3. Callback que o Android chama
+window.onBiometriaCadastrada = function(funcionarioId, sucesso) {
+    // Esconde o spinner
+    document.getElementById('status-leitura-biometria').classList.add('d-none');
+
+    if (sucesso && dedoSelecionadoParaCadastro) {
+        // Salva no Firestore: funcionarios/{id}/biometrias/{dedo}
+        db.collection('funcionarios').doc(funcionarioId)
+          .collection('biometrias').doc(dedoSelecionadoParaCadastro)
+          .set({
+              ativa: true,
+              data_cadastro: firebase.firestore.FieldValue.serverTimestamp()
+          })
+          .then(() => {
+              alert("Digital cadastrada com sucesso!");
+              // Atualiza visualmente o modal (pinta o botão de verde)
+              verificarBiometriasFuncionario(funcionarioId);
+              
+              // Atualiza flag no documento principal do funcionário também (opcional, para facilitar consultas)
+              db.collection('funcionarios').doc(funcionarioId).update({ biometriaAtiva: true });
+          })
+          .catch((error) => {
+              alert("Erro ao salvar no banco: " + error.message);
+          });
     } else {
-        mostrarMensagem("Falha no cadastro biométrico.", "error");
+        alert("Falha ao capturar digital ou cancelado pelo usuário.");
     }
 };
+
+// 4. Verifica status e pinta os botões
+function verificarBiometriasFuncionario(funcionarioId) {
+    db.collection('funcionarios').doc(funcionarioId).collection('biometrias').get()
+        .then((querySnapshot) => {
+            querySnapshot.forEach((doc) => {
+                const dedo = doc.id;
+                const btn = document.querySelector(`button[data-dedo="${dedo}"]`);
+                if (btn) {
+                    btn.className = 'btn btn-success btn-dedo'; // Verde
+                    btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.innerText.replace(/<[^>]*>/g, '').trim()}`;
+                    // Muda a ação para remover se clicar novamente
+                    btn.onclick = () => removerBiometria(funcionarioId, dedo);
+                }
+            });
+        });
+}
+
+// 5. Remover biometria
+function removerBiometria(funcionarioId, dedo) {
+    if(confirm("Deseja remover esta digital?")) {
+        db.collection('funcionarios').doc(funcionarioId)
+          .collection('biometrias').doc(dedo).delete()
+          .then(() => {
+              alert("Digital removida.");
+              // Reseta o botão para o estado original
+              const btn = document.querySelector(`button[data-dedo="${dedo}"]`);
+              if(btn) {
+                  btn.className = 'btn btn-outline-secondary btn-dedo';
+                  btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim(); // Remove ícone check
+                  btn.onclick = () => selecionarDedo(dedo);
+              }
+          });
+    }
+}
 
 async function exportarFuncionariosExcel() {
     if (typeof XLSX === 'undefined') {
@@ -1869,7 +1952,8 @@ window.aplicarAumentoColetivo = aplicarAumentoColetivo;
 window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
 window.exportarFuncionariosExcel = exportarFuncionariosExcel;
 window.reprocessarCustosFuncionarios = reprocessarCustosFuncionarios;
-window.cadastrarBiometriaFuncionario = cadastrarBiometriaFuncionario;
+window.abrirModalSelecaoDedo = abrirModalSelecaoDedo;
+window.selecionarDedo = selecionarDedo;
 
 // Funções auxiliares para editar e excluir aumentos salariais
 async function editarAumentoSalario(funcionarioId, historicoIndex) {
