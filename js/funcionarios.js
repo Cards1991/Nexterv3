@@ -1662,9 +1662,9 @@ async function visualizarTermoAumento(funcionarioId, historicoIndex) {
     }
 }
 
-// --- Integração Biometria Android ---
+// --- INTEGRAÇÃO BIOMETRIA ANDROID (CORRIGIDA) ---
 
-// Variável global para saber qual dedo está sendo cadastrado no momento
+// Variável global para saber qual dedo está sendo cadastrado
 let dedoSelecionadoParaCadastro = null;
 
 // 1. Função para abrir o modal
@@ -1679,108 +1679,158 @@ function abrirModalSelecaoDedo() {
 
     // Limpa estado anterior
     dedoSelecionadoParaCadastro = null;
-    document.getElementById('status-leitura-biometria').classList.add('d-none');
     
-    // Reseta botões
-    document.querySelectorAll('.btn-dedo').forEach(btn => {
-        btn.className = 'btn btn-outline-secondary btn-dedo';
-        btn.disabled = false;
-        // Remove ícones se houver
-        btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim();
-    });
-
-    // Verifica quais dedos já estão cadastrados no Firestore
-    verificarBiometriasFuncionario(funcionarioId);
+    // Esconde status de leitura se visível
+    const statusLeitura = document.getElementById('status-leitura-biometria');
+    if (statusLeitura) statusLeitura.classList.add('d-none');
+    
+    // Carrega as biometrias existentes para mostrar os botões verdes
+    carregarStatusBiometrias(funcionarioId);
 
     // Abre o modal
     const modal = new bootstrap.Modal(document.getElementById('modalSelecaoBiometria'));
     modal.show();
 }
 
-// 2. Função chamada ao clicar em um dedo no modal
+// 2. Função para carregar status das biometrias
+async function carregarStatusBiometrias(funcionarioId) {
+    try {
+        const doc = await db.collection('funcionarios').doc(funcionarioId).get();
+        const biometrias = doc.data()?.biometrias || {};
+        
+        // Para cada dedo que já existe, marca o botão como verde
+        Object.keys(biometrias).forEach(dedo => {
+            const btn = document.querySelector(`.btn-dedo[data-dedo="${dedo}"]`);
+            if (btn) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.innerText.replace(/<[^>]*>/g, '').trim()}`;
+                // Muda a ação para remover
+                btn.onclick = () => removerBiometria(funcionarioId, dedo);
+            }
+        });
+    } catch (error) {
+        console.error("Erro ao carregar biometrias:", error);
+    }
+}
+
+// 3. Função chamada ao clicar em um dedo
 function selecionarDedo(dedo) {
     const form = document.getElementById('form-funcionario');
     const funcionarioId = form ? form.dataset.funcionarioId : null;
 
-    // Guarda qual dedo foi clicado para usar no callback
+    if (!funcionarioId) {
+        mostrarMensagem("ID do funcionário não encontrado", "error");
+        return;
+    }
+
+    // Guarda qual dedo foi selecionado
     dedoSelecionadoParaCadastro = dedo;
 
-    // Mostra spinner de carregamento
-    document.getElementById('status-leitura-biometria').classList.remove('d-none');
+    // Mostra spinner
+    const statusLeitura = document.getElementById('status-leitura-biometria');
+    if (statusLeitura) {
+        statusLeitura.classList.remove('d-none');
+        statusLeitura.querySelector('span').textContent = `Coloque o dedo ${dedo.replace('_', ' ')} no sensor...`;
+    }
 
     // Chama o Android
     if (window.AndroidBiometria && typeof window.AndroidBiometria.cadastrarBiometria === 'function') {
         window.AndroidBiometria.cadastrarBiometria(funcionarioId);
     } else {
-        console.warn("Interface Android não encontrada. Testando no navegador?");
-        // Simulação para teste no PC (remover em produção se desejar)
+        console.warn("Interface Android não encontrada. Simulando para teste...");
+        // Simulação para teste no PC
         setTimeout(() => {
             window.onBiometriaCadastrada(funcionarioId, true);
         }, 2000);
     }
 }
 
-// 3. Callback que o Android chama
-window.onBiometriaCadastrada = function(funcionarioId, sucesso) {
-    // Esconde o spinner
-    document.getElementById('status-leitura-biometria').classList.add('d-none');
+// 4. Callback do Android (CORRIGIDO - usa campo, não subcoleção)
+window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
+    // Esconde spinner
+    const statusLeitura = document.getElementById('status-leitura-biometria');
+    if (statusLeitura) statusLeitura.classList.add('d-none');
 
     if (sucesso && dedoSelecionadoParaCadastro) {
-        // Salva no Firestore: funcionarios/{id}/biometrias/{dedo}
-        db.collection('funcionarios').doc(funcionarioId)
-          .collection('biometrias').doc(dedoSelecionadoParaCadastro)
-          .set({
-              ativa: true,
-              data_cadastro: firebase.firestore.FieldValue.serverTimestamp()
-          })
-          .then(() => {
-              alert("Digital cadastrada com sucesso!");
-              // Atualiza visualmente o modal (pinta o botão de verde)
-              verificarBiometriasFuncionario(funcionarioId);
-              
-              // Atualiza flag no documento principal do funcionário também (opcional, para facilitar consultas)
-              db.collection('funcionarios').doc(funcionarioId).update({ biometriaAtiva: true });
-          })
-          .catch((error) => {
-              alert("Erro ao salvar no banco: " + error.message);
-          });
+        try {
+            // CORREÇÃO: Usar update com campo, não subcoleção!
+            const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
+            
+            // Busca o documento atual para não sobrescrever outras biometrias
+            const doc = await funcionarioRef.get();
+            const biometriasAtuais = doc.data()?.biometrias || {};
+            
+            // Adiciona a nova biometria
+            biometriasAtuais[dedoSelecionadoParaCadastro] = {
+                ativa: true,
+                dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            // Atualiza o documento
+            await funcionarioRef.update({
+                biometrias: biometriasAtuais,
+                biometriaAtiva: true
+            });
+            
+            mostrarMensagem(`✅ Digital ${dedoSelecionadoParaCadastro.replace('_', ' ')} cadastrada!`, 'success');
+            
+            // Atualiza visualmente o botão no modal
+            const btn = document.querySelector(`.btn-dedo[data-dedo="${dedoSelecionadoParaCadastro}"]`);
+            if (btn) {
+                btn.classList.remove('btn-outline-secondary');
+                btn.classList.add('btn-success');
+                btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.innerText.replace(/<[^>]*>/g, '').trim()}`;
+                btn.onclick = () => removerBiometria(funcionarioId, dedoSelecionadoParaCadastro);
+            }
+            
+        } catch (error) {
+            console.error("Erro ao salvar biometria:", error);
+            mostrarMensagem("Erro ao salvar no banco de dados", "error");
+        }
     } else {
-        alert("Falha ao capturar digital ou cancelado pelo usuário.");
+        mostrarMensagem("❌ Falha na leitura biométrica", "error");
     }
+    
+    // Limpa a seleção
+    dedoSelecionadoParaCadastro = null;
 };
 
-// 4. Verifica status e pinta os botões
-function verificarBiometriasFuncionario(funcionarioId) {
-    db.collection('funcionarios').doc(funcionarioId).collection('biometrias').get()
-        .then((querySnapshot) => {
-            querySnapshot.forEach((doc) => {
-                const dedo = doc.id;
-                const btn = document.querySelector(`button[data-dedo="${dedo}"]`);
-                if (btn) {
-                    btn.className = 'btn btn-success btn-dedo'; // Verde
-                    btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.innerText.replace(/<[^>]*>/g, '').trim()}`;
-                    // Muda a ação para remover se clicar novamente
-                    btn.onclick = () => removerBiometria(funcionarioId, dedo);
-                }
-            });
+// 5. Função para remover biometria
+async function removerBiometria(funcionarioId, dedo) {
+    if (!confirm(`Remover digital do ${dedo.replace('_', ' ')}?`)) return;
+    
+    try {
+        const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
+        const doc = await funcionarioRef.get();
+        const biometrias = doc.data()?.biometrias || {};
+        
+        // Remove o dedo específico
+        delete biometrias[dedo];
+        
+        // Verifica se ainda tem alguma biometria ativa
+        const temBiometria = Object.keys(biometrias).length > 0;
+        
+        // Atualiza
+        await funcionarioRef.update({
+            biometrias: biometrias,
+            biometriaAtiva: temBiometria
         });
-}
-
-// 5. Remover biometria
-function removerBiometria(funcionarioId, dedo) {
-    if(confirm("Deseja remover esta digital?")) {
-        db.collection('funcionarios').doc(funcionarioId)
-          .collection('biometrias').doc(dedo).delete()
-          .then(() => {
-              alert("Digital removida.");
-              // Reseta o botão para o estado original
-              const btn = document.querySelector(`button[data-dedo="${dedo}"]`);
-              if(btn) {
-                  btn.className = 'btn btn-outline-secondary btn-dedo';
-                  btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim(); // Remove ícone check
-                  btn.onclick = () => selecionarDedo(dedo);
-              }
-          });
+        
+        mostrarMensagem(`✅ Digital removida`, 'success');
+        
+        // Reseta o botão
+        const btn = document.querySelector(`.btn-dedo[data-dedo="${dedo}"]`);
+        if (btn) {
+            btn.classList.remove('btn-success');
+            btn.classList.add('btn-outline-secondary');
+            btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim();
+            btn.onclick = () => selecionarDedo(dedo);
+        }
+        
+    } catch (error) {
+        console.error("Erro ao remover biometria:", error);
+        mostrarMensagem("Erro ao remover digital", "error");
     }
 }
 

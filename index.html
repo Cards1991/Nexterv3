@@ -6653,50 +6653,69 @@
         </div>
     </div>
 
-    <!-- Modal Seleção de Dedo para Biometria -->
-    <div class="modal fade" id="modalSelecaoBiometria" tabindex="-1" aria-hidden="true">
+    <!-- Modal de Seleção de Biometria -->
+    <div class="modal fade" id="modalSelecaoBiometria" tabindex="-1">
         <div class="modal-dialog modal-lg">
             <div class="modal-content">
-                <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fas fa-fingerprint me-2"></i>Cadastro de Biometria</h5>
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-fingerprint me-2"></i>Cadastrar Digital
+                    </h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                 </div>
-                <div class="modal-body text-center">
-                    <div class="alert alert-info">
-                        Selecione abaixo qual dedo será cadastrado no leitor biométrico.
-                        <br><small>Dedos já cadastrados aparecerão em verde.</small>
+                <div class="modal-body">
+                    <p class="mb-3">Selecione qual dedo será cadastrado:</p>
+                    
+                    <!-- Status de leitura (invisível inicialmente) -->
+                    <div id="status-leitura-biometria" class="alert alert-info d-none">
+                        <i class="fas fa-spinner fa-spin me-2"></i>
+                        <span>Aguardando leitura...</span>
                     </div>
                     
-                    <div class="row mt-4">
-                        <!-- Mão Esquerda -->
-                        <div class="col-md-6 border-end">
-                            <h6 class="mb-3 text-primary"><i class="fas fa-hand-paper fa-flip-horizontal me-2"></i>Mão Esquerda</h6>
+                    <div class="row">
+                        <!-- Mão Direita -->
+                        <div class="col-md-6">
+                            <h6 class="text-center mb-2">Mão Direita</h6>
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('mindinho_esquerdo')" data-dedo="mindinho_esquerdo">Mindinho Esquerdo</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('anelar_esquerdo')" data-dedo="anelar_esquerdo">Anelar Esquerdo</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('medio_esquerdo')" data-dedo="medio_esquerdo">Médio Esquerdo</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('indicador_esquerdo')" data-dedo="indicador_esquerdo">Indicador Esquerdo</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('polegar_esquerdo')" data-dedo="polegar_esquerdo">Polegar Esquerdo</button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="polegar_direito" onclick="selecionarDedo('polegar_direito')">
+                                    <i class="fas fa-hand-point-up me-2"></i>Polegar Direito
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="indicador_direito" onclick="selecionarDedo('indicador_direito')">
+                                    <i class="fas fa-hand-point-up me-2"></i>Indicador Direito
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="medio_direito" onclick="selecionarDedo('medio_direito')">
+                                    <i class="fas fa-hand-point-up me-2"></i>Médio Direito
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="anelar_direito" onclick="selecionarDedo('anelar_direito')">
+                                    <i class="fas fa-hand-point-up me-2"></i>Anelar Direito
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="mindinho_direito" onclick="selecionarDedo('mindinho_direito')">
+                                    <i class="fas fa-hand-point-up me-2"></i>Mindinho Direito
+                                </button>
                             </div>
                         </div>
                         
-                        <!-- Mão Direita -->
+                        <!-- Mão Esquerda -->
                         <div class="col-md-6">
-                            <h6 class="mb-3 text-primary"><i class="fas fa-hand-paper me-2"></i>Mão Direita</h6>
+                            <h6 class="text-center mb-2">Mão Esquerda</h6>
                             <div class="d-grid gap-2">
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('polegar_direito')" data-dedo="polegar_direito">Polegar Direito</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('indicador_direito')" data-dedo="indicador_direito">Indicador Direito</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('medio_direito')" data-dedo="medio_direito">Médio Direito</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('anelar_direito')" data-dedo="anelar_direito">Anelar Direito</button>
-                                <button class="btn btn-outline-secondary btn-dedo" onclick="selecionarDedo('mindinho_direito')" data-dedo="mindinho_direito">Mindinho Direito</button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="polegar_esquerdo" onclick="selecionarDedo('polegar_esquerdo')">
+                                    <i class="fas fa-hand-point-left me-2"></i>Polegar Esquerdo
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="indicador_esquerdo" onclick="selecionarDedo('indicador_esquerdo')">
+                                    <i class="fas fa-hand-point-left me-2"></i>Indicador Esquerdo
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="medio_esquerdo" onclick="selecionarDedo('medio_esquerdo')">
+                                    <i class="fas fa-hand-point-left me-2"></i>Médio Esquerdo
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="anelar_esquerdo" onclick="selecionarDedo('anelar_esquerdo')">
+                                    <i class="fas fa-hand-point-left me-2"></i>Anelar Esquerdo
+                                </button>
+                                <button class="btn btn-outline-secondary btn-dedo" data-dedo="mindinho_esquerdo" onclick="selecionarDedo('mindinho_esquerdo')">
+                                    <i class="fas fa-hand-point-left me-2"></i>Mindinho Esquerdo
+                                </button>
                             </div>
                         </div>
-                    </div>
-
-                    <div id="status-leitura-biometria" class="mt-4 d-none">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2 fw-bold text-primary">Aguardando leitura no sensor...</p>
-                        <small class="text-muted">Peça para o funcionário posicionar o dedo selecionado.</small>
                     </div>
                 </div>
             </div>
