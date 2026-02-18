@@ -1,3 +1,33 @@
+// Funções auxiliares de formatação (MOVENDO PARA O TOPO PARA CORRIGIR O ERRO)
+function formatarDuracaoConsolidada(totalDias) {
+    if (!totalDias && totalDias !== 0) return '0 dias';
+    
+    // Se for menos de 1 dia, converte para horas (baseado no cálculo de 8h/dia do sistema)
+    if (totalDias > 0 && totalDias < 1) {
+        const totalHoras = totalDias * 8;
+        const horas = Math.floor(totalHoras);
+        const minutos = Math.round((totalHoras - horas) * 60);
+        return `${String(horas).padStart(2, '0')}:${String(minutos).padStart(2, '0')} horas`;
+    }
+    
+    // Se for inteiro
+    if (Number.isInteger(totalDias)) {
+        return `${totalDias} dia(s)`;
+    }
+    
+    // Decimal
+    return `${parseFloat(totalDias.toFixed(2)).toString().replace('.', ',')} dias`;
+}
+
+function formatarDuracaoAtestado(atestado) {
+    if (atestado.duracaoTipo === 'horas' && atestado.duracaoValor) {
+        return `${atestado.duracaoValor} horas`;
+    }
+    const d = atestado.dias || 0;
+    const val = Number.isInteger(d) ? d : parseFloat(d.toFixed(2)).toString().replace('.', ',');
+    return `${val} dia(s)`;
+}
+
 // ========================================
 // Módulo: Gestão de Saúde Psicossocial
 // Autor: Gemini Code Assist
@@ -101,7 +131,7 @@ function renderizarTabelaPsicossocial(tbody, casos) {
                 </td>
                 <td><span class="badge bg-danger">${casoConsolidado.atestados[casoConsolidado.atestados.length - 1].cid || 'N/A'}</span></td>
                 <td>${formatarData(casoConsolidado.primeiroAtestado)}</td>
-                <td>${casoConsolidado.totalDias}</td>
+                <td>${formatarDuracaoConsolidada(casoConsolidado.totalDias)}</td>
                 <td><span class="badge ${corBadge}">${estagio}</span></td>
                 <td class="text-end">
                     <button class="btn btn-sm btn-primary" onclick="abrirModalAcompanhamentoPsicossocial('${casoConsolidado.idCaso}')" title="Iniciar/Ver Acompanhamento">
@@ -300,7 +330,7 @@ async function carregarHistoricoNoModal(casoId, casoConsolidado, investigacao) {
     const historicoAtestados = casoConsolidado.atestados.map(atestado => ({
         tipo: 'atestado',
         data: atestado.data_atestado.toDate(),
-        texto: `Atestado de ${atestado.dias} dia(s) recebido (CID: ${atestado.cid}).`
+        texto: `Atestado de ${formatarDuracaoAtestado(atestado)} recebido (CID: ${atestado.cid}).`
     }));
 
     // 2. Adiciona as anotações de acompanhamento
@@ -709,7 +739,7 @@ function imprimirHistoricoPsicossocial() {
     const historicoAtestados = caso.atestados.map(atestado => ({
         tipo: 'atestado',
         data: atestado.data_atestado.toDate(),
-        texto: `Atestado de ${atestado.dias} dia(s) recebido (CID: ${atestado.cid}).`
+        texto: `Atestado de ${formatarDuracaoAtestado(atestado)} recebido (CID: ${atestado.cid}).`
     }));
 
     const historicoAcompanhamento = (investigacao.historico || []).map(item => ({

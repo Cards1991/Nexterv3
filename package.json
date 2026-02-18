@@ -1,15 +1,14 @@
 {
-  "name": "nexter-rh",
+  "name": "controlid-bridge",
   "version": "1.0.0",
-  "description": "Sistema de RH da Crival",
+  "description": "Servidor ponte para leitor ControlID",
+  "main": "server.js",
   "scripts": {
-    "build": "node scripts/generate-firebase-config.js",
-    "vercel-build": "node scripts/generate-firebase-config.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "firebase": "^9.17.1"
-  },
-  "devDependencies": {
-    "dotenv": "^16.0.0"
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "koffi": "^2.6.2"
   }
 }

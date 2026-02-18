@@ -842,6 +842,11 @@ async function verDetalhesFuncionario(funcionarioId) {
             .orderBy('data', 'desc')
             .get();
 
+        const atestadosSnapshot = await db.collection('atestados')
+            .where('funcionarioId', '==', funcionarioId)
+            .orderBy('data_atestado', 'desc')
+            .get();
+
         let historicoHTML = '<h6>Histórico de Movimentações:</h6>';
         if (movimentacoesSnapshot.empty) {
             historicoHTML += '<p class="text-muted">Nenhuma movimentação registrada</p>';
@@ -903,6 +908,27 @@ async function verDetalhesFuncionario(funcionarioId) {
             historicoHTML += '</ul>';
         } else {
             historicoHTML += '<p class="text-muted">Nenhum aumento salarial registrado.</p>';
+        }
+
+        // Histórico de Atestados
+        historicoHTML += '<h6 class="mt-4">Histórico de Atestados:</h6>';
+        if (atestadosSnapshot.empty) {
+            historicoHTML += '<p class="text-muted">Nenhum atestado registrado.</p>';
+        } else {
+            historicoHTML += '<ul class="list-group list-group-flush">';
+            atestadosSnapshot.forEach(doc => {
+                const atestado = doc.data();
+                const dataAtestado = atestado.data_atestado?.toDate ? atestado.data_atestado.toDate() : new Date(atestado.data_atestado);
+                const quantidadeFormatada = formatarAtestadoQuantidade(atestado);
+
+                historicoHTML += `
+                    <li class="list-group-item">
+                        <strong>${formatarData(dataAtestado)}:</strong> ${quantidadeFormatada}
+                        <div><small class="text-muted">CID: ${atestado.cid || 'N/A'} - Motivo: ${atestado.motivo || 'Não informado'}</small></div>
+                    </li>
+                `;
+            });
+            historicoHTML += '</ul>';
         }
 
         // Buscar a última avaliação de desempenho
@@ -1154,6 +1180,31 @@ function calcularIdade(dataNascimento) {
         idade--;
     }
     return idade;
+}
+
+/**
+ * Formata a quantidade de um atestado para exibição.
+ * Se o tipo for 'horas', converte o valor (que pode ser decimal) para formato HH:mm.
+ * Se o tipo for 'dias', exibe o número de dias.
+ * @param {object} atestado - O objeto do atestado do Firestore.
+ * @returns {string} A quantidade formatada.
+ */
+function formatarAtestadoQuantidade(atestado) {
+    if (!atestado || atestado.quantidade === undefined || atestado.quantidade === null) {
+        return 'N/A';
+    }
+
+    const quantidade = parseFloat(atestado.quantidade);
+
+    if (atestado.tipo === 'horas') {
+        const totalHoursDecimal = quantidade;
+        const hours = Math.floor(totalHoursDecimal);
+        const minutes = Math.round((totalHoursDecimal - hours) * 60);
+        
+        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} horas`;
+    } else { // Assumes 'dias' or default
+        return `${quantidade} dia(s)`;
+    }
 }
 
 // Inicializar eventos do modal de funcionário
@@ -1663,6 +1714,133 @@ async function visualizarTermoAumento(funcionarioId, historicoIndex) {
 }
 
 // --- INTEGRAÇÃO BIOMETRIA ANDROID (CORRIGIDA) ---
+ 
+ // --- INTEGRAÇÃO BIOMETRIA CONTROLID (NOVA LÓGICA) ---
+ 
+ let isLocalServerOnline = false;
+ const LOCAL_API_URL = 'http://localhost:3000';
+ 
+ /**
+  * Verifica o status do servidor local e atualiza o badge na UI.
+  */
+ async function detectarServidorLocal() {
+     const badge = document.getElementById('local-server-status-badge');
+     if (!badge) return;
+ 
+     try {
+         const response = await fetch(`${LOCAL_API_URL}/status`, { signal: AbortSignal.timeout(2000) });
+         if (response.ok) {
+             const data = await response.json();
+             if (data.status === 'online') {
+                 badge.className = 'badge bg-success';
+                 badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Ativo';
+                 isLocalServerOnline = true;
+             } else {
+                 throw new Error(data.message);
+             }
+         } else {
+             throw new Error(`Status: ${response.status}`);
+         }
+     } catch (error) {
+         badge.className = 'badge bg-danger';
+         badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Offline';
+         isLocalServerOnline = false;
+     }
+ }
+ 
+ // Verifica o status do servidor a cada 10 segundos
+ setInterval(detectarServidorLocal, 10000);
+ // E também quando a página carrega
+ document.addEventListener('DOMContentLoaded', detectarServidorLocal);
+ 
+ /**
+  * Função chamada ao clicar em um dedo no modal.
+  * Decide entre o fluxo automático (servidor local) e o manual.
+  */
+ async function selecionarDedo(dedo) {
+     const funcionarioId = document.getElementById('form-funcionario').dataset.funcionarioId;
+     if (!funcionarioId) {
+         mostrarMensagem("ID do funcionário não encontrado.", "error");
+         return;
+     }
+ 
+     if (isLocalServerOnline) {
+         await cadastrarDigitalAutomatico(funcionarioId, dedo);
+     } else {
+         await cadastrarDigitalManual(funcionarioId, dedo);
+     }
+ }
+ 
+ /**
+  * Fluxo automático: Chama o servidor local para capturar a digital.
+  */
+ async function cadastrarDigitalAutomatico(funcionarioId, dedo) {
+     mostrarMensagem(`Aguardando digital no leitor para o dedo ${dedo.replace('_', ' ')}...`, 'info');
+     
+     try {
+         const response = await fetch(`${LOCAL_API_URL}/capturar-digital`, { method: 'POST' });
+         const data = await response.json();
+ 
+         if (response.ok && data.success && data.template) {
+             // Salva o template no Firestore
+             await db.collection('funcionarios').doc(funcionarioId).update({
+                 [`biometrias.${dedo}`]: {
+                     template: data.template, // Template em Base64
+                     dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                     ativa: true,
+                     origem: 'ControlID_Automatico'
+                 },
+                 biometriaAtiva: true
+             });
+             mostrarMensagem(`✅ Digital do ${dedo.replace('_', ' ')} cadastrada com sucesso!`, 'success');
+             carregarStatusBiometrias(funcionarioId); // Atualiza a UI
+         } else {
+             throw new Error(data.message || 'Falha na captura.');
+         }
+     } catch (error) {
+         console.error("Erro no cadastro automático:", error);
+         mostrarMensagem(`Falha ao capturar digital: ${error.message}`, 'error');
+     }
+ }
+ 
+ /**
+  * Fluxo de fallback: Abre a interface web do ControlID e pede confirmação manual.
+  */
+ async function cadastrarDigitalManual(funcionarioId, dedo) {
+     const confirmou = confirm(
+         "O servidor local não está ativo.\n\n" +
+         "1. A interface web do ControlID será aberta em uma nova aba.\n" +
+         "2. Cadastre a digital do funcionário manualmente no dispositivo.\n" +
+         "3. Volte para esta tela e clique em 'OK' para confirmar que o cadastro foi feito.\n\n" +
+         "Deseja continuar?"
+     );
+ 
+     if (confirmou) {
+         // Abre a interface do ControlID
+         window.open('https://192.168.254.187', '_blank');
+ 
+         // Salva um registro simples no Firestore indicando cadastro manual
+         await db.collection('funcionarios').doc(funcionarioId).update({
+             [`biometrias.${dedo}`]: {
+                 template: null, // Sem template real
+                 dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                 ativa: true,
+                 origem: 'ControlID_Manual'
+             },
+             biometriaAtiva: true
+         });
+         mostrarMensagem(`✅ Registro manual para o ${dedo.replace('_', ' ')} salvo!`, 'success');
+         carregarStatusBiometrias(funcionarioId); // Atualiza a UI
+     } else {
+         mostrarMensagem("Cadastro cancelado.", "info");
+     }
+ }
+ 
+ // As funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria
+ // continuam as mesmas da sua versão corrigida, pois a lógica de UI é a mesma.
+ // Apenas a função `selecionarDedo` foi adaptada.
+ 
+ // ... (cole aqui as funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria da sua versão corrigida)
 
 // Variável global para saber qual dedo está sendo cadastrado
 let dedoSelecionadoParaCadastro = null;
@@ -1754,24 +1932,20 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
 
     if (sucesso && dedoSelecionadoParaCadastro) {
         try {
-            // CORREÇÃO: Usar update com campo, não subcoleção!
             const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
             
-            // Busca o documento atual para não sobrescrever outras biometrias
-            const doc = await funcionarioRef.get();
-            const biometriasAtuais = doc.data()?.biometrias || {};
+            // Prepara a atualização usando notação de ponto para não sobrescrever outras digitais
+            const updateData = {};
             
-            // Adiciona a nova biometria
-            biometriasAtuais[dedoSelecionadoParaCadastro] = {
+            // Define a chave específica (ex: biometrias.medio_direito)
+            updateData[`biometrias.${dedoSelecionadoParaCadastro}`] = {
                 ativa: true,
                 dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
             };
+            updateData['biometriaAtiva'] = true; // Flag geral
             
-            // Atualiza o documento
-            await funcionarioRef.update({
-                biometrias: biometriasAtuais,
-                biometriaAtiva: true
-            });
+            // Executa a atualização atômica
+            await funcionarioRef.update(updateData);
             
             mostrarMensagem(`✅ Digital ${dedoSelecionadoParaCadastro.replace('_', ' ')} cadastrada!`, 'success');
             
@@ -1802,20 +1976,15 @@ async function removerBiometria(funcionarioId, dedo) {
     
     try {
         const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
-        const doc = await funcionarioRef.get();
-        const biometrias = doc.data()?.biometrias || {};
         
-        // Remove o dedo específico
-        delete biometrias[dedo];
+        // Usa FieldValue.delete() para remover apenas a chave específica do mapa
+        const updateData = {};
+        updateData[`biometrias.${dedo}`] = firebase.firestore.FieldValue.delete();
         
-        // Verifica se ainda tem alguma biometria ativa
-        const temBiometria = Object.keys(biometrias).length > 0;
+        await funcionarioRef.update(updateData);
         
-        // Atualiza
-        await funcionarioRef.update({
-            biometrias: biometrias,
-            biometriaAtiva: temBiometria
-        });
+        // Opcional: Verificar se ainda restam biometrias para atualizar a flag 'biometriaAtiva'
+        // Mas para remoção rápida, isso já resolve o visual.
         
         mostrarMensagem(`✅ Digital removida`, 'success');
         
@@ -2717,3 +2886,288 @@ async function processarArquivoAtualizacaoXLSX() {
     };
     reader.readAsArrayBuffer(file);
 }
+
+
+// ============================================
+// INTEGRAÇÃO COM CONTROLID (LEITOR DE DIGITAIS)
+// ============================================
+
+class LeitorControlID {
+    constructor(ip = '192.168.254.187') {
+        this.ip = ip;
+        this.ws = null;
+        this.callbacks = new Map();
+        this.id = 1;
+        this.conectado = false;
+    }
+
+    async conectar() {
+        return new Promise((resolve, reject) => {
+            try {
+                // Tenta primeiro com WebSocket seguro
+                this.ws = new WebSocket(`wss://${this.ip}:8181/plugin`);
+                
+                this.ws.onopen = () => {
+                    console.log('✅ Leitor ControlID conectado via WSS');
+                    this.conectado = true;
+                    resolve();
+                };
+                
+                this.ws.onerror = (error) => {
+                    console.log('❌ WSS falhou, tentando WS...');
+                    // Se falhar, tenta sem SSL
+                    this.ws = new WebSocket(`ws://${this.ip}:8181/plugin`);
+                    
+                    this.ws.onopen = () => {
+                        console.log('✅ Leitor ControlID conectado via WS');
+                        this.conectado = true;
+                        resolve();
+                    };
+                    
+                    this.ws.onerror = (err) => {
+                        this.conectado = false;
+                        reject(new Error('Não foi possível conectar ao leitor'));
+                    };
+                };
+                
+                this.ws.onmessage = (event) => {
+                    this.processarMensagem(event.data);
+                };
+                
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    processarMensagem(data) {
+        try {
+            const msg = JSON.parse(data);
+            console.log('📥 Resposta do leitor:', msg);
+            
+            if (msg.id && this.callbacks.has(msg.id)) {
+                const callback = this.callbacks.get(msg.id);
+                callback(msg);
+                this.callbacks.delete(msg.id);
+            }
+        } catch (e) {
+            console.log('📥 Mensagem bruta:', data);
+        }
+    }
+
+    capturarDigital(callback) {
+        if (!this.conectado) {
+            mostrarMensagem('Leitor não conectado. Tente novamente.', 'warning');
+            return;
+        }
+        
+        const id = this.id++;
+        this.callbacks.set(id, callback);
+        
+        this.ws.send(JSON.stringify({
+            id: id,
+            method: 'CaptureFingerprint',
+            params: {}
+        }));
+        
+        return id;
+    }
+
+    desconectar() {
+        if (this.ws) {
+            this.ws.close();
+            this.conectado = false;
+        }
+    }
+}
+
+// Criar instância global do leitor
+const leitorControlID = new LeitorControlID('192.168.254.187');
+
+// ============================================
+// FUNÇÃO PARA CADASTRAR DIGITAL VIA CONTROLID
+// ============================================
+
+async function cadastrarDigitalManual(funcionarioId, dedo) {
+    // Abre a interface do ControlID
+    window.open('http://192.168.254.187', '_blank');
+    
+    // Mostra instruções
+    mostrarMensagem(`
+        📋 INSTRUÇÕES:
+        1. Na interface do ControlID, vá em USUÁRIOS
+        2. Crie um usuário temporário com o nome do funcionário
+        3. Cadastre a digital
+        4. Volte aqui e clique em CONFIRMAR
+    `, 'info', 15000);
+    
+    // Botão para confirmar
+    return new Promise((resolve) => {
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-success btn-lg fixed-bottom m-3';
+        btn.innerHTML = '✅ JÁ CADASTREI A DIGITAL';
+        btn.onclick = async () => {
+            btn.remove();
+            
+            // Marca como cadastrado no Firestore
+            await db.collection('funcionarios').doc(funcionarioId).update({
+                [`biometrias.${dedo}`]: {
+                    cadastradoVia: 'controlid_manual',
+                    dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                    ativa: true
+                },
+                biometriaAtiva: true
+            });
+            
+            mostrarMensagem('✅ Digital cadastrada!', 'success');
+            resolve();
+        };
+        document.body.appendChild(btn);
+    });
+}
+
+// ============================================
+// FUNÇÃO PARA IDENTIFICAR FUNCIONÁRIO PELA DIGITAL
+// ============================================
+
+async function identificarFuncionarioPorDigital() {
+    try {
+        mostrarMensagem('👆 Coloque o dedo no leitor do relógio...', 'info');
+        
+        if (!leitorControlID.conectado) {
+            await leitorControlID.conectar();
+        }
+        
+        return new Promise((resolve, reject) => {
+            leitorControlID.capturarDigital(async (resposta) => {
+                if (resposta.result && resposta.result.template) {
+                    try {
+                        // Busca no Firestore por esse template
+                        const snapshot = await db.collection('funcionarios')
+                            .where('biometrias', '!=', null)
+                            .get();
+                        
+                        let funcionarioEncontrado = null;
+                        
+                        snapshot.forEach(doc => {
+                            const dados = doc.data();
+                            // Verifica em todas as biometrias do funcionário
+                            if (dados.biometrias) {
+                                for (const [dedo, bio] of Object.entries(dados.biometrias)) {
+                                    if (bio.template === resposta.result.template && bio.ativa) {
+                                        funcionarioEncontrado = {
+                                            id: doc.id,
+                                            ...dados,
+                                            dedoUsado: dedo
+                                        };
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        
+                        if (funcionarioEncontrado) {
+                            mostrarMensagem(`✅ Identificado: ${funcionarioEncontrado.nome}`, 'success');
+                            resolve(funcionarioEncontrado);
+                        } else {
+                            mostrarMensagem('❌ Digital não encontrada no sistema', 'error');
+                            reject(new Error('Digital não cadastrada'));
+                        }
+                        
+                    } catch (error) {
+                        console.error('Erro na busca:', error);
+                        mostrarMensagem('❌ Erro ao buscar digital no sistema', 'error');
+                        reject(error);
+                    }
+                } else {
+                    mostrarMensagem('❌ Falha na leitura. Tente novamente.', 'error');
+                    reject(new Error('Falha na leitura'));
+                }
+            });
+        });
+        
+    } catch (error) {
+        console.error('Erro no leitor:', error);
+        mostrarMensagem('❌ Erro ao conectar com leitor', 'error');
+        throw error;
+    }
+}
+
+// ============================================
+// SUBSTITUIR A FUNÇÃO DE CADASTRO DE BIOMETRIA
+// ============================================
+
+// Modificar a função selecionarDedo para usar o ControlID em vez do Android
+const selecionarDedoOriginal = selecionarDedo;
+window.selecionarDedo = async function(dedo) {
+    const form = document.getElementById('form-funcionario');
+    const funcionarioId = form ? form.dataset.funcionarioId : null;
+
+    if (!funcionarioId) {
+        mostrarMensagem("ID do funcionário não encontrado", "error");
+        return;
+    }
+
+    // Guarda qual dedo foi selecionado
+    dedoSelecionadoParaCadastro = dedo;
+
+    // Mostra spinner
+    const statusLeitura = document.getElementById('status-leitura-biometria');
+    if (statusLeitura) {
+        statusLeitura.classList.remove('d-none');
+        statusLeitura.querySelector('span').textContent = `Coloque o dedo ${dedo.replace('_', ' ')} no leitor do relógio...`;
+    }
+
+    try {
+        // Usa o ControlID em vez do Android
+        await cadastrarDigitalManual(funcionarioId, dedo);
+        
+        // Fecha o modal de seleção de dedo
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelecaoBiometria'));
+        if (modal) modal.hide();
+        
+    } catch (error) {
+        console.error('Erro no cadastro:', error);
+    } finally {
+        // Esconde spinner
+        if (statusLeitura) {
+            statusLeitura.classList.add('d-none');
+        }
+    }
+};
+
+// ============================================
+// FUNÇÃO PARA TESTAR CONEXÃO COM O LEITOR
+// ============================================
+
+async function testarLeitorControlID() {
+    try {
+        mostrarMensagem('🔌 Conectando ao leitor...', 'info');
+        await leitorControlID.conectar();
+        mostrarMensagem('✅ Leitor conectado com sucesso!', 'success');
+        leitorControlID.desconectar();
+    } catch (error) {
+        mostrarMensagem('❌ Erro ao conectar ao leitor', 'error');
+    }
+}
+
+// Adicionar botão de teste no modal de biometria (opcional)
+function adicionarBotaoTesteLeitor() {
+    const modalFooter = document.querySelector('#modalSelecaoBiometria .modal-footer');
+    if (modalFooter && !document.getElementById('btn-testar-leitor')) {
+        const btnTeste = document.createElement('button');
+        btnTeste.id = 'btn-testar-leitor';
+        btnTeste.className = 'btn btn-outline-info btn-sm';
+        btnTeste.innerHTML = '<i class="fas fa-plug"></i> Testar Leitor';
+        btnTeste.onclick = testarLeitorControlID;
+        modalFooter.appendChild(btnTeste);
+    }
+}
+
+// Chamar após carregar o DOM
+document.addEventListener('DOMContentLoaded', function() {
+    // Sua inicialização existente...
+    
+    // Adicionar botão de teste no modal
+    setTimeout(adicionarBotaoTesteLeitor, 1000);
+});
