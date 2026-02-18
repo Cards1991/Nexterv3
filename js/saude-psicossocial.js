@@ -734,61 +734,214 @@ function imprimirHistoricoPsicossocial() {
 
     const primeiroAtestado = caso.atestados[0];
     const investigacao = primeiroAtestado.investigacaoPsicossocial || {};
+    const colaboradorNome = caso.colaborador_nome || 'Não identificado';
 
-    // Combina atestados e acompanhamentos para um histórico completo
+
+    // Combina atestados e acompanhamentos
     const historicoAtestados = caso.atestados.map(atestado => ({
-        tipo: 'atestado',
+        tipo: 'Atestado Recebido',
         data: atestado.data_atestado.toDate(),
-        texto: `Atestado de ${formatarDuracaoAtestado(atestado)} recebido (CID: ${atestado.cid}).`
+        detalhes: `Atestado de <strong>${formatarDuracaoAtestado(atestado)}</strong> (CID: ${atestado.cid})`
     }));
 
     const historicoAcompanhamento = (investigacao.historico || []).map(item => ({
-        tipo: 'acompanhamento',
+        tipo: item.estagio,
         data: item.data.toDate(),
-        estagio: item.estagio,
-        observacoes: item.observacoes,
-        texto: `<strong>${item.estagio}:</strong> ${escapeHTML(item.observacoes)}`,
-        dataConversa: item.dataConversa ? item.dataConversa.toDate() : null,
-        responsavel: item.responsavelNome
+        detalhes: escapeHTML(item.observacoes)
     }));
 
     const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
-        .sort((a, b) => a.data - b.data); // Ordena em ordem cronológica
+        .sort((a, b) => b.data - a.data); // Ordena do mais novo para o mais antigo
 
     let historicoHtml = '';
     if (historicoCompleto.length > 0) {
         historicoCompleto.forEach(item => {
             historicoHtml += `
-                <div class="timeline-item">
-                    <div class="timeline-date">${item.data.toLocaleDateString('pt-BR')}</div>
-                    <div class="timeline-content">
-                        ${item.tipo === 'acompanhamento' ? `<h5>${item.estagio}</h5><p>${item.observacoes}</p>` : `<p>${item.texto}</p>`}
-                        ${item.dataEvento ? `<p><small class="text-info">Data do Evento: ${item.dataEvento.toLocaleDateString('pt-BR')}</small></p>` : ''}
-                        ${item.responsavel ? `<small class="text-muted">Registrado por: ${item.responsavel}</small>` : ''}
-                    </div>
-                </div>
+                <tr>
+                    <td>${item.data.toLocaleDateString('pt-BR')}</td>
+                    <td>${item.tipo}</td>
+                    <td>${item.detalhes}</td>
+                </tr>
             `;
         });
     } else {
-        historicoHtml = '<p class="text-muted">Nenhum registro de acompanhamento encontrado.</p>';
+        historicoHtml = '<tr><td colspan="3" class="text-center text-muted">Nenhum registro de acompanhamento encontrado.</td></tr>';
     }
 
     const conteudo = `
         <html>
         <head>
-            <title>Histórico de Acompanhamento Psicossocial</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-            <style> body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; } .report-header { text-align: center; border-bottom: 2px solid #0d6efd; padding-bottom: 1rem; margin-bottom: 2rem; } .report-header h2 { font-weight: 700; color: #0d6efd; } .timeline-item { display: flex; margin-bottom: 1.5rem; } .timeline-date { min-width: 100px; text-align: right; padding-right: 1rem; border-right: 2px solid #dee2e6; font-weight: bold; } .timeline-content { padding-left: 1rem; } .signature-area { margin-top: 80px; text-align: center; } </style>
+            <title>Histórico de Acompanhamento Psicossocial - ${colaboradorNome}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap');
+                
+                body { 
+                    font-family: 'Roboto', sans-serif; 
+                    margin: 0;
+                    padding: 0;
+                    background-color: #f4f4f4;
+                    color: #333;
+                }
+                .page {
+                    width: 210mm;
+                    min-height: 297mm;
+                    padding: 20mm;
+                    margin: 10mm auto;
+                    border: 1px #D3D3D3 solid;
+                    border-radius: 5px;
+                    background: white;
+                    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+                }
+                .header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    border-bottom: 2px solid #007bff;
+                    padding-bottom: 10px;
+                    margin-bottom: 20px;
+                }
+                .header img {
+                    height: 50px;
+                }
+                .header h1 {
+                    font-size: 24px;
+                    color: #007bff;
+                    margin: 0;
+                    font-weight: 700;
+                }
+                .info-section p {
+                    margin: 5px 0;
+                    font-size: 14px;
+                }
+                .info-section strong {
+                    color: #555;
+                }
+                .history-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 20px;
+                }
+                .history-table th, .history-table td {
+                    border: 1px solid #ddd;
+                    padding: 10px;
+                    text-align: left;
+                    font-size: 12px;
+                }
+                .history-table th {
+                    background-color: #f2f2f2;
+                    font-weight: 700;
+                    color: #333;
+                }
+                .footer {
+                    text-align: center;
+                    margin-top: 40px;
+                    padding-top: 20px;
+                    border-top: 1px solid #eee;
+                    font-size: 12px;
+                    color: #777;
+                }
+                .signature-section {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-top: 100px;
+                }
+                .signature-area {
+                    text-align: center;
+                }
+                .signature-line {
+                    border-bottom: 1px solid #333;
+                    width: 250px;
+                    margin: 0 auto;
+                }
+                .signature-area p {
+                    margin-top: 5px;
+                    font-size: 12px;
+                }
+
+                @media print {
+                    body, .page {
+                        margin: 0 !important;
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        border: none !important;
+                        background: white !important;
+                    }
+                    .no-print {
+                        display: none !important;
+                    }
+                    @page {
+                        size: A4;
+                        margin: 20mm;
+                    }
+                }
+            </style>
         </head>
         <body>
-            <div class="report-header"><h2>Histórico de Acompanhamento Psicossocial</h2></div>
-            <p><strong>Funcionário:</strong> ${caso.colaborador_nome}</p>
-            <p><strong>Atestado Inicial (CID):</strong> ${primeiroAtestado.cid}</p>
-            <hr>
-            ${historicoHtml}
-            <div class="signature-area"><p>___________________________</p><p>Assinatura do Responsável RH</p></div>
+            <div class="page">
+                <div class="header">
+                    <img src="../assets/LOGO.png" alt="Logo Empresa">
+                    <h1>Histórico Psicossocial</h1>
+                </div>
+                
+                <div class="info-section">
+                    <p><strong>Funcionário:</strong> ${colaboradorNome}</p>
+                    <p><strong>Atestado Inicial (CID):</strong> ${primeiroAtestado.cid}</p>
+                </div>
+
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Tipo de Registro</th>
+                            <th>Detalhes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${historicoHtml}
+                    </tbody>
+                </table>
+
+                <div class="signature-section">
+                    <div class="signature-area">
+                        <div class="signature-line"></div>
+                        <p>Assinatura do Responsável</p>
+                    </div>
+                    <div class="signature-area">
+                        <div class="signature-line"></div>
+                        <p>${colaboradorNome}</p>
+                    </div>
+                </div>
+                
+                <div class="footer">
+                    <p>Este é um documento confidencial. As informações aqui contidas são de uso exclusivo da empresa e do profissional de saúde responsável. Impresso em: ${new Date().toLocaleString('pt-BR')}</p>
+                </div>
+            </div>
         </body>
         </html>`;
 
-    openPrintWindow(conteudo, { autoPrint: true });
+    // Usar um iframe oculto para impressão
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'absolute';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    iframe.style.display = 'none';
+
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentDocument || iframe.contentWindow.document;
+    doc.open();
+    doc.write(conteudo);
+    doc.close();
+
+    // Aguardar o carregamento completo do iframe
+    iframe.onload = function() {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+        
+        // Limpar após a impressão
+        setTimeout(() => {
+            document.body.removeChild(iframe);
+        }, 1000);
+    };
 }
