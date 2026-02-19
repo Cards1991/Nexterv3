@@ -237,3 +237,130 @@ document.addEventListener('DOMContentLoaded', () => {
 if (typeof window.textoOriginal === 'undefined') {
     window.textoOriginal = 'Salvar';
 }
+
+// 5. Dashboard de Faltas - Indicador de Experiência
+async function carregarFaltasExperiencia() {
+    const container = document.getElementById('ranking-faltas-experiencia');
+    if (!container) return;
+
+    container.innerHTML = '<div class="list-group-item text-center p-4"><i class="fas fa-spinner fa-spin"></i> Carregando dados de experiência...</div>';
+
+    try {
+        // 1. Definir período de experiência (90 dias atrás até hoje)
+        const hoje = new Date();
+        const dataCorteExperiencia = new Date();
+        dataCorteExperiencia.setDate(hoje.getDate() - 90);
+
+        // 2. Buscar funcionários admitidos após a data de corte (estão em experiência)
+        const funcionariosSnap = await db.collection('funcionarios')
+            .where('status', '==', 'Ativo')
+            .get();
+
+        const mapFuncExperiencia = new Map(); // ID -> Dados
+        
+        funcionariosSnap.forEach(doc => {
+            const f = doc.data();
+
+            // Filtra colaboradores que já possuem rescisão (mesmo que status esteja Ativo por erro)
+            if (f.dataDemissao || f.dataDesligamento) return;
+
+            // Tenta obter a data de admissão de vários formatos possíveis
+            let dataAdmissao = null;
+            if (f.admissao) {
+                if (f.admissao.toDate) dataAdmissao = f.admissao.toDate();
+                else if (typeof f.admissao === 'string') dataAdmissao = new Date(f.admissao);
+            } else if (f.dataAdmissao) {
+                if (f.dataAdmissao.toDate) dataAdmissao = f.dataAdmissao.toDate();
+                else if (typeof f.dataAdmissao === 'string') dataAdmissao = new Date(f.dataAdmissao);
+            }
+
+            if (dataAdmissao && dataAdmissao >= dataCorteExperiencia) {
+                mapFuncExperiencia.set(doc.id, {
+                    nome: f.nome,
+                    setor: f.setor,
+                    admissao: dataAdmissao,
+                    faltas: 0
+                });
+            }
+        });
+
+        if (mapFuncExperiencia.size === 0) {
+            container.innerHTML = '<div class="list-group-item text-center text-muted">Nenhum colaborador em período de experiência encontrado.</div>';
+            return;
+        }
+
+        // 3. Buscar faltas no período selecionado no filtro do dashboard
+        const inicioInput = document.getElementById('dash-faltas-data-inicio');
+        const fimInput = document.getElementById('dash-faltas-data-fim');
+        
+        let dataInicioFiltro = new Date();
+        dataInicioFiltro.setDate(1); // Início do mês atual padrão
+        let dataFimFiltro = new Date();
+
+        if (inicioInput && inicioInput.value) dataInicioFiltro = new Date(inicioInput.value);
+        if (fimInput && fimInput.value) dataFimFiltro = new Date(fimInput.value);
+        
+        // Ajuste horas
+        dataInicioFiltro.setHours(0,0,0,0);
+        dataFimFiltro.setHours(23,59,59,999);
+
+        const faltasSnap = await db.collection('faltas')
+            .where('data', '>=', firebase.firestore.Timestamp.fromDate(dataInicioFiltro))
+            .where('data', '<=', firebase.firestore.Timestamp.fromDate(dataFimFiltro))
+            .get();
+
+        // 4. Contabilizar faltas apenas para quem está em experiência
+        faltasSnap.forEach(doc => {
+            const falta = doc.data();
+            const funcId = falta.funcionarioId || falta.funcionario; 
+            
+            if (funcId && mapFuncExperiencia.has(funcId)) {
+                const dados = mapFuncExperiencia.get(funcId);
+                dados.faltas++;
+                mapFuncExperiencia.set(funcId, dados);
+            }
+        });
+
+        // 5. Ordenar e Renderizar
+        const ranking = Array.from(mapFuncExperiencia.values())
+            .filter(f => f.faltas > 0)
+            .sort((a, b) => b.faltas - a.faltas)
+            .slice(0, 10); // Limita aos 10 primeiros
+
+        if (ranking.length === 0) {
+            container.innerHTML = '<div class="list-group-item text-center text-muted">Nenhuma falta registrada para colaboradores em experiência neste período.</div>';
+            return;
+        }
+
+        let html = '';
+        ranking.forEach(item => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="fw-bold">${item.nome}</div>
+                        <small class="text-muted">
+                            <i class="fas fa-sitemap me-1"></i>${item.setor || 'N/A'} &bull; 
+                            Adm: ${item.admissao.toLocaleDateString('pt-BR')}
+                        </small>
+                    </div>
+                    <span class="badge bg-danger rounded-pill">${item.faltas} falta(s)</span>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error("Erro ao carregar indicador de experiência:", error);
+        container.innerHTML = `<div class="list-group-item text-danger">Erro: ${error.message}</div>`;
+    }
+}
+
+// Listener para o botão de filtro do dashboard de faltas
+document.addEventListener('DOMContentLoaded', () => {
+    const btnFiltrar = document.getElementById('btn-filtrar-dashboard-faltas');
+    if (btnFiltrar) {
+        btnFiltrar.addEventListener('click', () => {
+            setTimeout(carregarFaltasExperiencia, 500);
+        });
+    }
+});

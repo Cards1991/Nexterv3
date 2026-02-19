@@ -842,10 +842,16 @@ async function verDetalhesFuncionario(funcionarioId) {
             .orderBy('data', 'desc')
             .get();
 
+        // Alterado para evitar erro de índice composto no Firestore (ordenação em memória)
         const atestadosSnapshot = await db.collection('atestados')
             .where('funcionarioId', '==', funcionarioId)
-            .orderBy('data_atestado', 'desc')
             .get();
+            
+        const atestadosOrdenados = atestadosSnapshot.docs.map(doc => doc.data()).sort((a, b) => {
+            const dateA = a.data_atestado?.toDate ? a.data_atestado.toDate() : new Date(a.data_atestado);
+            const dateB = b.data_atestado?.toDate ? b.data_atestado.toDate() : new Date(b.data_atestado);
+            return dateB - dateA;
+        });
 
         let historicoHTML = '<h6>Histórico de Movimentações:</h6>';
         if (movimentacoesSnapshot.empty) {
@@ -912,12 +918,11 @@ async function verDetalhesFuncionario(funcionarioId) {
 
         // Histórico de Atestados
         historicoHTML += '<h6 class="mt-4">Histórico de Atestados:</h6>';
-        if (atestadosSnapshot.empty) {
+        if (atestadosOrdenados.length === 0) {
             historicoHTML += '<p class="text-muted">Nenhum atestado registrado.</p>';
         } else {
             historicoHTML += '<ul class="list-group list-group-flush">';
-            atestadosSnapshot.forEach(doc => {
-                const atestado = doc.data();
+            atestadosOrdenados.forEach(atestado => {
                 const dataAtestado = atestado.data_atestado?.toDate ? atestado.data_atestado.toDate() : new Date(atestado.data_atestado);
                 const quantidadeFormatada = formatarAtestadoQuantidade(atestado);
 

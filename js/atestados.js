@@ -987,6 +987,47 @@ async function salvarAtestado() {
             return;
         }
         
+        // --- CRUZAMENTO DE INFORMAÇÕES: FALTAS X ATESTADOS ---
+        try {
+            const startOfDay = new Date(dataAtestadoObj);
+            startOfDay.setHours(0,0,0,0);
+            const endOfDay = new Date(dataAtestadoObj);
+            endOfDay.setHours(23,59,59,999);
+
+            const faltasSnap = await db.collection('faltas')
+                .where('funcionarioId', '==', colabSelect.value)
+                .where('data', '>=', startOfDay)
+                .where('data', '<=', endOfDay)
+                .get();
+
+            if (!faltasSnap.empty) {
+                let msg = `⚠️ Encontradas ${faltasSnap.size} falta(s) lançada(s) para ${colabNome} nesta data.\n\n`;
+                msg += `Deseja atualizar a justificativa dessas faltas com os dados deste atestado?\n`;
+                msg += `Isso ajudará a identificar que o período foi coberto pelo comprovante.`;
+
+                if (confirm(msg)) {
+                    const batch = db.batch();
+                    const justificativaAtestado = `Atestado: ${cid ? 'CID ' + cid : 'S/ CID'} (${duracaoValor} ${duracaoTipo})`;
+                    
+                    faltasSnap.forEach(doc => {
+                        const faltaRef = db.collection('faltas').doc(doc.id);
+                        const faltaData = doc.data();
+                        const novaJust = (faltaData.justificativa && faltaData.justificativa !== 'Não informado')
+                            ? `${faltaData.justificativa} | ${justificativaAtestado}`
+                            : justificativaAtestado;
+                        
+                        batch.update(faltaRef, { justificativa: novaJust });
+                    });
+                    
+                    await batch.commit();
+                    mostrarMensagem("Justificativas das faltas atualizadas com sucesso.", "info");
+                }
+            }
+        } catch (errFaltas) {
+            console.error("Erro ao verificar faltas cruzadas:", errFaltas);
+        }
+        // -----------------------------------------------------
+
         // Checagem de cota de acompanhamento
         if (tipo === 'Acompanhamento') {
             const atestadosAcompanhamento = await db.collection('atestados')

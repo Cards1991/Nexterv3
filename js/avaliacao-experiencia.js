@@ -138,10 +138,10 @@ async function carregarPainelExperiencia() {
             admissao.setHours(0, 0, 0, 0);
 
             const vencimento45 = new Date(admissao);
-            vencimento45.setDate(admissao.getDate() + 45);
+            vencimento45.setDate(admissao.getDate() + 44);
 
-            const vencimento90 = new Date(admissao);
-            vencimento90.setDate(admissao.getDate() + 90);
+            const vencimento90 = new Date(vencimento45);
+            vencimento90.setDate(vencimento45.getDate() + 45);
 
             if (hoje <= vencimento90) {
                 totalEmExperiencia++;
