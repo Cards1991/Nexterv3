@@ -303,7 +303,7 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'analise-pessoas':
                 if (typeof inicializarAnalisePessoas === 'function') {
-                    await inicializarAnalisePessoas();
+                    await inicializarAnalisePessoas(currentUserPermissions);
                 }
                 break;
             case 'analise-atestados':

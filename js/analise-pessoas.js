@@ -13,7 +13,7 @@ function limparGraficosPessoas() {
     chartsPessoas = {};
 }
 
-async function inicializarAnalisePessoas() {
+async function inicializarAnalisePessoas(permissoes = {}) {
     const container = document.getElementById('dashboard-analise-pessoas');
     if (!container) return;
 
@@ -29,17 +29,24 @@ async function inicializarAnalisePessoas() {
     `;
 
     try {
+        // Aplica o filtro de setor diretamente na query do Firestore
+        let funcionariosQuery = db.collection('funcionarios');
+        if (permissoes && !permissoes.isAdmin && permissoes.restricaoSetor) {
+            funcionariosQuery = funcionariosQuery.where('setor', '==', permissoes.restricaoSetor);
+        }
+
         const [funcionariosSnap, empresasSnap, movimentacoesSnap] = await Promise.all([
-            db.collection('funcionarios').get(), // Busca funcionários
+            funcionariosQuery.get(),             // Busca funcionários já filtrados
             db.collection('empresas').get(),     // Busca empresas para mapear nomes e IDs
-            db.collection('movimentacoes').get()
+            db.collection('movimentacoes').get() // Movimentações ainda são buscadas por completo
         ]);
 
-        const todosFuncionarios = funcionariosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        let todosFuncionarios = funcionariosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         const movimentacoes = movimentacoesSnap.docs.map(doc => doc.data());
 
+        // O filtro manual no cliente não é mais necessário, mas mantemos a verificação de array vazio
         if (todosFuncionarios.length === 0) {
-            container.innerHTML = '<p class="text-center text-muted">Nenhum funcionário encontrado para análise.</p>';
+            container.innerHTML = '<p class="text-center text-muted">Nenhum funcionário encontrado para análise neste setor.</p>';
             return;
         }
 

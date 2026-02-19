@@ -30,13 +30,77 @@ function formatarDuracaoAtestado(atestado) {
 
 // ========================================
 // Módulo: Gestão de Saúde Psicossocial
-// Autor: Gemini Code Assist
 // ========================================
 
 let modoEdicaoAtivo = false;
 let casoIdEditando = null;
 let indiceEditando = null;
 let psicoChartInstancePsico = null;
+
+// Controle de requisições para evitar 429
+const requestQueue = {
+    pending: new Map(),
+    async execute(key, fn, maxRetries = 3) {
+        // Verifica se já existe uma requisição pendente para esta chave
+        if (this.pending.has(key)) {
+            console.log(`Requisição para ${key} já está em andamento, aguardando...`);
+            return this.pending.get(key);
+        }
+
+        const promise = (async () => {
+            let lastError;
+            
+            for (let i = 0; i < maxRetries; i++) {
+                try {
+                    return await fn();
+                } catch (error) {
+                    lastError = error;
+                    
+                    // Se for erro 429, espera com backoff exponencial
+                    if (error.code === 'resource-exhausted' || 
+                        (error.message && error.message.includes('429'))) {
+                        
+                        const waitTime = Math.pow(2, i) * 2000; // 2s, 4s, 8s
+                        console.log(`Erro 429 detectado. Tentativa ${i + 1}/${maxRetries}. Aguardando ${waitTime/1000}s...`);
+                        
+                        // Mostra toast informativo se for a primeira tentativa
+                        if (i === 0) {
+                            mostrarMensagem(`Limite de requisições atingido. Tentativa ${i + 1}/${maxRetries} em ${waitTime/1000}s...`, "info");
+                        }
+                        
+                        await new Promise(r => setTimeout(r, waitTime));
+                    } else {
+                        // Se não for erro 429, não tenta novamente
+                        throw error;
+                    }
+                }
+            }
+            
+            throw lastError;
+        })();
+
+        this.pending.set(key, promise);
+        
+        promise.finally(() => {
+            this.pending.delete(key);
+        });
+
+        return promise;
+    }
+};
+
+// Debounce para evitar cliques múltiplos
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
 
 async function inicializarSaudePsicossocial() {
     console.log("Inicializando Gestão de Saúde Psicossocial...");
@@ -45,20 +109,30 @@ async function inicializarSaudePsicossocial() {
 
 let __casos_psico_cache = [];
 let __todos_atestados_psico_cache = [];
-
+let _carregandoPsico = false;
 
 /**
  * Carrega todos os atestados com CIDs psicossociais e renderiza a seção.
  */
 async function carregarDadosPsicossociais() {
+    if (_carregandoPsico) return; // Evita chamadas duplicadas
     const tbody = document.getElementById('tabela-casos-psicossociais');
     if (!tbody) return;
 
+    _carregandoPsico = true;
     tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando casos...</td></tr>';
 
     try {
-        // Busca todos os atestados
-        const atestadosSnap = await db.collection('atestados').orderBy('data_atestado', 'asc').get();
+        // OTIMIZAÇÃO: Busca apenas atestados dos últimos 12 meses para evitar erro 429 (Quota Exceeded)
+        const dataLimite = new Date();
+        dataLimite.setFullYear(dataLimite.getFullYear() - 1);
+        
+        const atestadosSnap = await requestQueue.execute('carregarAtestados', async () => {
+            return await db.collection('atestados')
+                .where('data_atestado', '>=', firebase.firestore.Timestamp.fromDate(dataLimite))
+                .orderBy('data_atestado', 'asc')
+                .get();
+        });
 
         // Filtra no lado do cliente para CIDs psicossociais
         __todos_atestados_psico_cache = atestadosSnap.docs
@@ -101,7 +175,13 @@ async function carregarDadosPsicossociais() {
 
     } catch (error) {
         console.error("Erro ao carregar dados psicossociais:", error);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        if (error.code === 'resource-exhausted' || (error.message && error.message.includes('429'))) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-warning">Limite de requisições excedido. Aguarde alguns instantes e recarregue a página.</td></tr>';
+        } else {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        }
+    } finally {
+        _carregandoPsico = false;
     }
 }
 
@@ -258,6 +338,13 @@ function formatarData(data) {
     return dateObj.toLocaleDateString('pt-BR');
 }
 
+// Função auxiliar para formatar data para input
+function formatarDataParaInput(data) {
+    if (!data) return '';
+    const dateObj = data.toDate ? data.toDate() : new Date(data);
+    return dateObj.toISOString().split('T')[0];
+}
+
 /**
  * Abre o modal de acompanhamento psicossocial para um caso específico (agrupado por funcionário).
  * @param {string} casoId O ID do primeiro atestado que iniciou o caso.
@@ -356,10 +443,10 @@ async function carregarHistoricoNoModal(casoId, casoConsolidado, investigacao) {
             if (item.tipo === 'acompanhamento') {
                 actionsHtml = `
                     <div class="ms-auto btn-group btn-group-sm">
-                        <button class="btn btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); editarHistoricoPsicossocial('${casoId}', ${item.index})" title="Editar">
+                        <button type="button" class="btn btn-outline-secondary py-0 px-1" onclick="event.stopPropagation(); editarHistoricoPsicossocial('${casoId}', ${item.index})" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-outline-danger py-0 px-1" onclick="event.stopPropagation(); excluirHistoricoPsicossocial('${casoId}', ${item.index})" title="Excluir">
+                        <button type="button" class="btn btn-outline-danger py-0 px-1 excluir-historico-btn" data-caso-id="${casoId}" data-index="${item.index}" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -377,10 +464,26 @@ async function carregarHistoricoNoModal(casoId, casoConsolidado, investigacao) {
                 </div>
             `;
         }).join('');
+
+        // Adiciona event listeners aos botões de excluir com debounce
+        document.querySelectorAll('.excluir-historico-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const casoId = btn.dataset.casoId;
+                const index = parseInt(btn.dataset.index);
+                excluirHistoricoPsicossocialComDebounce(casoId, index, e);
+            });
+        });
+
     } else {
         historicoContainer.innerHTML = '<p class="text-muted small">Nenhum registro no histórico.</p>';
     }
 }
+
+// Versão com debounce da função de exclusão
+const excluirHistoricoPsicossocialComDebounce = debounce(async (casoId, index, event) => {
+    await excluirHistoricoPsicossocial(casoId, index, event);
+}, 500);
 
 /**
  * Escapa HTML para evitar XSS
@@ -398,7 +501,6 @@ function escapeHTML(text) {
  * Salva os dados do formulário de acompanhamento psicossocial no documento do atestado.
  */
 async function salvarAcompanhamentoPsicossocial() {
-    // Prevenir clique duplo
     const btnSalvar = document.getElementById('btn-salvar-acompanhamento');
     if (btnSalvar.disabled) return;
     
@@ -421,7 +523,6 @@ async function salvarAcompanhamentoPsicossocial() {
         return;
     }
 
-    // CORREÇÃO: Usa a data da conversa como data principal do registro, se aplicável.
     const dataPrincipalRegistro = ['Conversa Agendada', 'Conversado com Funcionário', 'Plano de Ação Definido', 'Caso Encerrado'].includes(estagio) && dataEvento 
                                   ? new Date(dataEvento.replace(/-/g, '\/')) 
                                   : new Date();
@@ -430,19 +531,35 @@ async function salvarAcompanhamentoPsicossocial() {
         estagio: estagio,
         observacoes: observacoes,
         dataEvento: ['Conversa Agendada', 'Conversado com Funcionário', 'Plano de Ação Definido', 'Caso Encerrado'].includes(estagio) && dataEvento ? new Date(dataEvento.replace(/-/g, '\/')) : null,
-        observacoesInternas: observacoesInternas, // Salva o novo campo
+        observacoesInternas: observacoesInternas,
         data: dataPrincipalRegistro,
         responsavelUid: firebase.auth().currentUser?.uid,
         responsavelNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email
     };
 
+    const atestadoRef = db.collection('atestados').doc(atestadoId);
+
+    let historicoAtualizado = [];
     try {
-        await db.collection('atestados').doc(atestadoId).update({
-            'investigacaoPsicossocial.estagio': estagio,
-            'investigacaoPsicossocial.atribuidoParaId': atribuidoParaId || null,
-            'investigacaoPsicossocial.atribuidoParaNome': atribuidoParaNome || null,
-            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayUnion(novoRegistroHistorico),
-            'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+        await requestQueue.execute(`salvarAcompanhamento-${atestadoId}`, async () => {
+            await db.runTransaction(async (transaction) => {
+                const atestadoDoc = await transaction.get(atestadoRef);
+                if (!atestadoDoc.exists) {
+                    throw "Documento de atestado não existe!";
+                }
+
+                const investigacao = atestadoDoc.data().investigacaoPsicossocial || { historico: [] };
+                const novoHistorico = [...(investigacao.historico || []), novoRegistroHistorico];
+                historicoAtualizado = novoHistorico; // Guarda para atualização local
+
+                transaction.update(atestadoRef, {
+                    'investigacaoPsicossocial.estagio': estagio,
+                    'investigacaoPsicossocial.atribuidoParaId': atribuidoParaId || null,
+                    'investigacaoPsicossocial.atribuidoParaNome': atribuidoParaNome || null,
+                    'investigacaoPsicossocial.historico': novoHistorico,
+                    'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
         });
 
         mostrarMensagem("Acompanhamento salvo com sucesso!", "success");
@@ -461,29 +578,34 @@ async function salvarAcompanhamentoPsicossocial() {
                 criadoPorNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email,
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp()
             };
-            await db.collection('agenda_atividades').add(agendaTask);
+            
+            await requestQueue.execute(`criarTarefa-${atestadoId}`, async () => {
+                await db.collection('agenda_atividades').add(agendaTask);
+            });
+            
             mostrarMensagem(`Tarefa de acompanhamento atribuída a ${atribuidoParaNome} na agenda.`, "info");
         }
 
-        // Limpa o campo de observações
         document.getElementById('psico-observacoes').value = '';
         document.getElementById('psico-data-evento').value = '';
         document.getElementById('psico-observacoes-internas').value = '';
         
-        // Recarrega o histórico no modal
+        // OTIMIZAÇÃO: Atualiza cache local e UI sem ler do banco novamente
         const casoConsolidado = __casos_psico_cache.find(c => c.idCaso === atestadoId);
         if (casoConsolidado) {
-            // Busca dados atualizados do Firestore para garantir consistência
-            const atestadoDoc = await db.collection('atestados').doc(atestadoId).get();
-            if (atestadoDoc.exists) {
-                const investigacao = atestadoDoc.data().investigacaoPsicossocial || {};
-                await carregarHistoricoNoModal(atestadoId, casoConsolidado, investigacao);
-            }
+            const primeiroAtestado = casoConsolidado.atestados[0];
+            if (!primeiroAtestado.investigacaoPsicossocial) primeiroAtestado.investigacaoPsicossocial = {};
+            
+            // Atualiza dados locais
+            primeiroAtestado.investigacaoPsicossocial.historico = historicoAtualizado;
+            primeiroAtestado.investigacaoPsicossocial.estagio = estagio;
+            
+            await carregarHistoricoNoModal(atestadoId, casoConsolidado, primeiroAtestado.investigacaoPsicossocial);
         }
 
     } catch (error) {
         console.error("Erro ao salvar acompanhamento:", error);
-        mostrarMensagem("Erro ao salvar acompanhamento.", "error");
+        tratarErroCota(error, "salvar acompanhamento");
     } finally {
         btnSalvar.disabled = false;
         btnSalvar.innerHTML = 'Salvar Acompanhamento';
@@ -500,12 +622,14 @@ async function popularSelectUsuariosPsico(selectId) {
     if (select.options.length > 1) return;
 
     try {
-        const usersSnap = await db.collection('usuarios').orderBy('nome').get();
-        usersSnap.forEach(doc => {
-            const user = doc.data();
-            if (user.nome) {
-                select.innerHTML += `<option value="${doc.id}">${user.nome}</option>`;
-            }
+        await requestQueue.execute('carregarUsuarios', async () => {
+            const usersSnap = await db.collection('usuarios').orderBy('nome').get();
+            usersSnap.forEach(doc => {
+                const user = doc.data();
+                if (user.nome) {
+                    select.innerHTML += `<option value="${doc.id}">${user.nome}</option>`;
+                }
+            });
         });
     } catch (error) {
         console.error("Erro ao carregar usuários para atribuição:", error);
@@ -524,7 +648,10 @@ async function editarHistoricoPsicossocial(casoId, index) {
         indiceEditando = index;
 
         // Busca os dados mais recentes diretamente do Firestore para garantir consistência
-        const atestadoDoc = await db.collection('atestados').doc(casoId).get();
+        const atestadoDoc = await requestQueue.execute(`buscarAtestado-${casoId}`, async () => {
+            return await db.collection('atestados').doc(casoId).get();
+        });
+        
         if (!atestadoDoc.exists) {
             mostrarMensagem("Registro de atestado não encontrado.", "error");
             return;
@@ -542,7 +669,7 @@ async function editarHistoricoPsicossocial(casoId, index) {
         document.getElementById('psico-estagio').value = historicoItem.estagio;
         document.getElementById('psico-observacoes').value = historicoItem.observacoes;
         document.getElementById('psico-data-evento').value = historicoItem.dataEvento ? formatarDataParaInput(historicoItem.dataEvento) : '';
-        document.getElementById('psico-observacoes-internas').value = historicoItem.observacoesInternas || ''; // Carrega o novo campo
+        document.getElementById('psico-observacoes-internas').value = historicoItem.observacoesInternas || '';
 
         // Altera o botão de salvar para atualizar
         const btnSalvar = document.getElementById('btn-salvar-acompanhamento');
@@ -584,38 +711,39 @@ async function atualizarRegistroHistorico(casoId, index) {
         return;
     }
     
+    let historicoAtualizado = [];
     try {
         const atestadoRef = db.collection('atestados').doc(casoIdEditando);
-        const atestadoDoc = await atestadoRef.get();
-        const investigacao = atestadoDoc.data().investigacaoPsicossocial || {};
-        const historicoCompleto = investigacao.historico || [];
         
-        if (indiceEditando < 0 || indiceEditando >= historicoCompleto.length) {
-            mostrarMensagem("Índice do histórico inválido.", "error");
-            return;
-        }
-        
-        // Cria uma cópia do item antigo para remoção
-        const itemAntigo = { ...historicoCompleto[indiceEditando] };
-        
-        // Cria o novo item atualizado
-        const itemAtualizado = {
-            estagio: estagio,
-            observacoes: observacoes,
-            dataEvento: ['Conversa Agendada', 'Conversado com Funcionário', 'Plano de Ação Definido', 'Caso Encerrado'].includes(estagio) && dataEvento ? new Date(dataEvento.replace(/-/g, '\/')) : itemAntigo.dataEvento,
-            observacoesInternas: observacoesInternas, // Salva o novo campo na atualização
-            data: new Date(),
-            responsavelUid: firebase.auth().currentUser?.uid,
-            responsavelNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email
-        };
+        await requestQueue.execute(`atualizarHistorico-${casoIdEditando}`, async () => {
+            const atestadoDoc = await atestadoRef.get();
+            const investigacao = atestadoDoc.data().investigacaoPsicossocial || {};
+            const historicoCompleto = investigacao.historico || [];
+            
+            if (indiceEditando < 0 || indiceEditando >= historicoCompleto.length) {
+                throw new Error("Índice do histórico inválido.");
+            }
+            
+            // Cria o novo item atualizado
+            const itemAtualizado = {
+                estagio: estagio,
+                observacoes: observacoes,
+                dataEvento: ['Conversa Agendada', 'Conversado com Funcionário', 'Plano de Ação Definido', 'Caso Encerrado'].includes(estagio) && dataEvento ? new Date(dataEvento.replace(/-/g, '\/')) : historicoCompleto[indiceEditando].dataEvento,
+                observacoesInternas: observacoesInternas,
+                data: new Date(),
+                responsavelUid: firebase.auth().currentUser?.uid,
+                responsavelNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email
+            };
 
-        // Atualiza o array de histórico diretamente
-        historicoCompleto[index] = itemAtualizado;
+            // Atualiza o array de histórico diretamente
+            historicoCompleto[indiceEditando] = itemAtualizado;
+            historicoAtualizado = historicoCompleto;
 
-        await atestadoRef.update({
-            'investigacaoPsicossocial.historico': historicoCompleto,
-            'investigacaoPsicossocial.estagio': estagio,
-            'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+            await atestadoRef.update({
+                'investigacaoPsicossocial.historico': historicoCompleto,
+                'investigacaoPsicossocial.estagio': estagio,
+                'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+            });
         });
         
         mostrarMensagem("Registro do histórico atualizado!", "success");
@@ -634,20 +762,21 @@ async function atualizarRegistroHistorico(casoId, index) {
         document.getElementById('psico-data-evento').value = '';
         document.getElementById('psico-observacoes-internas').value = '';
         
-        // Atualiza o histórico no modal
+        // OTIMIZAÇÃO: Atualiza UI com dados locais
         const casoConsolidado = __casos_psico_cache.find(c => c.idCaso === casoId);
         if (casoConsolidado) {
-            // Busca dados atualizados
-            const atestadoAtualizado = await db.collection('atestados').doc(casoId).get();
-            if (atestadoAtualizado.exists) {
-                const investigacaoAtualizada = atestadoAtualizado.data().investigacaoPsicossocial || {};
-                await carregarHistoricoNoModal(casoIdEditando, casoConsolidado, investigacaoAtualizada);
-            }
+            const primeiroAtestado = casoConsolidado.atestados[0];
+            if (!primeiroAtestado.investigacaoPsicossocial) primeiroAtestado.investigacaoPsicossocial = {};
+            
+            primeiroAtestado.investigacaoPsicossocial.historico = historicoAtualizado;
+            primeiroAtestado.investigacaoPsicossocial.estagio = estagio;
+
+            await carregarHistoricoNoModal(casoIdEditando, casoConsolidado, primeiroAtestado.investigacaoPsicossocial);
         }
         
     } catch (error) {
         console.error("Erro ao atualizar histórico:", error);
-        mostrarMensagem("Falha ao atualizar o histórico.", "error");
+        tratarErroCota(error, "atualizar o histórico");
     } finally {
         btnSalvar.disabled = false;
         btnSalvar.innerHTML = 'Salvar Acompanhamento';
@@ -658,53 +787,83 @@ async function atualizarRegistroHistorico(casoId, index) {
  * Exclui um registro específico do histórico de acompanhamento.
  * @param {string} casoId O ID do atestado que iniciou o caso.
  * @param {number} index O índice do registro a ser excluído.
+ * @param {Event} event O evento do clique (opcional)
  */
-async function excluirHistoricoPsicossocial(casoId, index) {
-    if (!confirm("Tem certeza que deseja excluir este registro do histórico?")) return;
+async function excluirHistoricoPsicossocial(casoId, index, event) {
+    if (!confirm("Tem certeza que deseja excluir este registro do histórico? Esta ação não pode ser desfeita.")) return;
+
+    // Previne cliques múltiplos com uma flag local
+    const btnExcluir = event?.target?.closest('button');
+    if (btnExcluir && btnExcluir.disabled) return;
+    if (btnExcluir) {
+        btnExcluir.disabled = true;
+        btnExcluir.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    }
+
+    const atestadoRef = db.collection('atestados').doc(casoId);
+    let historicoAtualizado = [];
 
     try {
-        const atestadoRef = db.collection('atestados').doc(casoId);
-        const atestadoDoc = await atestadoRef.get();
+        // Busca o documento ANTES da transação para evitar múltiplas tentativas
+        const atestadoDoc = await requestQueue.execute(`buscarAtestado-${casoId}`, async () => {
+            return await atestadoRef.get();
+        });
         
         if (!atestadoDoc.exists) {
-            mostrarMensagem("Atestado não encontrado.", "error");
+            mostrarMensagem("Documento de atestado não foi encontrado.", "error");
             return;
         }
-        
+
         const investigacao = atestadoDoc.data().investigacaoPsicossocial || {};
         const historicoCompleto = investigacao.historico || [];
-        
+
         if (index < 0 || index >= historicoCompleto.length) {
-            mostrarMensagem("Índice do histórico inválido.", "error");
+            mostrarMensagem("Não foi possível encontrar o registro no histórico para excluir.", "error");
             return;
         }
-        
-        const itemParaRemover = historicoCompleto[index];
-        
-        await atestadoRef.update({
-            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemParaRemover)
+
+        // Verifica se o item não é um atestado (apenas acompanhamentos podem ser excluídos)
+        if (!historicoCompleto[index].estagio) {
+            mostrarMensagem("Registros de atestado não podem ser excluídos.", "warning");
+            return;
+        }
+
+        // Cria o novo array sem o item removido
+        historicoAtualizado = [...historicoCompleto];
+        historicoAtualizado.splice(index, 1);
+
+        // Usa uma transação SIMPLIFICADA - apenas atualiza com o novo array
+        await requestQueue.execute(`excluirHistorico-${casoId}-${index}`, async () => {
+            await db.runTransaction(async (transaction) => {
+                // Não faz get dentro da transação - usa o que já temos
+                transaction.update(atestadoRef, { 
+                    'investigacaoPsicossocial.historico': historicoAtualizado 
+                });
+            });
         });
 
-        mostrarMensagem("Registro do histórico excluído.", "success");
-        
-        // Atualiza o histórico no modal
+        mostrarMensagem("Registro do histórico excluído com sucesso.", "success");
+
+        // OTIMIZAÇÃO: Atualiza a UI usando dados locais (sem ler do banco)
         const casoConsolidado = __casos_psico_cache.find(c => c.idCaso === casoId);
         if (casoConsolidado) {
-            // Busca dados atualizados
-            const atestadoAtualizado = await db.collection('atestados').doc(casoId).get();
-            if (atestadoAtualizado.exists) {
-                const investigacaoAtualizada = atestadoAtualizado.data().investigacaoPsicossocial || {};
-                await carregarHistoricoNoModal(casoId, casoConsolidado, investigacaoAtualizada);
+            const primeiroAtestado = casoConsolidado.atestados[0];
+            if (!primeiroAtestado.investigacaoPsicossocial) {
+                primeiroAtestado.investigacaoPsicossocial = {};
             }
+            primeiroAtestado.investigacaoPsicossocial.historico = historicoAtualizado;
+            
+            await carregarHistoricoNoModal(casoId, casoConsolidado, primeiroAtestado.investigacaoPsicossocial);
         }
         
-        // Se estava em modo de edição, cancela a edição
-        if (modoEdicaoAtivo && casoIdEditando === casoId) {
+        // Cancela modo de edição se o item excluído era o que estava sendo editado
+        if (modoEdicaoAtivo && casoIdEditando === casoId && indiceEditando === index) {
             modoEdicaoAtivo = false;
             casoIdEditando = null;
-            indiceEditando = null;            document.getElementById('psico-observacoes-internas').value = '';
+            indiceEditando = null;
             document.getElementById('psico-observacoes').value = '';
             document.getElementById('psico-data-evento').value = '';
+            document.getElementById('psico-observacoes-internas').value = '';
             
             const btnSalvar = document.getElementById('btn-salvar-acompanhamento');
             if (btnSalvar) {
@@ -712,10 +871,28 @@ async function excluirHistoricoPsicossocial(casoId, index) {
                 btnSalvar.onclick = salvarAcompanhamentoPsicossocial;
             }
         }
-        
+
     } catch (error) {
         console.error("Erro ao excluir registro do histórico:", error);
-        mostrarMensagem("Falha ao excluir o registro.", "error");
+        tratarErroCota(error, "excluir o registro");
+    } finally {
+        if (btnExcluir) {
+            btnExcluir.disabled = false;
+            btnExcluir.innerHTML = '<i class="fas fa-trash"></i>';
+        }
+    }
+}
+
+// Função auxiliar para tratar erros de cota (429)
+function tratarErroCota(error, acao) {
+    if (error.code === 'resource-exhausted' || (error.message && error.message.includes('429'))) {
+        // Mostra mensagem mais amigável
+        mostrarMensagem(`⚠️ Limite de operações excedido ao ${acao}. O sistema aguardará automaticamente e tentará novamente. Por favor, aguarde...`, "warning");
+        
+        // Log detalhado para debug
+        console.warn(`Erro 429 ao ${acao}. O sistema tentará novamente com backoff exponencial.`);
+    } else {
+        mostrarMensagem(`Falha ao ${acao}: ${error.message}`, "error");
     }
 }
 
@@ -744,11 +921,19 @@ function imprimirHistoricoPsicossocial() {
         detalhes: `Atestado de <strong>${formatarDuracaoAtestado(atestado)}</strong> (CID: ${atestado.cid})`
     }));
 
-    const historicoAcompanhamento = (investigacao.historico || []).map(item => ({
-        tipo: item.estagio,
-        data: item.data.toDate(),
-        detalhes: escapeHTML(item.observacoes)
-    }));
+    const incluirInternas = document.getElementById('check-imprimir-internas')?.checked;
+
+    const historicoAcompanhamento = (investigacao.historico || []).map(item => {
+        let detalhes = escapeHTML(item.observacoes);
+        if (incluirInternas && item.observacoesInternas) {
+            detalhes += `<br><div style="margin-top:5px; padding:5px; background:#f9f9f9; border-left:3px solid #999; font-size:0.9em;"><strong>Obs. Interna:</strong> ${escapeHTML(item.observacoesInternas)}</div>`;
+        }
+        return {
+            tipo: item.estagio,
+            data: item.data.toDate(),
+            detalhes: detalhes
+        };
+    });
 
     const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
         .sort((a, b) => b.data - a.data); // Ordena do mais novo para o mais antigo
@@ -934,14 +1119,9 @@ function imprimirHistoricoPsicossocial() {
     doc.write(conteudo);
     doc.close();
 
-    // Aguardar o carregamento completo do iframe
-    iframe.onload = function() {
+    setTimeout(() => {
         iframe.contentWindow.focus();
         iframe.contentWindow.print();
-        
-        // Limpar após a impressão
-        setTimeout(() => {
-            document.body.removeChild(iframe);
-        }, 1000);
-    };
+        setTimeout(() => document.body.removeChild(iframe), 2000);
+    }, 500);
 }

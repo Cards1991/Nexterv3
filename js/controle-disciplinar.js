@@ -52,6 +52,14 @@ function setupFiltrosDisciplinares() {
 // Função para carregar dados de controle disciplinar
 async function carregarDadosDisciplinares() {
     console.log('Carregando dados de controle disciplinar...');
+
+    // Garante que a tabela de registros tenha uma altura fixa e barra de rolagem
+    const tableContainer = document.getElementById('tabela-controle-disciplinar')?.closest('.table-responsive');
+    if (tableContainer) {
+        tableContainer.style.maxHeight = '60vh'; // ou qualquer altura desejada
+        tableContainer.style.overflowY = 'auto';
+    }
+
     let todosRegistros = []; // Para usar no dashboard
 
     const tbody = document.getElementById('tabela-controle-disciplinar');

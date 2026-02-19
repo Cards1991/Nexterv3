@@ -99,19 +99,15 @@ async function carregarPainelExperiencia() {
     container.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando contratos...</td></tr>';
 
     try {
-        // Obter valores dos filtros
         const filtroInicio = document.getElementById('filtro-exp-inicio')?.value;
         const filtroFim = document.getElementById('filtro-exp-fim')?.value;
         const filtroPeriodo = document.getElementById('filtro-exp-periodo')?.value;
         const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
 
         const hoje = new Date();
-        hoje.setHours(0,0,0,0);
+        hoje.setHours(0, 0, 0, 0);
 
-        // Buscar funcionários ativos
         let query = db.collection('funcionarios').where('status', '==', 'Ativo');
-
-        // Lógica de Filtro de Setor
         let setorEfetivo = filtroSetor;
         if (!permissoesUsuario.isAdmin && permissoesUsuario.restricaoSetor) {
             setorEfetivo = permissoesUsuario.restricaoSetor;
@@ -120,93 +116,72 @@ async function carregarPainelExperiencia() {
             query = query.where('setor', '==', setorEfetivo);
         }
 
-        const snapshot = await query.get();
+        const [funcionariosSnap, todasAvaliacoesSnap] = await Promise.all([
+            query.get(),
+            db.collection('avaliacoes_experiencia').get()
+        ]);
+
+        const mapaAvaliacoes = new Map();
+        todasAvaliacoesSnap.forEach(doc => {
+            const aval = doc.data();
+            mapaAvaliacoes.set(`${aval.funcionarioId}-${aval.periodo}`, true);
+        });
 
         let pendencias = [];
         let totalEmExperiencia = 0;
 
-        snapshot.forEach(doc => {
+        funcionariosSnap.forEach(doc => {
             const func = { id: doc.id, ...doc.data() };
-            
             if (!func.dataAdmissao) return;
-            
+
             const admissao = func.dataAdmissao.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
-            admissao.setHours(0, 0, 0, 0); // Normalizar hora para cálculo correto de dias
-            
-            // Calcular datas de vencimento
+            admissao.setHours(0, 0, 0, 0);
+
             const vencimento45 = new Date(admissao);
             vencimento45.setDate(admissao.getDate() + 45);
-            
+
             const vencimento90 = new Date(admissao);
             vencimento90.setDate(admissao.getDate() + 90);
 
-            // Verificar se está no período de experiência (até 90 dias após admissão)
             if (hoje <= vencimento90) {
                 totalEmExperiencia++;
             }
 
-            // Lógica para identificar pendências
-            // Verifica 1º Período (45 dias)
-            const diasPara45 = Math.ceil((vencimento45 - hoje) / (1000 * 60 * 60 * 24));
-            
-            let mostrar45 = false;
-            
-            // Lógica de filtro
-            if (filtroInicio || filtroFim) {
-                // Se tem filtro de data, respeita o intervalo (desde que não esteja vencido há muito tempo, opcional)
-                const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
-                const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento45 >= dataIni && vencimento45 <= dataFim) mostrar45 = true;
-            } else {
-                // Padrão: Próximos 10 dias
-                if (diasPara45 <= 10 && diasPara45 >= 0) mostrar45 = true;
-            }
+            const processarPendencia = (periodo, vencimento) => {
+                if (mapaAvaliacoes.has(`${func.id}-${periodo}`)) return; 
+                
+                const diasParaVencer = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24));
+                if (diasParaVencer < 0) return; // Não mostra vencidos
 
-            if (mostrar45 && (!filtroPeriodo || filtroPeriodo === '45')) {
+                if (filtroInicio && vencimento < new Date(filtroInicio.replace(/-/g, '\/'))) return;
+                if (filtroFim && vencimento > new Date(filtroFim.replace(/-/g, '\/'))) return;
+
+                
+                if (filtroPeriodo && filtroPeriodo != periodo) return;
+                
                 pendencias.push({
                     ...func,
-                    periodo: 45,
-                    vencimento: vencimento45,
-                    diasRestantes: diasPara45,
-                    responsavel: func.responsavelAvaliacao45
+                    periodo: periodo,
+                    vencimento: vencimento,
+                    diasRestantes: diasParaVencer,
+                    responsavel: periodo === 45 ? func.responsavelAvaliacao45 : func.responsavelAvaliacao90
                 });
-            }
+            };
 
-            // Verifica 2º Período (90 dias)
-            const diasPara90 = Math.ceil((vencimento90 - hoje) / (1000 * 60 * 60 * 24));
-            
-            let mostrar90 = false;
-            if (filtroInicio || filtroFim) {
-                const dataIni = filtroInicio ? new Date(filtroInicio) : new Date('2000-01-01');
-                const dataFim = filtroFim ? new Date(filtroFim) : new Date('2100-01-01');
-                if (vencimento90 >= dataIni && vencimento90 <= dataFim) mostrar90 = true;
-            } else {
-                // Padrão: Próximos 10 dias
-                if (diasPara90 <= 10 && diasPara90 >= 0) mostrar90 = true;
-            }
-
-            if (mostrar90 && (!filtroPeriodo || filtroPeriodo === '90')) {
-                pendencias.push({
-                    ...func,
-                    periodo: 90,
-                    vencimento: vencimento90,
-                    diasRestantes: diasPara90,
-                    responsavel: func.responsavelAvaliacao90
-                });
-            }
+            processarPendencia(45, vencimento45);
+            processarPendencia(90, vencimento90);
         });
 
-        // Ordenar por urgência (menor dias restantes)
         pendencias.sort((a, b) => a.diasRestantes - b.diasRestantes);
 
         renderizarTabelaExperiencia(pendencias);
         atualizarKPIsExperiencia(totalEmExperiencia, pendencias.length);
         carregarDashboardExperienciaAnalitico();
-        carregarAvaliacoesConcluidas(); // Carrega o novo histórico
+        carregarAvaliacoesConcluidas();
 
     } catch (error) {
         console.error("Erro ao carregar painel de experiência:", error);
-        container.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        container.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados: ${error.message}</td></tr>`;
     }
 }
 
@@ -284,11 +259,10 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
             const funcData = funcDoc.data();
             const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
 
-            // Contar atestados desde a admissão
-            // Alterado para filtrar em memória e evitar erro de índice composto no Firestore
-            const [atestadosSnap, faltasSnap] = await Promise.all([
+            const [atestadosSnap, faltasSnap, disciplinaresSnap] = await Promise.all([
                 db.collection('atestados').where('funcionarioId', '==', id).get(),
-                db.collection('faltas').where('funcionarioId', '==', id).get()
+                db.collection('faltas').where('funcionarioId', '==', id).get(),
+                db.collection('registros_disciplinares').where('funcionarioId', '==', id).get()
             ]);
 
             const numAtestados = atestadosSnap.docs.filter(doc => {
@@ -303,15 +277,62 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
                 return data >= dataAdmissao;
             }).length;
 
+            const disciplinares = disciplinaresSnap.docs.map(doc => {
+                const data = doc.data();
+                return {
+                    ...data,
+                    dataOcorrencia: data.dataOcorrencia?.toDate ? data.dataOcorrencia.toDate() : new Date(data.dataOcorrencia)
+                };
+            }).filter(d => d.dataOcorrencia >= dataAdmissao);
+            const numDisciplinares = disciplinares.length;
+
+
             let msg = '';
             if (numAtestados > 0) msg += `<div><i class="fas fa-notes-medical me-2 text-warning"></i> <strong>${numAtestados} atestado(s)</strong> registrados desde a admissão.</div>`;
             if (numFaltas > 0) msg += `<div><i class="fas fa-user-times me-2 text-danger"></i> <strong>${numFaltas} falta(s)</strong> registradas desde a admissão.</div>`;
+            
+            if (numDisciplinares > 0) {
+                msg += `<div class="mt-2"><i class="fas fa-gavel me-2 text-secondary"></i> <strong>${numDisciplinares} medida(s) disciplinar(es)</strong> registradas:</div>`;
+                msg += '<ul class="list-group list-group-flush small">';
+                disciplinares.forEach(d => {
+                    msg += `<li class="list-group-item py-1 px-2"><strong>${d.medidaAplicada}</strong> em ${d.dataOcorrencia.toLocaleDateString('pt-BR')}: <em>${d.descricao}</em></li>`;
+                });
+                msg += '</ul>';
+            }
+
 
             if (msg) {
                 alertContainer.innerHTML = `<div class="alert alert-warning border-warning">${msg}</div>`;
             } else {
-                alertContainer.innerHTML = '<div class="alert alert-success border-success"><i class="fas fa-check-circle me-2"></i> Sem ocorrências (faltas/atestados) no período.</div>';
+                alertContainer.innerHTML = '<div class="alert alert-success border-success"><i class="fas fa-check-circle me-2"></i> Sem ocorrências (faltas/atestados/disciplinares) no período.</div>';
             }
+
+            // Lógica para desabilitar notas de assiduidade
+            const assiduidadeRadios = {
+                r4: document.querySelector('input[name="aval-assiduidade"][value="4"]'),
+                r5: document.querySelector('input[name="aval-assiduidade"][value="5"]')
+            };
+
+            const radiosToUpdate = Object.values(assiduidadeRadios).filter(r => r);
+
+            if (numAtestados > 0 || numFaltas > 0 || numDisciplinares > 0) {
+                radiosToUpdate.forEach(radio => {
+                    radio.disabled = true;
+                    if (radio.parentElement) {
+                        radio.parentElement.classList.add('text-muted');
+                        radio.parentElement.title = 'Desabilitado devido a ocorrências (faltas, atestados ou disciplinares).';
+                    }
+                });
+            } else {
+                radiosToUpdate.forEach(radio => {
+                    radio.disabled = false;
+                    if (radio.parentElement) {
+                        radio.parentElement.classList.remove('text-muted');
+                        radio.parentElement.title = '';
+                    }
+                });
+            }
+
         } catch (error) {
             console.error("Erro ao buscar ocorrências:", error);
             alertContainer.innerHTML = '';
@@ -450,7 +471,13 @@ async function carregarDashboardExperienciaAnalitico() {
 // --- Funções de Impressão ---
 
 function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '_________________________') {
-    const dataFormatada = dados.dataAvaliacao.toLocaleDateString('pt-BR');
+    let dataFormatada = 'N/A';
+    if (dados.dataAvaliacao) {
+        const dataObj = dados.dataAvaliacao.toDate ? dados.dataAvaliacao.toDate() : new Date(dados.dataAvaliacao);
+        if (!isNaN(dataObj.getTime())) {
+            dataFormatada = dataObj.toLocaleDateString('pt-BR');
+        }
+    }
     
     const conteudo = `
         <html>
@@ -646,6 +673,10 @@ async function visualizarAvaliacao(id) {
         if (!doc.exists) return;
         const avaliacao = doc.data();
         
+        if (avaliacao.dataAvaliacao && avaliacao.dataAvaliacao.toDate) {
+            avaliacao.dataAvaliacao = avaliacao.dataAvaliacao.toDate();
+        }
+
         const funcDoc = await db.collection('funcionarios').doc(avaliacao.funcionarioId).get();
         const nomeFunc = funcDoc.exists ? funcDoc.data().nome : 'N/A';
         const setorFunc = funcDoc.exists ? funcDoc.data().setor : 'N/A';

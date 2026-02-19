@@ -5027,7 +5027,17 @@
                         </div>
                     </form>
                 </div>
-                <div class="modal-footer"><button type="button" class="btn btn-outline-secondary me-auto" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary" id="btn-salvar-acompanhamento" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button></div>
+                <div class="modal-footer">
+                    <div class="me-auto d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-outline-secondary" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button>
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="check-imprimir-internas">
+                            <label class="form-check-label small" for="check-imprimir-internas">Incluir Obs. Internas</label>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" id="btn-salvar-acompanhamento" onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button>
+                </div>
             </div>
         </div>
     </div>
@@ -6805,5 +6815,7 @@
     <script type="module" src="js/body-map-3d.js"></script>
     
     <script src="js/ponto-pf.js" defer></script>
+    <!-- Correções Personalizadas (Relatórios e Filtros) -->
+    <script src="js/custom-fixes.js"></script>
 </body>
 </html>
