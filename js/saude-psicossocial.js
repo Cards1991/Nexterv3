@@ -1027,8 +1027,10 @@ function imprimirHistoricoPsicossocial() {
                 }
                 .signature-section {
                     display: flex;
-                    justify-content: space-around;
-                    margin-top: 100px;
+                    flex-direction: column;
+                    align-items: center;
+                    margin-top: 30px;
+                    gap: 50px;
                 }
                 .signature-area {
                     text-align: center;
@@ -1041,6 +1043,13 @@ function imprimirHistoricoPsicossocial() {
                 .signature-area p {
                     margin-top: 5px;
                     font-size: 12px;
+                }
+                .declaration {
+                    margin-top: 60px;
+                    text-align: center;
+                    font-size: 12px;
+                    font-style: italic;
+                    margin-bottom: 20px;
                 }
 
                 @media print {
@@ -1086,14 +1095,19 @@ function imprimirHistoricoPsicossocial() {
                     </tbody>
                 </table>
 
+                <div class="declaration">
+                    <p>Declaro que os fatos aqui relatados são expressão da verdade e que fui acolhido pela equipe de saúde da empresa, tendo recebido as orientações pertinentes.</p>
+                </div>
+
                 <div class="signature-section">
                     <div class="signature-area">
                         <div class="signature-line"></div>
-                        <p>Assinatura do Responsável</p>
+                        <p>${colaboradorNome}</p>
+                        <p style="font-size: 10px; margin-top: 0;">Colaborador</p>
                     </div>
                     <div class="signature-area">
                         <div class="signature-line"></div>
-                        <p>${colaboradorNome}</p>
+                        <p>Assinatura do Responsável</p>
                     </div>
                 </div>
                 
