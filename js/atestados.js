@@ -1001,17 +1001,24 @@ async function salvarAtestado() {
                 .get();
 
             if (!faltasSnap.empty) {
-                let msg = `⚠️ Encontradas ${faltasSnap.size} falta(s) lançada(s) para ${colabNome} nesta data.\n\n`;
+                const dataFaltaStr = startOfDay.toLocaleDateString('pt-BR');
+                let msg = `⚠️ Encontradas ${faltasSnap.size} falta(s) lançada(s) para ${colabNome} em ${dataFaltaStr}.\n\n`;
                 msg += `Deseja atualizar a justificativa dessas faltas com os dados deste atestado?\n`;
-                msg += `Isso ajudará a identificar que o período foi coberto pelo comprovante.`;
+                msg += `Isso ajudará a identificar que o período foi coberto pelo comprovante (considerando apenas o horário restante como falta).`;
 
                 if (confirm(msg)) {
                     const batch = db.batch();
-                    const justificativaAtestado = `Atestado: ${cid ? 'CID ' + cid : 'S/ CID'} (${duracaoValor} ${duracaoTipo})`;
+                    // Identifica se é parcial (horas) ou total (dias)
+                    const tipoCobertura = duracaoTipo === 'horas' ? 'Atestado Parcial' : 'Atestado Total';
+                    const justificativaAtestado = `${tipoCobertura}: ${cid ? 'CID ' + cid : 'S/ CID'} (${duracaoValor} ${duracaoTipo})`;
                     
                     faltasSnap.forEach(doc => {
                         const faltaRef = db.collection('faltas').doc(doc.id);
                         const faltaData = doc.data();
+                        
+                        // Evita duplicação se já foi atualizado
+                        if (faltaData.justificativa && faltaData.justificativa.includes(justificativaAtestado)) return;
+
                         const novaJust = (faltaData.justificativa && faltaData.justificativa !== 'Não informado')
                             ? `${faltaData.justificativa} | ${justificativaAtestado}`
                             : justificativaAtestado;
