@@ -6,7 +6,18 @@ const subdivisoesPorOrigem = {
 };
 
 async function inicializarFinanceiro() {
-    configurarFiltrosFinanceiro();
+    // Configurar filtros de data para o mês atual
+    const hoje = new Date();
+    const primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
+    const ultimoDiaMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
+
+    const filtroInicio = document.getElementById('fin-filtro-inicio');
+    const filtroFim = document.getElementById('fin-filtro-fim');
+    
+    if (filtroInicio) filtroInicio.value = primeiroDiaMes;
+    if (filtroFim) filtroFim.value = ultimoDiaMes;
+
+    await configurarFiltrosFinanceiro();
     await carregarLancamentosFinanceiros();
     document.getElementById('btn-fin-filtrar').addEventListener('click', carregarLancamentosFinanceiros);
     const selectAllCheckbox = document.getElementById('fin-print-select-all');
@@ -17,7 +28,7 @@ async function inicializarFinanceiro() {
     }
 }
 
-function configurarFiltrosFinanceiro() {
+async function configurarFiltrosFinanceiro() {
     const origemSelect = document.getElementById('fin-filtro-origem');
     const subdivisaoSelect = document.getElementById('fin-filtro-subdivisao');
 
@@ -33,23 +44,42 @@ function configurarFiltrosFinanceiro() {
             });
         }
     });
+
+    // Popular Setores
+    const setorSelect = document.getElementById('fin-filtro-setor');
+    if (setorSelect) {
+        setorSelect.innerHTML = '<option value="">Todos os Setores</option>';
+        try {
+            const setoresSnap = await db.collection('setores').orderBy('descricao').get();
+            const setoresSet = new Set();
+            setoresSnap.forEach(doc => {
+                const setor = doc.data().descricao || doc.data().nome;
+                if (setor) setoresSet.add(setor);
+            });
+            [...setoresSet].sort().forEach(s => setorSelect.innerHTML += `<option value="${s}">${s}</option>`);
+        } catch (error) {
+            console.error("Erro ao carregar setores para o filtro financeiro:", error);
+        }
+    }
 }
 
 async function carregarLancamentosFinanceiros() {
     const tbody = document.getElementById('tabela-financeiro');
     const totalEl = document.getElementById('fin-total-valor');
-    tbody.innerHTML = '<tr><td colspan="10" class="text-center">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="9" class="text-center">Carregando...</td></tr>';
 
     try {
         let query = db.collection('lancamentos_financeiros');
 
         const origem = document.getElementById('fin-filtro-origem').value;
         const subdivisao = document.getElementById('fin-filtro-subdivisao').value;
+        const setor = document.getElementById('fin-filtro-setor').value;
         const inicio = document.getElementById('fin-filtro-inicio').value;
         const fim = document.getElementById('fin-filtro-fim').value;
 
         if (origem) query = query.where('origem', '==', origem);
         if (subdivisao) query = query.where('subdivisao', '==', subdivisao);
+        if (setor) query = query.where('setor', '==', setor);
         if (inicio) {
             // Garante que a data de início comece à meia-noite
             query = query.where('dataVencimento', '>=', new Date(inicio.replace(/-/g, '\/')));
@@ -71,7 +101,7 @@ async function carregarLancamentosFinanceiros() {
         });
 
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum lançamento encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum lançamento encontrado.</td></tr>';
             totalEl.textContent = 'Total: R$ 0,00';
             return;
         }
@@ -83,18 +113,7 @@ async function carregarLancamentosFinanceiros() {
             valorTotal += lancamento.valor || 0;
 
             const vencimento = lancamento.dataVencimento.toDate();
-            const hoje = new Date();
-            hoje.setHours(0,0,0,0);
             
-            let statusBadge;
-            if (lancamento.status === 'Pago' || lancamento.status === 'pago') {
-                statusBadge = '<span class="badge bg-success">Pago</span>';
-            } else if (vencimento < hoje) {
-                statusBadge = '<span class="badge bg-danger">Vencido</span>';
-            } else {
-                statusBadge = '<span class="badge bg-warning text-dark">Pendente</span>';
-            }
-
             const nomeEmpresa = empresasMap[lancamento.empresaId] || 'N/A';
 
             const row = `
@@ -107,7 +126,6 @@ async function carregarLancamentosFinanceiros() {
                     <td>${lancamento.subdivisao}</td>
                     <td class="text-end">${(lancamento.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</td>
                     <td class="text-truncate" style="max-width: 150px;" title="${lancamento.motivo || ''}">${lancamento.motivo || '-'}</td>
-                    <td>${statusBadge}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-info" onclick="abrirModalLancamentoFinanceiro('${doc.id}', null, true)"><i class="fas fa-eye"></i></button>
                         <button class="btn btn-sm btn-outline-secondary" onclick="abrirModalLancamentoFinanceiro('${doc.id}')"><i class="fas fa-edit"></i></button>
@@ -122,7 +140,7 @@ async function carregarLancamentosFinanceiros() {
 
     } catch (error) {
         console.error("Erro ao carregar lançamentos financeiros:", error);
-        tbody.innerHTML = '<tr><td colspan="10" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
 }
 
@@ -161,6 +179,7 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
                         </form>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-danger me-auto" id="btn-excluir-lancamento-modal" onclick="excluirLancamentoDoModal()">Excluir</button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                         <button type="button" class="btn btn-info" id="btn-imprimir-programacao" style="display: none;">
                             <i class="fas fa-print"></i> Imprimir Programação
@@ -277,11 +296,13 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
     const formFields = form.querySelectorAll('input, select, textarea');
     const saveButton = modalEl.querySelector('.modal-footer .btn-primary');
     const printButton = modalEl.querySelector('#btn-imprimir-programacao');
+    const deleteButton = modalEl.querySelector('#btn-excluir-lancamento-modal');
 
     if (readOnly) {
         modalEl.querySelector('.modal-title').textContent = 'Visualizar Lançamento';
         formFields.forEach(field => field.disabled = true);
         saveButton.style.display = 'none';
+        deleteButton.style.display = 'none';
         printButton.style.display = 'inline-block';
 
         // Adiciona o evento de clique para impressão
@@ -298,6 +319,7 @@ async function abrirModalLancamentoFinanceiro(lancamentoId = null, dadosPadrao =
         document.getElementById('fin-parcelas').disabled = !!lancamentoId;
         saveButton.style.display = 'inline-block';
         printButton.style.display = 'none';
+        deleteButton.style.display = lancamentoId ? 'inline-block' : 'none';
     }
 
     // Gera o campo de vencimento inicial
@@ -433,6 +455,41 @@ async function excluirLancamentoFinanceiro(lancamentoId) {
         await db.collection('lancamentos_financeiros').doc(lancamentoId).delete();
         mostrarMensagem('Lançamento excluído com sucesso!', 'success');
         await carregarLancamentosFinanceiros();
+    } catch (error) {
+        console.error("Erro ao excluir lançamento:", error);
+        mostrarMensagem('Erro ao excluir lançamento.', 'error');
+    }
+}
+
+async function excluirLancamentoDoModal() {
+    const lancamentoId = document.getElementById('lancamento-id').value;
+    if (!lancamentoId) {
+        mostrarMensagem("Nenhum lançamento selecionado para exclusão.", "warning");
+        return;
+    }
+
+    if (!confirm('Tem certeza que deseja excluir este lançamento financeiro?')) {
+        return;
+    }
+
+    try {
+        await db.collection('lancamentos_financeiros').doc(lancamentoId).delete();
+        mostrarMensagem('Lançamento excluído com sucesso!', 'success');
+
+        const modalEl = document.getElementById('lancamentoFinanceiroModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        }
+        
+        // Atualiza as duas seções que podem ter originado a chamada
+        if (typeof carregarLancamentosFinanceiros === 'function' && document.getElementById('tabela-financeiro')?.offsetParent !== null) {
+            await carregarLancamentosFinanceiros();
+        }
+        if (typeof inicializarAnaliseCustos === 'function' && document.getElementById('tabela-custos-detalhes')?.offsetParent !== null) {
+            await carregarDadosAnaliseCustos();
+        }
+
     } catch (error) {
         console.error("Erro ao excluir lançamento:", error);
         mostrarMensagem('Erro ao excluir lançamento.', 'error');
