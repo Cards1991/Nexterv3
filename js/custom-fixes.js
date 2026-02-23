@@ -364,3 +364,64 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+// 6. Correção do Filtro de Subdivisão (Painel Financeiro)
+document.addEventListener('DOMContentLoaded', () => {
+    const origemSelect = document.getElementById('fin-filtro-origem');
+    const subdivisaoSelect = document.getElementById('fin-filtro-subdivisao');
+
+    if (origemSelect && subdivisaoSelect) {
+        // Mapeamento de Origem -> Subdivisões
+        const subdivisoesPorOrigem = {
+            'FOPAG': [
+                'Salário Mensal',
+                'Adiantamento Salarial',
+                '13º Salário',
+                'Férias',
+                'Rescisão',
+                'Pró-labore'
+            ],
+            'IMPOSTOS': [
+                'FGTS',
+                'Multa de 40% (FGTS)',
+                'INSS',
+                'IRRF',
+                'DARF',
+                'Contribuição Sindical'
+            ],
+            'DESPESAS COM M.O.': [
+                'Vale Transporte',
+                'Vale Alimentação/Refeição',
+                'Plano de Saúde',
+                'Seguro de Vida',
+                'Exames Ocupacionais',
+                'EPIs',
+                'Uniformes'
+            ]
+        };
+
+        // Função para atualizar as opções de subdivisão
+        function atualizarSubdivisoes() {
+            const origemSelecionada = origemSelect.value;
+            
+            // Limpa as opções atuais (mantendo a primeira "Todas")
+            subdivisaoSelect.innerHTML = '<option value="">Todas</option>';
+
+            if (origemSelecionada && subdivisoesPorOrigem[origemSelecionada]) {
+                const opcoes = subdivisoesPorOrigem[origemSelecionada];
+                opcoes.forEach(opcao => {
+                    const option = document.createElement('option');
+                    option.value = opcao;
+                    option.textContent = opcao;
+                    subdivisaoSelect.appendChild(option);
+                });
+            }
+        }
+
+        // Adiciona o listener para atualizar quando a origem mudar
+        origemSelect.addEventListener('change', atualizarSubdivisoes);
+        
+        // Inicializa o filtro (caso a página recarregue com valor selecionado)
+        atualizarSubdivisoes();
+    }
+});

@@ -124,12 +124,70 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // Função para exportar para Excel
+    const exportarDemitidosExcel = () => {
+        // Verifica se a biblioteca XLSX está carregada
+        if (typeof XLSX === 'undefined') {
+            const script = document.createElement('script');
+            script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+            script.onload = () => exportarDemitidosExcel();
+            document.head.appendChild(script);
+            return;
+        }
+
+        let dadosParaExportar = demitidosCache;
+        const termoBusca = document.getElementById('busca-demitidos')?.value.toLowerCase();
+        
+        if (termoBusca) {
+             dadosParaExportar = demitidosCache.filter(d => 
+                (d.nome && d.nome.toLowerCase().includes(termoBusca)) || 
+                (d.cpf && d.cpf.includes(termoBusca))
+            );
+        }
+
+        if (!dadosParaExportar || dadosParaExportar.length === 0) {
+            mostrarMensagem("Não há dados para exportar.", "warning");
+            return;
+        }
+
+        const dataToExport = dadosParaExportar.map(d => {
+            const tipo = d.tipoDemissao || d.motivo || 'Não especificado';
+            const detalhe = d.tipoDemissao ? d.motivo : (d.motivoDetalhado || d.detalhes || '');
+            
+            return {
+                "Nome": d.nome,
+                "Empresa": d.empresaNome,
+                "Setor": d.setor,
+                "Data Demissão": d.data ? new Date(d.data.toDate()).toLocaleDateString('pt-BR') : '',
+                "Tipo Demissão": tipo,
+                "Detalhes/Motivo": detalhe,
+                "Aviso Prévio": d.avisoPrevio || ''
+            };
+        });
+
+        const ws = XLSX.utils.json_to_sheet(dataToExport);
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, "Demitidos");
+        XLSX.writeFile(wb, `Demitidos_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.xlsx`);
+    };
+
     // Agora sim, adiciona os event listeners
     const buscaInput = document.getElementById('busca-demitidos');
     const btnBusca = document.getElementById('btn-busca-demitidos');
 
     if (btnBusca) {
         btnBusca.addEventListener('click', carregarPainelDemitidos);
+        
+        // Adiciona botão de exportar se não existir
+        if (!document.getElementById('btn-exportar-demitidos')) {
+            const btnExport = document.createElement('button');
+            btnExport.id = 'btn-exportar-demitidos';
+            btnExport.className = 'btn btn-success ms-2';
+            btnExport.innerHTML = '<i class="fas fa-file-excel"></i> Exportar';
+            btnExport.title = "Exportar para Excel";
+            btnExport.onclick = exportarDemitidosExcel;
+            btnBusca.parentNode.appendChild(btnExport);
+        }
     }
     if (buscaInput) {
         buscaInput.addEventListener('input', filtrarDemitidos);

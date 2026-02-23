@@ -2,6 +2,7 @@
 
 async function inicializarSetores() {
     await carregarSetores();
+    adicionarBotaoVerificacao();
 }
 
 async function carregarSetores() {
@@ -396,3 +397,247 @@ function exportarDashboardSetoresWord() {
 window.exportarDashboardSetoresExcel = exportarDashboardSetoresExcel;
 window.exportarDashboardSetoresWord = exportarDashboardSetoresWord;
 window.carregarDashboardSetores = carregarDashboardSetores;
+
+function adicionarBotaoVerificacao() {
+    if (document.getElementById('btn-verificar-desconformidade')) return;
+
+    const tbody = document.getElementById('tabela-setores');
+    if (!tbody) return;
+
+    const table = tbody.closest('table');
+    // Encontra o container da tabela (pode ser um .table-responsive ou o pai direto)
+    const container = table.closest('.table-responsive') || table.parentElement;
+    
+    // Tenta encontrar um container de ações acima da tabela
+    let toolbar = container.previousElementSibling;
+    
+    // Verifica se é um container válido para botões (d-flex), senão cria um
+    if (!toolbar || !toolbar.classList.contains('d-flex')) {
+        toolbar = document.createElement('div');
+        toolbar.className = 'd-flex justify-content-end mb-3 gap-2';
+        container.parentElement.insertBefore(toolbar, container);
+    }
+
+    const btn = document.createElement('button');
+    btn.id = 'btn-verificar-desconformidade';
+    btn.className = 'btn btn-warning text-dark btn-sm';
+    btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Verificar Desconformidades';
+    btn.onclick = verificarDesconformidadeSetores;
+    
+    toolbar.appendChild(btn);
+}
+
+// Função para verificar colaboradores em setores não cadastrados
+async function verificarDesconformidadeSetores() {
+    try {
+        mostrarMensagem("Verificando conformidade de setores...", "info");
+
+        const [setoresSnap, funcionariosSnap, empresasSnap] = await Promise.all([
+            db.collection('setores').get(),
+            db.collection('funcionarios').where('status', '==', 'Ativo').get(),
+            db.collection('empresas').get()
+        ]);
+
+        const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
+        
+        // Cria um conjunto de chaves válidas "empresaId_nomeSetor"
+        const setoresValidos = new Set();
+        setoresSnap.forEach(doc => {
+            const s = doc.data();
+            if (s.empresaId && s.descricao) {
+                setoresValidos.add(`${s.empresaId}_${s.descricao.trim()}`);
+            }
+        });
+
+        const desconformidades = [];
+
+        funcionariosSnap.forEach(doc => {
+            const f = doc.data();
+            const empresaNome = f.empresaId ? (empresasMap.get(f.empresaId) || 'ID Desconhecido') : 'Sem Empresa';
+            
+            // Verifica se tem empresa e setor
+            if (!f.empresaId || !f.setor) {
+                desconformidades.push({
+                    id: doc.id,
+                    empresaId: f.empresaId,
+                    nome: f.nome,
+                    empresa: empresaNome,
+                    setor: f.setor || 'Não informado',
+                    motivo: 'Cadastro incompleto (Empresa ou Setor faltando)'
+                });
+                return;
+            }
+
+            // Verifica se o setor existe na empresa
+            const chave = `${f.empresaId}_${f.setor.trim()}`;
+            if (!setoresValidos.has(chave)) {
+                desconformidades.push({
+                    id: doc.id,
+                    empresaId: f.empresaId,
+                    nome: f.nome,
+                    empresa: empresaNome,
+                    setor: f.setor,
+                    motivo: 'Setor não encontrado no cadastro de setores desta empresa'
+                });
+            }
+        });
+
+        if (desconformidades.length === 0) {
+            mostrarMensagem("Todos os colaboradores estão em conformidade com o cadastro de setores.", "success");
+            return;
+        }
+
+        // Exibir resultado
+        let html = `
+            <div class="alert alert-warning d-flex align-items-center shadow-sm">
+                <i class="fas fa-exclamation-triangle fa-2x me-3"></i>
+                <div>
+                    <h5 class="alert-heading mb-1">Atenção Necessária</h5>
+                    <p class="mb-0">Foram encontrados <strong>${desconformidades.length}</strong> colaboradores com inconsistências no cadastro de setor.</p>
+                </div>
+            </div>
+            <div class="table-responsive border rounded shadow-sm" style="max-height: 500px; overflow-y: auto;">
+                <table class="table table-hover mb-0 align-middle">
+                    <thead class="table-light sticky-top">
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Empresa</th>
+                            <th>Setor Atual</th>
+                            <th>Motivo</th>
+                            <th class="text-center" style="width: 100px;">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
+
+        desconformidades.forEach(item => {
+            // Escapar aspas simples para o onclick
+            const nomeSafe = item.nome.replace(/'/g, "\\'");
+            const setorSafe = item.setor.replace(/'/g, "\\'");
+            const empresaIdSafe = item.empresaId || '';
+
+            html += `
+                <tr>
+                    <td><div class="fw-bold text-dark">${item.nome}</div></td>
+                    <td><small class="text-muted">${item.empresa}</small></td>
+                    <td><span class="badge bg-secondary text-wrap">${item.setor}</span></td>
+                    <td><span class="text-danger small"><i class="fas fa-times-circle me-1"></i>${item.motivo}</span></td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary" title="Corrigir Setor" 
+                            onclick="abrirModalCorrecaoSetor('${item.id}', '${empresaIdSafe}', '${nomeSafe}', '${setorSafe}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += `</tbody></table></div>`;
+
+        if (typeof abrirModalGenerico === 'function') {
+            abrirModalGenerico("Relatório de Desconformidade de Setores", html);
+        } else {
+            console.table(desconformidades);
+            alert(`Encontrados ${desconformidades.length} casos de desconformidade. Verifique o console.`);
+        }
+
+    } catch (error) {
+        console.error("Erro ao verificar desconformidades:", error);
+        mostrarMensagem("Erro ao processar verificação.", "error");
+    }
+}
+
+async function abrirModalCorrecaoSetor(funcId, empresaId, nomeFunc, setorAtual) {
+    // Fecha o modal de relatório se estiver aberto (assumindo que é um modal genérico do Bootstrap)
+    const modalGenerico = document.getElementById('modalGenerico');
+    if (modalGenerico) {
+        const modalInstance = bootstrap.Modal.getInstance(modalGenerico);
+        if (modalInstance) modalInstance.hide();
+    }
+
+    const modalId = 'correcaoSetorModal';
+    let modalEl = document.getElementById(modalId);
+
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = modalId;
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="fas fa-tools me-2"></i>Corrigir Setor</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="form-correcao-setor">
+                            <input type="hidden" id="correcao-func-id">
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Colaborador</label>
+                                <input type="text" class="form-control" id="correcao-func-nome" readonly disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label text-muted">Setor Atual (Inválido)</label>
+                                <input type="text" class="form-control is-invalid" id="correcao-setor-atual" readonly disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Novo Setor (Válido)</label>
+                                <select class="form-select" id="correcao-novo-setor" required>
+                                    <option value="">Carregando setores...</option>
+                                </select>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" onclick="salvarCorrecaoSetor()">Salvar Correção</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modalEl);
+    }
+
+    document.getElementById('correcao-func-id').value = funcId;
+    document.getElementById('correcao-func-nome').value = nomeFunc;
+    document.getElementById('correcao-setor-atual').value = setorAtual;
+
+    const select = document.getElementById('correcao-novo-setor');
+    select.innerHTML = '<option value="">Selecione o setor correto...</option>';
+
+    if (empresaId) {
+        // Removido orderBy('descricao') da query para evitar erro de índice composto. Ordenação feita em memória.
+        const setoresSnap = await db.collection('setores').where('empresaId', '==', empresaId).get();
+        const setores = setoresSnap.docs.map(doc => doc.data());
+        
+        setores.sort((a, b) => (a.descricao || '').localeCompare(b.descricao || ''));
+
+        setores.forEach(s => {
+            select.innerHTML += `<option value="${s.descricao}">${s.descricao}</option>`;
+        });
+    } else {
+        select.innerHTML = '<option value="">Empresa não definida no cadastro</option>';
+    }
+
+    new bootstrap.Modal(modalEl).show();
+}
+
+async function salvarCorrecaoSetor() {
+    const funcId = document.getElementById('correcao-func-id').value;
+    const novoSetor = document.getElementById('correcao-novo-setor').value;
+
+    if (!novoSetor) {
+        mostrarMensagem("Selecione um setor válido.", "warning");
+        return;
+    }
+
+    await db.collection('funcionarios').doc(funcId).update({ setor: novoSetor });
+    mostrarMensagem("Setor corrigido com sucesso!", "success");
+    
+    bootstrap.Modal.getInstance(document.getElementById('correcaoSetorModal')).hide();
+    
+    // Reabre o relatório para continuar as correções
+    setTimeout(verificarDesconformidadeSetores, 500);
+}
+
+window.verificarDesconformidadeSetores = verificarDesconformidadeSetores;
