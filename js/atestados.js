@@ -1280,6 +1280,10 @@ function exibirDetalhesAtestado(a, empresaNome) {
 // Editar atestado
 async function editarAtestado(id) {
     const a = __atestados_cache.find(x => x.id === id);
+    if (!a) {
+        mostrarMensagem('Atestado não encontrado no cache.', 'error');
+        return;
+    }
     
     const mid = 'editAtestadoModal';
     let modalEl = document.getElementById(mid);
@@ -1298,7 +1302,7 @@ async function editarAtestado(id) {
                     <div class="modal-body">
                         <div class="mb-2">
                             <label class="form-label">Colaborador</label>
-                            <input class="form-control" id="ed_colab" readonly> <!-- Colaborador não deve ser alterado em edição simples -->
+                            <select class="form-select" id="ed_colab"></select>
                         </div>
                         <div class="mb-2">
                             <label class="form-label">Dias</label>
@@ -1340,8 +1344,21 @@ async function editarAtestado(id) {
             </div>`;
         document.body.appendChild(modalEl);
     }
+
+    // Popular o select de colaboradores
+    const funcSelect = document.getElementById('ed_colab');
+    funcSelect.innerHTML = '<option value="">Carregando...</option>';
+    const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+    funcSelect.innerHTML = '<option value="">Selecione...</option>';
+    funcSnap.forEach(doc => {
+        const opt = document.createElement('option');
+        opt.value = doc.id;
+        opt.textContent = doc.data().nome;
+        funcSelect.appendChild(opt);
+    });
     
-    document.getElementById('ed_colab').value = a.colaborador_nome || '';
+    // Preencher os dados do atestado
+    funcSelect.value = a.funcionarioId || '';
     document.getElementById('ed_dias').value = a.dias || 1;
     document.getElementById('ed_tipo').value = a.tipo || 'Outros';
     document.getElementById('ed_cid').value = a.cid || '';
@@ -1352,8 +1369,18 @@ async function editarAtestado(id) {
     if (btnSalvar) {
         btnSalvar.onclick = async function() {
             try {
+                const selectedFuncOption = funcSelect.options[funcSelect.selectedIndex];
+                const newFuncionarioId = selectedFuncOption.value;
+                const newColaboradorNome = selectedFuncOption.text;
+
+                if (!newFuncionarioId) {
+                    mostrarMensagem("Selecione um colaborador.", "warning");
+                    return;
+                }
+
                 await db.collection('atestados').doc(id).update({
-                    colaborador_nome: document.getElementById('ed_colab').value.trim(),
+                    funcionarioId: newFuncionarioId,
+                    colaborador_nome: newColaboradorNome,
                     dias: parseInt(document.getElementById('ed_dias').value, 10),
                     tipo: document.getElementById('ed_tipo').value,                    
                     cid: document.getElementById('ed_cid').value.trim(),
