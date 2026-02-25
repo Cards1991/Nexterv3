@@ -1385,7 +1385,7 @@ async function carregarDashboardConsumoEPI() {
 
         // Renderizar Ranking Colaboradores
         const rankingColabSorted = Object.entries(rankingColaboradores)
-            .sort(([,a], [,b]) => b.qtd - a.qtd)
+            .sort(([,a], [,b]) => b.custo - a.custo)
             .slice(0, 5);
         
         document.getElementById('ranking-epi-colaboradores').innerHTML = rankingColabSorted.map(([nome, dados]) => `

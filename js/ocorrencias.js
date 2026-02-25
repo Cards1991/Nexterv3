@@ -116,12 +116,13 @@ async function carregarOcorrencias() {
     const tbody = document.getElementById('tabela-ocorrencias');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
         const inicio = document.getElementById('filtro-ocorrencia-inicio').value;
         const fim = document.getElementById('filtro-ocorrencia-fim').value;
         const tipo = document.getElementById('filtro-ocorrencia-tipo').value;
+        const nome = document.getElementById('filtro-ocorrencia-nome')?.value.toLowerCase().trim();
 
         let query = db.collection('ocorrencias_saude');
 
@@ -133,18 +134,21 @@ async function carregarOcorrencias() {
         tbody.innerHTML = '';
         
         if (snapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted">Nenhuma ocorrência encontrada no período.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma ocorrência encontrada no período.</td></tr>';
             return;
         }
 
+        let encontrou = false;
         snapshot.forEach(doc => {
             const data = doc.data();
             
             // Filtro de tipo no cliente (caso não tenha índice composto)
             if (tipo && data.tipo !== tipo) return;
+            // Filtro de nome no cliente
+            if (nome && !data.colaboradorNome.toLowerCase().includes(nome)) return;
 
+            encontrou = true;
             const dataFormatada = data.data ? new Date(data.data.toDate()).toLocaleString('pt-BR') : '-';
-            const veiculoInfo = data.encaminhadoPA ? (data.veiculo || 'Não informado') : '-';
             const badgePA = data.encaminhadoPA ? '<span class="badge bg-danger">P.A.</span>' : '';
 
             const row = document.createElement('tr');
@@ -153,10 +157,13 @@ async function carregarOcorrencias() {
                 <td>${data.colaboradorNome}</td>
                 <td><small>${data.empresaNome || ''}<br>${data.setor || ''}</small></td>
                 <td><span class="badge bg-secondary">${data.tipo}</span> ${badgePA}</td>
-                <td>${data.descricao}</td>
-                <td>${data.tratamento || '-'}</td>
-                <td>${veiculoInfo}</td>
                 <td class="text-end">
+                    <button class="btn btn-sm btn-outline-info" onclick="visualizarOcorrencia('${doc.id}')" title="Visualizar">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-warning" onclick="editarOcorrencia('${doc.id}')" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
                     <button class="btn btn-sm btn-outline-danger" onclick="excluirOcorrencia('${doc.id}')" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -165,9 +172,141 @@ async function carregarOcorrencias() {
             tbody.appendChild(row);
         });
 
+        if (!encontrou) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma ocorrência encontrada com os filtros atuais.</td></tr>';
+        }
+
     } catch (error) {
         console.error("Erro ao carregar ocorrências:", error);
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    }
+}
+
+async function editarOcorrencia(id) {
+    try {
+        const doc = await db.collection('ocorrencias_saude').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Ocorrência não encontrada.", "error");
+            return;
+        }
+        const data = doc.data();
+
+        // Abrir e preencher o modal
+        await abrirModalNovaOcorrencia(); 
+
+        document.getElementById('ocorrencia-id').value = id;
+        document.getElementById('ocorrencia-data').value = new Date(data.data.toDate()).toISOString().slice(0, 16);
+        document.getElementById('ocorrencia-tipo').value = data.tipo;
+        
+        // Aguardar o carregamento dos colaboradores e selecionar o correto
+        const colaboradorSelect = document.getElementById('ocorrencia-colaborador');
+        await aguardarCarregamentoSelect(colaboradorSelect);
+        colaboradorSelect.value = data.colaboradorId;
+
+        document.getElementById('ocorrencia-descricao').value = data.descricao;
+        document.getElementById('ocorrencia-tratamento').value = data.tratamento;
+        document.getElementById('ocorrencia-encaminhado-pa').checked = data.encaminhadoPA;
+        
+        toggleCampoVeiculo(); // Garante que o campo de veículo seja exibido se necessário
+        
+        if (data.encaminhadoPA) {
+            const veiculoSelect = document.getElementById('ocorrencia-veiculo');
+            await aguardarCarregamentoSelect(veiculoSelect, true); // Pode não ter opções de frota
+            veiculoSelect.value = data.veiculo;
+        }
+
+        // Alterar o título do modal para "Editar Ocorrência"
+        const modalTitle = document.querySelector('#modalNovaOcorrencia .modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Ocorrência';
+        }
+
+
+    } catch (error) {
+        console.error("Erro ao preparar edição da ocorrência:", error);
+        mostrarMensagem("Erro ao carregar dados para edição.", "error");
+    }
+}
+
+// Função auxiliar para aguardar o carregamento de um select
+function aguardarCarregamentoSelect(selectElement, allowEmpty = false) {
+    return new Promise(resolve => {
+        const checkOptions = () => {
+            const isLoading = selectElement.innerHTML.includes('Carregando');
+            const hasOptions = selectElement.options.length > 1; // Mais que "Selecione..." ou "Erro"
+            
+            if (!isLoading && (hasOptions || allowEmpty)) {
+                resolve();
+            } else {
+                setTimeout(checkOptions, 100); // Tenta novamente em 100ms
+            }
+        };
+        checkOptions();
+    });
+}
+
+
+async function visualizarOcorrencia(id) {
+    try {
+        const doc = await db.collection('ocorrencias_saude').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Ocorrência não encontrada.", "error");
+            return;
+        }
+        const data = doc.data();
+        const dataFormatada = data.data ? new Date(data.data.toDate()).toLocaleString('pt-BR') : '-';
+        const veiculoInfo = data.encaminhadoPA ? (data.veiculo || 'Não informado') : 'Não se aplica';
+        const encaminhadoPA = data.encaminhadoPA ? 'Sim' : 'Não';
+
+        const conteudo = `
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Data/Hora:</label>
+                    <div>${dataFormatada}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Tipo:</label>
+                    <div>${data.tipo}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Colaborador:</label>
+                    <div>${data.colaboradorNome}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Empresa/Setor:</label>
+                    <div>${data.empresaNome || '-'} / ${data.setor || '-'}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="fw-bold">Descrição:</label>
+                    <div class="p-2 bg-light rounded border">${data.descricao}</div>
+                </div>
+                <div class="col-12 mb-3">
+                    <label class="fw-bold">Tratamento:</label>
+                    <div class="p-2 bg-light rounded border">${data.tratamento || 'Nenhum tratamento registrado.'}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Encaminhado ao P.A.?</label>
+                    <div>${encaminhadoPA}</div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="fw-bold">Veículo:</label>
+                    <div>${veiculoInfo}</div>
+                </div>
+                <div class="col-12 text-end text-muted small">
+                    Registrado por: ${data.registradoPor || 'Sistema'}
+                </div>
+            </div>
+        `;
+
+        if (typeof abrirModalGenerico === 'function') {
+            abrirModalGenerico("Detalhes da Ocorrência", conteudo);
+        } else {
+            // Fallback se abrirModalGenerico não estiver disponível
+            alert(`Detalhes:\n${data.descricao}\nTratamento: ${data.tratamento}`);
+        }
+    } catch (error) {
+        console.error("Erro ao visualizar ocorrência:", error);
+        mostrarMensagem("Erro ao carregar detalhes.", "error");
     }
 }
 
@@ -199,13 +338,15 @@ async function salvarOcorrencia() {
     btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
     try {
+        const id = document.getElementById('ocorrencia-id').value;
+        const isUpdate = id !== '';
+
         const colaboradorSelect = document.getElementById('ocorrencia-colaborador');
         const colaboradorId = colaboradorSelect.value;
         const colaboradorNome = colaboradorSelect.options[colaboradorSelect.selectedIndex].text;
         const empresaId = colaboradorSelect.options[colaboradorSelect.selectedIndex].dataset.empresaId || '';
         const setor = colaboradorSelect.options[colaboradorSelect.selectedIndex].dataset.setor || '';
         
-        // Buscar nome da empresa
         let empresaNome = '';
         if (empresaId) {
             const empDoc = await db.collection('empresas').doc(empresaId).get();
@@ -222,15 +363,26 @@ async function salvarOcorrencia() {
             setor: setor,
             descricao: document.getElementById('ocorrencia-descricao').value,
             tratamento: document.getElementById('ocorrencia-tratamento').value,
-           enciadoPA: document.getElementById('ocorrencia-encaminhado-pa').checked,
+            encaminhadoPA: document.getElementById('ocorrencia-encaminhado-pa').checked,
             veiculo: document.getElementById('ocorrencia-veiculo').value,
-            registradoPor: firebase.auth().currentUser.email,
-            registradoEm: firebase.firestore.FieldValue.serverTimestamp()
+            // Mantém o autor original no update, ou define um novo no create
+            registradoPor: isUpdate ? undefined : firebase.auth().currentUser.email,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        await db.collection('ocorrencias_saude').add(dados);
+        if (isUpdate) {
+            // Remove campos que não devem ser sobrescritos na atualização
+            Object.keys(dados).forEach(key => dados[key] === undefined && delete dados[key]);
+            
+            await db.collection('ocorrencias_saude').doc(id).update(dados);
+            mostrarMensagem('Ocorrência atualizada com sucesso!', 'success');
+        } else {
+            dados.registradoPor = firebase.auth().currentUser.email;
+            dados.registradoEm = firebase.firestore.FieldValue.serverTimestamp();
+            await db.collection('ocorrencias_saude').add(dados);
+            mostrarMensagem('Ocorrência registrada com sucesso!', 'success');
+        }
         
-        mostrarMensagem('Ocorrência registrada com sucesso!', 'success');
         modalOcorrencia.hide();
         carregarOcorrencias();
         carregarKPIsOcorrencias();
@@ -241,6 +393,12 @@ async function salvarOcorrencia() {
     } finally {
         btnSalvar.disabled = false;
         btnSalvar.textContent = textoOriginal;
+
+        // Resetar o título do modal para o padrão
+        const modalTitle = document.querySelector('#modalNovaOcorrencia .modal-title');
+        if (modalTitle) {
+            modalTitle.innerHTML = '<i class="fas fa-exclamation-circle"></i> Nova Ocorrência';
+        }
     }
 }
 
@@ -327,3 +485,5 @@ window.filtrarOcorrencias = filtrarOcorrencias;
 window.carregarKPIsOcorrencias = carregarKPIsOcorrencias;
 window.exportarOcorrenciasExcel = exportarOcorrenciasExcel;
 window.toggleCampoVeiculo = toggleCampoVeiculo;
+window.visualizarOcorrencia = visualizarOcorrencia;
+window.editarOcorrencia = editarOcorrencia;
