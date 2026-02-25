@@ -8,7 +8,8 @@ let __atestados_cache = [];
 let __empresasCache = null;
 let __initializedAtestados = false;
 let __cid_familias_cache = null;
-window.__filterTimeout = null;
+let __filterTimeout = null;
+let psicoChartInstance = null;
 
 const CIDS_PSICOSSOCIAIS_PREFIXOS = ['F', 'Z65'];
 
@@ -268,14 +269,14 @@ function configurarEventListenersAtestados() {
         const filtroEl = document.querySelector(selector);
         if (filtroEl) {
             filtroEl.addEventListener('change', () => {
-                clearTimeout(window.__filterTimeout);
-                window.__filterTimeout = setTimeout(async () => {
-                    try {
-                        await renderizarAtestados();
-                        await atualizarMetricasAtestados();
-                    } catch (error) { console.error('Erro ao aplicar filtros com debounce:', error); }
-                }, 300);
-            });
+            clearTimeout(__filterTimeout);
+            __filterTimeout = setTimeout(async () => {
+                try {
+                    await renderizarAtestados();
+                    await atualizarMetricasAtestados();
+                } catch (error) { console.error('Erro ao aplicar filtros com debounce:', error); }
+            }, 300);
+        });
         }
     });
 }
@@ -510,9 +511,9 @@ async function atualizarMetricasAtestados() {
     const custoTotalAtestados = document.getElementById('custo-total-atestados');
 
     if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
-    if (totalDiasAtestados) totalDiasAtestados.textContent = totalDias.toFixed(2).replace('.', ',');
+    if (totalDiasAtestados) totalDiasAtestados.textContent = String(totalDias).replace('.', ',');
     if (mediaDiasAtestado) mediaDiasAtestado.textContent = media.replace('.', ',');
-    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
+    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${String(custoTotal).replace('.', ',')}`;
     
     const percentualAfastamento = document.getElementById('percentual-afastamento');
     if (percentualAfastamento) {
@@ -848,9 +849,11 @@ async function abrirModalAtestado(atestadoId = null) {
             const empresaId = selectedOption.dataset.empresaId || '';
             const setor = selectedOption.dataset.setor || '';
             
-            empresaSelect.value = empresaId;
-            // Desabilita o campo de empresa se um funcionário for selecionado
-            empresaSelect.disabled = !!empresaId;
+            if (empresaSelect) {
+                empresaSelect.value = empresaId;
+                // Desabilita o campo de empresa se um funcionário for selecionado
+                empresaSelect.disabled = !!empresaId;
+            }
             
             const setorInput = document.getElementById('at_setor');
             if (setorInput) setorInput.value = setor;
@@ -1382,7 +1385,7 @@ async function excluirAtestado(id) {
     try {
         await db.collection('atestados').doc(id).delete();
         await renderizarAtestados();
-        atualizarMetricasAtestados();
+        await atualizarMetricasAtestados();
         mostrarMensagem('Atestado excluído com sucesso!');
     } catch(e) { 
         console.error('Erro ao excluir atestado:', e); 
@@ -1551,34 +1554,58 @@ async function salvarAcompanhamentoPsicossocial() {
  * Gera um relatório HTML estilizado para impressão do histórico de acompanhamento.
  */
 async function imprimirHistoricoPsicossocial() {
-    const atestadoId = document.getElementById('psico-atestado-id').value;
-    if (!atestadoId) {
+    const atestadoIdPrincipal = document.getElementById('psico-atestado-id').value;
+    if (!atestadoIdPrincipal) {
         mostrarMensagem("Nenhum atestado selecionado para impressão.", "warning");
         return;
     }
 
-    const atestado = __atestados_cache.find(a => a.id === atestadoId);
-    if (!atestado || !atestado.investigacaoPsicossocial?.historico) {
+    // 1. Encontra o atestado principal que abriu o modal e seu funcionário
+    const atestadoPrincipal = __atestados_cache.find(a => a.id === atestadoIdPrincipal);
+    if (!atestadoPrincipal) {
+        mostrarMensagem("Atestado de referência não encontrado.", "error");
+        return;
+    }
+
+    const funcionarioId = atestadoPrincipal.funcionarioId;
+    const colaboradorNome = atestadoPrincipal.colaborador_nome;
+    const investigacao = atestadoPrincipal.investigacaoPsicossocial || {};
+
+    // 2. Agrupa todos os atestados do mesmo funcionário para montar o histórico completo
+    const todosAtestadosDoFuncionario = __atestados_cache.filter(a => a.funcionarioId === funcionarioId);
+
+    // 3. Monta o histórico combinado
+    const historicoAtestados = todosAtestadosDoFuncionario.map(a => ({
+        data: parseDateSafe(a.data_atestado),
+        tipo: 'Atestado Recebido',
+        detalhes: `Atestado de ${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'} (CID: ${a.cid || 'N/A'})`
+    }));
+
+    const historicoAcompanhamento = (investigacao.historico || []).map(item => ({
+        data: parseDateSafe(item.data),
+        tipo: item.estagio,
+        detalhes: item.observacoes
+    }));
+
+    const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
+        .filter(item => item.data) // Garante que todos os itens têm data
+        .sort((a, b) => a.data - b.data); // Ordena do mais antigo para o mais recente (timeline)
+
+    // 4. Verifica se há algo para imprimir
+    if (historicoCompleto.length === 0) {
         mostrarMensagem("Não há histórico de acompanhamento para imprimir.", "info");
         return;
     }
 
-    const historicoOrdenado = atestado.investigacaoPsicossocial.historico.sort((a, b) => {
-        const timeA = a.data?.seconds || 0;
-        const timeB = b.data?.seconds || 0;
-        return timeA - timeB; // Mais antigo primeiro para timeline
-    });
-
     let historicoHtml = '';
-    historicoOrdenado.forEach(item => {
-        const dataFormatada = item.data?.toDate ? item.data.toDate().toLocaleDateString('pt-BR') : 'Data não disponível';
+    historicoCompleto.forEach(item => {
+        const dataFormatada = item.data.toLocaleDateString('pt-BR');
         historicoHtml += `
             <div class="timeline-item">
                 <div class="timeline-date">${dataFormatada}</div>
                 <div class="timeline-content">
-                    <h5>${item.estagio}</h5>
-                    <p>${escapeHTML(item.observacoes)}</p>
-                    <small class="text-muted">Registrado por: ${item.responsavelNome || 'Usuário'}</small>
+                    <h5>${item.tipo}</h5>
+                    <p>${escapeHTML(item.detalhes)}</p>
                 </div>
             </div>
         `;
@@ -1587,7 +1614,7 @@ async function imprimirHistoricoPsicossocial() {
     const conteudo = `
         <html>
         <head>
-            <title>Histórico de Acompanhamento Psicossocial</title>
+            <title>Histórico de Acompanhamento Psicossocial - ${colaboradorNome}</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
                 body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; }
@@ -1602,9 +1629,8 @@ async function imprimirHistoricoPsicossocial() {
         </head>
         <body>
             <div class="report-header"><h2>Histórico de Acompanhamento Psicossocial</h2></div>
-            <p><strong>Funcionário:</strong> ${atestado.colaborador_nome}</p>
-            <p><strong>Atestado Original (CID):</strong> ${atestado.cid}</p>
-            <p><strong>Data do Atestado:</strong> ${formatarData(atestado.data_atestado)}</p>
+            <p><strong>Funcionário:</strong> ${colaboradorNome}</p>
+            <p><strong>Atestado de Referência (CID):</strong> ${atestadoPrincipal.cid}</p>
             <hr>
             ${historicoHtml}
             <div class="signature-area">
@@ -1981,3 +2007,5 @@ window.salvarAtestado = salvarAtestado;
 window.inicializarAtestados = inicializarAtestados;
 window.renderizarAtestados = renderizarAtestados;
 window.atualizarMetricasAtestados = atualizarMetricasAtestados;
+window.renderizarMetricasPsicossociais = renderizarMetricasPsicossociais;
+window.renderizarGraficoTendenciaPsicossocial = renderizarGraficoTendenciaPsicossocial;

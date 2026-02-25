@@ -1,11 +1,9 @@
-# TODO - ISO 9001 Maintenance Panel Updates
+# TODO - Implementação do Menu Ocorrências
 
-## Tasks
-- [ ] Add preventive maintenance option to call opening modal
-- [ ] Implement logic to create 12 monthly preventive calls when "Preventiva Mensal" is selected
-- [ ] Update table rendering to show current downtime for stopped machines
-- [ ] Remove WhatsApp status column from the maintenance calls table
-
-## Status
-- [x] Plan approved by user
-- [ ] Implementation in progress
+## Tarefas:
+- [ ] 1. Adicionar item de menu "Ocorrências" no submenu Saúde Ocupacional (index.html)
+- [ ] 2. Adicionar seção HTML para Ocorrências (index.html)
+- [ ] 3. Adicionar 'ocorrencias' ao array TODAS_SECOES (js/app.js)
+- [ ] 4. Adicionar case para 'ocorrencias' na função carregarDadosSecao (js/app.js)
+- [ ] 5. Adicionar 'ocorrencias' ao grupo Saúde Ocupacional em permissoes (js/admin.js)
+- [ ] 6. Criar arquivo js/ocorrencias.js com funções de inicialização e registro

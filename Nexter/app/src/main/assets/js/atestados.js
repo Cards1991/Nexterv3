@@ -1503,34 +1503,58 @@ async function salvarAcompanhamentoPsicossocial() {
  * Gera um relatório HTML estilizado para impressão do histórico de acompanhamento.
  */
 async function imprimirHistoricoPsicossocial() {
-    const atestadoId = document.getElementById('psico-atestado-id').value;
-    if (!atestadoId) {
+    const atestadoIdPrincipal = document.getElementById('psico-atestado-id').value;
+    if (!atestadoIdPrincipal) {
         mostrarMensagem("Nenhum atestado selecionado para impressão.", "warning");
         return;
     }
 
-    const atestado = __atestados_cache.find(a => a.id === atestadoId);
-    if (!atestado || !atestado.investigacaoPsicossocial?.historico) {
+    // 1. Encontra o atestado principal que abriu o modal e seu funcionário
+    const atestadoPrincipal = __atestados_cache.find(a => a.id === atestadoIdPrincipal);
+    if (!atestadoPrincipal) {
+        mostrarMensagem("Atestado de referência não encontrado.", "error");
+        return;
+    }
+
+    const funcionarioId = atestadoPrincipal.funcionarioId;
+    const colaboradorNome = atestadoPrincipal.colaborador_nome;
+    const investigacao = atestadoPrincipal.investigacaoPsicossocial || {};
+
+    // 2. Agrupa todos os atestados do mesmo funcionário para montar o histórico completo
+    const todosAtestadosDoFuncionario = __atestados_cache.filter(a => a.funcionarioId === funcionarioId);
+
+    // 3. Monta o histórico combinado
+    const historicoAtestados = todosAtestadosDoFuncionario.map(a => ({
+        data: parseDateSafe(a.data_atestado),
+        tipo: 'Atestado Recebido',
+        detalhes: `Atestado de ${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'} (CID: ${a.cid || 'N/A'})`
+    }));
+
+    const historicoAcompanhamento = (investigacao.historico || []).map(item => ({
+        data: parseDateSafe(item.data),
+        tipo: item.estagio,
+        detalhes: item.observacoes
+    }));
+
+    const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
+        .filter(item => item.data) // Garante que todos os itens têm data
+        .sort((a, b) => a.data - b.data); // Ordena do mais antigo para o mais recente (timeline)
+
+    // 4. Verifica se há algo para imprimir
+    if (historicoCompleto.length === 0) {
         mostrarMensagem("Não há histórico de acompanhamento para imprimir.", "info");
         return;
     }
 
-    const historicoOrdenado = atestado.investigacaoPsicossocial.historico.sort((a, b) => {
-        const timeA = a.data?.seconds || 0;
-        const timeB = b.data?.seconds || 0;
-        return timeA - timeB; // Mais antigo primeiro para timeline
-    });
-
     let historicoHtml = '';
-    historicoOrdenado.forEach(item => {
-        const dataFormatada = item.data?.toDate ? item.data.toDate().toLocaleDateString('pt-BR') : 'Data não disponível';
+    historicoCompleto.forEach(item => {
+        const dataFormatada = item.data.toLocaleDateString('pt-BR');
         historicoHtml += `
             <div class="timeline-item">
                 <div class="timeline-date">${dataFormatada}</div>
                 <div class="timeline-content">
-                    <h5>${item.estagio}</h5>
-                    <p>${escapeHTML(item.observacoes)}</p>
-                    <small class="text-muted">Registrado por: ${item.responsavelNome || 'Usuário'}</small>
+                    <h5>${item.tipo}</h5>
+                    <p>${escapeHTML(item.detalhes)}</p>
                 </div>
             </div>
         `;
@@ -1539,7 +1563,7 @@ async function imprimirHistoricoPsicossocial() {
     const conteudo = `
         <html>
         <head>
-            <title>Histórico de Acompanhamento Psicossocial</title>
+            <title>Histórico de Acompanhamento Psicossocial - ${colaboradorNome}</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
                 body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; }
@@ -1554,9 +1578,8 @@ async function imprimirHistoricoPsicossocial() {
         </head>
         <body>
             <div class="report-header"><h2>Histórico de Acompanhamento Psicossocial</h2></div>
-            <p><strong>Funcionário:</strong> ${atestado.colaborador_nome}</p>
-            <p><strong>Atestado Original (CID):</strong> ${atestado.cid}</p>
-            <p><strong>Data do Atestado:</strong> ${formatarData(atestado.data_atestado)}</p>
+            <p><strong>Funcionário:</strong> ${colaboradorNome}</p>
+            <p><strong>Atestado de Referência (CID):</strong> ${atestadoPrincipal.cid}</p>
             <hr>
             ${historicoHtml}
             <div class="signature-area">
@@ -1567,6 +1590,194 @@ async function imprimirHistoricoPsicossocial() {
         </html>`;
 
     openPrintWindow(conteudo, { autoPrint: true });
+}
+
+/**
+ * Preenche o formulário para editar um registro específico do histórico.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro no array de histórico.
+ */
+async function editarHistoricoPsicossocial(atestadoId, index) {
+    const atestado = __atestados_cache.find(a => a.id === atestadoId);
+    if (!atestado || !atestado.investigacaoPsicossocial?.historico) {
+        mostrarMensagem("Histórico não encontrado.", "error");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...atestado.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    const historico = historicoOrdenado[index];
+
+    if (!historico) {
+        mostrarMensagem("Registro do histórico não encontrado.", "error");
+        return;
+    }
+
+    // Preenche os campos do formulário
+    document.getElementById('psico-estagio').value = historico.estagio;
+    document.getElementById('psico-observacoes').value = historico.observacoes;
+
+    // Altera o botão para o modo de atualização
+    const btnSalvar = document.querySelector('#acompanhamentoPsicossocialModal .btn-primary');
+    btnSalvar.textContent = 'Atualizar Registro';
+    btnSalvar.onclick = () => atualizarRegistroHistorico(atestadoId, index);
+
+    mostrarMensagem("Modo de edição ativado. Altere os dados e clique em 'Atualizar Registro'.", "info");
+}
+
+/**
+ * Atualiza um registro específico no histórico de acompanhamento.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro a ser atualizado.
+ */
+async function atualizarRegistroHistorico(atestadoId, index) {
+    const atestadoRef = db.collection('atestados').doc(atestadoId);
+    const atestadoDoc = await atestadoRef.get();
+    
+    if (!atestadoDoc.exists) {
+        mostrarMensagem("Atestado não encontrado.", "error");
+        return;
+    }
+
+    const data = atestadoDoc.data();
+    if (!data.investigacaoPsicossocial || !Array.isArray(data.investigacaoPsicossocial.historico)) {
+        mostrarMensagem("Histórico não encontrado.", "error");
+        return;
+    }
+
+    const estagio = document.getElementById('psico-estagio').value;
+    const observacoes = document.getElementById('psico-observacoes').value.trim();
+
+    if (!estagio || !observacoes) {
+        mostrarMensagem("Todos os campos são obrigatórios.", "warning");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...data.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    if (index < 0 || index >= historicoOrdenado.length) {
+        mostrarMensagem("Índice inválido.", "error");
+        return;
+    }
+
+    const itemAntigo = historicoOrdenado[index];
+    const itemAtualizado = {
+        ...itemAntigo,
+        estagio: estagio,
+        observacoes: observacoes,
+        atualizadoEm: new Date(),
+        atualizadoPor: firebase.auth().currentUser?.uid,
+        atualizadoPorNome: firebase.auth().currentUser?.displayName || firebase.auth().currentUser?.email
+    };
+
+    try {
+        // Remove o item antigo e adiciona o atualizado
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemAntigo)
+        });
+
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayUnion(itemAtualizado),
+            'investigacaoPsicossocial.estagio': estagio,
+            'investigacaoPsicossocial.ultimaAtualizacao': firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mostrarMensagem("Registro atualizado com sucesso!", "success");
+        
+        // Atualiza o cache local
+        const atestadoIndex = __atestados_cache.findIndex(a => a.id === atestadoId);
+        if (atestadoIndex !== -1) {
+            __atestados_cache[atestadoIndex] = { 
+                ...__atestados_cache[atestadoIndex],
+                ...(await atestadoRef.get()).data() 
+            };
+        }
+
+        // Restaura o botão ao estado normal
+        const btnSalvar = document.querySelector('#acompanhamentoPsicossocialModal .btn-primary');
+        btnSalvar.textContent = 'Salvar Acompanhamento';
+        btnSalvar.onclick = salvarAcompanhamentoPsicossocial;
+
+        // Fecha o modal e reabre para mostrar os dados atualizados
+        bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal')).hide();
+        await abrirModalAcompanhamentoPsicossocial(atestadoId);
+        
+    } catch (error) {
+        console.error("Erro ao atualizar registro:", error);
+        mostrarMensagem("Erro ao atualizar registro.", "error");
+    }
+}
+
+/**
+ * Exclui um registro específico do histórico de acompanhamento.
+ * @param {string} atestadoId O ID do atestado.
+ * @param {number} index O índice do registro a ser excluído.
+ */
+async function excluirHistoricoPsicossocial(atestadoId, index) {
+    if (!confirm("Tem certeza que deseja excluir este registro do histórico?")) return;
+
+    const atestadoRef = db.collection('atestados').doc(atestadoId);
+    const atestadoDoc = await atestadoRef.get();
+    
+    if (!atestadoDoc.exists) {
+        mostrarMensagem("Atestado não encontrado.", "error");
+        return;
+    }
+
+    const data = atestadoDoc.data();
+    if (!data.investigacaoPsicossocial || !Array.isArray(data.investigacaoPsicossocial.historico)) {
+        mostrarMensagem("Não há histórico para excluir.", "warning");
+        return;
+    }
+
+    // Ordenar para pegar o item correto pelo índice
+    const historicoOrdenado = [...data.investigacaoPsicossocial.historico].sort((a, b) => {
+        const timeA = a.data?.seconds || 0;
+        const timeB = b.data?.seconds || 0;
+        return timeB - timeA; // Mais recente primeiro
+    });
+
+    if (index < 0 || index >= historicoOrdenado.length) {
+        mostrarMensagem("Índice inválido.", "error");
+        return;
+    }
+
+    const itemParaRemover = historicoOrdenado[index];
+
+    try {
+        await atestadoRef.update({
+            'investigacaoPsicossocial.historico': firebase.firestore.FieldValue.arrayRemove(itemParaRemover)
+        });
+
+        mostrarMensagem("Registro do histórico excluído.", "success");
+
+        // Atualiza o cache local
+        const atestadoIndex = __atestados_cache.findIndex(a => a.id === atestadoId);
+        if (atestadoIndex !== -1) {
+            __atestados_cache[atestadoIndex] = { 
+                ...__atestados_cache[atestadoIndex],
+                ...(await atestadoRef.get()).data() 
+            };
+        }
+
+        await renderizarAtestados();
+        const modal = bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal'));
+        if (modal) modal.hide();
+        
+    } catch (error) {
+        console.error("Erro ao excluir histórico:", error);
+        mostrarMensagem("Erro ao excluir registro.", "error");
+    }
 }
 
 /**

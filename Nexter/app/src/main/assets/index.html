@@ -242,6 +242,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="epi-compras">Solicitações de Compras</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ocorrencias"><i class="fas fa-exclamation-circle me-2"></i>Ocorrências</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -894,6 +895,117 @@
                                 </thead>
                                 <tbody id="tabela-compras-epi">
                                     <tr><td colspan="5" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Saúde Ocupacional: Ocorrências -->
+                <section id="ocorrencias" class="content-section d-none">
+                    <h2 class="page-title">Registro de Ocorrências</h2>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-inicio" style="width: 150px;">
+                            <span class="text-muted">até</span>
+                            <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-fim" style="width: 150px;">
+                            <select class="form-select form-select-sm" id="filtro-ocorrencia-tipo" style="width: 180px;">
+                                <option value="">Todos os Tipos</option>
+                                <option value="Dor">Dor</option>
+                                <option value="Acidente">Acidente</option>
+                                <option value="Incidente">Incidente</option>
+                                <option value="Doença">Doença</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm" onclick="filtrarOcorrencias()">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                        <button class="btn btn-primary" id="btn-nova-ocorrencia" onclick="abrirModalNovaOcorrencia()">
+                            <i class="fas fa-plus-circle"></i> Nova Ocorrência
+                        </button>
+                    </div>
+
+                    <!-- KPIs de Ocorrências -->
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-primary text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-total-ocorrencias">0</div>
+                                            <small>Total de Ocorrências</small>
+                                        </div>
+                                        <i class="fas fa-exclamation-circle fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-warning text-dark h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-mes">0</div>
+                                            <small>Este Mês</small>
+                                        </div>
+                                        <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-danger text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-acidente">0</div>
+                                            <small>Acidentes</small>
+                                        </div>
+                                        <i class="fas fa-user-injured fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-info text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-pa">0</div>
+                                            <small>Encaminhados ao PA</small>
+                                        </div>
+                                        <i class="fas fa-ambulance fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Ocorrências Registradas</span>
+                            <button class="btn btn-success btn-sm" onclick="exportarOcorrenciasExcel()">
+                                <i class="fas fa-file-excel"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="card-body table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Colaborador</th>
+                                        <th>Empresa/Setor</th>
+                                        <th>Tipo</th>
+                                        <th>Descrição</th>
+                                        <th>Tratamento</th>
+                                        <th>Veículo</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-ocorrencias">
+                                    <tr><td colspan="8" class="text-center">Carregando...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -5432,6 +5544,73 @@
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                     <button type="button" class="btn btn-primary" onclick="aplicarAumentoColetivo()">Aplicar Aumento</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Ocorrência -->
+    <div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-notes-medical me-2"></i>Nova Ocorrência</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-nova-ocorrencia">
+                        <input type="hidden" id="ocorrencia-id">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Data e Hora</label>
+                                <input type="datetime-local" class="form-control" id="ocorrencia-data" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Tipo de Ocorrência</label>
+                                <select class="form-select" id="ocorrencia-tipo" required>
+                                    <option value="">Selecione...</option>
+                                    <option value="Dor">Dor / Queixa</option>
+                                    <option value="Acidente">Acidente de Trabalho</option>
+                                    <option value="Incidente">Incidente (Quase Acidente)</option>
+                                    <option value="Doença">Doença / Mal-estar</option>
+                                    <option value="Outro">Outro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Colaborador</label>
+                                <select class="form-select" id="ocorrencia-colaborador" required>
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Descrição do Ocorrido</label>
+                                <textarea class="form-control" id="ocorrencia-descricao" rows="3" placeholder="Descreva o que aconteceu, sintomas relatados, etc." required></textarea>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">Tratamento / Conduta Realizada</label>
+                                <textarea class="form-control" id="ocorrencia-tratamento" rows="2" placeholder="O que foi feito? (Ex: Compressa, medicação, repouso, encaminhamento)"></textarea>
+                            </div>
+                            <div class="col-12">
+                                <div class="form-check form-switch p-3 border rounded bg-light">
+                                    <input class="form-check-input" type="checkbox" id="ocorrencia-encaminhado-pa" onchange="toggleCampoVeiculo()">
+                                    <label class="form-check-label fw-bold" for="ocorrencia-encaminhado-pa">Encaminhado ao Pronto Atendimento (P.A.)?</label>
+                                </div>
+                            </div>
+                            <div class="col-12" id="container-veiculo-pa" style="display: none;">
+                                <label class="form-label fw-bold text-primary">Veículo Utilizado para Transporte</label>
+                                <select class="form-select" id="ocorrencia-veiculo">
+                                    <option value="">Selecione o veículo...</option>
+                                    <option value="Particular">Veículo Particular</option>
+                                    <option value="Uber/Taxi">Uber / Táxi</option>
+                                    <option value="Ambulancia">Ambulância</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarOcorrencia()">Salvar Ocorrência</button>
                 </div>
             </div>
         </div>

@@ -11,7 +11,7 @@ const TODAS_SECOES = [
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
-    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos'
+    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos', 'ocorrencias'
 , 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia'];
 
 let currentUserPermissions = {};
@@ -370,6 +370,11 @@ async function carregarDadosSecao(sectionName) {
             case 'gestao-sumidos':
                 if (typeof inicializarGestaoSumidos === 'function') {
                     await inicializarGestaoSumidos();
+                }
+                break;
+            case 'ocorrencias':
+                if (typeof inicializarOcorrencias === 'function') {
+                    await inicializarOcorrencias();
                 }
                 break;
         }

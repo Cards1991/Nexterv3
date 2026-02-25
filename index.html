@@ -64,8 +64,8 @@
         /* Previne o "flash" da página antes do redirecionamento de login */
         .app-container { display: none; }
     </style>
-
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js" defer></script>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <style>
         /* Estilos para a barra de rolagem da agenda */
         .agenda-cards {
@@ -346,6 +346,7 @@
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo de EPI</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="epi-compras">Solicitações de Compras</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ocorrencias"><i class="fas fa-exclamation-circle me-2"></i>Ocorrências</a></li>
                                 </ul>
                             </div>
                         </li>
@@ -1100,6 +1101,195 @@
                     </div>
                 </section>
 
+                <!-- Seção Saúde Ocupacional: Ocorrências -->
+                <section id="ocorrencias" class="content-section d-none">
+                    <h2 class="page-title">Registro de Ocorrências</h2>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <div class="d-flex gap-2 align-items-center">
+                            <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-inicio" style="width: 150px;">
+                            <span class="text-muted">até</span>
+                            <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-fim" style="width: 150px;">
+                            <select class="form-select form-select-sm" id="filtro-ocorrencia-tipo" style="width: 180px;">
+                                <option value="">Todos os Tipos</option>
+                                <option value="Dor">Dor</option>
+                                <option value="Acidente">Acidente</option>
+                                <option value="Incidente">Incidente</option>
+                                <option value="Doença">Doença</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                            <button class="btn btn-primary btn-sm" onclick="filtrarOcorrencias()">
+                                <i class="fas fa-filter"></i> Filtrar
+                            </button>
+                        </div>
+                        <button class="btn btn-primary" id="btn-nova-ocorrencia" onclick="abrirModalNovaOcorrencia()">
+                            <i class="fas fa-plus-circle"></i> Nova Ocorrência
+                        </button>
+                    </div>
+
+                    <!-- KPIs de Ocorrências -->
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-primary text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-total-ocorrencias">0</div>
+                                            <small>Total de Ocorrências</small>
+                                        </div>
+                                        <i class="fas fa-exclamation-circle fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-warning text-dark h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-mes">0</div>
+                                            <small>Este Mês</small>
+                                        </div>
+                                        <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-danger text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-acidente">0</div>
+                                            <small>Acidentes</small>
+                                        </div>
+                                        <i class="fas fa-user-injured fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <div class="card bg-info text-white h-100">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div>
+                                            <div class="h4 mb-0" id="kpi-ocorrencias-pa">0</div>
+                                            <small>Encaminhados ao PA</small>
+                                        </div>
+                                        <i class="fas fa-ambulance fa-2x opacity-50"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <span>Ocorrências Registradas</span>
+                            <button class="btn btn-success btn-sm" onclick="exportarOcorrenciasExcel()">
+                                <i class="fas fa-file-excel"></i> Exportar
+                            </button>
+                        </div>
+                        <div class="card-body table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>Data</th>
+                                        <th>Colaborador</th>
+                                        <th>Empresa/Setor</th>
+                                        <th>Tipo</th>
+                                        <th>Descrição</th>
+                                        <th>Tratamento</th>
+                                        <th>Veículo</th>
+                                        <th class="text-end">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tabela-ocorrencias">
+                                    <tr><td colspan="8" class="text-center">Carregando...</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Modal: Nova Ocorrência -->
+                <div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title"><i class="fas fa-exclamation-circle"></i> Nova Ocorrência</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="form-nova-ocorrencia">
+                                    <input type="hidden" id="ocorrencia-id">
+                                    
+                                    <div class="row mb-3">
+                                        <div class="col-md-6">
+                                            <label for="ocorrencia-data" class="form-label">Data/Hora</label>
+                                            <input type="datetime-local" class="form-control" id="ocorrencia-data" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="ocorrencia-tipo" class="form-label">Tipo</label>
+                                            <select class="form-select" id="ocorrencia-tipo" required>
+                                                <option value="">Selecione...</option>
+                                                <option value="Dor">Dor</option>
+                                                <option value="Acidente">Acidente</option>
+                                                <option value="Incidente">Incidente</option>
+                                                <option value="Doença">Doença</option>
+                                                <option value="Outro">Outro</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="ocorrencia-colaborador" class="form-label">Colaborador</label>
+                                        <select class="form-select" id="ocorrencia-colaborador" required>
+                                            <option value="">Selecione...</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="ocorrencia-descricao" class="form-label">Descrição</label>
+                                        <textarea class="form-control" id="ocorrencia-descricao" rows="3" required placeholder="Descreva a ocorrência..."></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <label for="ocorrencia-tratamento" class="form-label">Tratamento Realizado</label>
+                                        <textarea class="form-control" id="ocorrencia-tratamento" rows="2" placeholder="Descreva o tratamento realizado..."></textarea>
+                                    </div>
+                                    
+                                    <div class="mb-3">
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" id="ocorrencia-encaminhado-pa" onchange="toggleCampoVeiculo()">
+                                            <label class="form-check-label" for="ocorrencia-encaminhado-pa">
+                                                Encaminhado ao Posto de Atendimento (PA)
+                                            </label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div id="container-veiculo-pa" style="display: none;" class="mb-3">
+                                        <label for="ocorrencia-veiculo" class="form-label">Veículo</label>
+                                        <select class="form-select" id="ocorrencia-veiculo">
+                                            <option value="">Selecione o veículo...</option>
+                                            <option value="Particular">Veículo Particular</option>
+                                            <option value="Uber/Taxi">Uber / Táxi</option>
+                                            <option value="Ambulancia">Ambulância</option>
+                                            <option disabled>--- Frota da Empresa ---</option>
+                                        </select>
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                <button type="button" class="btn btn-primary" onclick="salvarOcorrencia()">
+                                    <i class="fas fa-save"></i> Salvar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Seção Saúde Ocupacional: Consumo de EPI -->
                 <section id="consumo-epi" class="content-section d-none">
                     <h2 class="page-title">Saúde Ocupacional - Consumo de EPI</h2>
@@ -1763,6 +1953,35 @@
                             <div class="card">
                                 <div class="card-header">Histórico de Alterações Recentes</div>
                                 <div class="card-body">
+                                    <!-- Filtros de Alteração de Função -->
+                                    <div class="row g-2 mb-3 align-items-end">
+                                        <div class="col-md-3">
+                                            <label class="form-label form-label-sm mb-1">Data Início</label>
+                                            <input type="date" class="form-control form-control-sm" id="alt-filtro-inicio">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label form-label-sm mb-1">Data Fim</label>
+                                            <input type="date" class="form-control form-control-sm" id="alt-filtro-fim">
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label form-label-sm mb-1">Empresa</label>
+                                            <select class="form-select form-select-sm" id="alt-filtro-empresa">
+                                                <option value="">Todas</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label class="form-label form-label-sm mb-1">Nome</label>
+                                            <input type="text" class="form-control form-control-sm" id="alt-filtro-nome" placeholder="Buscar por nome...">
+                                        </div>
+                                        <div class="col-md-12 d-flex gap-2 justify-content-end">
+                                            <button class="btn btn-primary btn-sm" onclick="filtrarAlteracoesFuncao()">
+                                                <i class="fas fa-filter"></i> Filtrar
+                                            </button>
+                                            <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltrosAlteracoes()">
+                                                <i class="fas fa-times"></i> Limpar
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div class="table-responsive">
                                         <table class="table table-sm table-hover">
                                             <thead>
@@ -6775,69 +6994,66 @@
             <button class="btn btn-primary" id="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
-    <!-- Fim do Chat Inteligente -->
-
-    <!-- Scripts da Aplicação (carregados por último para garantir que o DOM esteja pronto) -->
-    <!-- Chart.js (carregado antes dos scripts que o utilizam) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/afd-parser.js"></script>    
-    <script src="js/empresas.js"></script>
-    <script src="js/setores.js"></script>
-    <script src="js/funcionarios.js"></script>
-    <script src="js/movimentacoes.js"></script>
-    <script src="js/painel-demitidos.js"></script>
-    <script src="js/transferencia.js"></script>
-    <script src="js/alteracao-funcao.js"></script>
-    <script src="js/faltas.js"></script>
-    <script src="js/afastamentos.js"></script>
-    <script src="js/atestados.js?v=1.2"></script>
-    <script src="js/controle-disciplinar.js"></script>
-    <script src="js/dp-calculos.js"></script>
-    <script src="js/controle-cestas.js"></script>
-    <script src="js/horas-extras.js"></script>
-    <script src="js/horas-extras-lancamento.js"></script>
-    <script src="js/solicitacao-horas-extras.js"></script>
-    <script src="js/autorizacao-horas.js"></script>
-    <script src="js/financeiro.js"></script>
-    <script src="js/custos.js"></script>
-    <script src="js/iso-maquinas.js"></script>
-    <script src="js/iso-mecanicos.js"></script>
-    <script src="js/iso-manutencao.js"></script>
-    <script src="js/iso-organograma.js"></script>
-    <script src="js/iso-swot.js"></script>
-    <script src="js/iso-avaliacao-colaboradores.js"></script>
-    <script src="js/juridico-clientes.js"></script>
-    <script src="js/juridico-processos.js"></script>
-    <script src="js/juridico-dashboard.js"></script>
-    <script src="js/juridico-automacao.js"></script>
-    <script src="js/juridico-financeiro.js"></script>
-    <script src="js/juridico-documentos.js"></script>
-    <script src="js/juridico-analise-cpf.js"></script>
-    <script src="js/frota-controle.js"></script>
-    <script src="js/epi-controle.js"></script>
-    <script src="js/gestao-sumidos.js"></script>
-    <script src="js/agenda.js"></script>
-    <script src="js/saude-psicossocial.js"></script>
-    <script src="js/analise-pessoas.js"></script>
-    <script src="js/analise-rescisao.js"></script>
-    <script src="js/dashboard-atividades.js"></script>
-    <script src="js/dashboard-faltas.js"></script>
-    <script src="js/dashboard-manutencao.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/treinamento.js" defer></script>
-    <script src="js/avaliacao-experiencia.js" defer></script>
-    <script src="js/voice-commands.js"></script>
-    <script src="js/mapaColaboradores.js"></script>
-    <script src="js/app.js"></script>
-    <script src="js/cid-manager.js"></script>
-    <script src="js/analise-atestados.js"></script>
-    <script src="js/ai-assistant.js"></script>
-    <script src="js/auto-correction-agent.js"></script>
-    <script type="module" src="js/body-map-3d.js"></script>
-    
-    <script src="js/ponto-pf.js" defer></script>
-    <!-- Correções Personalizadas (Relatórios e Filtros) -->
-    <script src="js/custom-fixes.js"></script>
+    <!-- Scripts da Aplicação -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/afd-parser.js"></script>    
+<script src="js/empresas.js"></script>
+<script src="js/setores.js"></script>
+<script src="js/funcionarios.js"></script>
+<script src="js/movimentacoes.js"></script>
+<script src="js/painel-demitidos.js"></script>
+<script src="js/transferencia.js"></script>
+<script src="js/alteracao-funcao.js"></script>
+<script src="js/faltas.js"></script>
+<script src="js/afastamentos.js"></script>
+<script src="js/atestados.js?v=1.2"></script>
+<script src="js/controle-disciplinar.js"></script>
+<script src="js/dp-calculos.js"></script>
+<script src="js/controle-cestas.js"></script>
+<script src="js/horas-extras.js"></script>
+<script src="js/horas-extras-lancamento.js"></script>
+<script src="js/solicitacao-horas-extras.js"></script>
+<script src="js/autorizacao-horas.js"></script>
+<script src="js/financeiro.js"></script>
+<script src="js/custos.js"></script>
+<script src="js/iso-maquinas.js"></script>
+<script src="js/iso-mecanicos.js"></script>
+<script src="js/iso-manutencao.js"></script>
+<script src="js/iso-organograma.js"></script>
+<script src="js/iso-swot.js"></script>
+<script src="js/iso-avaliacao-colaboradores.js"></script>
+<script src="js/juridico-clientes.js"></script>
+<script src="js/juridico-processos.js"></script>
+<script src="js/juridico-dashboard.js"></script>
+<script src="js/juridico-automacao.js"></script>
+<script src="js/juridico-financeiro.js"></script>
+<script src="js/juridico-documentos.js"></script>
+<script src="js/juridico-analise-cpf.js"></script>
+<script src="js/frota-controle.js"></script>
+<script src="js/epi-controle.js"></script>
+<script src="js/gestao-sumidos.js"></script>
+<script src="js/agenda.js"></script>
+<script src="js/saude-psicossocial.js"></script>
+<script src="js/analise-pessoas.js"></script>
+<script src="js/analise-rescisao.js"></script>
+<script src="js/dashboard-atividades.js"></script>
+<script src="js/dashboard-faltas.js"></script>
+<script src="js/dashboard-manutencao.js"></script>
+<script src="js/admin.js"></script>
+<script src="js/treinamento.js" defer></script>
+<script src="js/avaliacao-experiencia.js" defer></script>
+<script src="js/voice-commands.js"></script>
+<script src="js/mapaColaboradores.js"></script>
+<script src="js/app.js"></script>
+<script src="js/cid-manager.js"></script>
+<script src="js/analise-atestados.js"></script>
+<script src="js/ai-assistant.js"></script>
+<script src="js/auto-correction-agent.js"></script>
+<script type="module" src="js/body-map-3d.js"></script>
+<script src="js/ponto-pf.js" defer></script>
+<script src="js/custom-fixes.js"></script>
+<!-- OCORRÊNCIAS POR ÚLTIMO OU COM DEFER -->
+<script src="js/ocorrencias.js"></script>
 </body>
 </html>

@@ -91,10 +91,14 @@ export function initBodyMap3D(containerId, atestadosData) {
         // Ajustes iniciais do modelo
         bodyModel.scale.set(1, 1, 1);
         bodyModel.position.set(0, 0, 0);
+        
+        console.log("Modelo 3D carregado com sucesso! Verifique os nomes das partes abaixo para configurar o mapeamento:");
 
         // Aplicar materiais e cores iniciais
         bodyModel.traverse((child) => {
             if (child.isMesh) {
+                console.log("- Parte encontrada:", child.name);
+                
                 // Material base fosco e limpo
                 child.material = new THREE.MeshStandardMaterial({
                     color: COLORS.NEUTRAL,

@@ -234,14 +234,186 @@ async function registrarAlteracaoFuncao() {
     }
 }
 
+/**
+ * Popula o dropdown de empresas nos filtros de alteração de função.
+ */
+function popularFiltroEmpresasAlteracao() {
+    const empresaSelect = document.getElementById('alt-filtro-empresa');
+    if (!empresaSelect) return;
+    
+    empresaSelect.innerHTML = '<option value="">Todas</option>';
+    
+    if (__alteracao_empresas_cache && __alteracao_empresas_cache.length > 0) {
+        __alteracao_empresas_cache.forEach(emp => {
+            const option = document.createElement('option');
+            option.value = emp.nome;
+            option.textContent = emp.nome;
+            empresaSelect.appendChild(option);
+        });
+    }
+}
+
+/**
+ * Filtra o histórico de alterações de função com base nos filtros selecionados.
+ */
+async function filtrarAlteracoesFuncao() {
+    const tbody = document.getElementById('historico-alteracoes-container');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">Filtrando...</td></tr>';
+
+    try {
+        const dataInicio = document.getElementById('alt-filtro-inicio').value;
+        const dataFim = document.getElementById('alt-filtro-fim').value;
+        const empresa = document.getElementById('alt-filtro-empresa').value;
+        const nome = document.getElementById('alt-filtro-nome').value.toLowerCase().trim();
+
+        // Consulta base - sem limites para permitir filtragem completa
+        let query = db.collection('alteracoes_funcao').orderBy('dataAlteracao', 'desc');
+        
+        const snap = await query.get();
+
+        if (snap.empty) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma alteração encontrada.</td></tr>';
+            return;
+        }
+
+        let resultados = snap.docs.map(doc => doc.data());
+
+        // Aplicar filtros
+        if (dataInicio) {
+            const inicio = new Date(dataInicio);
+            inicio.setHours(0, 0, 0, 0);
+            resultados = resultados.filter(alt => alt.dataAlteracao.toDate() >= inicio);
+        }
+
+        if (dataFim) {
+            const fim = new Date(dataFim);
+            fim.setHours(23, 59, 59, 999);
+            resultados = resultados.filter(alt => alt.dataAlteracao.toDate() <= fim);
+        }
+
+        if (empresa) {
+            resultados = resultados.filter(alt => 
+                alt.empresaNomeDestino === empresa || alt.empresaNomeOrigem === empresa
+            );
+        }
+
+        if (nome) {
+            resultados = resultados.filter(alt => 
+                alt.funcionarioNome && alt.funcionarioNome.toLowerCase().includes(nome)
+            );
+        }
+
+        if (resultados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum resultado para os filtros selecionados.</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = resultados.map((alt, index) => {
+            // Armazena os dados no elemento usando dataset para evitar problemas com JSON.stringify em onclick
+            return `
+                <tr data-alt-func-id="${alt.funcionarioId}" data-alt-index="${index}">
+                    <td>${formatarData(alt.dataAlteracao.toDate())}</td>
+                    <td>${alt.funcionarioNome || 'N/A'}</td>
+                    <td><small>${alt.setorOrigem} / ${alt.cargoOrigem}</small></td>
+                    <td><small>${alt.setorDestino} / ${alt.cargoDestino}</small></td>
+                    <td class="text-end">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-info" onclick="buscarEExecutarAcao('${alt.funcionarioId}', 'visualizar')" title="Visualizar"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" onclick="reimprimirTermoFiltrado('${alt.funcionarioId}')" title="Reimprimir"><i class="fas fa-print"></i></button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error("Erro ao filtrar alterações:", error);
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao filtrar dados.</td></tr>';
+    }
+}
+
+/**
+ * Função auxiliar para buscar o ID do documento e executar ação.
+ * Como não temos o ID direto após filtragem, usamos os dados para encontrar.
+ */
+async function buscarEExecutarAcao(funcionarioId, acao) {
+    try {
+        const snap = await db.collection('alteracoes_funcao')
+            .where('funcionarioId', '==', funcionariosId)
+            .orderBy('dataAlteracao', 'desc')
+            .limit(1)
+            .get();
+        
+        if (!snap.empty) {
+            const docId = snap.docs[0].id;
+            if (acao === 'visualizar') {
+                visualizarAlteracao(docId);
+            }
+        }
+    } catch (error) {
+        console.error("Erro ao buscar alteração:", error);
+    }
+}
+
+/**
+ * Reimprime o termo a partir dos dados do objeto.
+ */
+async function reimprimirTermoPorDados(alt) {
+    if (alt && alt.dataAlteracao) {
+        // Garantir que dataAlteracao seja um objeto Date para a função gerarTermoAlteracao
+        const dados = {
+            ...alt,
+            dataAlteracao: alt.dataAlteracao.toDate ? alt.dataAlteracao.toDate() : new Date(alt.dataAlteracao)
+        };
+        gerarTermoAlteracao(dados);
+    }
+}
+
+/**
+ * Reimprime o termo filtrado buscando pelo ID do funcionário.
+ */
+async function reimprimirTermoFiltrado(funcionariosId) {
+    try {
+        const snap = await db.collection('alteracoes_funcao')
+            .where('funcionarioId', '==', funcionariosId)
+            .orderBy('dataAlteracao', 'desc')
+            .limit(1)
+            .get();
+        
+        if (!snap.empty) {
+            gerarTermoAlteracao(snap.docs[0].data());
+        } else {
+            mostrarMensagem("Registro não encontrado para reimpressão.", "error");
+        }
+    } catch (error) {
+        console.error("Erro ao reimprimir termo filtrado:", error);
+        mostrarMensagem("Falha ao gerar o termo para reimpressão.", "error");
+    }
+}
+
+/**
+ * Limpa os filtros de alteração de função e recarrega o histórico completo.
+ */
+function limparFiltrosAlteracoes() {
+    document.getElementById('alt-filtro-inicio').value = '';
+    document.getElementById('alt-filtro-fim').value = '';
+    document.getElementById('alt-filtro-empresa').value = '';
+    document.getElementById('alt-filtro-nome').value = '';
+    
+    carregarHistoricoAlteracoes();
+}
+
 async function carregarHistoricoAlteracoes() {
     const tbody = document.getElementById('historico-alteracoes-container');
-    tbody.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">Carregando...</td></tr>';
+
+    // Popula o filtro de empresas se ainda não foi feito
+    popularFiltroEmpresasAlteracao();
 
     const snap = await db.collection('alteracoes_funcao').orderBy('dataAlteracao', 'desc').limit(10).get();
 
     if (snap.empty) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma alteração recente.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhuma alteração recente.</td></tr>';
         return;
     }
 

@@ -4,7 +4,6 @@
 
 let itensEntregaAtual = []; // Array para armazenar os itens da entrega atual
 let validacaoBiometricaAtual = null; // Armazena dados da validação se ocorrer
-let psicoChartInstance = null;
 
 // Função auxiliar para carregar funcionários ativos
 async function carregarSelectFuncionariosAtivos(selectId) {
