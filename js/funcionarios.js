@@ -871,70 +871,10 @@ async function verDetalhesFuncionario(funcionarioId) {
             historicoHTML += '</ul>';
         }
 
-        // Histórico de Alterações de Função (registrado no próprio documento do funcionário)
-        if (Array.isArray(funcionario.historicoMovimentacoes) && funcionario.historicoMovimentacoes.length > 0) {
-            historicoHTML += '<h6 class="mt-4">Histórico de Alterações de Função:</h6>';
-            historicoHTML += '<ul class="list-group list-group-flush">';
-            // Ordena descendente por data quando possível
-            const movsOrdenadas = funcionario.historicoMovimentacoes.slice().sort((a, b) => {
-                const ad = a.data && a.data.toDate ? a.data.toDate().getTime() : new Date(a.data).getTime();
-                const bd = b.data && b.data.toDate ? b.data.toDate().getTime() : new Date(b.data).getTime();
-                return bd - ad;
-            });
-            movsOrdenadas.forEach((mov) => {
-                historicoHTML += `
-                    <li class="list-group-item">
-                        <strong>${formatarData(mov.data)}:</strong>
-                        <div><small>De: ${mov.de.empresaNome || 'N/A'} — ${mov.de.setor || 'N/A'} / ${mov.de.cargo || 'N/A'}</small></div>
-                        <div><small>Para: ${mov.para.empresaNome || 'N/A'} — ${mov.para.setor || 'N/A'} / ${mov.para.cargo || 'N/A'}</small></div>
-                        <div><small class="text-muted">Motivo: ${mov.motivo || 'Não informado'}</small></div>
-                    </li>`;
-            });
-            historicoHTML += '</ul>';
-        }
-
-        // Histórico de Aumentos
-        historicoHTML += '<h6 class="mt-4">Histórico de Aumentos:</h6>';
-        if (Array.isArray(funcionario.historicoAumentos) && funcionario.historicoAumentos.length > 0) {
-            historicoHTML += '<ul class="list-group list-group-flush" id="historico-aumentos-lista">';
-            funcionario.historicoAumentos.forEach((aumento, index) => {
-                historicoHTML += `
-                    <li class="list-group-item d-flex justify-content-between align-items-center">
-                        <div>
-                            <strong>${formatarData(aumento.data)}:</strong> Aumento de R$ ${aumento.valor.toFixed(2)} (${aumento.tipo === 'folha' ? 'Em Folha' : 'Por Fora'})
-                            <br><small class="text-muted">Motivo: ${aumento.motivo} | Assinado por: ${aumento.assinatura}</small>
-                        </div>
-                        <div class="btn-group btn-group-sm" role="group">
-                            <button class="btn btn-outline-primary" onclick="editarAumentoSalario('${funcionarioId}', ${index})"><i class="fas fa-edit"></i></button>
-                            <button class="btn btn-outline-danger" onclick="excluirAumentoSalario('${funcionarioId}', ${index})"><i class="fas fa-trash"></i></button>
-                            <button class="btn btn-outline-secondary" onclick="visualizarTermoAumento('${funcionarioId}', ${index})"><i class="fas fa-print"></i></button>
-                        </div>
-                    </li>`;
-            });
-            historicoHTML += '</ul>';
-        } else {
-            historicoHTML += '<p class="text-muted">Nenhum aumento salarial registrado.</p>';
-        }
-
-        // Histórico de Atestados
-        historicoHTML += '<h6 class="mt-4">Histórico de Atestados:</h6>';
-        if (atestadosOrdenados.length === 0) {
-            historicoHTML += '<p class="text-muted">Nenhum atestado registrado.</p>';
-        } else {
-            historicoHTML += '<ul class="list-group list-group-flush">';
-            atestadosOrdenados.forEach(atestado => {
-                const dataAtestado = atestado.data_atestado?.toDate ? atestado.data_atestado.toDate() : new Date(atestado.data_atestado);
-                const quantidadeFormatada = formatarAtestadoQuantidade(atestado);
-
-                historicoHTML += `
-                    <li class="list-group-item">
-                        <strong>${formatarData(dataAtestado)}:</strong> ${quantidadeFormatada}
-                        <div><small class="text-muted">CID: ${atestado.cid || 'N/A'} - Motivo: ${atestado.motivo || 'Não informado'}</small></div>
-                    </li>
-                `;
-            });
-            historicoHTML += '</ul>';
-        }
+        // Histórico de Movimentações - Removido conforme solicitação
+        // Histórico de Alterações de Função - Removido conforme solicitação
+        // Histórico de Aumentos - Removido conforme solicitação
+        // Histórico de Atestados - Removido conforme solicitação
 
         // Buscar a última avaliação de desempenho
         const avaliacoesSnap = await db.collection('avaliacoes_colaboradores')

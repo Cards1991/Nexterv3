@@ -357,6 +357,20 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
         }
 
         // Preparar dados
+        // Verificar se o usuário está cadastrado no sistema antes de criar o chamado
+        const usuarioDoc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
+        if (!usuarioDoc.exists) {
+            mostrarAlerta("Acesso Negado", "Você não está cadastrado no sistema. Entre em contato com o administrador para solicitar acesso.", "danger");
+            if (salvarBtn) {
+                salvarBtn.disabled = false;
+                salvarBtn.innerHTML = textoOriginal;
+            }
+            return;
+        }
+        
+        const usuarioData = usuarioDoc.data();
+        
+        // Preparar dados
         const chamadoData = {
             maquinaId: maquina,
             motivo: motivo,
@@ -366,7 +380,7 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
             dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
             origem: 'Mobile/QRCode',
             usuarioId: auth.currentUser.uid,
-            usuarioNome: 'Operador Mobile',
+            usuarioNome: usuarioData?.nome || 'Operador Mobile',
             observacoes: 'Aberto via Mobile QR Code',
             dataEncerramento: null,
             tempoParada: null,

@@ -326,7 +326,8 @@
                                     </li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="transferencia">Transferência</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="faltas">Faltas Diárias</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-disciplinar">Controle Disciplinar</a></li>
+<li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-disciplinar">Controle Disciplinar</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="historico-colaborador"><i class="fas fa-history"></i> Histórico do Colaborador</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="gestao-sumidos">Gestão de Sumidos</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="movimentacoes">Movimentações</a></li>
                                 </ul>
@@ -883,9 +884,9 @@
             <small class="text-muted" id="total-atestados">0 registros</small>
         </div>
         <div class="card-body p-0">
-            <div class="table-responsive">
+<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
                 <table class="table table-hover align-middle mb-0">
-                    <thead class="table-light">
+                    <thead class="table-light sticky-top" style="top: 0; z-index: 1;">
                         <tr>
                             <th class="ps-3">Colaborador</th>
                             <th>Data / Duração</th>
@@ -1885,6 +1886,49 @@
                                         -->
                                     </tbody>
                                 </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Histórico do Colaborador -->
+                <section id="historico-colaborador" class="content-section d-none">
+                    <div class="container-fluid mt-4">
+                        <div class="row">
+                            <!-- Coluna da Lista de Colaboradores -->
+                            <div class="col-md-4">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3><i class="fas fa-users me-2"></i>Colaboradores</h3>
+                                        <input type="text" id="search-colaborador" class="form-control mt-2" placeholder="Pesquisar colaborador...">
+                                    </div>
+                                    <div class="card-body" style="max-height: 80vh; overflow-y: auto;">
+                                        <div id="colaboradores-list" class="list-group">
+                                            <!-- A lista de colaboradores será inserida aqui via JS -->
+                                            <p class="text-center text-muted">Carregando...</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                
+                            <!-- Coluna do Histórico -->
+                            <div class="col-md-8">
+                                <div class="card">
+                                    <div class="card-header">
+                                        <h3 id="historico-header">
+                                            <i class="fas fa-history me-2"></i>Histórico do Colaborador
+                                        </h3>
+                                    </div>
+                                    <div class="card-body" id="historico-container-body" style="max-height: 80vh; overflow-y: auto;">
+                                        <div id="historico-timeline" class="timeline">
+                                            <!-- O histórico será inserido aqui via JS -->
+                                            <div class="text-center text-muted mt-5">
+                                                <i class="fas fa-arrow-left fa-2x"></i>
+                                                <p class="mt-2">Selecione um colaborador à esquerda para ver seu histórico.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -3707,6 +3751,42 @@
                     </div>
                 </section>
 
+                <!-- Seção Histórico do Colaborador -->
+                <section id="historico-colaborador" class="content-section d-none">
+                    <h2 class="page-title">Histórico do Colaborador</h2>
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="row align-items-center">
+                                <div class="col-md-6">
+                                    <div class="input-group">
+                                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                        <input type="text" class="form-control" id="filtro-historico-colaborador" placeholder="Buscar colaborador por nome...">
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-end mt-2 mt-md-0">
+                                    <button class="btn btn-primary" id="btn-imprimir-historico" disabled onclick="imprimirHistoricoColaborador()">
+                                        <i class="fas fa-print"></i> Imprimir Histórico
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-4" style="max-height: 65vh; overflow-y: auto;">
+                                    <div class="list-group" id="lista-colaboradores-historico">
+                                        <!-- Lista de colaboradores será inserida aqui -->
+                                    </div>
+                                </div>
+                                <div class="col-md-8" style="max-height: 65vh; overflow-y: auto;">
+                                    <div id="container-detalhes-historico" class="p-3">
+                                        <div class="text-center text-muted p-5"><i class="fas fa-user-clock fa-3x mb-3"></i><h5>Selecione um colaborador para ver seu histórico.</h5></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
                 <!-- Seção Jurídico - Dashboard -->
                 <section id="juridico-dashboard" class="content-section d-none">
                     <h2 class="page-title">Dashboard Jurídico - Visão Estratégica</h2>
@@ -5268,7 +5348,7 @@
                 </div>
                 <div class="modal-footer">
                     <div class="me-auto d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary" onclick="imprimirHistoricoPsicossocial()"><i class="fas fa-print"></i> Imprimir Histórico</button>
+                        <button type="button" class="btn btn-outline-secondary" onclick="SaudePsicossocialImprimirHistorico()"><i class="fas fa-print"></i> Imprimir Histórico</button>
                         <div class="form-check mb-0">
                             <input class="form-check-input" type="checkbox" id="check-imprimir-internas">
                             <label class="form-check-label small" for="check-imprimir-internas">Incluir Obs. Internas</label>
@@ -7010,6 +7090,7 @@
 <script src="js/dp-calculos.js"></script>
 <script src="js/controle-cestas.js"></script>
 <script src="js/horas-extras.js"></script>
+<script src="js/historico-colaborador.js"></script>
 <script src="js/horas-extras-lancamento.js"></script>
 <script src="js/solicitacao-horas-extras.js"></script>
 <script src="js/autorizacao-horas.js"></script>

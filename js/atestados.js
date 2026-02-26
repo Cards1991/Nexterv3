@@ -511,9 +511,9 @@ async function atualizarMetricasAtestados() {
     const custoTotalAtestados = document.getElementById('custo-total-atestados');
 
     if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
-    if (totalDiasAtestados) totalDiasAtestados.textContent = String(totalDias).replace('.', ',');
+if (totalDiasAtestados) totalDiasAtestados.textContent = Number(totalDias).toFixed(2).replace('.', ',');
     if (mediaDiasAtestado) mediaDiasAtestado.textContent = media.replace('.', ',');
-    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${String(custoTotal).replace('.', ',')}`;
+    if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
     
     const percentualAfastamento = document.getElementById('percentual-afastamento');
     if (percentualAfastamento) {
@@ -1353,6 +1353,8 @@ async function editarAtestado(id) {
     funcSnap.forEach(doc => {
         const opt = document.createElement('option');
         opt.value = doc.id;
+        opt.dataset.empresaId = doc.data().empresaId || '';
+        opt.dataset.setor = doc.data().setor || '';
         opt.textContent = doc.data().nome;
         funcSelect.appendChild(opt);
     });

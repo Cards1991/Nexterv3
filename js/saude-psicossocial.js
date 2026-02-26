@@ -766,72 +766,110 @@ SaudePsicossocial.imprimirHistorico = function() {
         detalhes: `Atestado de ${SaudePsicossocial.formatarDuracaoAtestado(a)} (CID: ${a.cid})`
     }));
 
-    const historicoAcompanhamento = (investigacao.historico || []).map(item => ({
-        data: SaudePsicossocial.converterParaDate(item.data),
-        tipo: item.estagio,
-        detalhes: item.observacoes
-    }));
+    const historicoAcompanhamento = (investigacao.historico || []).map(item => {
+        let detalhes = item.observacoes || '';
+        if (item.observacoesInternas) {
+            detalhes += '<br><strong><em>(Obs. Internas:</em></strong> ' + item.observacoesInternas + ')';
+        }
+        return {
+            data: SaudePsicossocial.converterParaDate(item.data),
+            tipo: item.estagio,
+            detalhes: detalhes
+        };
+    });
 
     const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
         .filter(item => item.data)
-        .sort((a, b) => b.data - a.data);
+        .sort((a, b) => a.data - b.data);
+
+    // Gerar HTML estilizado com timeline
+    let historicoHtml = '';
+    historicoCompleto.forEach(item => {
+        const dataFormatada = item.data.toLocaleDateString('pt-BR');
+        historicoHtml += `
+            <div class="timeline-item">
+                <div class="timeline-date">${dataFormatada}</div>
+                <div class="timeline-content">
+                    <h5>${item.tipo}</h5>
+                    <p>${SaudePsicossocial.escapeHTML(item.detalhes)}</p>
+                </div>
+            </div>`;
+    });
 
     const conteudoHtml = `
         <html>
         <head>
-            <title>Histórico Psicossocial - ${colaboradorNome}</title>
+            <title>Histórico de Acompanhamento Psicossocial - ${colaboradorNome}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
-                body { font-family: Arial, sans-serif; margin: 20mm; }
-                h1 { color: #007bff; border-bottom: 2px solid #007bff; padding-bottom: 10px; }
-                .info { margin: 20px 0; }
-                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-                th { background-color: #f2f2f2; }
-                .footer { margin-top: 40px; text-align: center; font-size: 12px; color: #666; }
-                @media print { body { margin: 0; } }
+                body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; background: #f8f9fa; }
+                .report-header { text-align: center; border-bottom: 3px solid #6f42c1; padding-bottom: 1rem; margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; }
+                .report-header h2 { font-weight: 700; color: white; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
+                .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
+                .info-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #6f42c1; }
+                .info-card strong { color: #6f42c1; display: block; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
+                .info-card span { font-size: 1.1rem; font-weight: 600; color: #333; }
+                .timeline-item { display: flex; margin-bottom: 1.5rem; background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+                .timeline-date { min-width: 100px; text-align: right; padding-right: 1.5rem; border-right: 3px solid #6f42c1; font-weight: bold; color: #6f42c1; display: flex; align-items: center; }
+                .timeline-content { padding-left: 1.5rem; flex: 1; }
+                .timeline-content h5 { color: #6f42c1; margin-bottom: 0.5rem; font-weight: 600; }
+                .timeline-content p { color: #555; margin: 0; line-height: 1.6; }
+                .signature-area { margin-top: 60px; display: flex; justify-content: space-around; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+                .signature-block { text-align: center; }
+                .signature-line { border-top: 2px solid #333; width: 250px; margin-bottom: 0.5rem; padding-top: 0.5rem; }
+                .footer { margin-top: 30px; text-align: center; color: #888; font-size: 0.85rem; }
+                @media print { body { background: white; } .timeline-item { box-shadow: none; border: 1px solid #eee; } .info-card { box-shadow: none; border: 1px solid #eee; } }
             </style>
         </head>
         <body>
-            <h1>Histórico de Acompanhamento Psicossocial</h1>
+            <div class="report-header">
+                <h2>Histórico de Acompanhamento Psicossocial</h2>
+            </div>
             
-            <div class="info">
-                <p><strong>Funcionário:</strong> ${colaboradorNome}</p>
-                <p><strong>CID:</strong> ${primeiroAtestado.cid}</p>
-                <p><strong>Total de atestados:</strong> ${caso.atestados.length}</p>
-                <p><strong>Total de dias:</strong> ${SaudePsicossocial.formatarDuracaoConsolidada(caso.totalDias)}</p>
+            <div class="info-grid">
+                <div class="info-card">
+                    <strong>Funcionário</strong>
+                    <span>${colaboradorNome}</span>
+                </div>
+                <div class="info-card">
+                    <strong>CID de Referência</strong>
+                    <span>${primeiroAtestado.cid || 'N/A'}</span>
+                </div>
+                <div class="info-card">
+                    <strong>Total de Atestados</strong>
+                    <span>${caso.atestados.length}</span>
+                </div>
+                <div class="info-card">
+                    <strong>Total de Dias</strong>
+                    <span>${SaudePsicossocial.formatarDuracaoConsolidada(caso.totalDias)}</span>
+                </div>
             </div>
 
-            <table>
-                <thead>
-                    <tr>
-                        <th>Data</th>
-                        <th>Tipo</th>
-                        <th>Detalhes</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${historicoCompleto.map(item => `
-                        <tr>
-                            <td>${item.data.toLocaleDateString('pt-BR')}</td>
-                            <td>${item.tipo}</td>
-                            <td>${SaudePsicossocial.escapeHTML(item.detalhes)}</td>
-                        </tr>
-                    `).join('')}
-                </tbody>
-            </table>
+            <hr style="margin: 2rem 0; border-color: #eee;">
+
+            ${historicoHtml}
+
+            <div class="signature-area">
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                </div>
+                <div class="signature-block">
+                    <div class="signature-line"></div>
+                    <p>Assinatura do Colaborador</p>
+                </div>
+            </div>
 
             <div class="footer">
-                Documento gerado em ${new Date().toLocaleString('pt-BR')}
+                Documento gerado em ${new Date().toLocaleString('pt-BR')} - Sistema NEXTER RH
             </div>
         </body>
-        </html>
-    `;
+        </html>`;
 
     const printWindow = window.open('', '_blank');
     printWindow.document.write(conteudoHtml);
     printWindow.document.close();
     printWindow.focus();
-    printWindow.print();
+    setTimeout(() => printWindow.print(), 250);
 };
 
 // ========================================
@@ -853,3 +891,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Expõe funções necessárias globalmente
 window.SaudePsicossocial = SaudePsicossocial;
+
+// Função global para impressão do histórico (usada pelo botão no HTML do modal de Saúde Psicossocial)
+window.SaudePsicossocialImprimirHistorico = function() {
+    SaudePsicossocial.imprimirHistorico();
+};

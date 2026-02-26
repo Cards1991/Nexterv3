@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos', 'ocorrencias'
-, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia'];
+, 'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'historico-colaborador'];
 
 let currentUserPermissions = {};
 
@@ -377,8 +377,19 @@ async function carregarDadosSecao(sectionName) {
                     await inicializarOcorrencias();
                 }
                 break;
+            case 'historico-colaborador':
+                if (typeof inicializarHistoricoColaborador === 'function') {
+                    await inicializarHistoricoColaborador();
+                }
+                break;
+            case 'historico-colaborador':
+                if (typeof inicializarHistoricoColaborador === 'function') {
+                    await inicializarHistoricoColaborador();
+                }
+                break;
         }
     } catch (error) {
+        console.error(`Erro ao carregar seção ${sectionName}:`, error);
     }
 }
 
