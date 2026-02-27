@@ -716,18 +716,22 @@ SaudePsicossocial.excluirHistorico = async function(casoId, index) {
 
         SaudePsicossocial.mostrarMensagem("Registro excluído com sucesso!", "success");
 
-        if (SaudePsicossocial.state.modoEdicao && 
-            SaudePsicossocial.state.casoEditando === casoId && 
+        // Fechar o modal após a exclusão bem-sucedida
+        const modal = bootstrap.Modal.getInstance(document.getElementById('acompanhamentoPsicossocialModal'));
+        if (modal) modal.hide();
+
+        if (SaudePsicossocial.state.modoEdicao &&
+            SaudePsicossocial.state.casoEditando === casoId &&
             SaudePsicossocial.state.indiceEditando === index) {
-            
+
             SaudePsicossocial.state.modoEdicao = false;
             SaudePsicossocial.state.casoEditando = null;
             SaudePsicossocial.state.indiceEditando = null;
-            
+
             document.getElementById('psico-observacoes').value = '';
             document.getElementById('psico-data-evento').value = '';
             document.getElementById('psico-observacoes-internas').value = '';
-            
+
             const btn = document.getElementById('btn-salvar-acompanhamento');
             btn.textContent = 'Salvar Acompanhamento';
             btn.onclick = SaudePsicossocial.salvarAcompanhamento;
@@ -743,8 +747,10 @@ SaudePsicossocial.excluirHistorico = async function(casoId, index) {
 // IMPRESSÃO
 // ========================================
 
-SaudePsicossocial.imprimirHistorico = function() {
+SaudePsicossocial.imprimirHistorico = async function() {
     const casoId = document.getElementById('psico-atestado-id')?.value;
+    const incluirInternas = document.getElementById('check-imprimir-internas')?.checked;
+
     if (!casoId) {
         SaudePsicossocial.mostrarMensagem("Nenhum caso selecionado", "warning");
         return;
@@ -756,120 +762,208 @@ SaudePsicossocial.imprimirHistorico = function() {
         return;
     }
 
-    const primeiroAtestado = caso.atestados[0];
-    const investigacao = primeiroAtestado.investigacaoPsicossocial || {};
-    const colaboradorNome = caso.nome || 'Não identificado';
+    document.body.style.cursor = 'wait';
 
-    const historicoAtestados = caso.atestados.map(a => ({
-        data: SaudePsicossocial.converterParaDate(a.data_atestado),
-        tipo: 'Atestado Recebido',
-        detalhes: `Atestado de ${SaudePsicossocial.formatarDuracaoAtestado(a)} (CID: ${a.cid})`
-    }));
-
-    const historicoAcompanhamento = (investigacao.historico || []).map(item => {
-        let detalhes = item.observacoes || '';
-        if (item.observacoesInternas) {
-            detalhes += '<br><strong><em>(Obs. Internas:</em></strong> ' + item.observacoesInternas + ')';
+    try {
+        // Buscar dados do funcionário para Idade e Tempo de Casa
+        let funcData = { nascimento: null, admissao: null };
+        if (caso.funcionarioId) {
+            try {
+                const funcDoc = await db.collection('funcionarios').doc(caso.funcionarioId).get();
+                if (funcDoc.exists) {
+                    funcData = funcDoc.data();
+                }
+            } catch (e) {
+                console.error("Erro ao buscar dados do funcionário:", e);
+            }
         }
-        return {
-            data: SaudePsicossocial.converterParaDate(item.data),
-            tipo: item.estagio,
-            detalhes: detalhes
-        };
-    });
 
-    const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
-        .filter(item => item.data)
-        .sort((a, b) => a.data - b.data);
+        const primeiroAtestado = caso.atestados[0];
+        const investigacao = primeiroAtestado.investigacaoPsicossocial || {};
+        const colaboradorNome = caso.nome || 'Não identificado';
+        const setor = caso.setor || 'Não informado';
 
-    // Gerar HTML estilizado com timeline
-    let historicoHtml = '';
-    historicoCompleto.forEach(item => {
-        const dataFormatada = item.data.toLocaleDateString('pt-BR');
-        historicoHtml += `
-            <div class="timeline-item">
-                <div class="timeline-date">${dataFormatada}</div>
-                <div class="timeline-content">
-                    <h5>${item.tipo}</h5>
-                    <p>${SaudePsicossocial.escapeHTML(item.detalhes)}</p>
+        // Calcular Idade
+        let idade = 'N/A';
+        if (funcData.nascimento) {
+            const nasc = new Date(funcData.nascimento);
+            const hoje = new Date();
+            let age = hoje.getFullYear() - nasc.getFullYear();
+            const m = hoje.getMonth() - nasc.getMonth();
+            if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) {
+                age--;
+            }
+            idade = `${age} anos`;
+        }
+
+        // Calcular Tempo de Empresa
+        let tempoCasa = 'N/A';
+        if (funcData.admissao) {
+            const adm = new Date(funcData.admissao);
+            const hoje = new Date();
+            let anos = hoje.getFullYear() - adm.getFullYear();
+            let meses = hoje.getMonth() - adm.getMonth();
+            if (meses < 0) {
+                anos--;
+                meses += 12;
+            }
+            tempoCasa = anos > 0 ? `${anos} anos e ${meses} meses` : `${meses} meses`;
+        }
+
+        // Preparar Itens do Histórico
+        const historicoAtestados = caso.atestados.map(a => ({
+            data: SaudePsicossocial.converterParaDate(a.data_atestado),
+            tipo: 'Atestado',
+            detalhes: `Atestado de ${SaudePsicossocial.formatarDuracaoAtestado(a)} (CID: ${a.cid || 'N/A'})`,
+            autor: 'Sistema'
+        }));
+
+        const historicoAcompanhamento = (investigacao.historico || []).map(item => {
+            let detalhes = item.observacoes || '';
+            // Limpeza de texto
+            detalhes = detalhes.replace(/<[^>]*>?/gm, ''); 
+
+            if (incluirInternas && item.observacoesInternas && item.observacoesInternas.trim().length > 1) {
+                detalhes += `<br><span class="obs-interna"><strong>Obs. Interna:</strong> ${item.observacoesInternas}</span>`;
+            }
+            return {
+                data: SaudePsicossocial.converterParaDate(item.data),
+                tipo: item.estagio,
+                detalhes: detalhes,
+                autor: item.responsavelNome || 'Usuário'
+            };
+        });
+
+        const historicoCompleto = [...historicoAtestados, ...historicoAcompanhamento]
+            .filter(item => item.data)
+            .sort((a, b) => b.data - a.data); // Mais recente primeiro
+
+        // Gerar HTML
+        let historicoHtml = '';
+        if (historicoCompleto.length === 0) {
+            historicoHtml = '<p class="text-center text-muted">Nenhum registro histórico encontrado.</p>';
+        } else {
+            historicoCompleto.forEach(item => {
+                const dataFormatada = item.data.toLocaleString('pt-BR');
+                historicoHtml += `
+                    <div class="timeline-item">
+                        <div class="timeline-marker"></div>
+                        <div class="timeline-content">
+                            <div class="timeline-header">
+                                <span class="timeline-title">${item.tipo}</span>
+                                <span class="timeline-date">${dataFormatada}</span>
+                            </div>
+                            <div class="timeline-body">
+                                ${item.detalhes}
+                            </div>
+                            <div class="timeline-footer">
+                                Registrado por: ${item.autor}
+                            </div>
+                        </div>
+                    </div>`;
+            });
+        }
+
+        const conteudoHtml = `
+            <html>
+            <head>
+                <title>Relatório Psicossocial - ${colaboradorNome}</title>
+                <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+                <style>
+                    body { font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #fff; color: #333; padding: 40px; }
+                    .header { border-bottom: 2px solid #0d6efd; padding-bottom: 20px; margin-bottom: 30px; display: flex; justify-content: space-between; align-items: center; }
+                    .logo-text { font-size: 24px; font-weight: bold; color: #0d6efd; text-transform: uppercase; }
+                    .report-title { font-size: 18px; color: #555; }
+                    
+                    .info-section { background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin-bottom: 30px; border: 1px solid #e9ecef; }
+                    .info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; }
+                    .info-item label { display: block; font-size: 12px; text-transform: uppercase; color: #6c757d; font-weight: 600; margin-bottom: 4px; }
+                    .info-item div { font-size: 16px; font-weight: 500; color: #212529; }
+
+                    .timeline { position: relative; padding-left: 20px; }
+                    .timeline-item { position: relative; margin-bottom: 25px; }
+                    .timeline-marker { position: absolute; left: -26px; top: 5px; width: 12px; height: 12px; border-radius: 50%; background: #fff; border: 3px solid #0d6efd; z-index: 2; }
+                    .timeline::before { content: ''; position: absolute; left: 0; top: 5px; bottom: 0; width: 2px; background: #e9ecef; z-index: 1; }
+                    
+                    .timeline-content { padding-bottom: 10px; }
+                    .timeline-header { display: flex; justify-content: space-between; margin-bottom: 8px; align-items: baseline; }
+                    .timeline-title { font-weight: 700; font-size: 16px; color: #0d6efd; }
+                    .timeline-date { font-size: 13px; color: #6c757d; font-weight: 500; }
+                    .timeline-body { font-size: 14px; line-height: 1.5; color: #495057; }
+                    .timeline-footer { font-size: 12px; color: #adb5bd; margin-top: 6px; font-style: italic; }
+                    
+                    .obs-interna { display: block; margin-top: 8px; padding: 8px; background-color: #fff3cd; border-left: 3px solid #ffc107; color: #856404; font-size: 13px; border-radius: 4px; }
+
+                    .footer { margin-top: 50px; border-top: 1px solid #dee2e6; padding-top: 20px; text-align: center; font-size: 12px; color: #adb5bd; }
+                    
+                    @media print {
+                        body { padding: 0; }
+                        .no-print { display: none; }
+                        .info-section { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; }
+                        .obs-interna { background-color: #fff3cd !important; -webkit-print-color-adjust: exact; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="logo-text">Gestão de Saúde</div>
+                    <div class="report-title">Histórico Psicossocial</div>
                 </div>
-            </div>`;
-    });
 
-    const conteudoHtml = `
-        <html>
-        <head>
-            <title>Histórico de Acompanhamento Psicossocial - ${colaboradorNome}</title>
-            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-            <style>
-                body { font-family: 'Segoe UI', system-ui, sans-serif; padding: 2rem; background: #f8f9fa; }
-                .report-header { text-align: center; border-bottom: 3px solid #6f42c1; padding-bottom: 1rem; margin-bottom: 2rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 2rem; border-radius: 10px; color: white; }
-                .report-header h2 { font-weight: 700; color: white; margin: 0; text-shadow: 1px 1px 2px rgba(0,0,0,0.2); }
-                .info-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-                .info-card { background: white; padding: 1.5rem; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); border-left: 4px solid #6f42c1; }
-                .info-card strong { color: #6f42c1; display: block; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; }
-                .info-card span { font-size: 1.1rem; font-weight: 600; color: #333; }
-                .timeline-item { display: flex; margin-bottom: 1.5rem; background: white; border-radius: 10px; padding: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
-                .timeline-date { min-width: 100px; text-align: right; padding-right: 1.5rem; border-right: 3px solid #6f42c1; font-weight: bold; color: #6f42c1; display: flex; align-items: center; }
-                .timeline-content { padding-left: 1.5rem; flex: 1; }
-                .timeline-content h5 { color: #6f42c1; margin-bottom: 0.5rem; font-weight: 600; }
-                .timeline-content p { color: #555; margin: 0; line-height: 1.6; }
-                .signature-area { margin-top: 60px; display: flex; justify-content: space-around; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-                .signature-block { text-align: center; }
-                .signature-line { border-top: 2px solid #333; width: 250px; margin-bottom: 0.5rem; padding-top: 0.5rem; }
-                .footer { margin-top: 30px; text-align: center; color: #888; font-size: 0.85rem; }
-                @media print { body { background: white; } .timeline-item { box-shadow: none; border: 1px solid #eee; } .info-card { box-shadow: none; border: 1px solid #eee; } }
-            </style>
-        </head>
-        <body>
-            <div class="report-header">
-                <h2>Histórico de Acompanhamento Psicossocial</h2>
-            </div>
-            
-            <div class="info-grid">
-                <div class="info-card">
-                    <strong>Funcionário</strong>
-                    <span>${colaboradorNome}</span>
+                <div class="info-section">
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <label>Colaborador</label>
+                            <div>${colaboradorNome}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>Setor</label>
+                            <div>${setor}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>Idade</label>
+                            <div>${idade}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>Tempo de Empresa</label>
+                            <div>${tempoCasa}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>CID Inicial</label>
+                            <div>${primeiroAtestado.cid || '-'}</div>
+                        </div>
+                        <div class="info-item">
+                            <label>Total de Dias Afastado</label>
+                            <div>${SaudePsicossocial.formatarDuracaoConsolidada(caso.totalDias)}</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="info-card">
-                    <strong>CID de Referência</strong>
-                    <span>${primeiroAtestado.cid || 'N/A'}</span>
-                </div>
-                <div class="info-card">
-                    <strong>Total de Atestados</strong>
-                    <span>${caso.atestados.length}</span>
-                </div>
-                <div class="info-card">
-                    <strong>Total de Dias</strong>
-                    <span>${SaudePsicossocial.formatarDuracaoConsolidada(caso.totalDias)}</span>
-                </div>
-            </div>
 
-            <hr style="margin: 2rem 0; border-color: #eee;">
-
-            ${historicoHtml}
-
-            <div class="signature-area">
-                <div class="signature-block">
-                    <div class="signature-line"></div>
+                <h5 class="mb-4" style="color: #495057; font-weight: 600;">Linha do Tempo</h5>
+                <div class="timeline">
+                    ${historicoHtml}
                 </div>
-                <div class="signature-block">
-                    <div class="signature-line"></div>
-                    <p>Assinatura do Colaborador</p>
+
+                <div class="footer">
+                    Documento confidencial gerado em ${new Date().toLocaleString('pt-BR')} pelo Sistema Nexter.
                 </div>
-            </div>
+                
+                <script>
+                    window.onload = function() { setTimeout(function() { window.print(); }, 500); }
+                </script>
+            </body>
+            </html>`;
 
-            <div class="footer">
-                Documento gerado em ${new Date().toLocaleString('pt-BR')} - Sistema NEXTER RH
-            </div>
-        </body>
-        </html>`;
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(conteudoHtml);
+        printWindow.document.close();
 
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(conteudoHtml);
-    printWindow.document.close();
-    printWindow.focus();
-    setTimeout(() => printWindow.print(), 250);
+    } catch (error) {
+        console.error("Erro ao gerar relatório:", error);
+        SaudePsicossocial.mostrarMensagem("Erro ao gerar relatório: " + error.message, "error");
+    } finally {
+        document.body.style.cursor = 'default';
+    }
 };
 
 // ========================================

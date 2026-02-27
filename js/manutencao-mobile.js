@@ -11,60 +11,45 @@ let currentUser = null;
  * Carrega dinamicamente os scripts do Firebase SDK
  */
 async function carregarFirebaseSDK() {
-    return new Promise((resolve, reject) => {
-        // Verificar se já está carregado
-        if (typeof firebase !== 'undefined') {
-            console.log("✅ Firebase SDK já carregado");
-            resolve();
-            return;
-        }
+    // Verificar se já está carregado
+    if (typeof firebase !== 'undefined') {
+        console.log("✅ Firebase SDK já carregado");
+        return;
+    }
 
-        console.log("📦 Carregando Firebase SDK dinamicamente...");
+    console.log("📦 Carregando Firebase SDK dinamicamente...");
 
-        const scripts = [
-            'https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js',
-            'https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js',
-            'https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js'
-        ];
-
-        let loadedCount = 0;
-        const totalScripts = scripts.length;
-
-        function onScriptLoad() {
-            loadedCount++;
-            console.log(`📦 Script ${loadedCount}/${totalScripts} carregado`);
-
-            if (loadedCount === totalScripts) {
-                // Aguardar um pouco para garantir que o Firebase esteja totalmente inicializado
-                setTimeout(() => {
-                    if (typeof firebase !== 'undefined') {
-                        console.log("✅ Todos os scripts Firebase carregados com sucesso");
-                        resolve();
-                    } else {
-                        reject(new Error("Firebase não ficou disponível após carregamento"));
-                    }
-                }, 100);
-            }
-        }
-
-        function onScriptError(src, error) {
-            console.error(`❌ Erro ao carregar script: ${src}`, error);
-            reject(new Error(`Falha ao carregar Firebase SDK: ${src}`));
-        }
-
-        scripts.forEach(src => {
+    const loadScript = (src) => {
+        return new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = src;
-            script.onload = () => onScriptLoad();
-            script.onerror = (error) => onScriptError(src, error);
+            script.async = false; // Garante execução em ordem
+            script.onload = () => {
+                console.log(`📦 Script carregado: ${src}`);
+                resolve();
+            };
+            script.onerror = () => reject(new Error(`Falha ao carregar script: ${src}`));
             document.head.appendChild(script);
         });
+    };
 
-        // Timeout de segurança (30 segundos)
-        setTimeout(() => {
-            reject(new Error("Timeout ao carregar Firebase SDK"));
-        }, 30000);
-    });
+    try {
+        // Carregar sequencialmente para evitar erros de dependência (App -> Auth -> Firestore)
+        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js');
+        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js');
+        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js');
+        
+        // Aguardar inicialização interna
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        if (typeof firebase === 'undefined') {
+            throw new Error("Firebase não ficou disponível após carregamento");
+        }
+        console.log("✅ Todos os scripts Firebase carregados com sucesso");
+    } catch (error) {
+        console.error("❌ Erro ao carregar scripts:", error);
+        throw error;
+    }
 }
 
 /**
@@ -177,7 +162,9 @@ async function autenticarUsuario() {
                     // (Só funciona se você configurar um usuário de serviço)
                     tentarLoginGenerico()
                         .then(resolve)
-                        .catch(reject);
+                        .catch((err) => {
+                            reject(new Error("Autenticação falhou. Ative o 'Login Anônimo' no Firebase Console ou configure o usuário mobile."));
+                        });
                 } else if (error.code === 'auth/network-request-failed') {
                     reject(new Error("Erro de conexão. Verifique sua internet."));
                 } else {
@@ -205,7 +192,7 @@ async function tentarLoginGenerico() {
         return userCredential.user;
     } catch (error) {
         console.error("❌ Login genérico falhou:", error);
-        throw new Error("Não foi possível autenticar no sistema. Contate o administrador.");
+        throw error;
     }
 }
 
