@@ -99,14 +99,16 @@ async function carregarConfigGerente() {
 }
 
 // ============ WHATSAPP FUNCTIONS ============
-function enviarNotificacaoWhatsApp(chamadoData) {
-    if (!WHATSAPP_CONFIG.enabled || !WHATSAPP_CONFIG.gerenteTelefone) {
+function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
+    const telefoneParaEnvio = telefoneDestino || WHATSAPP_CONFIG.gerenteTelefone;
+
+    if (!WHATSAPP_CONFIG.enabled || !telefoneParaEnvio) {
         console.log('Notificações WhatsApp desativadas ou telefone não configurado');
         return false;
     }
 
     try {
-        const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
+        const telefone = formatarTelefoneWhatsApp(telefoneParaEnvio);
         if (!telefone) {
             console.warn('Número de telefone inválido para WhatsApp');
             return false;
@@ -748,6 +750,10 @@ async function abrirModalChamado(chamadoId = null) {
                                         <option value="Urgente">Urgente</option>
                                     </select>
                                 </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Mecânico (Para Notificação)</label>
+                                    <select class="form-select" id="chamado-mecanico-abertura"><option value="">Selecione...</option></select>
+                                </div>
                                 <div class="col-md-6 mb-3" id="chamado-mes-container" style="display: none;">
                                     <label class="form-label">Mês de Referência</label>
                                     <select class="form-select" id="chamado-mes-referencia">
@@ -865,6 +871,20 @@ async function abrirModalChamado(chamadoId = null) {
             });
     }
 
+    // Popular select de mecânicos na abertura
+    const mecanicoAberturaSelect = document.getElementById('chamado-mecanico-abertura');
+    if (mecanicoAberturaSelect) {
+        mecanicoAberturaSelect.innerHTML = '<option value="">Carregando...</option>';
+        db.collection('funcionarios').where('isMecanico', '==', true).orderBy('nome').get()
+            .then(snap => {
+                mecanicoAberturaSelect.innerHTML = '<option value="">Selecione o mecânico (Opcional)</option>';
+                snap.forEach(doc => {
+                    const f = doc.data();
+                    mecanicoAberturaSelect.innerHTML += `<option value="${doc.id}">${f.nome}</option>`;
+                });
+            });
+    }
+
     // Se for edição, carrega os dados existentes
     if (chamadoId) {
         try {
@@ -876,6 +896,7 @@ async function abrirModalChamado(chamadoId = null) {
                 document.getElementById('chamado-obs').value = data.observacoes || '';
                 document.getElementById('chamado-prioridade').value = data.prioridade || 'Normal';
                 document.getElementById('chamado-tipo-manutencao').value = data.tipoManutencao || 'Corretiva';
+                if(data.mecanicoResponsavelId) document.getElementById('chamado-mecanico-abertura').value = data.mecanicoResponsavelId;
                 document.getElementById('chamado-maquina-parada').checked = data.maquinaParada || false;
             }
         } catch (error) {
@@ -918,6 +939,10 @@ async function salvarChamado() {
     const mesReferencia = document.getElementById('chamado-mes-referencia')?.value;
     const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp')?.checked && WHATSAPP_CONFIG.enabled;
     const chamadoId = document.getElementById('chamado-id')?.value;
+    
+    const mecanicoSelect = document.getElementById('chamado-mecanico-abertura');
+    const mecanicoId = mecanicoSelect?.value;
+    const mecanicoNome = mecanicoSelect && mecanicoSelect.selectedIndex > 0 ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text : null;
 
     if (!maquinaId || !motivo || !tipoManutencao) {
         mostrarMensagem("Selecione a máquina, tipo de manutenção e descreva o motivo.", "warning");
@@ -929,11 +954,14 @@ async function salvarChamado() {
         return;
     }
 
+    const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
+    const textoOriginal = btnSalvar ? btnSalvar.innerHTML : '';
+
     try {
-        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
-        const textoOriginal = btnSalvar.innerHTML;
-        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-        btnSalvar.disabled = true;
+        if (btnSalvar) {
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+            btnSalvar.disabled = true;
+        }
 
         const chamadoData = {
             maquinaId,
@@ -945,7 +973,9 @@ async function salvarChamado() {
             dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: firebase.auth().currentUser?.uid,
             createdByNome: firebase.auth().currentUser?.displayName || 'Usuário',
-            notificacaoEnviada: false
+            notificacaoEnviada: false,
+            mecanicoResponsavelId: mecanicoId || null,
+            mecanicoResponsavelNome: mecanicoNome || null
         };
 
         let docRef;
@@ -973,8 +1003,16 @@ async function salvarChamado() {
             // ENVIA NOTIFICAÇÃO WHATSAPP
             let notificacaoEnviada = false;
             if (enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
+                let telefoneDestino = null;
+                
+                // Se selecionou mecânico, busca o telefone dele
+                if (mecanicoId) {
+                    const mecDoc = await db.collection('funcionarios').doc(mecanicoId).get();
+                    if (mecDoc.exists) telefoneDestino = mecDoc.data().telefone;
+                }
+
                 // Envia notificação principal
-                notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto);
+                notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto, telefoneDestino);
                 
                 // Se for máquina parada, envia alerta crítico
                 if (maquinaParada) {
@@ -1010,7 +1048,6 @@ async function salvarChamado() {
         console.error("Erro ao salvar chamado:", error);
         mostrarMensagem("Erro ao salvar chamado: " + error.message, "error");
     } finally {
-        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
         if (btnSalvar) {
             btnSalvar.innerHTML = textoOriginal || '<i class="fas fa-paper-plane"></i> Salvar';
             btnSalvar.disabled = false;
@@ -1259,15 +1296,6 @@ async function abrirModalFinalizar(chamadoId) {
                             <label class="form-label">Peças Utilizadas (opcional)</label>
                             <textarea class="form-control" id="finalizar-pecas" rows="3" placeholder="Ex: 1x Rolamento 6203, 2m de Correia XPTO..."></textarea>
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label">Tempo Total de Parada</label>
-                            <div class="input-group">
-                                <input type="number" class="form-control" id="finalizar-tempo-horas" placeholder="Horas" min="0" value="0">
-                                <span class="input-group-text">h</span>
-                                <input type="number" class="form-control" id="finalizar-tempo-minutos" placeholder="Minutos" min="0" max="59" value="0">
-                                <span class="input-group-text">min</span>
-                            </div>
-                        </div>
                         <div class="form-check mb-3">
                             <input class="form-check-input" type="checkbox" id="finalizar-enviar-whatsapp" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''}>
                             <label class="form-check-label" for="finalizar-enviar-whatsapp">
@@ -1297,15 +1325,6 @@ async function abrirModalFinalizar(chamadoId) {
             if (obsMecanicoInput) {
                 obsMecanicoInput.required = chamadoData.maquinaParada || false;
             }
-            
-            // Preencher tempo de parada se existir
-            if (chamadoData.tempoParada) {
-                const tempoMatch = chamadoData.tempoParada.match(/(\d+)h\s*(\d+)?m?/);
-                if (tempoMatch) {
-                    document.getElementById('finalizar-tempo-horas').value = tempoMatch[1] || 0;
-                    document.getElementById('finalizar-tempo-minutos').value = tempoMatch[2] || 0;
-                }
-            }
         }
     } catch (error) {
         console.error("Erro ao carregar dados do chamado:", error);
@@ -1315,8 +1334,6 @@ async function abrirModalFinalizar(chamadoId) {
     document.getElementById('finalizar-tipo-manutencao').value = '';
     document.getElementById('finalizar-obs').value = '';
     document.getElementById('finalizar-pecas').value = '';
-    document.getElementById('finalizar-tempo-horas').value = '0';
-    document.getElementById('finalizar-tempo-minutos').value = '0';
     document.getElementById('finalizar-enviar-whatsapp').checked = WHATSAPP_CONFIG.enabled;
 
     // Popular select de mecânicos
@@ -1348,8 +1365,6 @@ async function finalizarChamado() {
     const mecanicoSelect = document.getElementById('finalizar-mecanico');
     const mecanicoId = mecanicoSelect?.value;
     const mecanicoNome = mecanicoSelect ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text.split(' - ')[0] : '';
-    const horas = parseInt(document.getElementById('finalizar-tempo-horas')?.value) || 0;
-    const minutos = parseInt(document.getElementById('finalizar-tempo-minutos')?.value) || 0;
     const enviarWhatsapp = document.getElementById('finalizar-enviar-whatsapp')?.checked;
 
     if (!tipoManutencao) {
@@ -1367,11 +1382,14 @@ async function finalizarChamado() {
         return;
     }
 
+    const btn = document.querySelector('#finalizarChamadoModal .btn-success');
+    const textoOriginal = btn ? btn.innerHTML : '';
+
     try {
-        const btn = document.querySelector('#finalizarChamadoModal .btn-success');
-        const textoOriginal = btn.innerHTML;
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalizando...';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Finalizando...';
+        }
 
         const chamadoRef = db.collection('manutencao_chamados').doc(chamadoId);
         const doc = await chamadoRef.get();
@@ -1389,8 +1407,6 @@ async function finalizarChamado() {
             const minutosCalc = Math.floor((diffMs % 3600000) / 60000);
             
             tempoParada = `${horasCalc}h ${minutosCalc}m`;
-        } else if (horas > 0 || minutos > 0) {
-            tempoParada = `${horas}h ${minutos}m`;
         }
 
         const updateData = {
@@ -1437,7 +1453,6 @@ async function finalizarChamado() {
         console.error("Erro ao finalizar chamado:", error);
         mostrarMensagem("Erro ao finalizar o chamado.", "error");
     } finally {
-        const btn = document.querySelector('#finalizarChamadoModal .btn-success');
         if (btn) {
             btn.disabled = false;
             btn.innerHTML = textoOriginal || '<i class="fas fa-check"></i> Finalizar Chamado';
@@ -1598,11 +1613,14 @@ async function imprimirChamado(chamadoId) {
 
 // ============ FUNÇÕES DE MANUTENÇÃO PREVENTIVA ============
 async function criarChamadosPreventivosMensais(maquinaId, motivo, observacoes, prioridade, mesReferencia, enviarWhatsapp) {
+    const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
+    const textoOriginal = btnSalvar ? btnSalvar.innerHTML : '';
+
     try {
-        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
-        const textoOriginal = btnSalvar.innerHTML;
-        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando chamados preventivos...';
-        btnSalvar.disabled = true;
+        if (btnSalvar) {
+            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Criando chamados preventivos...';
+            btnSalvar.disabled = true;
+        }
 
         const anoAtual = new Date().getFullYear();
         const mesAtual = new Date().getMonth() + 1; // Janeiro = 1
@@ -1662,7 +1680,6 @@ async function criarChamadosPreventivosMensais(maquinaId, motivo, observacoes, p
         console.error("Erro ao criar chamados preventivos:", error);
         mostrarMensagem("Erro ao criar chamados preventivos: " + error.message, "error");
     } finally {
-        const btnSalvar = document.querySelector('#manutencaoChamadoModal .btn-primary');
         if (btnSalvar) {
             btnSalvar.disabled = false;
             btnSalvar.innerHTML = textoOriginal || '<i class="fas fa-paper-plane"></i> Abrir Chamado';
