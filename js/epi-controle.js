@@ -46,11 +46,18 @@ async function carregarEstoqueEPI() {
     tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando estoque...</td></tr>';
 
     try {
+        const empresaId = document.getElementById('filtro-epi-empresa')?.value;
         const termoBusca = document.getElementById('busca-epi')?.value.toLowerCase() || '';
         const filtroSemCusto = document.getElementById('filtro-epi-sem-custo')?.checked;
-        const snapshot = await db.collection('epi_estoque').orderBy('descricao').get();
+        
+        let query = db.collection('epi_estoque');
+        if (empresaId) {
+            query = query.where('empresaId', '==', empresaId);
+        }
+        
+        const snapshot = await query.get();
 
-        if (snapshot.empty) {
+        if (snapshot.empty && !empresaId) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum EPI cadastrado.</td></tr>';
             return;
         }
@@ -59,7 +66,9 @@ async function carregarEstoqueEPI() {
         const hoje = new Date();
         hoje.setHours(0,0,0,0);
 
-        snapshot.forEach(doc => {
+        const docs = snapshot.docs.sort((a, b) => (a.data().descricao || '').localeCompare(b.data().descricao || ''));
+
+        docs.forEach(doc => {
             const epi = doc.data();
 
             // Filtro de busca local
@@ -138,6 +147,11 @@ async function abrirModalEPI(epiId = null) {
     document.getElementById('epi-id').value = epiId || '';
     document.getElementById('modalEPITitulo').textContent = epiId ? 'Editar EPI' : 'Novo EPI';
 
+    // Carrega empresas no select do modal
+    if (typeof carregarSelectEmpresas === 'function') {
+        await carregarSelectEmpresas('epi-empresa');
+    }
+
     // O campo de quantidade é sempre somente leitura, pois o estoque é gerenciado por entradas/saídas
     document.getElementById('epi-quantidade').readOnly = true;
     document.getElementById('epi-quantidade').classList.add('bg-light');
@@ -148,6 +162,7 @@ async function abrirModalEPI(epiId = null) {
             const doc = await db.collection('epi_estoque').doc(epiId).get();
             if (doc.exists) {
                 const data = doc.data();
+                document.getElementById('epi-empresa').value = data.empresaId || '';
                 document.getElementById('epi-descricao').value = data.descricao;
                 document.getElementById('epi-classe').value = data.classe || '';
                 toggleModeloEPI(); // Atualiza visibilidade do modelo
@@ -199,6 +214,7 @@ async function salvarEPI() {
     const modelo = document.getElementById('epi-modelo').value;
 
     const dados = {
+        empresaId: document.getElementById('epi-empresa').value,
         descricao: document.getElementById('epi-descricao').value.trim(),
         classe: classe,
         modelo: classe === 'Calçados' ? modelo : null,
@@ -216,6 +232,11 @@ async function salvarEPI() {
     // Para EPIs existentes, não atualizar a quantidade (estoque gerenciado por entradas/saídas)
     if (!id) {
         dados.quantidade = parseInt(document.getElementById('epi-quantidade').value) || 0;
+    }
+
+    if (!dados.empresaId) {
+        mostrarMensagem("O campo Empresa é obrigatório.", "warning");
+        return;
     }
 
     if (classe === 'Calçados' && !modelo) {
@@ -276,18 +297,12 @@ async function abrirModalEntradaEstoque() {
     
     try {
         const snap = await db.collection('epi_estoque').orderBy('descricao').get();
-        select.innerHTML = '<option value="">Selecione o EPI</option>';
+        select.innerHTML = '<option value="">Selecione um EPI</option>';
         snap.forEach(doc => {
             const epi = doc.data();
             // Filtrar lotes substituídos para evitar confusão
             if (epi.status === 'Substituido') return;
-            const option = document.createElement('option');
-            option.value = doc.id;
-            option.textContent = `${epi.descricao} (CA: ${epi.ca}) - Saldo Atual: ${epi.quantidade || 0}`;
-            // Armazena dados para verificação de rastreio
-            option.dataset.classe = epi.classe || '';
-            option.dataset.modelo = epi.modelo || '';
-            select.appendChild(option);
+            select.innerHTML += `<option value="${doc.id}" data-classe="${epi.classe || ''}" data-modelo="${epi.modelo || ''}">${epi.descricao} (CA: ${epi.ca}) - Saldo: ${epi.quantidade || 0}</option>`;
         });
     } catch (e) {
         console.error(e);
@@ -588,6 +603,51 @@ async function atualizarCustoConsumoIndividual(id) {
     }
 }
 
+async function carregarEPIsPorEmpresa() {
+    const funcSelect = document.getElementById('consumo-funcionario');
+    const epiSelect = document.getElementById('consumo-epi-select');
+    if (!funcSelect || !epiSelect) return;
+
+    const selectedOption = funcSelect.options[funcSelect.selectedIndex];
+    const empresaId = selectedOption.dataset.empresaId;
+
+    epiSelect.innerHTML = '<option value="">Carregando EPIs...</option>';
+    epiSelect.disabled = true;
+
+    if (!empresaId) {
+        epiSelect.innerHTML = '<option value="">Selecione um funcionário com empresa definida</option>';
+        return;
+    }
+
+    try {
+        const snapshot = await db.collection('epi_estoque')
+            .where('empresaId', '==', empresaId)
+            .orderBy('descricao')
+            .get();
+
+        epiSelect.innerHTML = '<option value="">Selecione o EPI</option>';
+        
+        snapshot.forEach(doc => {
+            const epi = doc.data();
+            if (epi.quantidade > 0 && epi.status !== 'Substituido') {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = `${epi.descricao} (CA: ${epi.ca}) - Saldo: ${epi.quantidade}`;
+                option.dataset.saldo = epi.quantidade;
+                option.dataset.descricao = epi.descricao;
+                option.dataset.ca = epi.ca;
+                option.dataset.lote = epi.lote || '';
+                option.dataset.custo = epi.custo || 0;
+                epiSelect.appendChild(option);
+            }
+        });
+        epiSelect.disabled = false;
+    } catch (error) {
+        console.error("Erro ao carregar EPIs por empresa:", error);
+        epiSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
 async function abrirModalConsumoEPI() {
     // Verificar se o modal existe no HTML
     let modalEl = document.getElementById('modalConsumoEPI');
@@ -719,37 +779,16 @@ async function abrirModalConsumoEPI() {
     // Carregar Funcionários
     const funcSelect = document.getElementById('consumo-funcionario');
     funcSelect.innerHTML = '<option value="">Carregando...</option>';
+    if (funcSelect && !funcSelect.dataset.listenerAttached) {
+        funcSelect.addEventListener('change', carregarEPIsPorEmpresa);
+        funcSelect.dataset.listenerAttached = 'true';
+    }
     await carregarSelectFuncionariosAtivos('consumo-funcionario');
 
-    // Carregar EPIs com saldo > 0
+    // Limpa o select de EPIs; será populado quando um funcionário for selecionado
     const epiSelect = document.getElementById('consumo-epi-select');
-    epiSelect.innerHTML = '<option value="">Carregando...</option>';
-    
-    try {
-        const snapshot = await db.collection('epi_estoque')
-            .orderBy('descricao')
-            .get();
-
-        epiSelect.innerHTML = '<option value="">Selecione o EPI</option>';
-        
-        snapshot.forEach(doc => {
-            const epi = doc.data();
-            if (epi.quantidade > 0) {
-                const option = document.createElement('option');
-                option.value = doc.id;
-                option.textContent = `${epi.descricao} (CA: ${epi.ca}) - Saldo: ${epi.quantidade}`;
-                option.dataset.saldo = epi.quantidade;
-                option.dataset.descricao = epi.descricao;
-                option.dataset.ca = epi.ca;
-                option.dataset.lote = epi.lote || '';
-                option.dataset.custo = epi.custo || 0;
-                epiSelect.appendChild(option);
-            }
-        });
-    } catch (error) {
-        console.error("Erro ao carregar EPIs para consumo:", error);
-        epiSelect.innerHTML = '<option value="">Erro ao carregar EPIs</option>';
-    }
+    epiSelect.innerHTML = '<option value="">Selecione um colaborador primeiro</option>';
+    epiSelect.disabled = true;
 
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
@@ -2012,6 +2051,10 @@ async function reprocessarCustosEPI() {
 
 async function inicializarEstoqueEPI() {
     console.log("Inicializando Estoque de EPI...");
+    // Popula o filtro de empresa na tela de estoque
+    if (typeof carregarSelectEmpresas === 'function') {
+        await carregarSelectEmpresas('filtro-epi-empresa');
+    }
     await carregarEstoqueEPI();
 }
 

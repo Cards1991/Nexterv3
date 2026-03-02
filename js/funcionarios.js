@@ -2629,6 +2629,8 @@ async function processarArquivoAtualizacaoXLSX() {
                                 field = 'setor';
                             } else if (lowerKey.includes('cargo') || lowerKey.includes('função') || lowerKey.includes('funcao')) {
                                 field = 'cargo';
+                            } else if (lowerKey.includes('sal') && (lowerKey.includes('fora') || lowerKey.includes('extra'))) {
+                                field = 'salarioPorFora';
                             } else if (lowerKey.includes('sal')) {
                                 field = 'salario';
                             } else if (lowerKey.includes('admiss')) {
@@ -2657,24 +2659,30 @@ async function processarArquivoAtualizacaoXLSX() {
                                     const empresaId = empresasMap.get(value.toString().toLowerCase());
                                     if (empresaId) updateData['empresaId'] = empresaId;
                                 } else if (field === 'dataNascimento' || field === 'dataAdmissao') {
-                                    // Tenta parsear data do formato brasileiro dd/mm/yyyy
+                                    // Tenta parsear data do formato brasileiro dd/mm/yyyy ou ISO yyyy-mm-dd
                                     let parsedDate = null;
                                     if (value instanceof Date && !isNaN(value)) {
                                         parsedDate = value;
                                     } else if (typeof value === 'string') {
                                         const dateStr = value.trim();
-                                        const dateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/;
-                                        const match = dateStr.match(dateRegex);
+                                        // Tenta formato BR
+                                        let match = dateStr.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
                                         if (match) {
                                             const [, day, month, year] = match;
                                             parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
-                                            if (isNaN(parsedDate.getTime())) parsedDate = null;
+                                        } else {
+                                            // Tenta formato ISO (yyyy-mm-dd)
+                                            match = dateStr.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+                                            if (match) {
+                                                const [, year, month, day] = match;
+                                                parsedDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+                                            }
                                         }
                                     }
-                                    if (parsedDate) {
+                                    if (parsedDate && !isNaN(parsedDate.getTime())) {
                                         updateData[field] = firebase.firestore.Timestamp.fromDate(parsedDate);
                                     }
-                                } else if (field === 'salario') {
+                                } else if (field === 'salario' || field === 'salarioPorFora') {
                                     const salario = parseFloat(value.toString().replace(',', '.'));
                                     if (!isNaN(salario)) updateData[field] = salario;
                                 } else if (field === 'status') {
