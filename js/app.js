@@ -1143,7 +1143,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 currentUserPermissions = { isAdmin: false, secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos'], restricaoSetor: null };
                 await userDocRef.set({
                     email: user.email,
-                    nome: user.displayName || user.email.split('@')[0],
+                    nome: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
                     permissoes: currentUserPermissions
                 }, { merge: true });
             }
