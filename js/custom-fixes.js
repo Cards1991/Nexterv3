@@ -279,7 +279,8 @@ async function carregarFaltasExperiencia() {
                     nome: f.nome,
                     setor: f.setor,
                     admissao: dataAdmissao,
-                    faltas: 0
+                    faltas: 0,
+                    diasFaltas: new Set() // Para controlar dias únicos e evitar duplicidade manhã/tarde
                 });
             }
         });
@@ -316,10 +317,20 @@ async function carregarFaltasExperiencia() {
             
             if (funcId && mapFuncExperiencia.has(funcId)) {
                 const dados = mapFuncExperiencia.get(funcId);
-                dados.faltas++;
-                mapFuncExperiencia.set(funcId, dados);
+                
+                // Identificar o dia da falta para evitar duplicidade (manhã/tarde)
+                if (falta.data) {
+                    const d = falta.data.toDate ? falta.data.toDate() : new Date(falta.data);
+                    const dataStr = d.toLocaleDateString('pt-BR'); // Usa data local para agrupar
+                    dados.diasFaltas.add(dataStr);
+                }
             }
         });
+
+        // Atualizar contagem baseada em dias únicos
+        for (const dados of mapFuncExperiencia.values()) {
+            dados.faltas = dados.diasFaltas.size;
+        }
 
         // 5. Ordenar e Renderizar
         const ranking = Array.from(mapFuncExperiencia.values())
