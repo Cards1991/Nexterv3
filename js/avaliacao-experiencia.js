@@ -143,9 +143,17 @@ async function carregarPainelExperiencia() {
             const vencimento90 = new Date(vencimento45);
             vencimento90.setDate(vencimento45.getDate() + 45);
 
-            if (hoje <= vencimento90) {
-                totalEmExperiencia++;
-            }
+            // Função auxiliar para verificar filtros
+            const atendeFiltros = (periodo, vencimento) => {
+                if (filtroInicio && vencimento < new Date(filtroInicio.replace(/-/g, '\/'))) return false;
+                if (filtroFim && vencimento > new Date(filtroFim.replace(/-/g, '\/'))) return false;
+                if (filtroPeriodo && filtroPeriodo != periodo) return false;
+                return true;
+            };
+
+            // Contabiliza total (respeitando filtros)
+            if (atendeFiltros(45, vencimento45) && !mapaAvaliacoes.has(`${func.id}-45`)) totalEmExperiencia++;
+            if (atendeFiltros(90, vencimento90) && !mapaAvaliacoes.has(`${func.id}-90`)) totalEmExperiencia++;
 
             const processarPendencia = (periodo, vencimento) => {
                 if (mapaAvaliacoes.has(`${func.id}-${periodo}`)) return; 
@@ -153,11 +161,7 @@ async function carregarPainelExperiencia() {
                 const diasParaVencer = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24));
                 if (diasParaVencer < 0) return; // Não mostra vencidos
 
-                if (filtroInicio && vencimento < new Date(filtroInicio.replace(/-/g, '\/'))) return;
-                if (filtroFim && vencimento > new Date(filtroFim.replace(/-/g, '\/'))) return;
-
-                
-                if (filtroPeriodo && filtroPeriodo != periodo) return;
+                if (!atendeFiltros(periodo, vencimento)) return;
                 
                 pendencias.push({
                     ...func,
@@ -336,6 +340,26 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
         } catch (error) {
             console.error("Erro ao buscar ocorrências:", error);
             alertContainer.innerHTML = '';
+        }
+    }
+
+    // Se for avaliação de 90 dias, buscar observações da avaliação de 45 dias para referência
+    if (parseInt(periodo) === 90) {
+        try {
+            const aval45Snap = await db.collection('avaliacoes_experiencia')
+                .where('funcionarioId', '==', id)
+                .where('periodo', '==', 45)
+                .limit(1)
+                .get();
+
+            if (!aval45Snap.empty) {
+                const aval45 = aval45Snap.docs[0].data();
+                if (aval45.observacoes) {
+                    document.getElementById('aval-exp-obs').value = `[Obs. 45 Dias]: ${aval45.observacoes}\n\n`;
+                }
+            }
+        } catch (e) {
+            console.error("Erro ao buscar observações de 45 dias:", e);
         }
     }
 

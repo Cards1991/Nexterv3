@@ -1,11 +1,12 @@
 // =========================================================
 // Módulo Mobile de Abertura de Chamados (Via QR Code)
-// Versão corrigida - Com autenticação obrigatória
+// Versão com Login Obrigatório
 // =========================================================
 
 let db;
 let auth;
 let currentUser = null;
+let isLoggedIn = false;
 
 /**
  * Carrega dinamicamente os scripts do Firebase SDK
@@ -34,7 +35,7 @@ async function carregarFirebaseSDK() {
     };
 
     try {
-        // Carregar sequencialmente para evitar erros de dependência (App -> Auth -> Firestore)
+        // Carregar sequencialmente para evitar erros de dependência
         await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js');
         await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js');
         await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js');
@@ -53,11 +54,11 @@ async function carregarFirebaseSDK() {
 }
 
 /**
- * Inicializa o ambiente mobile, conecta ao Firebase e prepara o formulário.
+ * Inicializa o ambiente mobile
  */
 async function inicializarMobile() {
     try {
-        console.log("📱 Inicializando módulo mobile com autenticação...");
+        console.log("📱 Inicializando módulo mobile...");
 
         // 1. Carregar Firebase SDK dinamicamente se necessário
         await carregarFirebaseSDK();
@@ -86,23 +87,11 @@ async function inicializarMobile() {
 
         console.log("✅ Serviços Firebase inicializados");
 
-        // 5. Tentar autenticação anônima (obrigatória pelas suas regras)
-        currentUser = await autenticarUsuario();
+        // 5. Configurar observador de autenticação
+        configurarObservadorAuth();
 
-        if (!currentUser) {
-            throw new Error("Não foi possível autenticar no sistema. Tente novamente.");
-        }
-
-        console.log("✅ Usuário autenticado:", currentUser.uid);
-
-        // 6. Configurar persistência offline
-        await configurarPersistencia();
-
-        // 7. Configurar formulário
-        configurarFormulario();
-
-        // 8. Testar conexão
-        await testarConexaoFirestore();
+        // 6. Mostrar tela de login primeiro
+        mostrarTelaLogin();
 
     } catch (error) {
         console.error("❌ Erro crítico na inicialização:", error);
@@ -111,89 +100,180 @@ async function inicializarMobile() {
 }
 
 /**
- * Configura persistência offline
+ * Configura o observador de estado de autenticação
  */
-async function configurarPersistencia() {
-    try {
-        await db.enablePersistence({ synchronizeTabs: false })
-            .catch(err => {
-                if (err.code === 'failed-precondition') {
-                    console.log("ℹ️ Persistência não disponível em múltiplas abas");
-                } else if (err.code === 'unimplemented') {
-                    console.log("ℹ️ Persistência não suportada no navegador");
-                }
-            });
-        console.log("✅ Persistência offline configurada");
-    } catch (error) {
-        console.log("ℹ️ Persistência offline não disponível:", error.message);
-    }
-}
-
-/**
- * Realiza autenticação anônima
- */
-async function autenticarUsuario() {
-    return new Promise((resolve, reject) => {
-        // Verificar se já está autenticado
-        const user = auth.currentUser;
+function configurarObservadorAuth() {
+    auth.onAuthStateChanged((user) => {
         if (user) {
-            console.log("✅ Usuário já autenticado:", user.uid);
-            resolve(user);
-            return;
+            console.log("✅ Usuário autenticado:", user.uid);
+            currentUser = user;
+            isLoggedIn = true;
+            
+            // Verificar se o usuário é válido no sistema
+            verificarUsuarioValido(user);
+        } else {
+            console.log("🔒 Usuário não autenticado");
+            currentUser = null;
+            isLoggedIn = false;
+            mostrarTelaLogin();
         }
-
-        console.log("🔑 Iniciando autenticação anônima...");
-        
-        // Tenta autenticar anonimamente
-        auth.signInAnonymously()
-            .then((userCredential) => {
-                const user = userCredential.user;
-                console.log("✅ Autenticação anônima realizada:", user.uid);
-                resolve(user);
-            })
-            .catch((error) => {
-                console.error("❌ Erro na autenticação:", error);
-                
-                // Tentar métodos alternativos
-                if (error.code === 'auth/operation-not-allowed' || error.code === 'auth/admin-restricted-operation') {
-                    console.log("⚠️ Login anônimo não habilitado, tentando outras opções...");
-                    
-                    // 1. Tentar usar um usuário genérico compartilhado
-                    // (Só funciona se você configurar um usuário de serviço)
-                    tentarLoginGenerico()
-                        .then(resolve)
-                        .catch((err) => {
-                            reject(new Error("Autenticação falhou. Ative o 'Login Anônimo' no Firebase Console ou configure o usuário mobile."));
-                        });
-                } else if (error.code === 'auth/network-request-failed') {
-                    reject(new Error("Erro de conexão. Verifique sua internet."));
-                } else {
-                    reject(new Error(`Erro de autenticação: ${error.message}`));
-                }
-            });
     });
 }
 
 /**
- * Tenta login com credenciais genéricas (fallback)
+ * Verifica se o usuário existe nas coleções do sistema
  */
-async function tentarLoginGenerico() {
-    // ATENÇÃO: Este método requer que você tenha um usuário de serviço configurado
-    // e que o login por email/senha esteja habilitado no Firebase
+async function verificarUsuarioValido(user) {
+    try {
+        // Verificar nas coleções 'usuarios' e 'funcionarios'
+        const usuarioDoc = await db.collection('usuarios').doc(user.uid).get();
+        const funcionarioDoc = await db.collection('funcionarios').doc(user.uid).get();
+        
+        if (!usuarioDoc.exists && !funcionarioDoc.exists) {
+            // Usuário não encontrado - fazer logout
+            await auth.signOut();
+            mostrarAlertaLogin("Acesso Negado", "Você não está cadastrado no sistema. Entre em contato com o administrador.", "danger");
+            return false;
+        }
+        
+        // Usuário válido - mostrar formulário
+        mostrarFormulario();
+        return true;
+    } catch (error) {
+        console.error("❌ Erro ao verificar usuário:", error);
+        return false;
+    }
+}
+
+/**
+ * Mostra a tela de login
+ */
+function mostrarTelaLogin() {
+    const loginScreen = document.getElementById('login-screen');
+    const formContainer = document.getElementById('form-container');
     
-    const emailGenerico = 'mobile@seuapp.com';
-    const senhaGenerica = 'mobile123'; // Defina uma senha no Firebase Auth
+    if (loginScreen) loginScreen.classList.remove('d-none');
+    if (formContainer) formContainer.classList.add('d-none');
+}
+
+/**
+ * Mostra o formulário (após login bem-sucedido)
+ */
+function mostrarFormulario() {
+    const loginScreen = document.getElementById('login-screen');
+    const formContainer = document.getElementById('form-container');
     
-    console.log("🔄 Tentando login genérico...");
+    if (loginScreen) loginScreen.classList.add('d-none');
+    if (formContainer) {
+        formContainer.classList.remove('d-none');
+        
+        // Configurar formulário após login
+        configurarFormulario();
+        
+        // Testar conexão
+        testarConexaoFirestore();
+    }
+}
+
+/**
+ * Realiza login com email e senha
+ */
+async function fazerLogin() {
+    const emailInput = document.getElementById('login-email');
+    const senhaInput = document.getElementById('login-senha');
+    const loginBtn = document.getElementById('btn-fazer-login');
+    
+    const email = emailInput.value.trim();
+    const senha = senhaInput.value;
+    
+    if (!email || !senha) {
+        mostrarAlertaLogin("Atenção", "Preencha o email e a senha para continuar.", "warning");
+        return;
+    }
+    
+    // Feedback visual
+    const textoOriginal = loginBtn.innerHTML;
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Entrando...';
     
     try {
-        const userCredential = await auth.signInWithEmailAndPassword(emailGenerico, senhaGenerica);
-        console.log("✅ Login genérico realizado:", userCredential.user.uid);
-        return userCredential.user;
+        console.log("🔐 Tentando login com email:", email);
+        
+        // Realizar login com email e senha
+        const userCredential = await auth.signInWithEmailAndPassword(email, senha);
+        console.log("✅ Login realizado:", userCredential.user.uid);
+        
+        // Limpar campos
+        emailInput.value = '';
+        senhaInput.value = '';
+        
     } catch (error) {
-        console.error("❌ Login genérico falhou:", error);
-        throw error;
+        console.error("❌ Erro no login:", error);
+        
+        let mensagem = "Erro ao fazer login.";
+        
+        if (error.code === 'auth/user-not-found') {
+            mensagem = "Usuário não encontrado. Verifique o email.";
+        } else if (error.code === 'auth/wrong-password') {
+            mensagem = "Senha incorreta.";
+        } else if (error.code === 'auth/invalid-email') {
+            mensagem = "Email inválido.";
+        } else if (error.code === 'auth/user-disabled') {
+            mensagem = "Usuário desabilitado. Entre em contato com o administrador.";
+        } else if (error.code === 'auth/too-many-requests') {
+            mensagem = "Muitas tentativas. Tente novamente mais tarde.";
+        } else if (error.code === 'auth/network-request-failed') {
+            mensagem = "Erro de conexão. Verifique sua internet.";
+        } else {
+            mensagem = error.message;
+        }
+        
+        mostrarAlertaLogin("Erro", mensagem, "danger");
+        
+        // Restaurar botão
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = textoOriginal;
     }
+}
+
+/**
+ * Realiza logout
+ */
+async function fazerLogout() {
+    try {
+        await auth.signOut();
+        console.log("✅ Logout realizado");
+        mostrarTelaLogin();
+    } catch (error) {
+        console.error("❌ Erro ao fazer logout:", error);
+    }
+}
+
+/**
+ * Mostra alerta na tela de login
+ */
+function mostrarAlertaLogin(titulo, mensagem, tipo = 'info') {
+    const container = document.getElementById('login-alerts');
+    if (!container) return;
+    
+    // Remover alertas anteriores
+    container.innerHTML = '';
+    
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${tipo} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+        <strong>${titulo}</strong> ${mensagem}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    container.appendChild(alertDiv);
+    
+    // Remover após 5 segundos
+    setTimeout(() => {
+        if (alertDiv.parentElement) {
+            alertDiv.remove();
+        }
+    }, 5000);
 }
 
 /**
@@ -201,18 +281,12 @@ async function tentarLoginGenerico() {
  */
 async function testarConexaoFirestore() {
     try {
-        // Tenta ler uma coleção para testar permissões
         const testRef = db.collection('configuracoes').doc('teste');
         await testRef.get({ source: 'cache' }).catch(() => {});
         console.log("✅ Conexão com Firestore OK");
         return true;
     } catch (error) {
         console.error("❌ Erro de conexão Firestore:", error);
-        
-        if (error.code === 'permission-denied') {
-            throw new Error("Permissão negada. Verifique suas credenciais.");
-        }
-        
         return false;
     }
 }
@@ -222,6 +296,10 @@ async function testarConexaoFirestore() {
  */
 function configurarFormulario() {
     console.log("⚙️ Configurando formulário...");
+    
+    // Verificar se já foi configurado
+    if (document.getElementById('formulario-configurado')) return;
+    document.getElementById('formulario-configurado').value = 'true';
     
     // 1. Capturar parâmetros da URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -236,15 +314,8 @@ function configurarFormulario() {
     const paradaCheck = document.getElementById('mobile-maquina-parada');
     const prioridadeSelect = document.getElementById('mobile-prioridade');
     const salvarBtn = document.getElementById('btn-salvar-chamado-mobile');
-    const loadingSpinner = document.getElementById('loading-spinner');
 
-    // 3. Esconder loading e mostrar formulário
-    if (loadingSpinner) loadingSpinner.classList.add('d-none');
-    if (document.getElementById('form-container')) {
-        document.getElementById('form-container').classList.remove('d-none');
-    }
-
-    // 4. Preencher máquina se veio pelo QR Code
+    // 3. Preencher máquina se veio pelo QR Code
     if (maquinaId) {
         maquinaInput.value = maquinaId;
         maquinaInput.readOnly = true;
@@ -254,15 +325,15 @@ function configurarFormulario() {
         buscarInformacoesMaquina(maquinaId);
     }
 
-    // 5. Definir prioridade
+    // 4. Definir prioridade
     if (prioridadeParam && prioridadeSelect) {
         prioridadeSelect.value = prioridadeParam;
     }
 
-    // 6. Configurar validação
+    // 5. Configurar validação
     configurarValidacao(motivoInput);
 
-    // 7. Configurar envio
+    // 6. Configurar envio
     configurarEnvio(salvarBtn, maquinaInput, motivoInput, paradaCheck, prioridadeSelect);
     
     console.log("✅ Formulário configurado");
@@ -337,27 +408,29 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
     salvarBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Enviando...';
 
     try {
-        // Verificar se ainda está autenticado
+        // Verificar se está autenticado
         if (!auth.currentUser) {
-            console.log("🔄 Reconectando...");
-            await autenticarUsuario();
-        }
-
-        // Preparar dados
-        // Verificar se o usuário está cadastrado no sistema antes de criar o chamado
-        const usuarioDoc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
-        if (!usuarioDoc.exists) {
-            mostrarAlerta("Acesso Negado", "Você não está cadastrado no sistema. Entre em contato com o administrador para solicitar acesso.", "danger");
-            if (salvarBtn) {
-                salvarBtn.disabled = false;
-                salvarBtn.innerHTML = textoOriginal;
-            }
+            mostrarAlerta("Erro", "Sessão expirada. Faça login novamente.", "danger");
+            mostrarTelaLogin();
             return;
         }
+
+        // Obter dados do usuário
+        const usuarioDoc = await db.collection('usuarios').doc(auth.currentUser.uid).get();
+        const funcionarioDoc = await db.collection('funcionarios').doc(auth.currentUser.uid).get();
         
-        const usuarioData = usuarioDoc.data();
+        let usuarioData = usuarioDoc.exists ? usuarioDoc.data() : null;
+        let funcionarioData = funcionarioDoc.exists ? funcionarioData : null;
         
-        // Preparar dados
+        // Se não encontrou em usuarios, usa os dados de funcionarios
+        if (!usuarioData && funcionarioData) {
+            usuarioData = {
+                nome: funcionarioData.nome || 'Funcionário Mobile',
+                email: funcionarioData.email || ''
+            };
+        }
+        
+        // Preparar dados do chamado
         const chamadoData = {
             maquinaId: maquina,
             motivo: motivo,
@@ -368,6 +441,7 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
             origem: 'Mobile/QRCode',
             usuarioId: auth.currentUser.uid,
             usuarioNome: usuarioData?.nome || 'Operador Mobile',
+            emailUsuario: usuarioData?.email || '',
             observacoes: 'Aberto via Mobile QR Code',
             dataEncerramento: null,
             tempoParada: null,
@@ -401,13 +475,11 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
         
         if (error.code === 'permission-denied') {
             mensagem = "Permissão negada. Você precisa estar autenticado.";
-            // Tentar reconectar
-            setTimeout(() => location.reload(), 2000);
         } else if (error.code === 'unavailable') {
             mensagem = "Serviço indisponível. Verifique sua conexão.";
         } else if (error.message.includes('autenticado') || error.code === 'unauthenticated') {
-            mensagem = "Sessão expirada. Reconectando...";
-            setTimeout(() => location.reload(), 2000);
+            mensagem = "Sessão expirada. Faça login novamente.";
+            setTimeout(() => mostrarTelaLogin(), 2000);
         } else {
             mensagem += error.message;
         }
@@ -541,7 +613,6 @@ function mostrarErroCritico(error) {
     if (container) {
         container.appendChild(errorDiv);
     } else {
-        // Fallback: append to body if container not found
         document.body.appendChild(errorDiv);
     }
 }
@@ -550,8 +621,7 @@ function mostrarErroCritico(error) {
  * Voltar para a página inicial
  */
 function voltarParaInicio() {
-    // Redirecionar para a página principal
-    window.location.href = '/'; // Ajuste conforme sua aplicação
+    window.location.href = '/';
 }
 
 // Adicionar estilos
@@ -642,6 +712,25 @@ function adicionarEstilosMobile() {
                 100% { transform: scale(1); }
             }
             
+            /* Tela de Login */
+            .login-icon {
+                font-size: 4rem;
+                color: #4361ee;
+                margin-bottom: 1rem;
+            }
+            
+            .brand-title {
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #4361ee;
+                margin-bottom: 0.5rem;
+            }
+            
+            .brand-subtitle {
+                color: #6c757d;
+                margin-bottom: 2rem;
+            }
+            
             /* Responsividade */
             @media (max-width: 768px) {
                 .container {
@@ -691,5 +780,8 @@ document.addEventListener('DOMContentLoaded', function() {
 window.debugAuth = {
     getCurrentUser: () => auth?.currentUser,
     signOut: () => auth?.signOut(),
-    forceReload: () => location.reload()
+    forceReload: () => location.reload(),
+    login: () => fazerLogin(),
+    logout: () => fazerLogout()
 };
+

@@ -7,8 +7,8 @@
 - Necessário fixar com barra de rolagem lateral
 
 ### Solução:
-- Verificar e corrigir o estilo da tabela em index.html
-- A classe `table-responsiveatestados` parece ter um erro de digitação
+- Adicionar estilo CSS para scrollbar fixa com cores personalizadas
+- Adicionar header fixo (sticky) para melhor experiência
 
 ### Arquivos a editar:
 - `index.html` - Seção #atestados
@@ -22,10 +22,10 @@
 
 ### Solução:
 - Garantir que todos os valores sejam formatados com 2 casas decimais
-- Verificar a função `calcularCustoAtestados` que faz cálculos matemáticos
+- Aplicar formatação consistente em todas as métricas
 
 ### Arquivos a editar:
-- `js/atestados.js` - Função `calcularCustoAtestados` e `atualizarMetricasAtestados`
+- `js/atestados.js` - Função `atualizarMetricasAtestados`
 
 ---
 
@@ -48,5 +48,15 @@
 ## Resumo dos Arquivos para Edição:
 
 1. **index.html** - Tabela de atestados (scrollbar)
-2. **js/atestados.js** - Correção decimais (calcularCustoAtestados)
+2. **js/atestados.js** - Correção decimais (atualizarMetricasAtestados)
 3. **js/manutencao-mobile.js** - Validação QR Code
+
+---
+
+## Histórico de Atualizações:
+
+### 2026-01-xx - Melhorias Aplicadas
+- Task 1: Adicionado CSS personalizado para scrollbar da tabela de atestados
+- Task 2: Garantida formatação consistente de decimais em todas as métricas
+- Task 3: Adicionada validação adicional na coleção 'funcionários' além de 'usuarios' (permitindo que funcionários cadastrados possam abrir chamados via QR Code)
+

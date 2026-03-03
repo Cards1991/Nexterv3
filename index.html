@@ -73,6 +73,31 @@
             overflow-y: auto;  /* Adiciona rolagem vertical quando o conteúdo transborda */
             padding-right: 8px; /* Espaço para a barra de rolagem não sobrepor o conteúdo */
         }
+        
+        /* Scrollbar personalizada para tabelas */
+        .table-responsive::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .table-responsive::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 4px;
+        }
+        .table-responsive::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        
+        /* Header fixo (sticky) para tabelas */
+        .table-responsive table thead.sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            background-color: #f8f9fa;
+        }
         .agenda-cards::-webkit-scrollbar {
             width: 6px;
         }
@@ -4776,6 +4801,15 @@
                         </div>
                         <div class="col-lg-4 col-md-6 mb-3">
                             <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-user-clock text-info"></i><div class="number" id="ind-kpi-experiencia">0</div><div class="label">Em Experiência</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-users text-primary"></i><div class="number" id="ind-kpi-total-funcionarios">0</div><div class="label">Total de Funcionários</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-check-circle text-success"></i><div class="number" id="ind-kpi-exp-aprovadas">0</div><div class="label">Exp. Aprovadas (Mês)</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-times-circle text-danger"></i><div class="number" id="ind-kpi-exp-reprovadas">0</div><div class="label">Exp. Reprovadas (Mês)</div></div></div>
                         </div>
                         <!-- Novos Cards de Vencimento de Experiência -->
                         <div class="col-lg-6 col-md-6 mb-3">
