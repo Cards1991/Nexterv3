@@ -609,25 +609,40 @@ async function carregarEPIsPorEmpresa() {
     if (!funcSelect || !epiSelect) return;
 
     const selectedOption = funcSelect.options[funcSelect.selectedIndex];
-    const empresaId = selectedOption.dataset.empresaId;
+    const empresaId = selectedOption ? selectedOption.dataset.empresaId : null;
+
+    // Se não houver funcionário selecionado (value vazio), reseta
+    if (!funcSelect.value) {
+        epiSelect.innerHTML = '<option value="">Selecione um colaborador primeiro</option>';
+        epiSelect.disabled = true;
+        return;
+    }
 
     epiSelect.innerHTML = '<option value="">Carregando EPIs...</option>';
     epiSelect.disabled = true;
 
-    if (!empresaId) {
-        epiSelect.innerHTML = '<option value="">Selecione um funcionário com empresa definida</option>';
-        return;
-    }
-
     try {
-        const snapshot = await db.collection('epi_estoque')
-            .where('empresaId', '==', empresaId)
-            .orderBy('descricao')
-            .get();
+        let query = db.collection('epi_estoque');
+        
+        // Se o funcionário tem empresa, filtra por ela.
+        // Se não tem (legado ou erro), traz todos os EPIs para não travar o processo.
+        // TRAVA REMOVIDA TEMPORARIAMENTE: Permitir acesso a todos os EPIs independente da empresa
+        // if (empresaId) {
+        //     query = query.where('empresaId', '==', empresaId);
+        // }
+
+        const snapshot = await query.get();
 
         epiSelect.innerHTML = '<option value="">Selecione o EPI</option>';
         
-        snapshot.forEach(doc => {
+        const docs = snapshot.docs.sort((a, b) => {
+            const descA = a.data().descricao || '';
+            const descB = b.data().descricao || '';
+            return descA.localeCompare(descB);
+        });
+
+        let itensEncontrados = 0;
+        docs.forEach(doc => {
             const epi = doc.data();
             if (epi.quantidade > 0 && epi.status !== 'Substituido') {
                 const option = document.createElement('option');
@@ -639,8 +654,14 @@ async function carregarEPIsPorEmpresa() {
                 option.dataset.lote = epi.lote || '';
                 option.dataset.custo = epi.custo || 0;
                 epiSelect.appendChild(option);
+                itensEncontrados++;
             }
         });
+        
+        if (itensEncontrados === 0) {
+            epiSelect.innerHTML = '<option value="">Nenhum EPI disponível para esta empresa/estoque</option>';
+        }
+        
         epiSelect.disabled = false;
     } catch (error) {
         console.error("Erro ao carregar EPIs por empresa:", error);

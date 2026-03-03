@@ -6,8 +6,8 @@ let __unsubscribe_manutencao = null; // Para parar o listener do snapshot
 // Configurações de WhatsApp
 const WHATSAPP_CONFIG = {
     enabled: true, // Ativar/desativar notificações
-    gerenteTelefone: '', // Será preenchido automaticamente
-    gerenteNome: '',
+    gerenteTelefone: '5542991190590', // Número do Gestor Pré-cadastrado
+    gerenteNome: 'Gestor de Manutenção',
     mensagemPadrao: '🚨 *NOVO CHAMADO DE MANUTENÇÃO*\n\nMáquina: {maquina}\nMotivo: {motivo}\nPrioridade: {prioridade}\nStatus: {status}\n\nClique para acessar: {link}'
 };
 
@@ -69,7 +69,7 @@ async function carregarConfigGerente() {
         const configSnap = await db.collection('configuracoes').doc('whatsapp').get();
         if (configSnap.exists) {
             const config = configSnap.data();
-            WHATSAPP_CONFIG.gerenteTelefone = config.telefone || '';
+            WHATSAPP_CONFIG.gerenteTelefone = config.telefone || WHATSAPP_CONFIG.gerenteTelefone;
             WHATSAPP_CONFIG.mensagemPadrao = config.mensagemPadrao || WHATSAPP_CONFIG.mensagemPadrao;
             WHATSAPP_CONFIG.enabled = config.ativo !== false;
             console.log('Configurações WhatsApp carregadas do banco');
@@ -85,16 +85,16 @@ async function carregarConfigGerente() {
         
         if (!gerentesSnap.empty) {
             const gerente = gerentesSnap.docs[0].data();
-            WHATSAPP_CONFIG.gerenteTelefone = gerente.telefone || '';
+            WHATSAPP_CONFIG.gerenteTelefone = gerente.telefone || WHATSAPP_CONFIG.gerenteTelefone;
             WHATSAPP_CONFIG.gerenteNome = gerente.nome || '';
             console.log(`Notificações WhatsApp configuradas para: ${gerente.nome}`);
         } else {
             console.warn('Nenhum gerente configurado para receber notificações');
-            WHATSAPP_CONFIG.enabled = false;
+            // Mantém habilitado se tiver o telefone padrão definido
+            if (!WHATSAPP_CONFIG.gerenteTelefone) WHATSAPP_CONFIG.enabled = false;
         }
     } catch (error) {
         console.error('Erro ao carregar configurações do gerente:', error);
-        WHATSAPP_CONFIG.enabled = false;
     }
 }
 
