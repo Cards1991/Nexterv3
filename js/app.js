@@ -1342,6 +1342,28 @@ function inicializarModais() {
                 carregarSelectEmpresas('empresa-funcionario');
                 document.getElementById('setor-funcionario').innerHTML = '<option value="">Selecione a empresa primeiro</option>';
                 document.getElementById('cargo-funcionario').innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+
+                // Adicionar os novos campos PIS e Controle de Ponto Eletrônico
+                const identificacaoTabContent = document.getElementById('identificacao'); // Assumindo que existe uma tab com id 'identificacao'
+                if (identificacaoTabContent && !document.getElementById('pis-funcionario')) { // Verifica se os campos já não foram adicionados
+                    const cpfInput = document.getElementById('cpf-funcionario'); // Encontra um ponto de referência
+                    if (cpfInput) {
+                        const pisHtml = `
+                            <div class="col-md-6 mb-3">
+                                <label for="pis-funcionario" class="form-label">PIS</label>
+                                <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
+                            </div>
+                        `;
+                        const controlePontoHtml = `
+                            <div class="col-md-6 mb-3 form-check form-switch d-flex align-items-center">
+                                <input class="form-check-input" type="checkbox" id="controle-ponto-eletronico-funcionario">
+                                <label class="form-check-label ms-2" for="controle-ponto-eletronico-funcionario">Controle de Ponto Eletrônico</label>
+                            </div>
+                        `;
+                        cpfInput.closest('.row').insertAdjacentHTML('beforeend', pisHtml);
+                        cpfInput.closest('.row').insertAdjacentHTML('beforeend', controlePontoHtml);
+                    }
+                }
             }
         });
 

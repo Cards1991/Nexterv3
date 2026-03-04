@@ -209,6 +209,8 @@ async function salvarFuncionario() {
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
+        const pis = document.getElementById('pis-funcionario').value; // Novo campo PIS
+        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario').checked; // Novo campo Controle de Ponto Eletrônico
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
 
         const empresaId = document.getElementById('empresa-funcionario').value;
@@ -303,6 +305,8 @@ async function salvarFuncionario() {
             email: email,
             telefone: telefone,
             sexo: sexo,
+            pis: pis, // Adiciona PIS
+            controlePontoEletronico: controlePontoEletronico, // Adiciona Controle de Ponto Eletrônico
             dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
 
             empresaId: empresaId,
@@ -445,6 +449,33 @@ async function editarFuncionario(funcionarioId) {
         document.getElementById('rg-funcionario').value = funcionario.rg || '';
         document.getElementById('email-funcionario').value = funcionario.email;
         document.getElementById('telefone-funcionario').value = funcionario.telefone || '';
+        
+        // Garantir que os campos PIS e Controle de Ponto existam antes de preencher
+        if (!document.getElementById('pis-funcionario')) {
+             const cpfInput = document.getElementById('cpf-funcionario');
+             if (cpfInput) {
+                 const pisHtml = `
+                    <div class="col-md-6 mb-3">
+                        <label for="pis-funcionario" class="form-label">PIS</label>
+                        <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
+                    </div>
+                `;
+                const controlePontoHtml = `
+                    <div class="col-md-6 mb-3 form-check form-switch d-flex align-items-center">
+                        <input class="form-check-input" type="checkbox" id="controle-ponto-eletronico-funcionario">
+                        <label class="form-check-label ms-2" for="controle-ponto-eletronico-funcionario">Controle de Ponto Eletrônico</label>
+                    </div>
+                `;
+                const cpfParent = cpfInput.closest('.row');
+                if (cpfParent) {
+                    cpfParent.insertAdjacentHTML('beforeend', pisHtml);
+                    cpfParent.insertAdjacentHTML('beforeend', controlePontoHtml);
+                }
+             }
+        }
+
+        document.getElementById('pis-funcionario').value = funcionario.pis || ''; // Preenche PIS
+        document.getElementById('controle-ponto-eletronico-funcionario').checked = funcionario.controlePontoEletronico || false; // Preenche Controle de Ponto Eletrônico
         document.getElementById('sexo-funcionario').value = funcionario.sexo || '';
         document.getElementById('nascimento-funcionario').value = funcionario.dataNascimento ? formatarDataParaInput(funcionario.dataNascimento) : '';
 
@@ -584,6 +615,8 @@ async function atualizarFuncionario(funcionarioId) {
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
+        const pis = document.getElementById('pis-funcionario').value; // Novo campo PIS
+        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario').checked; // Novo campo Controle de Ponto Eletrônico
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
 
         const empresaId = document.getElementById('empresa-funcionario').value;
@@ -665,6 +698,8 @@ async function atualizarFuncionario(funcionarioId) {
             email: email,
             telefone: telefone,
             sexo: sexo,
+            pis: pis, // Adiciona PIS
+            controlePontoEletronico: controlePontoEletronico, // Adiciona Controle de Ponto Eletrônico
             dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
 
             empresaId: empresaId,
@@ -920,6 +955,8 @@ async function verDetalhesFuncionario(funcionarioId) {
                 <div class="col-md-6 detail-item"><div class="detail-label">E-mail</div><div class="detail-value"><i class="fas fa-envelope"></i> ${funcionario.email || 'Não informado'}</div></div>
                 <div class="col-md-6 detail-item"><div class="detail-label">Telefone</div><div class="detail-value"><i class="fas fa-phone"></i> ${funcionario.telefone || 'Não informado'}</div></div>
                 <div class="col-md-6 detail-item"><div class="detail-label">Sexo</div><div class="detail-value"><i class="fas fa-venus-mars"></i> ${funcionario.sexo || 'Não informado'}</div></div>
+                <div class="col-md-6 detail-item"><div class="detail-label">PIS</div><div class="detail-value"><i class="fas fa-id-badge"></i> ${funcionario.pis || 'Não informado'}</div></div>
+                <div class="col-md-6 detail-item"><div class="detail-label">Controle de Ponto Eletrônico</div><div class="detail-value"><i class="fas fa-clock"></i> ${funcionario.controlePontoEletronico ? 'Sim' : 'Não'}</div></div>
             </div>
 
             <h5 class="section-title mt-3">Dados Profissionais</h5>
@@ -1221,6 +1258,42 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     } catch (error) {
         console.error('Erro na inicialização:', error);
+    }
+});
+
+// Adicionar os novos campos ao modal de funcionário (assumindo que o HTML do modal está em outro lugar)
+// Este trecho de código adiciona os campos dinamicamente ao DOM quando o modal é aberto.
+document.addEventListener('DOMContentLoaded', function() {
+    const funcionarioModal = document.getElementById('funcionarioModal');
+    if (funcionarioModal) {
+        funcionarioModal.addEventListener('show.bs.modal', function() {
+            const identificacaoTabContent = document.getElementById('identificacao'); // Assumindo que existe uma tab com id 'identificacao'
+            if (identificacaoTabContent && !document.getElementById('pis-funcionario')) { // Verifica se os campos já não foram adicionados
+                const cpfInput = document.getElementById('cpf-funcionario'); // Encontra um ponto de referência
+                if (cpfInput) {
+                    const pisHtml = `
+                        <div class="col-md-6 mb-3">
+                            <label for="pis-funcionario" class="form-label">PIS</label>
+                            <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
+                        </div>
+                    `;
+                    const controlePontoHtml = `
+                        <div class="col-md-6 mb-3 form-check form-switch d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" id="controle-ponto-eletronico-funcionario">
+                            <label class="form-check-label ms-2" for="controle-ponto-eletronico-funcionario">Controle de Ponto Eletrônico</label>
+                        </div>
+                    `;
+                    // Insere após o campo de CPF, dentro da mesma linha ou em uma nova
+                    const cpfParent = cpfInput.closest('.row');
+                    if (cpfParent) {
+                        cpfParent.insertAdjacentHTML('beforeend', pisHtml);
+                        cpfParent.insertAdjacentHTML('beforeend', controlePontoHtml);
+                    } else {
+                        identificacaoTabContent.insertAdjacentHTML('beforeend', `<div class="row">${pisHtml}${controlePontoHtml}</div>`);
+                    }
+                }
+            }
+        });
     }
 });
 
