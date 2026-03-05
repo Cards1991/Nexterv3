@@ -10,6 +10,7 @@ let isLoggedIn = false;
 
 /**
  * Carrega dinamicamente os scripts do Firebase SDK
+ * Usa versão 8.x para manter compatibilidade com o HTML
  */
 async function carregarFirebaseSDK() {
     // Verificar se já está carregado
@@ -35,13 +36,13 @@ async function carregarFirebaseSDK() {
     };
 
     try {
-        // Carregar sequencialmente para evitar erros de dependência
-        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-app-compat.js');
-        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-auth-compat.js');
-        await loadScript('https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore-compat.js');
+        // Usar versão 8.x para manter compatibilidade (mesma do HTML)
+        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
+        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js');
+        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js');
         
         // Aguardar inicialização interna
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 300));
         
         if (typeof firebase === 'undefined') {
             throw new Error("Firebase não ficou disponível após carregamento");
@@ -124,6 +125,8 @@ function configurarObservadorAuth() {
  * Verifica se o usuário existe nas coleções do sistema
  */
 async function verificarUsuarioValido(user) {
+    const loadingSpinner = document.getElementById('loading-spinner');
+    
     try {
         // Verificar nas coleções 'usuarios' e 'funcionarios'
         const usuarioDoc = await db.collection('usuarios').doc(user.uid).get();
@@ -131,16 +134,22 @@ async function verificarUsuarioValido(user) {
         
         if (!usuarioDoc.exists && !funcionarioDoc.exists) {
             // Usuário não encontrado - fazer logout
+            if (loadingSpinner) loadingSpinner.classList.add('d-none');
             await auth.signOut();
             mostrarAlertaLogin("Acesso Negado", "Você não está cadastrado no sistema. Entre em contato com o administrador.", "danger");
             return false;
         }
         
         // Usuário válido - mostrar formulário
+        // Garante que o spinner suma antes de mostrar o formulário
+        if (loadingSpinner) loadingSpinner.classList.add('d-none');
         mostrarFormulario();
         return true;
     } catch (error) {
         console.error("❌ Erro ao verificar usuário:", error);
+        // Garante que o spinner suma e mostra o erro
+        if (loadingSpinner) loadingSpinner.classList.add('d-none');
+        mostrarAlertaLogin("Erro", "Falha ao verificar permissões: " + error.message, "danger");
         return false;
     }
 }
@@ -151,7 +160,9 @@ async function verificarUsuarioValido(user) {
 function mostrarTelaLogin() {
     const loginScreen = document.getElementById('login-screen');
     const formContainer = document.getElementById('form-container');
+    const loadingSpinner = document.getElementById('loading-spinner');
     
+    if (loadingSpinner) loadingSpinner.classList.add('d-none');
     if (loginScreen) loginScreen.classList.remove('d-none');
     if (formContainer) formContainer.classList.add('d-none');
 }
@@ -160,19 +171,35 @@ function mostrarTelaLogin() {
  * Mostra o formulário (após login bem-sucedido)
  */
 function mostrarFormulario() {
+    console.log("🔄 Mostrando formulário...");
+    
     const loginScreen = document.getElementById('login-screen');
     const formContainer = document.getElementById('form-container');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    
+    // Forçar ocultação do spinner de todas as formas possíveis
+    if (loadingSpinner) {
+        loadingSpinner.classList.add('d-none');
+        loadingSpinner.style.display = 'none';
+        loadingSpinner.style.visibility = 'hidden';
+    }
     
     if (loginScreen) loginScreen.classList.add('d-none');
     if (formContainer) {
         formContainer.classList.remove('d-none');
         
-        // Configurar formulário após login
-        configurarFormulario();
+        // Configurar formulário após login (com proteção contra erros)
+        try {
+            configurarFormulario();
+        } catch (e) {
+            console.error("Erro ao configurar formulário:", e);
+        }
         
         // Testar conexão
         testarConexaoFirestore();
     }
+    
+    console.log("✅ Formulário mostrado");
 }
 
 /**
@@ -297,9 +324,24 @@ async function testarConexaoFirestore() {
 function configurarFormulario() {
     console.log("⚙️ Configurando formulário...");
     
-    // Verificar se já foi configurado
-    if (document.getElementById('formulario-configurado')) return;
-    document.getElementById('formulario-configurado').value = 'true';
+    const formConfigurado = document.getElementById('formulario-configurado');
+    
+    // Verificar se já foi configurado pelo valor, não só pela existência
+    if (formConfigurado && formConfigurado.value === 'true') {
+        console.log("⚙️ Formulário já foi configurado, pulando...");
+        return;
+    }
+    
+    if (window._mobileFormConfigured) {
+        console.log("⚙️ Formulário já foi configurado (flag global), pulando...");
+        return;
+    }
+    
+    // Marcar como configurado
+    if (formConfigurado) {
+        formConfigurado.value = 'true';
+    }
+    window._mobileFormConfigured = true;
     
     // 1. Capturar parâmetros da URL
     const urlParams = new URLSearchParams(window.location.search);
@@ -314,6 +356,11 @@ function configurarFormulario() {
     const paradaCheck = document.getElementById('mobile-maquina-parada');
     const prioridadeSelect = document.getElementById('mobile-prioridade');
     const salvarBtn = document.getElementById('btn-salvar-chamado-mobile');
+
+    if (!maquinaInput || !motivoInput || !salvarBtn) {
+        console.error("❌ Elementos do formulário não encontrados no DOM.");
+        return;
+    }
 
     // 3. Preencher máquina se veio pelo QR Code
     if (maquinaId) {
@@ -492,28 +539,75 @@ async function enviarChamado(maquina, motivo, isParada, prioridade, salvarBtn) {
  * Busca informações da máquina
  */
 async function buscarInformacoesMaquina(maquinaId) {
+    if (!maquinaId) return;
+    
+    // Garantir que db está disponível
+    if (!db) {
+        console.warn("⚠️ Firestore não disponível para buscar máquina");
+        return;
+    }
+    
     try {
+        console.log("🔍 Buscando máquina:", maquinaId);
+        
+        // Primeiro tenta buscar por ID do documento
+        const docRef = await db.collection('maquinas').doc(maquinaId).get();
+        
+        if (docRef.exists) {
+            const maquinaData = docRef.data();
+            exibirInfoMaquina(maquinaData, maquinaId);
+            return;
+        }
+        
+        // Se não encontrou por ID, tenta por código
         const maquinaRef = db.collection('maquinas').where('codigo', '==', maquinaId).limit(1);
         const snapshot = await maquinaRef.get();
         
         if (!snapshot.empty) {
             const maquinaData = snapshot.docs[0].data();
+            exibirInfoMaquina(maquinaData, maquinaId);
+        } else {
+            console.log("ℹ️ Máquina não encontrada no banco de dados:", maquinaId);
+            // Ainda mostra o código no campo
             const infoDiv = document.getElementById('maquina-info');
-            
             if (infoDiv) {
                 infoDiv.innerHTML = `
-                    <div class="alert alert-info mb-3">
-                        <h6 class="mb-1"><i class="fas fa-industry"></i> ${maquinaData.nome || maquinaId}</h6>
-                        ${maquinaData.descricao ? `<p class="mb-1 small">${maquinaData.descricao}</p>` : ''}
-                        ${maquinaData.localizacao ? `<p class="mb-0 small"><i class="fas fa-map-marker-alt"></i> ${maquinaData.localizacao}</p>` : ''}
+                    <div class="alert alert-warning mb-3">
+                        <h6 class="mb-1"><i class="fas fa-exclamation-triangle"></i> Código: ${maquinaId}</h6>
+                        <p class="mb-0 small">Máquina não encontrada no cadastro. O chamado será criado com este código.</p>
                     </div>
                 `;
                 infoDiv.classList.remove('d-none');
             }
         }
     } catch (error) {
-        console.log("ℹ️ Não foi possível carregar informações da máquina:", error.message);
+        console.error("❌ Erro ao buscar máquina:", error);
+        // Não mostra erro crítico, apenas logs
     }
+}
+
+/**
+ * Exibe as informações da máquina no formulário
+ */
+function exibirInfoMaquina(maquinaData, maquinaId) {
+    const infoDiv = document.getElementById('maquina-info');
+    if (!infoDiv) return;
+    
+    const nome = maquinaData.nome || maquinaData.nomeMaquina || maquinaId;
+    const descricao = maquinaData.descricao || maquinaData.descricaoMaquina || '';
+    const localizacao = maquinaData.localizacao || maquinaData.setor || '';
+    const patrimonio = maquinaData.patrimonio || '';
+    
+    infoDiv.innerHTML = `
+        <div class="alert alert-info mb-3">
+            <h6 class="mb-1"><i class="fas fa-industry"></i> ${nome}</h6>
+            ${patrimonio ? `<p class="mb-1 small"><i class="fas fa-barcode"></i> Patrimônio: ${patrimonio}</p>` : ''}
+            ${descricao ? `<p class="mb-1 small">${descricao}</p>` : ''}
+            ${localizacao ? `<p class="mb-0 small"><i class="fas fa-map-marker-alt"></i> ${localizacao}</p>` : ''}
+        </div>
+    `;
+    infoDiv.classList.remove('d-none');
+    console.log("✅ Informações da máquina carregadas:", nome);
 }
 
 /**
@@ -784,4 +878,3 @@ window.debugAuth = {
     login: () => fazerLogin(),
     logout: () => fazerLogout()
 };
-
