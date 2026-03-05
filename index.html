@@ -355,6 +355,7 @@
                                     </li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="transferencia">Transferência</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="faltas">Faltas Diárias</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ponto-eletronico">Ponto Eletrônico</a></li>
 <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-disciplinar">Controle Disciplinar</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="historico-colaborador"><i class="fas fa-history"></i> Histórico do Colaborador</a></li>
                                     <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="gestao-sumidos">Gestão de Sumidos</a></li>
@@ -586,6 +587,211 @@
                             </div>
                             <div class="card-footer text-muted text-center">
                                 O registro será associado ao seu cadastro.
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Seção Ponto Eletrônico -->
+                <section id="ponto-eletronico" class="content-section d-none">
+                    <h2 class="page-title">Ponto Eletrônico</h2>
+                    <div class="card mb-4">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0"><i class="fas fa-file-import me-2"></i>Importar Arquivo AFD</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted"> AFD (ArquImporte o arquivoivo Fonte de Dados) do seu relógio de ponto para processar as marcações de ponto dos colaboradores.</p>
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-8">
+                                    <input type="file" id="input-afd-file" class="form-control" accept=".txt,.afd">
+                                </div>
+                                <div class="col-md-4">
+                                    <button class="btn btn-primary w-100" id="btn-importar-afd">
+                                        <i class="fas fa-upload me-2"></i>Selecionar Arquivo
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="afd-status" class="mt-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados do Processamento -->
+                    <div id="afd-resultados" class="d-none">
+                        <div class="card mb-4">
+                            <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                                <h5 class="mb-0"><i class="fas fa-list me-2"></i>Registro de Ponto Importado</h5>
+                                <button class="btn btn-light btn-sm" onclick="exportarRelatorioAFDExcel()">
+                                    <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                                </button>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-striped table-hover" id="tabela-ponto-eletronico">
+                                        <thead class="table-dark">
+                                            <tr>
+                                                <th>PIS</th>
+                                                <th>Colaborador</th>
+                                                <th>Data</th>
+                                                <th>Hora</th>
+                                                <th>Status</th>
+                                                <th>Observação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabela-ponto-eletronico-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resumo por Colaborador -->
+                        <div class="card">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="fas fa-users me-2"></i>Resumo por Colaborador</h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered" id="tabela-resumo-colaborador">
+                                        <thead class="table-secondary">
+                                            <tr>
+                                                <th>Colaborador</th>
+                                                <th>PIS</th>
+                                                <th>Total Registros</th>
+                                                <th>Primeiro Registro</th>
+                                                <th>Último Registro</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="tabela-resumo-colaborador-body">
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Relatório Classificado de Ponto -->
+                        <div id="relatorio-classificado-container" class="d-none">
+                            <div class="card mb-4 border-0 shadow-sm">
+                                <div class="card-header bg-gradient text-white" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h5 class="mb-0"><i class="fas fa-clipboard-check me-2"></i>Relatório de Ponto Classificado</h5>
+                                        <button class="btn btn-light btn-sm" onclick="exportarRelatorioClassificadoExcel()">
+                                            <i class="fas fa-file-excel me-1"></i>Exportar Excel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <!-- Cards de Resumo -->
+                                    <div class="row mb-4">
+                                        <div class="col-md-4">
+                                            <div class="card border-0 shadow-sm" style="border-left: 4px solid #ffc107 !important;">
+                                                <div class="card-body text-center">
+                                                    <h3 class="mb-0" id="count-antecipadas">0</h3>
+                                                    <small class="text-muted">Entradas Antecipadas</small>
+                                                    <div class="mt-2"><span class="badge bg-warning text-dark">Antes das 06:50</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card border-0 shadow-sm" style="border-left: 4px solid #dc3545 !important;">
+                                                <div class="card-body text-center">
+                                                    <h3 class="mb-0" id="count-atrasos">0</h3>
+                                                    <small class="text-muted">Atrasos</small>
+                                                    <div class="mt-2"><span class="badge bg-danger">Após as 07:10</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <div class="card border-0 shadow-sm" style="border-left: 4px solid #198754 !important;">
+                                                <div class="card-body text-center">
+                                                    <h3 class="mb-0" id="count-faltas">0</h3>
+                                                    <small class="text-muted">Faltas</small>
+                                                    <div class="mt-2"><span class="badge bg-dark">Sem Registro</span></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Abas para as tabelas -->
+                                    <ul class="nav nav-tabs" id="pontoClassificadoTabs" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link active" id="tab-antecipadas" data-bs-toggle="tab" data-bs-target="#pane-antecipadas" type="button" role="tab">
+                                                <i class="fas fa-clock text-warning me-1"></i> Entradas Antecipadas
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="tab-atrasos" data-bs-toggle="tab" data-bs-target="#pane-atrasos" type="button" role="tab">
+                                                <i class="fas fa-exclamation-circle text-danger me-1"></i> Atrasos
+                                            </button>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <button class="nav-link" id="tab-faltas" data-bs-toggle="tab" data-bs-target="#pane-faltas" type="button" role="tab">
+                                                <i class="fas fa-user-times text-dark me-1"></i> Faltas
+                                            </button>
+                                        </li>
+                                    </ul>
+
+                                    <div class="tab-content mt-3" id="pontoClassificadoTabContent">
+                                        <!-- Tabela de Entradas Antecipadas -->
+                                        <div class="tab-pane fade show active" id="pane-antecipadas" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-striped table-hover">
+                                                    <thead class="table-warning">
+                                                        <tr>
+                                                            <th>Colaborador</th>
+                                                            <th>Empresa</th>
+                                                            <th>Setor</th>
+                                                            <th>Data</th>
+                                                            <th>Hora</th>
+                                                            <th>Observação</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tabela-antecipadas-body">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabela de Atrasos -->
+                                        <div class="tab-pane fade" id="pane-atrasos" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-striped table-hover">
+                                                    <thead class="table-danger">
+                                                        <tr>
+                                                            <th>Colaborador</th>
+                                                            <th>Empresa</th>
+                                                            <th>Setor</th>
+                                                            <th>Data</th>
+                                                            <th>Hora</th>
+                                                            <th>Observação</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tabela-atrasos-body">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        <!-- Tabela de Faltas -->
+                                        <div class="tab-pane fade" id="pane-faltas" role="tabpanel">
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-striped table-hover">
+                                                    <thead class="table-dark">
+                                                        <tr>
+                                                            <th>Colaborador</th>
+                                                            <th>Empresa</th>
+                                                            <th>Setor</th>
+                                                            <th>Data</th>
+                                                            <th>Hora</th>
+                                                            <th>Observação</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="tabela-faltas-body">
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -4797,7 +5003,13 @@
                             <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-user-plus text-success"></i><div class="number" id="ind-kpi-admissoes">0</div><div class="label">Admissões no Mês</div></div></div>
                         </div>
                         <div class="col-lg-4 col-md-6 mb-3">
-                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-user-minus text-danger"></i><div class="number" id="ind-kpi-demissoes">0</div><div class="label">Demissões no Mês</div></div></div>
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-file-signature text-warning"></i><div class="number" id="ind-kpi-demissoes-pedidos">0</div><div class="label">Pedidos de Demissão</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-user-times text-danger"></i><div class="number" id="ind-kpi-demissoes-dispensas">0</div><div class="label">Dispensas</div></div></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6 mb-3">
+                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-handshake text-info"></i><div class="number" id="ind-kpi-demissoes-acordos">0</div><div class="label">Acordos</div></div></div>
                         </div>
                         <div class="col-lg-4 col-md-6 mb-3">
                             <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-user-clock text-info"></i><div class="number" id="ind-kpi-experiencia">0</div><div class="label">Em Experiência</div></div></div>
@@ -4810,13 +5022,6 @@
                         </div>
                         <div class="col-lg-4 col-md-6 mb-3">
                             <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-times-circle text-danger"></i><div class="number" id="ind-kpi-exp-reprovadas">0</div><div class="label">Exp. Reprovadas (Mês)</div></div></div>
-                        </div>
-                        <!-- Novos Cards de Vencimento de Experiência -->
-                        <div class="col-lg-6 col-md-6 mb-3">
-                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-hourglass-half text-warning"></i><div class="number" id="ind-kpi-vence-exp1">0</div><div class="label">Vencendo 1ª Exp. (45 dias)</div></div></div>
-                        </div>
-                        <div class="col-lg-6 col-md-6 mb-3">
-                            <div class="card stat-card h-100"><div class="card-body"><i class="fas fa-hourglass-end text-danger"></i><div class="number" id="ind-kpi-vence-exp2">0</div><div class="label">Vencendo 2ª Exp. (90 dias)</div></div></div>
                         </div>
                     </div>
 
@@ -6901,6 +7106,11 @@
                             <label class="form-label">Quantidade Ideal de Colaboradores</label>
                             <input type="number" class="form-control" id="setor-qtd-ideal" min="0">
                         </div>
+                    <div class="mb-3">
+                        <label class="form-label">Horário de Entrada Padrão</label>
+                        <input type="time" class="form-control" id="setor-horario-entrada">
+                        <div class="form-text">Usado para cálculo de atrasos e horas extras no Ponto Eletrônico.</div>
+                    </div>
                         <div class="mb-3">
                             <label class="form-label">Observações</label>
                             <textarea class="form-control" id="setor-observacao" rows="3"></textarea>

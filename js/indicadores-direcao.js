@@ -45,7 +45,7 @@ async function carregarDadosIndicadores() {
     const dataFim = new Date(ano, mes, 0, 23, 59, 59);
 
     // Exibe estado de carregamento
-    const kpiIds = ['ind-kpi-admissoes', 'ind-kpi-demissoes', 'ind-kpi-experiencia', 'ind-custo-rescisao', 'ind-kpi-total-funcionarios', 'ind-kpi-exp-aprovadas', 'ind-kpi-exp-reprovadas', 'ind-kpi-horas-extras'];
+    const kpiIds = ['ind-kpi-admissoes', 'ind-kpi-demissoes-pedidos', 'ind-kpi-demissoes-dispensas', 'ind-kpi-demissoes-acordos', 'ind-kpi-experiencia', 'ind-custo-rescisao', 'ind-kpi-total-funcionarios', 'ind-kpi-exp-aprovadas', 'ind-kpi-exp-reprovadas', 'ind-kpi-horas-extras'];
     kpiIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -95,9 +95,26 @@ async function carregarDadosIndicadores() {
         }).length;
         document.getElementById('ind-kpi-admissoes').textContent = admissoes;
 
-        // 2. Total de Demissões no mês
+        // 2. Demissões no mês (Separadas por tipo)
         const demissoes = movimentacoes.filter(m => m.tipo === 'demissao');
-        document.getElementById('ind-kpi-demissoes').textContent = demissoes.length;
+        
+        let pedidos = 0;
+        let dispensas = 0;
+        let acordos = 0;
+
+        demissoes.forEach(d => {
+            const tipo = d.tipoDemissao || d.tipo_demissao || ''; 
+            if (tipo.includes('Pedido')) {
+                pedidos++;
+            } else if (tipo.includes('Acordo') || tipo.includes('T.A.C') || tipo.includes('T.a.C')) {
+                acordos++;
+            } else {
+                dispensas++;
+            }
+        });
+        if(document.getElementById('ind-kpi-demissoes-pedidos')) document.getElementById('ind-kpi-demissoes-pedidos').textContent = pedidos;
+        if(document.getElementById('ind-kpi-demissoes-dispensas')) document.getElementById('ind-kpi-demissoes-dispensas').textContent = dispensas;
+        if(document.getElementById('ind-kpi-demissoes-acordos')) document.getElementById('ind-kpi-demissoes-acordos').textContent = acordos;
 
         // Lógica de Reconstrução Histórica: Quem estava ativo no final do mês do filtro?
         const funcionariosAtivos = todosFuncionarios.filter(f => {
@@ -108,9 +125,21 @@ async function carregarDadosIndicadores() {
 
             // 2. Se está inativo HOJE, verificamos QUANDO saiu.
             if (f.status === 'Inativo') {
-                const dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
+                let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
+                
+                // Tenta outras fontes de data se ultimaMovimentacao falhar
+                if (!dataDemissao && f.dataDemissao) {
+                     dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
+                }
+                if (!dataDemissao && f.dataDesligamento) {
+                     dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
+                }
+
+                // Se não tem data de demissão mas está inativo, consideramos inativo para evitar divergência
+                if (!dataDemissao) return false;
+
                 // Se foi demitido ANTES ou DURANTE o mês do filtro, não conta como ativo no final do mês.
-                if (dataDemissao && dataDemissao <= dataFim) return false;
+                if (dataDemissao <= dataFim) return false;
             }
             return true;
         });

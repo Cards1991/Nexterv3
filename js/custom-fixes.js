@@ -436,3 +436,83 @@ document.addEventListener('DOMContentLoaded', () => {
         atualizarSubdivisoes();
     }
 });
+
+// 7. Eliminar Tabela de Registro de Ponto Importado (Garantia Visual)
+document.addEventListener('DOMContentLoaded', () => {
+    // Monitora a inserção da tabela para ocultá-la imediatamente
+    const observer = new MutationObserver(() => {
+        const tbody = document.getElementById('tabela-ponto-eletronico-body');
+        const container = tbody ? (tbody.closest('.card') || tbody.closest('table')) : null;
+        if (container) container.style.display = 'none';
+
+        const tbodyResumo = document.getElementById('tabela-resumo-colaborador-body');
+        const containerResumo = tbodyResumo ? (tbodyResumo.closest('.card') || tbodyResumo.closest('table')) : null;
+        if (containerResumo) containerResumo.style.display = 'none';
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+});
+
+// 8. Patch para Setores - Horário de Entrada
+// Redefine funções para suportar o novo campo de horário de entrada
+document.addEventListener('DOMContentLoaded', () => {
+    window.abrirModalSetor = async function(id = null) {
+        const modalEl = document.getElementById('setorModal');
+        if (!modalEl) return;
+        
+        const form = document.getElementById('form-setor');
+        form.reset();
+        document.getElementById('setor-id').value = id || '';
+        document.querySelector('#setorModal .modal-title').textContent = id ? 'Editar Setor' : 'Novo Setor';
+        
+        // Popular selects
+        if (typeof carregarSelectEmpresas === 'function') await carregarSelectEmpresas('setor-empresa');
+        
+        // Carregar gerentes (funcionários)
+        const gerenteSelect = document.getElementById('setor-gerente');
+        if (gerenteSelect) {
+             gerenteSelect.innerHTML = '<option value="">Selecione...</option>';
+             const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+             funcSnap.forEach(doc => {
+                 const f = doc.data();
+                 gerenteSelect.innerHTML += `<option value="${f.nome}">${f.nome}</option>`;
+             });
+        }
+
+        if (id) {
+            const doc = await db.collection('setores').doc(id).get();
+            if (doc.exists) {
+                const data = doc.data();
+                document.getElementById('setor-empresa').value = data.empresaId;
+                document.getElementById('setor-descricao').value = data.descricao;
+                document.getElementById('setor-gerente').value = data.gerenteResponsavel || '';
+                document.getElementById('setor-qtd-ideal').value = data.qtdIdeal || '';
+                document.getElementById('setor-observacao').value = data.observacoes || '';
+                document.getElementById('setor-horario-entrada').value = data.horarioEntrada || ''; // Novo campo
+            }
+        }
+        
+        new bootstrap.Modal(modalEl).show();
+    };
+
+    window.salvarSetor = async function() {
+        const id = document.getElementById('setor-id').value;
+        const dados = {
+            empresaId: document.getElementById('setor-empresa').value,
+            descricao: document.getElementById('setor-descricao').value,
+            gerenteResponsavel: document.getElementById('setor-gerente').value,
+            qtdIdeal: parseInt(document.getElementById('setor-qtd-ideal').value) || 0,
+            observacoes: document.getElementById('setor-observacao').value,
+            horarioEntrada: document.getElementById('setor-horario-entrada').value, // Novo campo
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        if (!dados.empresaId || !dados.descricao) { alert("Preencha os campos obrigatórios."); return; }
+
+        if (id) await db.collection('setores').doc(id).update(dados);
+        else { dados.createdAt = firebase.firestore.FieldValue.serverTimestamp(); await db.collection('setores').add(dados); }
+        
+        bootstrap.Modal.getInstance(document.getElementById('setorModal')).hide();
+        // Tenta recarregar a tabela se a função original estiver disponível, senão recarrega a página
+        if (typeof carregarSetores === 'function') carregarSetores(); else location.reload();
+    };
+});
