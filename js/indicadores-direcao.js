@@ -1,6 +1,7 @@
 // js/indicadores-direcao.js
 
 let indCharts = {};
+let __indicadores_funcionarios_ativos_cache = [];
 
 /**
  * Inicializa o Dashboard de Indicadores da Direção.
@@ -143,6 +144,8 @@ async function carregarDadosIndicadores() {
             }
             return true;
         });
+
+        __indicadores_funcionarios_ativos_cache = funcionariosAtivos;
 
         // 3. Total de funcionários em experiência (Baseado na data do filtro)
         const dataCorteExp = new Date(dataFim); // Usa a data do filtro, não "hoje"
@@ -308,5 +311,134 @@ function renderizarGraficoIndicadores(canvasId, type, label, data) {
     });
 }
 
+/**
+ * Gera um relatório de conferência dos funcionários considerados ativos no período.
+ */
+function gerarRelatorioConferenciaAtivos() {
+    if (!__indicadores_funcionarios_ativos_cache || __indicadores_funcionarios_ativos_cache.length === 0) {
+        mostrarMensagem("Nenhum dado para gerar relatório. Por favor, clique em 'Analisar Período' primeiro.", "warning");
+        return;
+    }
+    
+    // Ordena por nome
+    const lista = [...__indicadores_funcionarios_ativos_cache].sort((a, b) => a.nome.localeCompare(b.nome));
+    
+    const filtroMesEl = document.getElementById('ind-filtro-mes');
+    const periodo = filtroMesEl ? filtroMesEl.value : 'Período Atual';
+
+    let html = `
+        <html>
+        <head>
+            <title>Relatório de Conferência - Funcionários Ativos</title>
+            <style>
+                body { font-family: 'Segoe UI', sans-serif; font-size: 12px; padding: 20px; }
+                h2 { color: #333; border-bottom: 2px solid #0d6efd; padding-bottom: 10px; }
+                table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+                th, td { border: 1px solid #dee2e6; padding: 8px; text-align: left; }
+                th { background-color: #f8f9fa; font-weight: bold; }
+                tr:nth-child(even) { background-color: #f9f9f9; }
+                .header-info { margin-bottom: 20px; font-size: 14px; }
+                .badge-inativo { background-color: #ffebee; color: #c62828; padding: 2px 6px; border-radius: 4px; font-size: 10px; border: 1px solid #ffcdd2; }
+            </style>
+        </head>
+        <body>
+            <h2>Relatório de Conferência - Funcionários Ativos</h2>
+            <div class="header-info">
+                <p><strong>Período de Referência:</strong> ${periodo}</p>
+                <p><strong>Total de Funcionários Listados:</strong> ${lista.length}</p>
+                <p><strong>Data de Geração:</strong> ${new Date().toLocaleString('pt-BR')}</p>
+                <p><em>Nota: Esta lista inclui funcionários ativos e funcionários desligados APÓS o fim do período selecionado.</em></p>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 40px;">#</th>
+                        <th>Nome</th>
+                        <th>Setor</th>
+                        <th>Admissão</th>
+                        <th>Status Atual</th>
+                        <th>Data Desligamento (se houver)</th>
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    lista.forEach((f, index) => {
+        const adm = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)).toLocaleDateString('pt-BR') : '-';
+        
+        let dem = '-';
+        let statusDisplay = f.status;
+        
+        if (f.status === 'Inativo') {
+            let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
+            if (!dataDemissao && f.dataDemissao) dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
+            if (!dataDemissao && f.dataDesligamento) dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
+            
+            if (dataDemissao) dem = dataDemissao.toLocaleDateString('pt-BR');
+            statusDisplay = `<span class="badge-inativo">Inativo (Saiu após período)</span>`;
+        }
+        
+        html += `<tr><td>${index + 1}</td><td>${f.nome}</td><td>${f.setor || '-'}</td><td>${adm}</td><td>${statusDisplay}</td><td>${dem}</td></tr>`;
+    });
+    
+    html += `</tbody></table></body></html>`;
+    
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+    setTimeout(() => { win.print(); }, 500);
+}
+
+/**
+ * Exporta o relatório de conferência para Excel.
+ */
+function exportarRelatorioConferenciaExcel() {
+    if (!__indicadores_funcionarios_ativos_cache || __indicadores_funcionarios_ativos_cache.length === 0) {
+        mostrarMensagem("Nenhum dado para exportar. Por favor, clique em 'Analisar Período' primeiro.", "warning");
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        mostrarMensagem("Biblioteca de Excel não carregada.", "error");
+        return;
+    }
+
+    const lista = [...__indicadores_funcionarios_ativos_cache].sort((a, b) => a.nome.localeCompare(b.nome));
+    const filtroMesEl = document.getElementById('ind-filtro-mes');
+    const periodo = filtroMesEl ? filtroMesEl.value : 'Periodo_Atual';
+
+    const dadosExportacao = lista.map(f => {
+        const adm = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)).toLocaleDateString('pt-BR') : '-';
+        
+        let dem = '-';
+        let statusDisplay = f.status;
+        
+        if (f.status === 'Inativo') {
+            let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
+            if (!dataDemissao && f.dataDemissao) dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
+            if (!dataDemissao && f.dataDesligamento) dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
+            
+            if (dataDemissao) dem = dataDemissao.toLocaleDateString('pt-BR');
+            statusDisplay = 'Inativo (Saiu após período)';
+        }
+
+        return {
+            "Nome": f.nome,
+            "Setor": f.setor || '-',
+            "Cargo": f.cargo || '-',
+            "Admissão": adm,
+            "Status Atual": statusDisplay,
+            "Data Desligamento": dem
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    XLSX.utils.book_append_sheet(wb, ws, "Funcionários Ativos");
+    XLSX.writeFile(wb, `Conferencia_Ativos_${periodo}.xlsx`);
+}
+
 // Exporta a função de inicialização para ser chamada pelo app.js
 window.inicializarIndicadoresDirecao = inicializarIndicadoresDirecao;
+window.gerarRelatorioConferenciaAtivos = gerarRelatorioConferenciaAtivos;
+window.exportarRelatorioConferenciaExcel = exportarRelatorioConferenciaExcel;

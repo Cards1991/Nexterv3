@@ -740,6 +740,7 @@ async function abrirModalAtestado(atestadoId = null) {
                                         <option value="Consulta">Consulta</option>
                                         <option value="Exame">Exame</option>
                                         <option value="Declaração">Declaração</option>
+                                        <option value="Atestado de Óbito">Atestado de Óbito</option>
                                         <option value="Outros">Outros</option>
                                     </select>
                                 </div>
