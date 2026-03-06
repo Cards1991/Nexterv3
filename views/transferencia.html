@@ -1,0 +1,30 @@
+<h2 class="page-title">Transferência de Funcionário entre Empresas</h2>
+<div class="card">
+    <div class="card-header">Registrar Transferência</div>
+    <div class="card-body col-lg-8 mx-auto">
+        <form id="form-transferencia">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label class="form-label">Funcionário a ser transferido</label>
+                    <select class="form-select" id="transf-funcionario" required></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Empresa de Origem</label>
+                    <input type="text" class="form-control" id="transf-empresa-origem" readonly
+                        placeholder="Selecione um funcionário">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Empresa de Destino</label>
+                    <select class="form-select" id="transf-empresa-destino" required></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Data Efetiva da Transferência</label>
+                    <input type="date" class="form-control" id="transf-data" required>
+                </div>
+            </div>
+            <button type="button" class="btn btn-primary w-100 mt-4" onclick="executarTransferencia()"><i
+                    class="fas fa-exchange-alt"></i> Executar
+                Transferência e Gerar Termo</button>
+        </form>
+    </div>
+</div>

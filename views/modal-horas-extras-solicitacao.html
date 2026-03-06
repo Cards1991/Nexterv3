@@ -1,0 +1,50 @@
+<!-- Modal Nova Solicitação de Horas Extras -->
+<div class="modal fade" id="solicitacaoHorasModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Nova Solicitação de Horas Extras</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-solicitacao-horas">
+                <input type="hidden" id="sol-id">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Solicitante (Responsável)</label>
+                            <select id="sol-requester" class="form-select"></select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label">Funcionário <span class="text-danger">*</span></label>
+                            <select id="sol-employee" class="form-select" required></select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Setor</label>
+                            <input type="text" id="sol-sector" class="form-control" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data <span class="text-danger">*</span></label>
+                            <input type="date" id="sol-start-date" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Hora Início <span class="text-danger">*</span></label>
+                            <input type="time" id="sol-start-time" class="form-control" required>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Hora Fim <span class="text-danger">*</span></label>
+                            <input type="time" id="sol-end-time" class="form-control" required>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Motivo / Observações</label>
+                            <textarea id="sol-reason" class="form-control" rows="3"
+                                placeholder="Descreva o motivo das horas extras..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Cancelar</button><button type="submit" class="btn btn-primary"><i
+                            class="fas fa-paper-plane me-1"></i> Enviar Solicitação</button></div>
+            </form>
+        </div>
+    </div>
+</div>

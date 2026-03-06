@@ -1,0 +1,75 @@
+<h2 class="page-title">Análise de Rescisões</h2>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body d-flex align-items-center gap-3 flex-wrap">
+        <span class="fw-bold"><i class="fas fa-filter"></i> Período:</span>
+        <input type="date" class="form-control form-control-sm" id="rescisao-filtro-inicio" style="width: 180px;">
+        <label class="form-label mb-0">até</label>
+        <input type="date" class="form-control form-control-sm" id="rescisao-filtro-fim" style="width: 180px;">
+        <select class="form-select form-select-sm" id="filtro-rescisao-tipo" style="width: 200px;">
+            <option value="">Todos os Tipos</option>
+            <option value="Pedido de Demissão">Pedido de Demissão</option>
+            <option value="Demissão sem Justa Causa">Demissão sem Justa Causa</option>
+            <option value="Demissão por Justa Causa">Demissão por Justa Causa</option>
+            <option value="Término de Contrato">Término de Contrato</option>
+            <option value="T.A.C - empregado">T.A.C - empregado</option>
+            <option value="T.a.C - empresa">T.a.C - empresa</option>
+            <option value="Acordo Legal">Acordo Legal</option>
+            <option value="Acordo P.F.">Acordo P.F.</option>
+        </select>
+        <button class="btn btn-primary btn-sm" id="btn-filtrar-rescisao">
+            <i class="fas fa-search"></i> Analisar
+        </button>
+    </div>
+</div>
+
+<div id="analise-rescisao-container">
+    <!-- KPIs -->
+    <div class="row mb-4" id="analise-rescisao-kpis">
+        <!-- KPI cards serão inseridos aqui -->
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Evolução Mensal de Rescisões</div>
+                <div class="card-body" style="height: 300px;"><canvas id="grafico-evolucao-rescisao"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Rescisões por Gênero</div>
+                <div class="card-body" style="height: 300px;"><canvas id="grafico-genero-rescisao"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Rescisões por Tipo</div>
+                <div class="card-body" style="height: 300px;"><canvas id="grafico-tipo-rescisao"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Rescisões por Motivo</div>
+                <div class="card-body" style="height: 300px;"><canvas id="grafico-motivo-rescisao"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header"><i class="fas fa-crown text-warning me-2"></i> Ranking de
+                    Liderança (Pedidos de Demissão)</div>
+                <div class="card-body" id="analise-rescisao-lideranca">
+                    <!-- Content will be injected by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise por Setor -->
+    <div class="card">
+        <div class="card-header">Análise de Motivos por Setor</div>
+        <div class="card-body" id="analise-rescisao-setores"></div>
+    </div>
+</div>

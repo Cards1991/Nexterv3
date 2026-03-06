@@ -1,0 +1,99 @@
+<h2 class="page-title">Automação de Peças Jurídicas com IA</h2>
+
+<!-- Assistente IA para Geração de Peças -->
+<div class="card border-primary mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-magic"></i> Assistente IA - Gerador de Peças</h5>
+    </div>
+    <div class="card-body">
+        <form id="form-gerar-peca-ia">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Tipo de Peça</label>
+                    <select class="form-select" id="jur-auto-tipo-peca" required>
+                        <option value="">Selecione...</option>
+                        <option value="peticao-inicial">Petição Inicial</option>
+                        <option value="contestacao">Contestação</option>
+                        <option value="replica">Réplica</option>
+                        <option value="recurso">Recurso</option>
+                        <option value="pedido-prazo">Pedido de Prazo</option>
+                        <option value="manifestacao">Manifestação</option>
+                        <option value="agravo">Agravo de Instrumento</option>
+                        <option value="apelacao">Apelação</option>
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Processo Relacionado</label>
+                    <select class="form-select" id="jur-auto-processo">
+                        <option value="">Novo processo</option>
+                    </select>
+                </div>
+                <div class="col-12">
+                    <label class="form-label">Contexto e Instruções para a IA</label>
+                    <textarea class="form-control" id="jur-auto-contexto" rows="4"
+                        placeholder="Descreva os fatos, argumentos principais e o que você espera da peça..."></textarea>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Tom da Linguagem</label>
+                    <select class="form-select" id="jur-auto-tom">
+                        <option value="formal">Formal / Padrão</option>
+                        <option value="agressivo">Assertivo / Combativo</option>
+                        <option value="conciliador">Conciliador</option>
+                        <option value="tecnico">Altamente Técnico</option>
+                    </select>
+                </div>
+                <div class="col-md-6 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100" id="btn-gerar-peca">
+                        <i class="fas fa-robot"></i> Gerar Rascunho com IA
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Editor de Texto -->
+    <div class="col-lg-8">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Editor de Peça</span>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary" onclick="exportarPecaDocx()">
+                        <i class="fas fa-file-word"></i> Word
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportarPecaPdf()">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn btn-success" onclick="salvarPecaNoProcesso()">
+                        <i class="fas fa-save"></i> Salvar no Processo
+                    </button>
+                </div>
+            </div>
+            <div class="card-body p-0">
+                <textarea id="editor-peca-juridica"
+                    style="height: 600px; width: 100%; border: none; padding: 20px; outline: none;"></textarea>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sugestões e Referências -->
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Sugestões da IA</h5>
+            </div>
+            <div class="card-body">
+                <h6>Tópicos Recomendados:</h6>
+                <div id="jur-auto-sugestoes-topicos" class="mb-4">
+                    <p class="text-muted small">Gere uma peça para ver as recomendações.</p>
+                </div>
+
+                <h6>Jurisprudência Relacionada:</h6>
+                <div id="jur-auto-jurisprudencia" class="list-group list-group-flush">
+                    <p class="text-muted small">Nenhuma referência encontrada.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

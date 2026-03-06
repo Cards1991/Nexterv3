@@ -1,0 +1,64 @@
+<!-- Modal Aumento Salarial -->
+<div class="modal fade" id="aumentoSalarioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-dollar-sign me-2"></i>Registrar Aumento Salarial</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-aumento-salario">
+                    <input type="hidden" id="aumento-funcionario-id">
+                    <div class="mb-3">
+                        <label class="form-label">Funcionário</label>
+                        <input type="text" class="form-control" id="aumento-funcionario-nome" readonly>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Data do Aumento</label><input type="date"
+                                class="form-control" id="aumento-data" required></div>
+                        <div class="col-md-6"><label class="form-label">Valor do Aumento (R$)</label><input
+                                type="number" step="0.01" min="0" class="form-control" id="aumento-valor" required>
+                        </div>
+                    </div>
+                    <div class="mb-3 mt-3">
+                        <label class="form-label">Motivo do Aumento</label>
+                        <select class="form-select" id="aumento-motivo" required>
+                            <option value="">Selecione...</option>
+                            <option>Desempenho</option>
+                            <option>Promoção</option>
+                            <option>Tempo de Função</option>
+                            <option>Outros</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Aumento</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipo-aumento" id="aumento-em-folha"
+                                    value="folha" checked>
+                                <label class="form-check-label" for="aumento-em-folha">Salário em Folha</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="tipo-aumento" id="aumento-por-fora"
+                                    value="por_fora">
+                                <label class="form-check-label" for="aumento-por-fora">Salário por Fora</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Assinatura do Responsável</label>
+                        <input type="text" class="form-control" id="aumento-assinatura"
+                            placeholder="Digite seu nome para assinar" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="imprimirAumentoSalario()">
+                    <i class="fas fa-print"></i> Imprimir Termo
+                </button>
+                <button type="button" class="btn btn-primary" onclick="salvarAumentoSalario()"><i
+                        class="fas fa-check-circle"></i> Confirmar e Salvar Aumento</button>
+            </div>
+        </div>
+    </div>
+</div>

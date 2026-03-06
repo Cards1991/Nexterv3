@@ -1,0 +1,29 @@
+<!-- Modal Setor -->
+<div class="modal fade" id="setorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="setorModalTitle">Novo Setor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-setor">
+                    <input type="hidden" id="setor-id">
+                    <div class="mb-3">
+                        <label class="form-label">Nome do Setor</label>
+                        <input type="text" class="form-control" id="setor-nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cargos (um por linha)</label>
+                        <textarea class="form-control" id="setor-cargos" rows="5"
+                            placeholder="Analista de RH&#10;Gerente Financeiro&#10;Assistente Administrativo"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarSetor()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>

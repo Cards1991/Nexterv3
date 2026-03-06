@@ -1,0 +1,118 @@
+<h2 class="page-title">Análise de Consumo de EPI</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <!-- Filtros do Dashboard -->
+        <div class="row g-3 align-items-end">
+            <div class="col-lg-2 col-md-4">
+                <label class="form-label small">Data Início</label>
+                <input type="date" class="form-control form-control-sm" id="dash-epi-inicio">
+            </div>
+            <div class="col-lg-2 col-md-4">
+                <label class="form-label small">Data Fim</label>
+                <input type="date" class="form-control form-control-sm" id="dash-epi-fim">
+            </div>
+            <div class="col-lg-3 col-md-4">
+                <label class="form-label small">Empresa</label>
+                <select class="form-select form-select-sm" id="dash-epi-empresa">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <label class="form-label small">Setor</label>
+                <select class="form-select form-select-sm" id="dash-epi-setor">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-lg-2 col-md-6">
+                <button class="btn btn-primary btn-sm w-100" onclick="carregarDashboardConsumoEPI()">
+                    <i class="fas fa-filter me-1"></i> Analisar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-4 col-md-6">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-box-open text-primary"></i>
+                <div class="number" id="kpi-epi-total-itens">0</div>
+                <div class="label">Itens Entregues</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-dollar-sign text-success"></i>
+                <div class="number" id="kpi-epi-valor-total">R$ 0,00</div>
+                <div class="label">Custo Total Consumido</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-12">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-shipping-fast text-warning"></i>
+                <div class="number" id="kpi-epi-tempo-reposicao">-</div>
+                <div class="label">Tempo Médio de Reposição</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">Evolução de Custo Mensal</div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px;"><canvas id="chart-epi-custo-mensal"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">Consumo por Setor (em R$)</div>
+            <div class="card-body">
+                <div style="position: relative; height: 300px;"><canvas id="chart-epi-setor"></canvas></div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Tabelas de Ranking -->
+<div class="row">
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">Top 5 Colaboradores (Consumo)</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Colaborador</th>
+                            <th class="text-center">Qtd</th>
+                            <th class="text-end">Custo Est.</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-epi-colaboradores"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6 mb-4">
+        <div class="card shadow-sm h-100">
+            <div class="card-header">Itens com Maior Demora na Reposição</div>
+            <div class="card-body table-responsive">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Item</th>
+                            <th class="text-center">Dias (Médio)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-epi-demora"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -11,22 +11,32 @@ let modaisAbertos = [];
 // Cache de elementos DOM
 let domCache = {};
 
-// Inicializar quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', function() {
+// Função para inicializar a Agenda quando a view for injetada
+function inicializarAgenda() {
     // Configura os filtros de data e o botão de aplicar
     const btnFiltrarAgenda = document.getElementById('btn-filtrar-agenda');
     if (btnFiltrarAgenda) {
-        btnFiltrarAgenda.addEventListener('click', carregarAgenda);
+        // Redefinir para evitar listeners duplicados
+        const newBtn = btnFiltrarAgenda.cloneNode(true);
+        btnFiltrarAgenda.parentNode.replaceChild(newBtn, btnFiltrarAgenda);
+        newBtn.addEventListener('click', carregarAgenda);
     }
+
     const chkAniversarios = document.getElementById('agenda-filtro-aniversarios');
     if (chkAniversarios) {
-        chkAniversarios.addEventListener('change', carregarAgenda);
+        const newChk = chkAniversarios.cloneNode(true);
+        chkAniversarios.parentNode.replaceChild(newChk, chkAniversarios);
+        newChk.addEventListener('change', carregarAgenda);
     }
+
     configurarFiltrosDeDataAgenda();
     popularFiltroDeAno();
     criarModais();
     adicionarCSSModais();
-});
+    carregarAgenda(); // load content
+}
+
+// Removido listener automático - agora inicializado via app.js / showSection
 
 // ========================================
 // FUNÇÕES AUXILIARES
@@ -72,9 +82,9 @@ function mostrarMensagem(mensagem, tipo = "info") {
     }
 
     const messageId = 'message-' + Date.now();
-    const bgColor = tipo === 'success' ? 'alert-success' : 
-                   tipo === 'warning' ? 'alert-warning' :
-                   tipo === 'error' ? 'alert-danger' : 'alert-info';
+    const bgColor = tipo === 'success' ? 'alert-success' :
+        tipo === 'warning' ? 'alert-warning' :
+            tipo === 'error' ? 'alert-danger' : 'alert-info';
 
     const messageHTML = `
         <div id="${messageId}" class="alert ${bgColor} alert-dismissible fade show">
@@ -82,9 +92,9 @@ function mostrarMensagem(mensagem, tipo = "info") {
             <button type="button" class="btn-close" onclick="document.getElementById('${messageId}').remove()"></button>
         </div>
     `;
-    
+
     messageContainer.insertAdjacentHTML('beforeend', messageHTML);
-    
+
     setTimeout(() => {
         const messageEl = document.getElementById(messageId);
         if (messageEl) {
@@ -100,17 +110,17 @@ function openPrintWindow(conteudo, opcoes = {}) {
             mostrarMensagem("Permita pop-ups para imprimir o resumo.", "warning");
             return null;
         }
-        
+
         janela.document.write(conteudo);
         janela.document.close();
-        
+
         if (opcoes.autoPrint) {
             setTimeout(() => {
                 janela.focus();
                 janela.print();
             }, 500);
         }
-        
+
         return janela;
     } catch (error) {
         return null;
@@ -128,17 +138,23 @@ function configurarFiltrosDeDataAgenda(dataReferencia = null) {
     const primeiroDia = new Date(ano, mes, 1);
     const ultimoDia = new Date(ano, mes + 1, 0);
 
-    getElement('agenda-filtro-inicio').value = primeiroDia.toISOString().split('T')[0];
-    getElement('agenda-filtro-fim').value = ultimoDia.toISOString().split('T')[0];
+    const inputInicio = getElement('agenda-filtro-inicio');
+    const inputFim = getElement('agenda-filtro-fim');
+
+    if (inputInicio) inputInicio.value = primeiroDia.toISOString().split('T')[0];
+    if (inputFim) inputFim.value = ultimoDia.toISOString().split('T')[0];
 }
 
 function configurarFiltrosParaAno(ano) {
     const primeiroDia = new Date(ano, 0, 1); // 1º de janeiro do ano especificado
     const ultimoDia = new Date(ano, 11, 31); // 31 de dezembro do ano especificado
 
-    getElement('agenda-filtro-inicio').value = primeiroDia.toISOString().split('T')[0];
-    getElement('agenda-filtro-fim').value = ultimoDia.toISOString().split('T')[0];
-    
+    const inputInicio = getElement('agenda-filtro-inicio');
+    const inputFim = getElement('agenda-filtro-fim');
+
+    if (inputInicio) inputInicio.value = primeiroDia.toISOString().split('T')[0];
+    if (inputFim) inputFim.value = ultimoDia.toISOString().split('T')[0];
+
     carregarAgenda();
     mostrarMensagem(`Filtro configurado para o ano de ${ano}`, "info");
 
@@ -180,7 +196,7 @@ function criarModais() {
 
 function criarModalNovaAtividade() {
     if (getElement('novaAtividadeModal')) return;
-    
+
     const modalHTML = `
         <div class="modal" id="novaAtividadeModal" tabindex="-1" aria-hidden="true" style="display: none;">
             <div class="modal-dialog">
@@ -259,7 +275,7 @@ function criarModalNovaAtividade() {
         </div>
         <div class="modal-backdrop" id="backdrop-novaAtividadeModal" style="display: none;"></div>
     `;
-    
+
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
@@ -269,17 +285,17 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
     await popularSelectUsuarios('atividade-atribuido-para');
     const modal = getElement('novaAtividadeModal');
     const backdrop = getElement('backdrop-novaAtividadeModal');
-    
+
     if (!modal) {
         return;
     }
-    
+
     // Reset do formulário
     const form = getElement('form-nova-atividade');
     if (form) form.reset();
-    
+
     const dataInput = getElement('atividade-data');
-    
+
     // Se não há dados para preenchimento (modo criação), restaurar textos padrão
     if (!dadosPreenchimento) {
         const modalTitle = modal.querySelector('.modal-title');
@@ -303,33 +319,33 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
         const saveButton = modal.querySelector('.btn-primary');
         if (saveButton) saveButton.textContent = 'Salvar Alterações';
     }
-    
+
     if (dataInput && !dadosPreenchimento) {
         const hoje = new Date();
         dataInput.value = hoje.toISOString().split('T')[0];
     }
-    
+
     // Mostrar modal e backdrop
     modal.style.display = 'block';
     if (backdrop) {
         backdrop.style.display = 'block';
     }
-    
+
     // Adicionar à lista de modais abertos
     if (!modaisAbertos.includes('novaAtividadeModal')) {
         modaisAbertos.push('novaAtividadeModal');
     }
-    
+
     // Adicionar evento para fechar ao clicar no backdrop
     if (backdrop) {
-        backdrop.onclick = function() {
+        backdrop.onclick = function () {
             fecharModal('novaAtividadeModal');
         };
     }
-    
+
     // Adicionar evento para fechar com ESC
     document.addEventListener('keydown', fecharComESC);
-    
+
     // Se há dados para preenchimento, preencher após o modal estar visível
     if (dadosPreenchimento) {
         requestAnimationFrame(() => preencherFormularioAtividade(dadosPreenchimento));
@@ -338,11 +354,11 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
     // Adiciona o listener para o campo de recorrência (se já não existir)
     const recorrenciaSelect = getElement('atividade-recorrencia');
     if (recorrenciaSelect) {
-        recorrenciaSelect.onchange = function() {
+        recorrenciaSelect.onchange = function () {
             const containerRepetirDiariamente = getElement('container-repetir-diariamente');
             const containerGerarAnoTodo = getElement('container-gerar-ano-todo-atividade');
             const labelRepetir = getElement('label-repetir-dias');
-            
+
             if (this.value === 'diariamente') {
                 if (containerRepetirDiariamente) containerRepetirDiariamente.style.display = 'block';
                 if (containerGerarAnoTodo) containerGerarAnoTodo.style.display = 'none';
@@ -363,7 +379,7 @@ async function abrirModalNovaAtividade(dadosPreenchimento = null) {
                 const elDias = getElement('atividade-repetir-dias');
                 if (elDias) elDias.value = '7';
             }
-            if (this.value !== 'mensal') { 
+            if (this.value !== 'mensal') {
                 const elAno = getElement('atividade-gerar-ano-todo');
                 if (elAno) elAno.checked = false;
             }
@@ -387,13 +403,13 @@ async function popularSelectUsuarios(selectId) {
 function fecharModal(modalId) {
     const modal = getElement(modalId);
     const backdrop = getElement('backdrop-' + modalId);
-    
+
     if (modal) modal.style.display = 'none';
     if (backdrop) backdrop.style.display = 'none';
-    
+
     // Remover da lista de modais abertos
     modaisAbertos = modaisAbertos.filter(id => id !== modalId);
-    
+
     // Remover evento ESC se não houver mais modais abertos
     if (modaisAbertos.length === 0) {
         document.removeEventListener('keydown', fecharComESC);
@@ -412,7 +428,7 @@ function fecharComESC(event) {
 // ========================================
 
 async function salvarNovaAtividade() {
-    
+
     const form = getElement('form-nova-atividade');
     const editId = form?.dataset.editId;
     const editCollection = form?.dataset.editCollection;
@@ -426,7 +442,7 @@ async function salvarNovaAtividade() {
     const gerarAnoTodo = getElement('atividade-gerar-ano-todo')?.checked;
     const repetirDias = parseInt(getElement('atividade-repetir-dias')?.value, 10);
     const atribuidoParaSelect = getElement('atividade-atribuido-para');
-    
+
     // Coletar dados do histórico de tempo (se houver)
     let timeLog = [];
     const timeLogRows = document.querySelectorAll('.timelog-row');
@@ -557,9 +573,9 @@ async function salvarNovaAtividade() {
         } else {
             // Lógica para evento único ou edição
             const atividadeData = {
-                assunto, 
-                data: dataAtividade, 
-                tipo, 
+                assunto,
+                data: dataAtividade,
+                tipo,
                 descricao,
                 atribuidoParaId: atribuidoParaId || null,
                 atribuidoParaNome: atribuidoParaNome || null,
@@ -572,9 +588,9 @@ async function salvarNovaAtividade() {
                 await salvarAlteracoes(editId, editCollection, atividadeData);
             } else {
                 atividadeData.status = 'Aberto';
-                atividadeData.criadoPorNome = firebase.auth().currentUser?.displayName || 
-                                             firebase.auth().currentUser?.email || 
-                                             'Usuário Desconhecido';
+                atividadeData.criadoPorNome = firebase.auth().currentUser?.displayName ||
+                    firebase.auth().currentUser?.email ||
+                    'Usuário Desconhecido';
                 atividadeData.criadoPor = firebase.auth().currentUser?.uid || 'desconhecido';
                 atividadeData.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
                 await db.collection('agenda_atividades').add(atividadeData);
@@ -609,7 +625,7 @@ async function salvarAlteracoes(id, collection, dados) {
         await db.collection(collection).doc(id).update(dadosParaAtualizar);
         mostrarMensagem("Item atualizado com sucesso!", "success");
         const modalId = 'novaAtividadeModal';
-        
+
         fecharModal(modalId);
         await carregarAgenda();
 
@@ -617,7 +633,7 @@ async function salvarAlteracoes(id, collection, dados) {
         if (document.getElementById('dashboard-atividades') && !document.getElementById('dashboard-atividades').classList.contains('d-none') && typeof carregarDadosDashboardAtividades === 'function') {
             await carregarDadosDashboardAtividades();
         }
-        
+
     } catch (error) {
         mostrarMensagem("Erro ao salvar alterações: " + error.message, "error");
     }
@@ -627,7 +643,7 @@ async function salvarAlteracoes(id, collection, dados) {
 // CARREGAMENTO E EXIBIÇÃO DA AGENDA
 // ========================================
 async function carregarAgenda() {
-    
+
     const containersMinhas = {
         andamento: getElement('agenda-minhas-andamento'),
         hoje: getElement('agenda-minhas-hoje'),
@@ -664,7 +680,7 @@ async function carregarAgenda() {
 
     try {
         const currentUser = firebase.auth().currentUser;
-        
+
         const incluirAniversarios = getElement('agenda-filtro-aniversarios').checked;
 
         const promises = [
@@ -679,9 +695,9 @@ async function carregarAgenda() {
         const [vencimentos, pericias, atividades, aniversariantes = [], aniversariosEmpresa = []] = await Promise.all(promises);
 
         let todosEventos = [
-            ...vencimentos, 
-            ...pericias, 
-            ...aniversariantes, 
+            ...vencimentos,
+            ...pericias,
+            ...aniversariantes,
             ...aniversariosEmpresa,
             ...atividades
         ];
@@ -700,7 +716,7 @@ async function carregarAgenda() {
                 return effectiveStatus === statusFiltro;
             });
         }
-        
+
 
         // Ordenação: 1. Abertos/Atrasados, 2. Concluídos
         todosEventos.sort((a, b) => {
@@ -714,16 +730,16 @@ async function carregarAgenda() {
 
         // Ordenar eventos por data
         todosEventos.sort((a, b) => a.data - b.data);
-        
+
         // Separar eventos: Minhas vs Equipe
         const eventosMinhas = [];
         const eventosEquipe = [];
 
         todosEventos.forEach(evento => {
             // Se for atividade criada por mim e atribuída a outro, vai para Equipe
-            if (evento.collection === 'agenda_atividades' && 
-                evento.criadoPor === currentUser.uid && 
-                evento.atribuidoParaId && 
+            if (evento.collection === 'agenda_atividades' &&
+                evento.criadoPor === currentUser.uid &&
+                evento.atribuidoParaId &&
                 evento.atribuidoParaId !== currentUser.uid) {
                 eventosEquipe.push(evento);
             } else {
@@ -842,18 +858,18 @@ function mudarMesCalendario(direcao) {
 }
 
 function getCorEvento(tipo) {
-    const cores = { 
-        financeiro: '#28a745', 
-        pericia: '#ffc107', 
-        aniversario: '#0dcaf0', 
-        empresa: '#6f42c1', 
-        Reunião: '#6610f2', 
-        Prazo: '#dc3545', 
-        Lembrete: '#6c757d', 
-        Pessoal: '#212529', 
-        Tarefa: '#198754', 
-        'Follow-up': '#0dcaf0', 
-        Revisão: '#ffc107', 
+    const cores = {
+        financeiro: '#28a745',
+        pericia: '#ffc107',
+        aniversario: '#0dcaf0',
+        empresa: '#6f42c1',
+        Reunião: '#6610f2',
+        Prazo: '#dc3545',
+        Lembrete: '#6c757d',
+        Pessoal: '#212529',
+        Tarefa: '#198754',
+        'Follow-up': '#0dcaf0',
+        Revisão: '#ffc107',
         Outro: '#adb5bd',
         Experiencia: '#fd7e14' // Laranja para experiência
     };
@@ -861,10 +877,10 @@ function getCorEvento(tipo) {
 }
 
 function distribuirEventosNosCards(eventos, containers, prefixoId) {
-    
+
     // Limpar containers
-    Object.values(containers).forEach(c => { 
-        if (c) c.innerHTML = ''; 
+    Object.values(containers).forEach(c => {
+        if (c) c.innerHTML = '';
     });
 
     const hoje = new Date();
@@ -956,7 +972,7 @@ function criarCardEvento(evento) {
         Outro: 'fa-sticky-note',
         Experiencia: 'fa-user-clock'
     };
-    
+
     const cores = {
         financeiro: 'border-success',
         pericia: 'border-warning',
@@ -972,7 +988,7 @@ function criarCardEvento(evento) {
         Outro: 'border-secondary',
         Experiencia: 'border-orange' // Classe CSS personalizada ou fallback
     };
-    
+
     const dataObj = new Date(evento.data);
     let dataFormatada = dataObj.toLocaleDateString('pt-BR');
     const horaFormatada = dataObj.toTimeString().slice(0, 5);
@@ -1093,7 +1109,7 @@ function criarCardEvento(evento) {
         const dataConclusao = evento.concluidoEm.toDate ? evento.concluidoEm.toDate() : new Date(evento.concluidoEm);
         const dataFormatadaConclusao = dataConclusao.toLocaleDateString('pt-BR');
         const horaFormatadaConclusao = dataConclusao.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        
+
         conclusaoInfo = `<div class="mt-2 pt-2 border-top small text-success">
             <i class="fas fa-check-double me-1"></i> Concluído em: ${dataFormatadaConclusao} às ${horaFormatadaConclusao}
             ${evento.tempoResolucao ? `<br><i class="fas fa-stopwatch me-1"></i> Duração: ${evento.tempoResolucao}` : ''}
@@ -1140,7 +1156,7 @@ async function fetchVencimentosFinanceiros() {
             .where('dataVencimento', '>=', dataInicio)
             .where('dataVencimento', '<=', dataFim)
             .get();
-        
+
         return snapshot.docs.map(doc => {
             const data = doc.data();
             return {
@@ -1199,7 +1215,7 @@ async function fetchAniversariantes() {
 
     try {
         const aniversariantes = [];
-        
+
         const snapshot = await db.collection('funcionarios')
             .where('status', '==', 'Ativo')
             .get();
@@ -1243,7 +1259,7 @@ async function fetchAniversariosDeEmpresa() {
         const snapshot = await db.collection('funcionarios')
             .where('status', '==', 'Ativo')
             .get();
-        
+
         snapshot.forEach(doc => {
             const func = doc.data();
             if (func.dataAdmissao) {
@@ -1281,7 +1297,7 @@ async function fetchAtividades() {
     }
 
     try {
-        const currentUser = firebase.auth().currentUser;        
+        const currentUser = firebase.auth().currentUser;
         if (!currentUser) {
             console.warn("fetchAtividades: Usuário não autenticado. Retornando array vazio.");
             return [];
@@ -1292,7 +1308,7 @@ async function fetchAtividades() {
             .where('data', '>=', dataInicio)
             .where('data', '<=', dataFim)
             .where('criadoPor', '==', currentUser.uid).get();
-        
+
         const atribuidasSnap = await db.collection('agenda_atividades')
             .where('data', '>=', dataInicio)
             .where('data', '<=', dataFim)
@@ -1309,7 +1325,7 @@ async function fetchAtividades() {
         });
 
         // Filtra os eventos combinados pelo período selecionado
-        const atividadesFiltradas = Array.from(todasAsAtividades.values())            
+        const atividadesFiltradas = Array.from(todasAsAtividades.values())
             .map(atividade => {
                 return {
                     id: atividade.id,
@@ -1402,7 +1418,7 @@ function preencherFormularioAtividade(dados) {
         }
 
         assuntoInput.value = dados.assunto || dados.titulo || '';
-        
+
         // CORREÇÃO: Garante que a data seja um objeto Date válido
         const dataEvento = dados.data?.toDate ? dados.data.toDate() : new Date(dados.data);
         if (isNaN(dataEvento.getTime())) {
@@ -1424,12 +1440,12 @@ function preencherFormularioAtividade(dados) {
         // Preencher Histórico de Tempo (TimeLog)
         const timelogSection = getElement('atividade-timelog-section');
         const timelogContainer = getElement('atividade-timelog-container');
-        
+
         if (timelogSection && timelogContainer) {
             timelogSection.style.display = 'block';
             timelogContainer.innerHTML = '';
             let logs = dados.timeLog || [];
-            
+
             // Se não tem timeLog mas tem executionStartTime (legado), cria um log inicial
             if (logs.length === 0 && dados.executionStartTime) {
                 const start = dados.executionStartTime.toDate ? dados.executionStartTime.toDate() : new Date(dados.executionStartTime);
@@ -1443,7 +1459,7 @@ function preencherFormularioAtividade(dados) {
                 logs.forEach((log, index) => {
                     const startVal = log.start ? (log.start.toDate ? log.start.toDate() : new Date(log.start)).toISOString().slice(0, 16) : '';
                     const endVal = log.end ? (log.end.toDate ? log.end.toDate() : new Date(log.end)).toISOString().slice(0, 16) : '';
-                    
+
                     const row = document.createElement('div');
                     row.className = 'row g-2 mb-2 timelog-row align-items-center';
                     row.innerHTML = `
@@ -1514,7 +1530,7 @@ function imprimirResumoDoDia() {
     // Captura os containers de "Hoje" tanto de Minhas Atividades quanto da Equipe
     const containerMinhas = getElement('agenda-minhas-hoje');
     const containerEquipe = getElement('agenda-equipe-hoje');
-    
+
     // Verifica se há conteúdo válido (não vazio e sem a mensagem de "Nenhum evento")
     const temMinhas = containerMinhas && containerMinhas.children.length > 0 && !containerMinhas.querySelector('p.text-muted');
     const temEquipe = containerEquipe && containerEquipe.children.length > 0 && !containerEquipe.querySelector('p.text-muted');
@@ -1525,7 +1541,7 @@ function imprimirResumoDoDia() {
     }
 
     const dataHoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
-    
+
     let conteudoPrincipal = '';
 
     if (temMinhas) {
@@ -1584,7 +1600,7 @@ function calcularTempoResolucao(dataCriacao) {
     // Esta função agora é um wrapper simplificado. 
     // O cálculo real deve considerar o timeLog se disponível.
     // Se chamado sem contexto de timeLog, retorna null ou cálculo simples.
-    return null; 
+    return null;
 }
 
 function calcularTempoTotalMs(timeLog) {
@@ -1630,7 +1646,7 @@ async function concluirEvento(id, collection) {
         // CORREÇÃO: Usa o tempo de início da execução se existir, senão usa o tempo de criação.
         const startTime = dados.executionStartTime || dados.criadoEm;
 
-        await docRef.update({ 
+        await docRef.update({
             status: 'Concluído',
             concluidoEm: firebase.firestore.FieldValue.serverTimestamp(),
             tempoResolucao: calcularTempoResolucao(startTime)
@@ -1702,7 +1718,7 @@ async function visualizarEventoExterno(id, sourceCollection, eventType) {
     } catch (error) {
         mostrarMensagem("Erro ao tentar visualizar o evento.", "error");
     }
- }
+}
 
 async function visualizarEvento(id, collection) {
     try {
@@ -1711,10 +1727,10 @@ async function visualizarEvento(id, collection) {
             mostrarMensagem("Atividade não encontrada.", "error");
             return;
         }
-        
+
         const atividade = doc.data();
         const dataFormatada = atividade.data ? new Date(atividade.data.toDate()).toLocaleString('pt-BR') : 'N/A';
-        
+
         const conteudo = `
             <div class="mb-3">
                 <label class="fw-bold">Assunto:</label>

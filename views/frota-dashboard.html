@@ -1,0 +1,90 @@
+<h2 class="page-title">Dashboard de Logística</h2>
+<div class="d-flex justify-content-end mb-4">
+    <!-- Filtro por Veículo -->
+    <div class="input-group me-3" style="max-width: 300px;">
+        <label class="input-group-text" for="frota-dashboard-filtro-veiculo"><i class="fas fa-filter"></i></label>
+        <select class="form-select" id="frota-dashboard-filtro-veiculo">
+            <option value="">Todos os Veículos</option>
+            <!-- Opções preenchidas via JS -->
+        </select>
+        <button class="btn btn-primary" type="button" onclick="aplicarFiltroDashboardFrota()">
+            Aplicar
+        </button>
+    </div>
+
+    <button class="btn btn-success" onclick="abrirModalAbastecimento()">
+        <i class="fas fa-gas-pump"></i> Registrar Abastecimento
+    </button>
+</div>
+<div class="row">
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-car text-primary"></i>
+                <div class="number" id="frota-total-veiculos">0</div>
+                <div class="label">Total de Veículos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-check-circle text-success"></i>
+                <div class="number" id="frota-veiculos-ativos">0</div>
+                <div class="label">Veículos Disponíveis</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-road text-warning"></i>
+                <div class="number" id="frota-veiculos-em-uso">0</div>
+                <div class="label">Veículos em Uso</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-id-card text-info"></i>
+                <div class="number" id="frota-total-motoristas">0</div>
+                <div class="label">Motoristas Cadastrados</div>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Seção de Análise de Consumo -->
+<div class="row mt-4">
+    <div class="col-12">
+        <h3 class="category-title">Análise de Consumo e Custos</h3>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-tachometer-alt text-success"></i>
+                <div class="number" id="frota-consumo-medio">0.0</div>
+                <div class="label">Consumo Médio (KM/L)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-dollar-sign text-warning"></i>
+                <div class="number" id="frota-custo-km">R$ 0.00</div>
+                <div class="label">Custo Médio por KM</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 mb-4">
+        <div class="card stat-card">
+            <div class="card-body"><i class="fas fa-wallet text-danger"></i>
+                <div class="number" id="frota-gasto-mes">R$ 0.00</div>
+                <div class="label">Gasto Combustível (Mês)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-12 mt-4">
+        <div class="card">
+            <div class="card-header">Gastos com Combustível (Últimos 6 Meses)</div>
+            <div class="card-body" style="height: 300px;">
+                <canvas id="frota-grafico-gastos"></canvas>
+            </div>
+        </div>
+    </div>
+</div>

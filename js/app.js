@@ -3,8 +3,8 @@
 // ============================
 
 // Lista de todas as seções disponíveis no sistema (MODIFICADO)
-const TODAS_SECOES = [ 
-    'empresas', 'funcionarios', 'afastamentos', 'atestados','admissao','demissao', 'painel-demitidos',
+const TODAS_SECOES = [
+    'empresas', 'funcionarios', 'afastamentos', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao',
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager',
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao',
@@ -22,8 +22,8 @@ let currentUserPermissions = {};
 let secaoAtual = null;
 
 // Função showSection
-function showSection(sectionName) {
-    
+async function showSection(sectionName) {
+
     // Cleanup da seção anterior (Gerenciamento de Memória)
     if (secaoAtual && secaoAtual !== sectionName) {
         if (secaoAtual === 'controle-usuario-master' && typeof limparControleUsuarioMaster === 'function') {
@@ -36,11 +36,11 @@ function showSection(sectionName) {
             limparListenerAutorizacao();
         }
     }
-    
+
     // Atualiza a seção atual
     secaoAtual = sectionName;
-    
-    // Esconder todas as seções
+
+    // Esconder todas as seções estáticas do index
     const sections = document.querySelectorAll('.content-section');
     sections.forEach(section => {
         section.classList.add('d-none');
@@ -59,7 +59,13 @@ function showSection(sectionName) {
     } else {
         document.body.classList.remove('denuncia-ativa');
     }
-    
+
+    // Oculta container dinâmico se já existir
+    const containerDinamico = document.getElementById('dynamic-content');
+    if (containerDinamico) {
+        containerDinamico.classList.add('d-none');
+    }
+
     // Mostrar seção selecionada
     const targetSection = document.getElementById(sectionName);
     if (targetSection) {
@@ -70,12 +76,42 @@ function showSection(sectionName) {
         if (sectionName === 'dp-horas-extras-lancamento' && typeof window.inicializarLancamentoHorasExtras === 'function') {
             window.inicializarLancamentoHorasExtras();
         }
+
+        // Carregar dados específicos da seção DEPOIS de torná-la visível
+        carregarDadosSecao(sectionName);
     } else {
-        return; // Sai da função se a seção não for encontrada
+        // Tenta buscar a View dinâmica
+        let mainContent = document.getElementById('dynamic-content');
+        if (!mainContent) {
+            mainContent = document.createElement('section');
+            mainContent.id = 'dynamic-content';
+            mainContent.className = 'content-section fade-in';
+            document.querySelector('.content-wrapper').appendChild(mainContent);
+        }
+
+        mainContent.classList.remove('d-none');
+        mainContent.innerHTML = '<div class="text-center mt-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><p class="mt-2 text-muted">Carregando módulo...</p></div>';
+
+        try {
+            const resposta = await fetch(`views/${sectionName}.html`);
+            if (!resposta.ok) {
+                mainContent.innerHTML = '<div class="alert alert-danger mt-5">Tela não encontrada ou não migrada.</div>';
+            } else {
+                const html = await resposta.text();
+                mainContent.innerHTML = html;
+
+                if (sectionName === 'dp-horas-extras-lancamento' && typeof window.inicializarLancamentoHorasExtras === 'function') {
+                    window.inicializarLancamentoHorasExtras();
+                }
+
+                carregarDadosSecao(sectionName);
+            }
+        } catch (error) {
+            console.error('Erro no fetch da secão:', error);
+            mainContent.innerHTML = '<div class="alert alert-danger mt-5">Erro de conexão ao carregar a tela.</div>';
+        }
     }
-    // Carregar dados específicos da seção DEPOIS de torná-la visível
-    carregarDadosSecao(sectionName);
-    
+
     // Atualizar menu ativo
     atualizarMenuAtivo(sectionName);
 }
@@ -109,7 +145,7 @@ function atualizarMenuAtivo(activeSection) {
 // Carregar dados específicos da seção
 async function carregarDadosSecao(sectionName) {
     try {
-        switch(sectionName) {
+        switch (sectionName) {
             case 'empresas':
                 if (typeof carregarEmpresas === 'function') {
                     await carregarEmpresas();
@@ -136,7 +172,11 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'funcionarios':
-                await carregarFuncionarios();
+                if (typeof inicializarFuncionarios === 'function') {
+                    await inicializarFuncionarios();
+                } else if (typeof carregarFuncionarios === 'function') {
+                    await carregarFuncionarios();
+                }
                 break;
             case 'movimentacoes':
                 if (window.movimentacoesManager) await window.movimentacoesManager.carregarDadosIniciais();
@@ -152,9 +192,7 @@ async function carregarDadosSecao(sectionName) {
                     configurarListenerDemissao();
                 }
                 break;
-            case 'afastamentos':
-                await carregarAfastamentos();
-                break;
+
             case 'atestados':
                 if (typeof inicializarAtestados === 'function') {
                     await inicializarAtestados();
@@ -207,7 +245,9 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'agenda':
-                if (typeof carregarAgenda === 'function') {
+                if (typeof inicializarAgenda === 'function') {
+                    await inicializarAgenda();
+                } else if (typeof carregarAgenda === 'function') {
                     await carregarAgenda();
                 }
                 break;
@@ -234,6 +274,11 @@ async function carregarDadosSecao(sectionName) {
             case 'iso-maquinas':
                 if (typeof inicializarMaquinas === 'function') {
                     await inicializarMaquinas();
+                }
+                break;
+            case 'ponto-eletronico':
+                if (typeof inicializarPontoEletronico === 'function') {
+                    inicializarPontoEletronico();
                 }
                 break;
             case 'iso-mecanicos':
@@ -285,7 +330,7 @@ async function carregarDadosSecao(sectionName) {
                     await carregarDashboardConsumoEPI();
                 }
                 break;
-             case 'analise-custos':
+            case 'analise-custos':
                 if (typeof inicializarAnaliseCustos === 'function') {
                     await inicializarAnaliseCustos();
                 }
@@ -383,9 +428,12 @@ async function carregarDadosSecao(sectionName) {
                 if (typeof inicializarTelaAutorizacao === 'function') {
                     await inicializarTelaAutorizacao();
                 }
-                break;            case 'saude-psicossocial':
+                break;
+            case 'saude-psicossocial':
                 if (typeof inicializarSaudePsicossocial === 'function') {
                     await inicializarSaudePsicossocial();
+                } else if (typeof SaudePsicossocial !== 'undefined' && typeof SaudePsicossocial.inicializar === 'function') {
+                    await SaudePsicossocial.inicializar();
                 }
                 break;
             case 'cid-manager':
@@ -414,7 +462,19 @@ async function carregarDadosSecao(sectionName) {
                 }
                 break;
             case 'ponto-pf':
-                // Nenhuma inicialização necessária por enquanto, pois o ponto-pf.js usa DOMContentLoaded
+                if (typeof inicializarPontoPF === 'function') {
+                    inicializarPontoPF();
+                }
+                break;
+            case 'agenda':
+                if (typeof inicializarAgenda === 'function') {
+                    inicializarAgenda();
+                }
+                break;
+            case 'afastamentos':
+                if (typeof inicializarAfastamentos === 'function') {
+                    inicializarAfastamentos();
+                }
                 break;
         }
     } catch (error) {
@@ -431,7 +491,7 @@ async function carregarUltimasMovimentacoesDashboard() {
         const filtroStatus = document.getElementById('mov-filtro-status')?.value;
         const tbody = document.getElementById('ultimas-movimentacoes');
         if (!tbody) return;
-        
+
         tbody.innerHTML = '<tr><td colspan="4" class="text-center">Carregando...</td></tr>';
 
         // Se estiver na tela de movimentações e o filtro for 'preenchida', não mostra nada aqui
@@ -440,34 +500,34 @@ async function carregarUltimasMovimentacoesDashboard() {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Filtro "Preenchidas" ativo. Veja as listas abaixo.</td></tr>';
             return;
         }
-        
+
         const movimentacoesSnapshot = await db.collection('movimentacoes')
             .orderBy('data', 'desc')
             .limit(5)
             .get();
-            
+
         tbody.innerHTML = '';
-        
+
         if (movimentacoesSnapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma movimentação recente</td></tr>';
             return;
         }
-        
+
         // Buscar nomes dos funcionários
         const funcionariosSnapshot = await db.collection('funcionarios').get();
         const funcionariosMap = {};
         funcionariosSnapshot.forEach(doc => {
             funcionariosMap[doc.id] = doc.data().nome;
         });
-        
+
         movimentacoesSnapshot.forEach(doc => {
             const mov = doc.data();
             const nomeFuncionario = mov.funcionarioNome || funcionariosMap[mov.funcionarioId] || 'Funcionário não encontrado';
             const tipoTexto = mov.tipo === 'admissao' ? 'Admissão' : 'Demissão';
             const tipoClasse = mov.tipo === 'admissao' ? 'text-success' : 'text-danger';
-            
+
             const dataObj = mov.data?.toDate ? mov.data.toDate() : mov.data;
-            
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${nomeFuncionario}</td>
@@ -486,34 +546,34 @@ async function carregarUltimasMovimentacoes() {
     try {
         const tbody = document.getElementById('ultimas-movimentacoes');
         if (!tbody) return;
-        
+
         const movimentacoesSnapshot = await db.collection('movimentacoes')
             .orderBy('data', 'desc')
             .limit(5)
             .get();
-            
+
         tbody.innerHTML = '';
-        
+
         if (movimentacoesSnapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="4" class="text-center">Nenhuma movimentação recente</td></tr>';
             return;
         }
-        
+
         // Buscar nomes dos funcionários
         const funcionariosSnapshot = await db.collection('funcionarios').get();
         const funcionariosMap = {};
         funcionariosSnapshot.forEach(doc => {
             funcionariosMap[doc.id] = doc.data().nome;
         });
-        
+
         movimentacoesSnapshot.forEach(doc => {
             const mov = doc.data();
             const nomeFuncionario = mov.funcionarioNome || funcionariosMap[mov.funcionarioId] || 'Funcionário não encontrado';
             const tipoTexto = mov.tipo === 'admissao' ? 'Admissão' : 'Demissão';
             const tipoClasse = mov.tipo === 'admissao' ? 'text-success' : 'text-danger';
-            
+
             const dataObj = mov.data?.toDate ? mov.data.toDate() : mov.data;
-            
+
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>${nomeFuncionario}</td>
@@ -523,7 +583,7 @@ async function carregarUltimasMovimentacoes() {
             `;
             tbody.appendChild(row);
         });
-        
+
     } catch (error) {
     }
 }
@@ -540,16 +600,16 @@ async function carregarMetricasSaudeOcupacional() {
         }
 
         const hoje = new Date();
-        
+
         // Afastamentos ativos
         const afastamentosSnapshot = await db.collection('afastamentos').where('status', '==', 'Ativo').get();
         afastamentosEl.textContent = afastamentosSnapshot.size;
-        
+
         // Atestados do mês
         const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
         const atestadosSnapshot = await db.collection('atestados').where('data_atestado', '>=', inicioMes).get();
         atestadosEl.textContent = atestadosSnapshot.size;
-        
+
     } catch (error) {
     }
 }
@@ -652,7 +712,7 @@ async function inicializarMovimentacoesDashboard() {
     // Preenche os filtros de empresa e setor
     await carregarSelectEmpresas('mov-filtro-empresa');
     const empresaFiltro = document.getElementById('mov-filtro-empresa');
-    
+
     empresaFiltro.addEventListener('change', () => {
         carregarSetoresPorEmpresa(empresaFiltro.value, 'mov-filtro-setor');
     });
@@ -680,7 +740,7 @@ async function inicializarMovimentacoesDashboard() {
  */
 function openPrintWindow(content, options = {}) {
     const { autoPrint = false, name = 'printWindow', specs = 'width=800,height=600' } = options;
-    
+
     const printWindow = window.open('', name, specs);
     printWindow.document.write(content);
     printWindow.document.close();
@@ -715,7 +775,7 @@ async function carregarDashboardMovimentacoes() {
         }
 
         const [
-            reposicoesSnap, 
+            reposicoesSnap,
             contratacoesSnap
         ] = await Promise.all([
             reposicoesQuery.orderBy('abertaEm', 'desc').get(),
@@ -739,7 +799,7 @@ async function carregarDashboardMovimentacoes() {
 
         const reposicoesFiltradas = reposicoesDocs.filter(doc => clientSideFilter(doc, filtroStatus));
         const contratacoesFiltradas = contratacoesDocs.filter(doc => clientSideFilter(doc, filtroStatus));
-        
+
         const reposicoesPendentesFiltradas = reposicoesDocs.filter(doc => clientSideFilter(doc, 'pendente'));
         const contratacoesPendentesFiltradas = contratacoesDocs.filter(doc => clientSideFilter(doc, 'pendente'));
 
@@ -782,14 +842,14 @@ async function carregarDashboardMovimentacoes() {
 
                     // Botões de Preencher e Editar (agora na coluna de ações)
                     let btnPreencherInline = '';
-                    
+
                     let acoesBtn = `
                                                 <button class="btn btn-sm btn-outline-info" onclick="event.stopPropagation(); visualizarSolicitacao('${doc.id}', 'reposicao')" title="Visualizar"><i class="fas fa-eye"></i></button>
                                                 <button class="btn btn-sm btn-success" onclick="event.stopPropagation(); preencherVaga('${doc.id}', 'reposicao')" title="Preencher Vaga"><i class="fas fa-user-check"></i></button>
                                             `;
-                        
-                                            acoesBtn += `<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); excluirSolicitacao('${doc.id}', 'reposicao')" title="Excluir"><i class="fas fa-trash"></i></button>`;
-                    
+
+                    acoesBtn += `<button class="btn btn-sm btn-outline-danger" onclick="event.stopPropagation(); excluirSolicitacao('${doc.id}', 'reposicao')" title="Excluir"><i class="fas fa-trash"></i></button>`;
+
                     const row = document.createElement('tr');
                     row.innerHTML = `
                         <td>
@@ -850,7 +910,7 @@ async function carregarDashboardMovimentacoes() {
                 }
             }
         }
-        
+
         // Renderiza o novo gráfico de movimentações por setor
         await renderizarGraficoMovimentacoesPorSetor(reposicoesPendentesFiltradas, contratacoesPendentesFiltradas);
 
@@ -990,14 +1050,14 @@ function mostrarMensagem(mensagem, tipo = 'success') {
     // Remover mensagens existentes
     const mensagensExistentes = document.querySelectorAll('.alert-toast');
     mensagensExistentes.forEach(msg => msg.remove());
-    
+
     const alertClass = {
         'success': 'alert-success',
         'error': 'alert-danger',
         'warning': 'alert-warning',
         'info': 'alert-info'
     }[tipo] || 'alert-success';
-    
+
     const toast = document.createElement('div');
     toast.className = `alert-toast alert ${alertClass} alert-dismissible fade show`;
     toast.style.cssText = `
@@ -1012,9 +1072,9 @@ function mostrarMensagem(mensagem, tipo = 'success') {
         ${mensagem}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Auto-remover após 5 segundos
     setTimeout(() => {
         if (toast.parentNode) {
@@ -1060,8 +1120,8 @@ function inicializarCanalDenuncia() {
     }
 }
 
-// Adiciona a inicialização ao carregar o DOM
-document.addEventListener('DOMContentLoaded', () => {
+// Adiciona a inicialização ao carregar as views
+document.addEventListener('viewsLoaded', () => {
     inicializarCanalDenuncia();
     configurarSidebarToggle();
 });
@@ -1098,15 +1158,15 @@ function abrirModalGenerico(titulo, corpo) {
 
 // Configurar menu de usuário com event delegation
 function configurarMenuUsuario() {
-    
+
     // Event delegation para garantir que os cliques sejam capturados
-    document.addEventListener('click', function(e) {
+    document.addEventListener('click', function (e) {
         // Verificar se o clique foi no botão de sair
         if (e.target.id === 'btn-sair' || e.target.closest('#btn-sair')) {
             e.preventDefault();
             sair();
         }
-        
+
         // Verificar se o clique foi no botão de configurações
         if (e.target.id === 'btn-configuracoes' || e.target.closest('#btn-configuracoes')) {
             e.preventDefault();
@@ -1116,18 +1176,18 @@ function configurarMenuUsuario() {
 }
 
 // Garante que a função de visualização da agenda esteja sempre disponível
-window.visualizarEvento = window.visualizarEvento || function() { };
+window.visualizarEvento = window.visualizarEvento || function () { };
 
 // ============================
 // 🎯 INICIALIZAÇÃO DO APP - CORRIGIDA
 // ============================
 
-// Inicializar quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', function() {
-    
+// Inicializar quando as views estiverem carregadas
+document.addEventListener('viewsLoaded', function () {
+
     // Inicializar modais
     inicializarModais();
-    
+
     // Verificar autenticação
     firebase.auth().onAuthStateChanged(async (user) => {
         if (user) {
@@ -1137,7 +1197,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (appContainer) {
                 appContainer.style.display = 'flex';
             }
-            
+
             // Buscar permissões do usuário
             const userDocRef = db.collection('usuarios').doc(user.uid);
             const userDoc = await userDocRef.get();
@@ -1186,7 +1246,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
             // Configurar navegação
             inicializarNavegacao();
-            
+
             // Configurar botões do menu de usuário
             const btnSair = document.getElementById('btn-sair');
             if (btnSair) {
@@ -1200,7 +1260,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // Redirecionar para login se não estiver autenticado
             // Verifica se já não está na página de login para evitar loops
             if (!window.location.href.includes('login.html')) {
-                 window.location.replace('login.html');
+                window.location.replace('login.html');
             }
         }
     });
@@ -1273,7 +1333,7 @@ function inicializarNavegacao() {
                     // Torna o <li> do menu pai visível.
                     const parentNavItem = toggleLink.closest('.nav-item');
                     if (parentNavItem) parentNavItem.style.display = 'block';
-                    
+
                     // Busca o próximo collapse pai (se houver) para continuar subindo na hierarquia
                     parentCollapse = toggleLink.closest('.collapse');
                 } else {
@@ -1285,7 +1345,7 @@ function inicializarNavegacao() {
 
     // Adiciona o evento de clique a todos os links com data-target
     navContainer.querySelectorAll('a[data-target]').forEach(link => {
-        link.addEventListener('click', function(e) {
+        link.addEventListener('click', function (e) {
             e.preventDefault();
             const targetSection = this.getAttribute('data-target');
             // A verificação de permissão já foi feita para exibir o link, então podemos chamar diretamente
@@ -1325,7 +1385,7 @@ function inicializarModais() {
     // Modal de funcionário
     const funcionarioModal = document.getElementById('funcionarioModal');
     if (funcionarioModal) {
-        funcionarioModal.addEventListener('show.bs.modal', function(event) {
+        funcionarioModal.addEventListener('show.bs.modal', function (event) {
             // Verifica se o modal foi acionado pelo botão "Novo Funcionário"
             const relatedTarget = event.relatedTarget;
             if (relatedTarget && relatedTarget.getAttribute('data-bs-target') === '#funcionarioModal') {
@@ -1371,7 +1431,7 @@ function inicializarModais() {
         // Listener para carregar setores quando a empresa é selecionada no modal de funcionário
         const empresaSelect = document.getElementById('empresa-funcionario');
         if (empresaSelect) {
-            empresaSelect.addEventListener('change', function() {
+            empresaSelect.addEventListener('change', function () {
                 carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
             });
         }
@@ -1416,14 +1476,14 @@ async function carregarSelectEmpresas(selectId, empresaSelecionadaId = null) {
 
     try {
         const snapshot = await db.collection('empresas').orderBy('nome').get();
-        
+
         if (snapshot.empty) {
             select.innerHTML = '<option value="">Nenhuma empresa cadastrada</option>';
             return;
         }
 
         select.innerHTML = '<option value="">Selecione...</option>';
-        
+
         snapshot.forEach(doc => {
             const empresa = doc.data();
             const option = document.createElement('option');
@@ -1449,7 +1509,7 @@ async function carregarSelectEmpresas(selectId, empresaSelecionadaId = null) {
 async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado = null) {
     const select = document.getElementById(selectId);
     if (!select) return;
-    
+
     if (!empresaId) {
         select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
         return;
@@ -1457,7 +1517,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 
     select.innerHTML = '<option value="">Carregando...</option>';
 
-    try {        
+    try {
         // CORREÇÃO: Removido orderBy('descricao') para evitar erro de índice composto. Ordenação feita em memória.
         const setoresSnapshot = await db.collection('setores')
             .where('empresaId', '==', empresaId)
@@ -1469,7 +1529,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
         }
 
         select.innerHTML = '<option value="">Selecione...</option>';
-        
+
         const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
             const descA = a.data().descricao || '';
             const descB = b.data().descricao || '';
@@ -1502,24 +1562,24 @@ window.carregarSetoresPorEmpresa = carregarSetoresPorEmpresa;
 function configurarListenerDemissao() {
     const select = document.getElementById('demissao-funcionario');
     if (select && !select.dataset.listenerAdded) {
-        select.addEventListener('change', async function() {
+        select.addEventListener('change', async function () {
             const funcId = this.value;
             const setorInput = document.getElementById('demissao-setor');
             const gerenteInput = document.getElementById('demissao-gerente');
-            
+
             if (!funcId) {
-                if(setorInput) setorInput.value = '';
-                if(gerenteInput) gerenteInput.value = '';
+                if (setorInput) setorInput.value = '';
+                if (gerenteInput) gerenteInput.value = '';
                 return;
             }
-            
+
             try {
                 const doc = await db.collection('funcionarios').doc(funcId).get();
                 if (doc.exists) {
                     const data = doc.data();
-                    if(setorInput) setorInput.value = data.setor || '';
-                    
-                    if(gerenteInput) {
+                    if (setorInput) setorInput.value = data.setor || '';
+
+                    if (gerenteInput) {
                         if (data.liderId) {
                             const liderDoc = await db.collection('funcionarios').doc(data.liderId).get();
                             gerenteInput.value = liderDoc.exists ? liderDoc.data().nome : 'Não encontrado';
@@ -1554,14 +1614,14 @@ function limparControleUsuarioMaster() {
         unsubscribeTarefasMaster = null;
         console.log("Listener de tarefas removido");
     }
-    
+
     // Remove listener de usuários online
     if (unsubscribeUsuariosOnlineMaster) {
         unsubscribeUsuariosOnlineMaster();
         unsubscribeUsuariosOnlineMaster = null;
         console.log("Listener de usuários online removido");
     }
-    
+
     // Destroi o gráfico
     if (chartEvolucaoTarefas) {
         chartEvolucaoTarefas.destroy();
@@ -1627,7 +1687,7 @@ async function inicializarControleUsuarioMaster() {
 
     // Inicia o monitoramento em tempo real de usuários online
     iniciarMonitoramentoUsuariosOnlineMaster();
-    
+
     // Inicia o monitoramento de tarefas
     iniciarMonitoramentoTarefasMaster();
 }
@@ -1644,7 +1704,7 @@ function iniciarMonitoramentoUsuariosOnlineMaster() {
 
     // Define o limite de tempo para considerar usuário online (10 minutos)
     // CORREÇÃO: Aumentado para 30 minutos para evitar problemas com relógios desajustados
-    const limiteTempo = 30; 
+    const limiteTempo = 30;
 
     // Listener em tempo real usando onSnapshot
     unsubscribeUsuariosOnlineMaster = db.collection('user_status')
@@ -1657,7 +1717,7 @@ function iniciarMonitoramentoUsuariosOnlineMaster() {
 
             snapshot.forEach(doc => {
                 const user = doc.data();
-                
+
                 // Verifica se o usuário foi visto nos últimos 10 minutos
                 const lastSeenDate = user.last_seen ? user.last_seen.toDate() : new Date(0);
                 const diffMinutes = (agora - lastSeenDate) / 1000 / 60;
@@ -1696,7 +1756,7 @@ function iniciarMonitoramentoTarefasMaster() {
         chartEvolucaoTarefas.destroy();
         chartEvolucaoTarefas = null;
     }
-    
+
     chartEvolucaoTarefas = new Chart(ctx, {
         type: 'line',
         data: {
@@ -1711,7 +1771,7 @@ function iniciarMonitoramentoTarefasMaster() {
 
     // Listener em tempo real
     const hoje = new Date();
-    hoje.setHours(0,0,0,0);
+    hoje.setHours(0, 0, 0, 0);
 
     // Remove listener anterior se existir
     if (unsubscribeTarefasMaster) {
@@ -1723,7 +1783,7 @@ function iniciarMonitoramentoTarefasMaster() {
         .onSnapshot(snapshot => {
             const iniciadas = snapshot.docs.filter(d => d.data().status === 'Em Andamento').length;
             const concluidas = snapshot.docs.filter(d => d.data().status === 'Concluído').length;
-            
+
             const agora = new Date().toLocaleTimeString();
 
             // Atualiza gráfico (mantém últimos 10 pontos)
@@ -1753,7 +1813,7 @@ function iniciarMonitoramentoTarefasMaster() {
                         } else if (data.status === 'Concluído') {
                             msg = `<i class="fas fa-check text-success"></i> <strong>${data.atribuidoParaNome || 'Usuário'}</strong> concluiu: "${data.titulo || 'Tarefa'}"`;
                         }
-                        
+
                         if (msg) {
                             alertaDiv.innerHTML = msg;
                             // Efeito visual de flash

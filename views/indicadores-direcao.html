@@ -1,0 +1,191 @@
+<h2 class="page-title"><i class="fas fa-chart-line me-2"></i>Indicadores para Direção</h2>
+
+<!-- Filtros -->
+<div class="card mb-4 border-0 shadow-sm">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label for="ind-filtro-mes" class="form-label fw-bold">Período de Referência</label>
+                <input type="month" class="form-control" id="ind-filtro-mes">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100 py-2" id="btn-filtrar-indicadores">
+                    <i class="fas fa-sync-alt me-2"></i>Analisar Período
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-primary w-100 py-2" onclick="gerarRelatorioConferenciaAtivos()">
+                    <i class="fas fa-file-pdf me-2"></i>Relatório PDF
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-success w-100 py-2" onclick="exportarRelatorioConferenciaExcel()">
+                    <i class="fas fa-file-excel me-2"></i>Exportar Excel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs Principais - Linha 1 -->
+<div class="row mb-4">
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-start border-primary border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label text-muted small text-uppercase fw-bold">Total Efetivo</div>
+                        <div class="number h2 mb-0 fw-bold" id="ind-kpi-total-funcionarios">0</div>
+                    </div>
+                    <div class="icon-box bg-primary-soft p-3 rounded-circle">
+                        <i class="fas fa-users text-primary fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-start border-success border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label text-muted small text-uppercase fw-bold">Admissões</div>
+                        <div class="number h2 mb-0 fw-bold text-success" id="ind-kpi-admissoes">0</div>
+                    </div>
+                    <div class="icon-box bg-success-soft p-3 rounded-circle">
+                        <i class="fas fa-user-plus text-success fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-start border-danger border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label text-muted small text-uppercase fw-bold">Horas Extras</div>
+                        <div class="number h2 mb-0 fw-bold text-danger" id="ind-kpi-horas-extras">0</div>
+                    </div>
+                    <div class="icon-box bg-danger-soft p-3 rounded-circle">
+                        <i class="fas fa-clock text-danger fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-start border-warning border-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label text-muted small text-uppercase fw-bold">Custo Rescisório</div>
+                        <div class="number h2 mb-0 fw-bold text-warning" id="ind-custo-rescisao">R$ 0,00</div>
+                    </div>
+                    <div class="icon-box bg-warning-soft p-3 rounded-circle">
+                        <i class="fas fa-money-bill-wave text-warning fa-2x"></i>
+                    </div>
+                </div>
+                <div class="mt-2 text-end">
+                    <select id="ind-filtro-motivo-rescisao" class="form-select form-select-sm border-0 bg-light">
+                        <option value="">Todos os Motivos</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KPIs Experiência - Linha 2 -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Em Experiência</div>
+                <div class="number h4 mb-0 fw-bold" id="ind-kpi-experiencia">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-bottom border-success border-3">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Aprovadas</div>
+                <div class="number h4 mb-0 fw-bold text-success" id="ind-kpi-exp-aprovadas">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-bottom border-danger border-3">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Reprovadas</div>
+                <div class="number h4 mb-0 fw-bold text-danger" id="ind-kpi-exp-reprovadas">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Pedidos Demissão</div>
+                <div class="number h4 mb-0 fw-bold text-warning" id="ind-kpi-demissoes-pedidos">0</div>
+                <div class="d-flex gap-2 mt-1">
+                    <small class="text-muted">Dispensas: <span id="ind-kpi-demissoes-dispensas">0</span></small>
+                    <small class="text-muted">Acordos: <span id="ind-kpi-demissoes-acordos">0</span></small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row">
+    <div class="col-lg-7 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold text-primary">Faltas por Setor</h5>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height:350px">
+                    <canvas id="ind-chart-faltas-setor"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5 mb-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white border-0 py-3">
+                <h5 class="mb-0 fw-bold text-primary">Funcionários por Setor</h5>
+            </div>
+            <div class="card-body">
+                <div style="position: relative; height:350px">
+                    <canvas id="ind-chart-func-setor"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-primary-soft {
+        background-color: rgba(67, 97, 238, 0.1);
+    }
+
+    .bg-success-soft {
+        background-color: rgba(46, 196, 182, 0.1);
+    }
+
+    .bg-danger-soft {
+        background-color: rgba(231, 29, 54, 0.1);
+    }
+
+    .bg-warning-soft {
+        background-color: rgba(255, 159, 28, 0.1);
+    }
+
+    .stat-card {
+        transition: transform 0.2s ease-in-out;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-5px);
+    }
+</style>

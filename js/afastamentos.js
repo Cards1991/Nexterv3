@@ -43,7 +43,7 @@ async function carregarAfastamentos() {
             }
 
             const empresaNome = empMap.get(a.empresaId) || '-';
-            
+
             const row = `
                 <tr>
                     <td>${empresaNome} / ${a.setor || '-'}</td>
@@ -133,7 +133,7 @@ async function salvarEncaminhamentoINSS() {
 
     try {
         const updateData = {
-            inssStatus: 'Encaminhado',            
+            inssStatus: 'Encaminhado',
             inssDataEncaminhamento: new Date(dataEncaminhamento.replace(/-/g, '\/')),
             inssProtocolo: protocolo
         };
@@ -225,7 +225,7 @@ function calcularDiferencaDias(dataInicio, dataFim) {
     try {
         const inicio = dataInicio.toDate ? dataInicio.toDate() : new Date(dataInicio);
         const fim = dataFim ? (dataFim.toDate ? dataFim.toDate() : new Date(dataFim)) : new Date();
-        
+
         const diffTime = Math.abs(fim - inicio);
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         return diffDays;
@@ -242,16 +242,16 @@ async function verDetalhesAfastamento(id) {
 
 async function darBaixaAfastamento(id) {
     if (!confirm('Confirma dar baixa neste afastamento?')) return;
-    
+
     try {
-        await db.collection('afastamentos').doc(id).update({ 
-            status: 'Encerrado', 
-            updatedAt: timestamp() 
+        await db.collection('afastamentos').doc(id).update({
+            status: 'Encerrado',
+            updatedAt: timestamp()
         });
-        
+
         mostrarMensagem('Afastamento encerrado com sucesso!');
         await carregarAfastamentos();
-    } catch(e) {
+    } catch (e) {
         console.error('Erro ao encerrar afastamento:', e);
         mostrarMensagem('Erro ao encerrar afastamento', 'error');
     }
@@ -270,7 +270,7 @@ async function editarAfastamento(afastamentoId) {
     // Aguarda um instante para o modal ser renderizado
     setTimeout(async () => {
         document.querySelector('#afastamentoModal .modal-title').textContent = 'Editar Afastamento';
-        
+
         // Preenche os campos com os dados do afastamento
         document.getElementById('af_inicio').value = formatarDataParaInput(afastamento.data_inicio);
         document.getElementById('af_fim').value = formatarDataParaInput(afastamento.data_termino_prevista);
@@ -321,15 +321,24 @@ async function excluirAfastamento(id) {
     }
 }
 
-// Inicializar eventos
-document.addEventListener('DOMContentLoaded', function() {
+function inicializarAfastamentos() {
     const btnNovo = document.getElementById('btn-novo-afastamento');
-    if (btnNovo) btnNovo.addEventListener('click', abrirModalNovoAfastamento);
-    carregarAfastamentos(); // Carrega os afastamentos ao inicializar
+    if (btnNovo) {
+        // Clonar para evitar listeners duplicados
+        const newBtn = btnNovo.cloneNode(true);
+        btnNovo.parentNode.replaceChild(newBtn, btnNovo);
+        newBtn.addEventListener('click', abrirModalNovoAfastamento);
+    }
+    carregarAfastamentos();
+}
+
+// Inicializar eventos
+document.addEventListener('viewsLoaded', function () {
+    inicializarAfastamentos(); // Carrega os afastamentos ao inicializar
 });
 
 // Adiciona uma função utilitária para formatar datas para inputs do tipo 'date'
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('viewsLoaded', function () {
     if (typeof formatarDataParaInput === 'undefined') {
         window.formatarDataParaInput = (data) => data ? (data.toDate ? data.toDate() : new Date(data)).toISOString().split('T')[0] : '';
     }
@@ -438,7 +447,7 @@ function abrirModalNovoAfastamento() {
                 selEmp.appendChild(opt);
             });
 
-            selEmp.addEventListener('change', async function() {
+            selEmp.addEventListener('change', async function () {
                 selSet.innerHTML = '<option value="">Selecione o setor</option>';
                 selSet.disabled = true;
                 const id = this.value;
@@ -471,7 +480,7 @@ function abrirModalNovoAfastamento() {
                 selFunc.appendChild(o);
             });
 
-            selFunc.addEventListener('change', async function() {
+            selFunc.addEventListener('change', async function () {
                 const id = this.value;
                 if (!id) return;
 

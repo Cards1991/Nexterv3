@@ -1,0 +1,60 @@
+<h2 class="page-title">Saúde Ocupacional - Estoque de EPI</h2>
+
+<!-- Dashboard de Alertas de Estoque -->
+<div id="dashboard-alertas-epi" class="mb-4" style="display: none;">
+    <div class="card border-danger">
+        <div class="card-header bg-danger text-white">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Atenção: Itens com Estoque
+                Baixo</strong>
+        </div>
+        <ul id="lista-alertas-epi" class="list-group list-group-flush"></ul>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <button class="btn btn-primary" id="btn-novo-epi" onclick="abrirModalEPI()">
+            <i class="fas fa-plus-circle"></i> Novo EPI
+        </button>
+        <button class="btn btn-success ms-2" onclick="abrirModalEntradaEstoque()">
+            <i class="fas fa-arrow-circle-down"></i> Entrada Estoque
+        </button>
+        <button class="btn btn-warning ms-2" onclick="gerarSolicitacaoCompraEPI()">
+            <i class="fas fa-shopping-cart"></i> Solicitação de Compra
+        </button>
+    </div>
+    <div class="d-flex gap-2 align-items-center">
+        <div class="form-check form-switch ms-3">
+            <input class="form-check-input" type="checkbox" id="filtro-epi-sem-custo" onchange="carregarEstoqueEPI()">
+            <label class="form-check-label" for="filtro-epi-sem-custo">Sem Custo</label>
+        </div>
+        <div class="input-group" style="max-width: 300px;">
+            <input type="text" class="form-control" id="busca-epi" placeholder="Buscar EPI...">
+            <button class="btn btn-outline-secondary" onclick="carregarEstoqueEPI()"><i
+                    class="fas fa-search"></i></button>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body table-responsive" style="max-height: 600px; overflow-y: auto;">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>Descrição</th>
+                    <th>CA</th>
+                    <th>Validade CA</th>
+                    <th>Fornecedor</th>
+                    <th class="text-center">Estoque</th>
+                    <th>Status</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-estoque-epi">
+                <tr>
+                    <td colspan="7" class="text-center">Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

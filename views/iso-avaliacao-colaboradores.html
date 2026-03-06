@@ -1,0 +1,38 @@
+<section id="iso-avaliacao-colaboradores" class="content-section d-none">
+    <h2 class="page-title">Análise de Colaboradores (People Analytics)</h2>
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Painel de Avaliação</span>
+            <div class="btn-group">
+                <button class="btn btn-primary" id="btn-gerar-amostra">
+                    <i class="fas fa-random"></i> Gerar Amostra para Avaliação
+                </button>
+                <button class="btn btn-success" id="btn-salvar-avaliacoes" style="display: none;">
+                    <i class="fas fa-save"></i> Salvar Avaliações
+                </button>
+            </div>
+        </div>
+        <div class="card-body">
+            <div id="avaliacao-container">
+                <p class="text-center text-muted">Clique em "Gerar Amostra" para iniciar uma nova
+                    avaliação.</p>
+            </div>
+        </div>
+        <div class="card-footer" id="avaliacao-resumo-footer" style="display: none;">
+            <div class="row text-center">
+                <div class="col-md-4">
+                    <h5>Amostra Total</h5>
+                    <p class="fs-4 fw-bold" id="total-amostra">0</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Avaliações Preenchidas</h5>
+                    <p class="fs-4 fw-bold" id="total-preenchidas">0</p>
+                </div>
+                <div class="col-md-4">
+                    <h5>Média Geral</h5>
+                    <p class="fs-4 fw-bold text-primary" id="media-geral-avaliacao">0.0</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

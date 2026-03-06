@@ -1,0 +1,74 @@
+<!-- Modal Novo Destino (Frota) -->
+<div class="modal fade" id="frotaDestinoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-map-marked-alt me-2"></i>Novo Destino</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-frota-destino">
+                    <input type="hidden" id="frota-destino-id">
+                    <div class="mb-3">
+                        <label class="form-label">Cidade de Origem (Padrão)</label>
+                        <input type="text" class="form-control" id="frota-destino-origem" value="Imbituva, PR" readonly>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Cidade de Destino</label>
+                            <input type="text" class="form-control" id="frota-destino-cidade" placeholder="Ex: Teresina"
+                                required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="frota-destino-uf" required>
+                                <option value="PI" selected>PI</option>
+                                <option value="MA">MA</option>
+                                <option value="CE">CE</option>
+                                <option value="PE">PE</option>
+                                <option value="BA">BA</option>
+                                <option value="SP">SP</option>
+                                <option value="RJ">SP</option>
+                                <option value="MG">MG</option>
+                                <option value="RS">RS</option>
+                                <option value="PR">PR</option>
+                                <option value="SC">SC</option>
+                                <option value="GO">GO</option>
+                                <option value="ES">ES</option>
+                                <option value="MT">MT</option>
+                                <option value="MS">MS</option>
+                                <option value="DF">DF</option>
+                                <option value="TO">TO</option>
+                                <option value="AC">AC</option>
+                                <option value="RO">RO</option>
+                                <option value="AM">AM</option>
+                                <option value="RR">RR</option>
+                                <option value="PA">PA</option>
+                                <option value="AP">AP</option>
+                                <option value="AL">AL</option>
+                                <option value="SE">SE</option>
+                                <option value="PB">PB</option>
+                                <option value="RN">RN</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="d-grid mb-3">
+                        <button type="button" class="btn btn-outline-info" onclick="calcularDistanciaAutomatica()"><i
+                                class="fas fa-calculator me-2"></i> Calcular
+                            Distância Automaticamente</button>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Distância (Km)</label>
+                        <input type="number" step="0.01" class="form-control fw-bold" id="frota-destino-distancia"
+                            readonly placeholder="0.00">
+                        <small class="text-muted" id="frota-destino-msg-calculo"></small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarDestino()">Salvar Destino</button>
+            </div>
+        </div>
+    </div>
+</div>

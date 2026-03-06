@@ -1,0 +1,65 @@
+<!-- Modal Novo Treinamento (Admin) -->
+<div class="modal fade" id="modalNovoTreinamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i>Novo Treinamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-novo-treinamento">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Título do Curso</label>
+                            <input type="text" class="form-control" id="novo-treino-titulo" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tema</label>
+                            <select class="form-select" id="novo-treino-tema" required>
+                                <option value="Informatica">Informática</option>
+                                <option value="ISO 9001">ISO 9001</option>
+                                <option value="Lideranca">Liderança</option>
+                                <option value="Por Setor">Por Setor</option>
+                                <option value="Medicina e Seguranca">Medicina e Segurança</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descrição</label>
+                            <textarea class="form-control" id="novo-treino-descricao" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Vídeo do Treinamento (Upload)</label>
+                            <input type="file" class="form-control" id="novo-treino-video" accept="video/*">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Slides / Material (PDF)</label>
+                            <input type="file" class="form-control" id="novo-treino-slides" accept="application/pdf">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Perguntas da Prova</label>
+                            <div id="container-perguntas" class="mb-2"></div>
+                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                onclick="adicionarPerguntaUI()"><i class="fas fa-plus"></i> Adicionar
+                                Pergunta</button>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-bold">Atribuir Para</label>
+                            <select class="form-select" id="novo-treino-atribuicao" multiple size="5">
+                                <option value="todos" selected>Todos os Usuários</option>
+                                <!-- Usuários serão carregados aqui via JS -->
+                            </select>
+                            <div class="form-text">Segure a tecla Ctrl (ou Cmd) para selecionar múltiplos usuários.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarNovoTreinamento()">Salvar
+                    Treinamento</button>
+            </div>
+        </div>
+    </div>
+</div>

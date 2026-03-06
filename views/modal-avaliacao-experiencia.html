@@ -1,0 +1,133 @@
+<!-- Modal Avaliação de Experiência -->
+<div class="modal fade" id="modalAvaliacaoExperiencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="aval-exp-titulo">Avaliação de Experiência</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Container para alertas de faltas/atestados -->
+                <div id="aval-exp-alerts" class="mb-3"></div>
+
+                <form id="form-avaliacao-experiencia">
+                    <input type="hidden" id="aval-exp-funcionario-id">
+                    <input type="hidden" id="aval-exp-periodo">
+
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label">Colaborador</label>
+                            <input type="text" class="form-control bg-light" id="aval-exp-nome" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Data da Avaliação</label>
+                            <input type="date" class="form-control" id="aval-exp-data" required>
+                        </div>
+                    </div>
+
+                    <h6 class="border-bottom pb-2 mb-3 text-primary">Critérios de Avaliação (1 a 5)</h6>
+
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-borderless">
+                            <thead>
+                                <tr class="text-center">
+                                    <th>Critério</th>
+                                    <th>1 (Ruim)</th>
+                                    <th>2</th>
+                                    <th>3</th>
+                                    <th>4</th>
+                                    <th>5 (Excelente)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Assiduidade</td>
+                                    <td class="text-center"><input type="radio" name="aval-assiduidade" value="1">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-assiduidade" value="2">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-assiduidade" value="3">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-assiduidade" value="4">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-assiduidade" value="5">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Pontualidade</td>
+                                    <td class="text-center"><input type="radio" name="aval-pontualidade" value="1">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-pontualidade" value="2">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-pontualidade" value="3">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-pontualidade" value="4">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-pontualidade" value="5">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Produtividade</td>
+                                    <td class="text-center"><input type="radio" name="aval-produtividade" value="1">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-produtividade" value="2">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-produtividade" value="3">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-produtividade" value="4">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-produtividade" value="5">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Relacionamento</td>
+                                    <td class="text-center"><input type="radio" name="aval-relacionamento" value="1">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-relacionamento" value="2">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-relacionamento" value="3">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-relacionamento" value="4">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-relacionamento" value="5">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>Iniciativa</td>
+                                    <td class="text-center"><input type="radio" name="aval-iniciativa" value="1">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-iniciativa" value="2">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-iniciativa" value="3">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-iniciativa" value="4">
+                                    </td>
+                                    <td class="text-center"><input type="radio" name="aval-iniciativa" value="5">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Parecer Final</label>
+                        <select class="form-select" id="aval-exp-resultado">
+                            <option value="Aprovado">Aprovado (Continuar Contrato)</option>
+                            <option value="Reprovado">Reprovado (Desligamento)</option>
+                            <option value="Prorrogado">Prorrogar (Apenas para 1º período)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="aval-exp-obs" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-salvar-avaliacao-exp">Salvar
+                    Avaliação</button>
+            </div>
+        </div>
+    </div>
+</div>

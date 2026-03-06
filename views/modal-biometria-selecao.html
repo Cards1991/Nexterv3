@@ -1,0 +1,25 @@
+<!-- Modal Seleção de Biometria -->
+<div class="modal fade" id="modalSelecaoBiometria" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-fingerprint me-2"></i>Selecionar Método Biométrico</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-4">
+                <p class="mb-4">Como você deseja realizar a validação?</p>
+                <div class="d-grid gap-3">
+                    <button type="button" class="btn btn-primary btn-lg py-3" onclick="iniciarReconhecimentoFacial()">
+                        <i class="fas fa-user-circle fa-2x d-block mb-2"></i>
+                        Reconhecimento Facial (Câmera)
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary btn-lg py-3"
+                        onclick="validacaoCpfFallback()">
+                        <i class="fas fa-id-card fa-2x d-block mb-2"></i>
+                        Validação via CPF / PIN
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

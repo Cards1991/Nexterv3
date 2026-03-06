@@ -1,0 +1,68 @@
+<!-- Modal Nova Solicitação de Contratação -->
+<div class="modal fade" id="contratacaoNovaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Nova Solicitação de Contratação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-contratacao-nova">
+                    <input type="hidden" id="contr-solicitacao-id">
+                    <div class="mb-3">
+                        <label class="form-label">Empresa</label>
+                        <select class="form-select" id="contr-empresa" required>
+                            <option value="">Selecione</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Setor</label>
+                        <select class="form-select" id="contr-setor" required>
+                            <option value="">Selecione a empresa</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cargo</label>
+                        <select class="form-select" id="contr-cargo" required>
+                            <option value="">Selecione o setor primeiro</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Quantidade de Vagas</label>
+                        <input type="number" class="form-control" id="contr-quantidade" value="1" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Salário Proposto</label>
+                        <input type="number" class="form-control" id="contr-salario" value="2107.00" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Turno</label>
+                        <select class="form-select" id="contr-turno" required>
+                            <option value="Dia" selected>Dia</option>
+                            <option value="Noite">Noite</option>
+                            <option value="Indiferente">Indiferente</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Sexo</label>
+                        <select class="form-select" id="contr-sexo" required>
+                            <option value="Indiferente">Indiferente</option>
+                            <option value="Masculino">Masculino</option>
+                            <option value="Feminino">Feminino</option>
+                        </select>
+                        <small class="form-text text-muted">Define o gênero para a vaga, se aplicável.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações (opcional)</label>
+                        <textarea class="form-control" id="contr-observacoes" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="criarContratacaoManual()">Abrir
+                    Solicitação</button>
+            </div>
+        </div>
+    </div>
+</div>

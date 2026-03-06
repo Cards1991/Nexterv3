@@ -13,20 +13,27 @@ let dadosClassificacao = {
 // Removidas constantes fixas. Agora o horário é dinâmico por setor.
 // Tolerância padrão de 10 minutos.
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
+// Função para inicializar os listeners do Ponto Eletrônico quando a view for injetada
+function inicializarPontoEletronico() {
     const btnImportar = document.getElementById('btn-importar-afd');
     const fileInput = document.getElementById('input-afd-file');
 
     if (btnImportar && fileInput) {
+        // Redefinir para evitar listeners duplicados
+        const newBtn = btnImportar.cloneNode(true);
+        btnImportar.parentNode.replaceChild(newBtn, btnImportar);
+
+        const newFile = fileInput.cloneNode(true);
+        fileInput.parentNode.replaceChild(newFile, fileInput);
+
         // Limpar o valor do input para permitir selecionar o mesmo arquivo novamente
-        fileInput.value = '';
-        
-        btnImportar.addEventListener('click', () => {
-            fileInput.click();
+        newFile.value = '';
+
+        newBtn.addEventListener('click', () => {
+            newFile.click();
         });
 
-        fileInput.addEventListener('change', (event) => {
+        newFile.addEventListener('change', (event) => {
             const file = event.target.files[0];
             if (file) {
                 processarArquivoAFD(file);
@@ -35,6 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
             event.target.value = '';
         });
     }
+}
+
+// Mantendo para execução na primeira carga
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarPontoEletronico();
 });
 
 /**
@@ -55,7 +67,7 @@ function processarArquivoAFD(file) {
             // Parse do arquivo AFD
             const marcacoes = parseAFD(conteudo);
             console.log('Marcações de ponto extraídas:', marcacoes);
-            
+
             if (marcacoes.length === 0) {
                 if (statusDiv) {
                     statusDiv.innerHTML = '<div class="alert alert-warning">Nenhuma marcação de ponto encontrada no arquivo.</div>';
@@ -112,12 +124,12 @@ function parseAFD(conteudo) {
 
     for (const linha of linhas) {
         if (!linha || linha.trim() === '') continue;
-        
+
         // Verifica se é uma linha de marcação (tipo 3)
         // O tipo de registro '3' indica uma marcação de ponto
         if (linha.length >= 34 && linha.substring(9, 10) === '3') {
             // Formato customizado: NSR(9) | Tipo(1) | Data(8) | Hora(4) | PIS(12)
-            
+
             // Data e hora
             const dataStr = linha.substring(10, 18); // ddmmyyyy
             const horaStr = linha.substring(18, 22); // hhmm
@@ -126,7 +138,7 @@ function parseAFD(conteudo) {
             const pisCompleto = linha.substring(22, 34).trim();
             // Remove zeros à esquerda se necessário
             const pis = parseInt(pisCompleto, 10).toString();
-            
+
             const dia = dataStr.substring(0, 2);
             const mes = dataStr.substring(2, 4);
             const ano = dataStr.substring(4, 8);
@@ -135,13 +147,13 @@ function parseAFD(conteudo) {
 
             // Valida a data
             const dataObj = new Date(`${ano}-${mes}-${dia}T${hora}:${minuto}:00`);
-            
+
             if (isNaN(dataObj.getTime())) {
                 console.warn('Data inválida:', dataStr, horaStr);
                 continue;
             }
 
-    marcacoes.push({
+            marcacoes.push({
                 pis: pis,
                 pisFormatado: pisCompleto,
                 data: `${ano}-${mes}-${dia}`,
@@ -170,13 +182,13 @@ function classificarPonto(hora, horarioBase = "07:00") {
     // Converte hora para minutos para facilitar comparação
     const [h, m] = hora.split(':').map(Number);
     const minutos = h * 60 + m;
-    
+
     const [hBase, mBase] = horarioBase.split(':').map(Number);
     const minutosBase = hBase * 60 + mBase;
-    
+
     const minutosAntecipada = minutosBase - 10; // Tolerância de 10 min antes
     const minutosAtraso = minutosBase + 10; // Tolerância de 10 min depois
-    
+
     if (minutos < minutosAntecipada) {
         return 'antecipada';
     } else if (minutos >= minutosAtraso) {
@@ -198,13 +210,13 @@ function processarClassificacao(marcacoes) {
         normal: [],
         faltas: []
     };
-    
+
     // Primeiro, identificar a primeira marcação de cada dia para cada funcionário
     const primeiroRegistroPorDia = {};
-    
+
     marcacoes.forEach(marcacao => {
         const chave = `${marcacao.pis}-${marcacao.data}`;
-        
+
         if (!primeiroRegistroPorDia[chave]) {
             primeiroRegistroPorDia[chave] = marcacao;
         } else {
@@ -214,24 +226,24 @@ function processarClassificacao(marcacoes) {
             }
         }
     });
-    
+
     // Classificar cada primeiro registro do dia
     Object.values(primeiroRegistroPorDia).forEach(marcacao => {
         const tipo = classificarPonto(marcacao.hora, marcacao.horarioEntradaSetor);
-        
+
         // Recalcula os horários de limite para a observação
         const [hBase, mBase] = (marcacao.horarioEntradaSetor || "07:00").split(':').map(Number);
         const minBase = hBase * 60 + mBase;
         const horaAnt = Math.floor((minBase - 10) / 60).toString().padStart(2, '0') + ':' + ((minBase - 10) % 60).toString().padStart(2, '0');
         const horaAtr = Math.floor((minBase + 10) / 60).toString().padStart(2, '0') + ':' + ((minBase + 10) % 60).toString().padStart(2, '0');
-        
+
         const itemClassificado = {
             ...marcacao,
             tipoClassificacao: tipo,
-            observacao: tipo === 'antecipada' ? `Entrada antes das ${horaAnt}` : 
-                       tipo === 'atraso' ? `Entrada após as ${horaAtr}` : 'Entrada normal'
+            observacao: tipo === 'antecipada' ? `Entrada antes das ${horaAnt}` :
+                tipo === 'atraso' ? `Entrada após as ${horaAtr}` : 'Entrada normal'
         };
-        
+
         if (tipo === 'antecipada') {
             dadosClassificacao.antecipadas.push(itemClassificado);
         } else if (tipo === 'atraso') {
@@ -250,15 +262,15 @@ async function detectarFaltantes(marcacoes) {
     try {
         // Obter todas as datas únicas presentes no arquivo
         const datasUnicas = [...new Set(marcacoes.map(m => m.data))].sort();
-        
+
         if (datasUnicas.length === 0) return;
-        
+
         // Buscar funcionários ativos com controle de ponto eletrônico
         const snapshot = await db.collection('funcionarios')
             .where('status', '==', 'Ativo')
             .where('controlePontoEletronico', '==', true)
             .get();
-        
+
         const empresasSnap = await db.collection('empresas').get();
         const empresasMap = {};
         empresasSnap.forEach(doc => empresasMap[doc.id] = doc.data().nome);
@@ -277,7 +289,7 @@ async function detectarFaltantes(marcacoes) {
                 };
             }
         });
-        
+
         // Para cada data, verificar quais funcionários não registraram ponto
         datasUnicas.forEach(data => {
             // Obter todos os PIS que registraram ponto nesta data
@@ -286,16 +298,16 @@ async function detectarFaltantes(marcacoes) {
                     .filter(m => m.data === data)
                     .map(m => parseInt(m.pis, 10).toString())
             );
-            
+
             // Verificar cada funcionário ativo
             Object.values(funcionariosMap).forEach(func => {
                 const pisNormalizado = parseInt(func.pis.toString().replace(/\D/g, ''), 10).toString();
-                
+
                 if (!pisComRegistro.has(pisNormalizado)) {
                     // Formatar a data para exibição
                     const [ano, mes, dia] = data.split('-');
                     const dataFormatada = `${dia}/${mes}/${ano}`;
-                    
+
                     dadosClassificacao.faltas.push({
                         pis: func.pis,
                         pisFormatado: func.pis,
@@ -312,7 +324,7 @@ async function detectarFaltantes(marcacoes) {
                 }
             });
         });
-        
+
     } catch (error) {
         console.error('Erro ao detectar faltantes:', error);
     }
@@ -335,7 +347,7 @@ async function processarMarcacoes(marcacoes) {
 
     // Passo 2: Buscar funcionários pelo PIS no Firestore
     const funcionariosMap = {};
-    
+
     try {
         // Busca todos os funcionários que têm PIS cadastrado
         const snapshot = await db.collection('funcionarios')
@@ -345,7 +357,7 @@ async function processarMarcacoes(marcacoes) {
         const empresasSnap = await db.collection('empresas').get();
         const empresasMap = {};
         empresasSnap.forEach(doc => empresasMap[doc.id] = doc.data().nome);
-        
+
         // Busca setores para obter horários de entrada
         const setoresSnap = await db.collection('setores').get();
         const setoresHorarios = {};
@@ -368,7 +380,7 @@ async function processarMarcacoes(marcacoes) {
                 };
             }
         });
-        
+
         console.log('Funcionários carregados:', Object.keys(funcionariosMap));
     } catch (error) {
         console.error('Erro ao buscar funcionários:', error);
@@ -378,7 +390,7 @@ async function processarMarcacoes(marcacoes) {
     dadosAFDProcessados = marcacoes.map(marcacao => {
         const pisNormalizado = parseInt(marcacao.pis, 10).toString();
         const funcionario = funcionariosMap[pisNormalizado];
-        
+
         return {
             ...marcacao,
             nomeFuncionario: funcionario ? funcionario.nome : 'Não encontrado',
@@ -391,24 +403,24 @@ async function processarMarcacoes(marcacoes) {
 
     // Passo 4: Processar classificação dos pontos
     processarClassificacao(dadosAFDProcessados);
-    
+
     // Passo 5: Detectar faltantes
     await detectarFaltantes(dadosAFDProcessados);
-    
+
     // Passo 6: Ocultar a tabela de registros importados (Solicitado: Eliminar Tabela)
     const tbodyImportados = document.getElementById('tabela-ponto-eletronico-body');
     if (tbodyImportados) {
         const container = tbodyImportados.closest('.card') || tbodyImportados.closest('table');
         if (container) container.style.display = 'none';
     }
-    
+
     // Passo 7: Ocultar resumo por colaborador (Solicitado: Eliminar Tabela)
     const tbodyResumo = document.getElementById('tabela-resumo-colaborador-body');
     if (tbodyResumo) {
         const container = tbodyResumo.closest('.card') || tbodyResumo.closest('table');
         if (container) container.style.display = 'none';
     }
-    
+
     // Passo 8: Exibir relatório classificado (novo)
     exibirRelatorioClassificado();
 
@@ -433,7 +445,7 @@ function exibirResultadosTabela(dados) {
     tbody.innerHTML = dados.map(item => {
         const statusClass = item.status === 'Encontrado' ? 'bg-success' : 'bg-warning';
         const nomeClasse = item.status === 'Encontrado' ? '' : 'text-muted';
-        
+
         return `
             <tr>
                 <td>${item.pisFormatado}</td>
@@ -456,7 +468,7 @@ function exibirResumoColaborador(dados) {
 
     // Agrupar por funcionário
     const resumo = {};
-    
+
     dados.forEach(item => {
         const chave = item.pisFormatado;
         if (!resumo[chave]) {
@@ -468,9 +480,9 @@ function exibirResumoColaborador(dados) {
                 ultimo: item.dataObj
             };
         }
-        
+
         resumo[chave].total++;
-        
+
         if (item.dataObj < resumo[chave].primeiro) {
             resumo[chave].primeiro = item.dataObj;
         }
@@ -487,9 +499,9 @@ function exibirResumoColaborador(dados) {
         const horaPrimeiro = item.primeiro.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
         const dataUltimo = item.ultimo.toLocaleDateString('pt-BR');
         const horaUltimo = item.ultimo.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
-        
+
         const nomeClasse = item.nome === 'Não encontrado' ? 'text-muted' : '';
-        
+
         return `
             <tr class="${nomeClasse}">
                 <td>${item.nome}</td>
@@ -509,15 +521,15 @@ function exibirResumoColaborador(dados) {
 function exibirRelatorioClassificado() {
     const container = document.getElementById('relatorio-classificado-container');
     if (!container) return;
-    
+
     // Mostrar o container
     container.classList.remove('d-none');
-    
+
     // Atualizar contadores nos cards
     document.getElementById('count-antecipadas').textContent = dadosClassificacao.antecipadas.length;
     document.getElementById('count-atrasos').textContent = dadosClassificacao.atrasos.length;
     document.getElementById('count-faltas').textContent = dadosClassificacao.faltas.length;
-    
+
     // Renderizar tabelas
     renderizarTabelaAntecipadas();
     renderizarTabelaAtrasos();
@@ -530,15 +542,15 @@ function exibirRelatorioClassificado() {
 function renderizarTabelaAntecipadas() {
     const tbody = document.getElementById('tabela-antecipadas-body');
     if (!tbody) return;
-    
+
     if (dadosClassificacao.antecipadas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma entrada antecipada registrada</td></tr>';
         return;
     }
-    
+
     // Ordenar por data e hora
     const sorted = [...dadosClassificacao.antecipadas].sort((a, b) => a.dataObj - b.dataObj);
-    
+
     tbody.innerHTML = sorted.map(item => `
         <tr>
             <td>${item.nomeFuncionario || '-'}</td>
@@ -557,15 +569,15 @@ function renderizarTabelaAntecipadas() {
 function renderizarTabelaAtrasos() {
     const tbody = document.getElementById('tabela-atrasos-body');
     if (!tbody) return;
-    
+
     if (dadosClassificacao.atrasos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum atraso registrado</td></tr>';
         return;
     }
-    
+
     // Ordenar por data e hora
     const sorted = [...dadosClassificacao.atrasos].sort((a, b) => a.dataObj - b.dataObj);
-    
+
     tbody.innerHTML = sorted.map(item => `
         <tr>
             <td>${item.nomeFuncionario || '-'}</td>
@@ -584,19 +596,19 @@ function renderizarTabelaAtrasos() {
 function renderizarTabelaFaltas() {
     const tbody = document.getElementById('tabela-faltas-body');
     if (!tbody) return;
-    
+
     if (dadosClassificacao.faltas.length === 0) {
         tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma falta registrada</td></tr>';
         return;
     }
-    
+
     // Ordenar por nome e data
     const sorted = [...dadosClassificacao.faltas].sort((a, b) => {
         const nomeCompare = (a.nomeFuncionario || '').localeCompare(b.nomeFuncionario || '');
         if (nomeCompare !== 0) return nomeCompare;
         return a.data.localeCompare(b.data);
     });
-    
+
     tbody.innerHTML = sorted.map(item => `
         <tr>
             <td>${item.nomeFuncionario || '-'}</td>
@@ -617,9 +629,9 @@ function exportarRelatorioClassificadoExcel() {
         mostrarMensagem("Biblioteca de Excel não disponível. Contate o administrador.", "error");
         return;
     }
-    
+
     const wb = XLSX.utils.book_new();
-    
+
     // Sheet 1: Entradas Antecipadas
     if (dadosClassificacao.antecipadas.length > 0) {
         const dadosAnt = dadosClassificacao.antecipadas.map(item => ({
@@ -633,7 +645,7 @@ function exportarRelatorioClassificadoExcel() {
         const wsAnt = XLSX.utils.json_to_sheet(dadosAnt);
         XLSX.utils.book_append_sheet(wb, wsAnt, "Entradas Antecipadas");
     }
-    
+
     // Sheet 2: Atrasos
     if (dadosClassificacao.atrasos.length > 0) {
         const dadosAtr = dadosClassificacao.atrasos.map(item => ({
@@ -647,7 +659,7 @@ function exportarRelatorioClassificadoExcel() {
         const wsAtr = XLSX.utils.json_to_sheet(dadosAtr);
         XLSX.utils.book_append_sheet(wb, wsAtr, "Atrasos");
     }
-    
+
     // Sheet 3: Faltas
     if (dadosClassificacao.faltas.length > 0) {
         const dadosFal = dadosClassificacao.faltas.map(item => ({
@@ -661,15 +673,15 @@ function exportarRelatorioClassificadoExcel() {
         const wsFal = XLSX.utils.json_to_sheet(dadosFal);
         XLSX.utils.book_append_sheet(wb, wsFal, "Faltas");
     }
-    
+
     if (wb.SheetNames.length === 0) {
         mostrarMensagem("Nenhum dado para exportar.", "warning");
         return;
     }
-    
+
     const dataAtual = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `relatorio_ponto_classificado_${dataAtual}.xlsx`);
-    
+
     mostrarMensagem("Relatório classificado exportado com sucesso!", "success");
 }
 
@@ -737,7 +749,7 @@ function exportarRelatorioAFDExcel() {
     // Gerar arquivo
     const dataAtual = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `relatorio_ponto_${dataAtual}.xlsx`);
-    
+
     mostrarMensagem("Relatório exportado com sucesso!", "success");
 }
 

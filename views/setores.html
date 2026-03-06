@@ -1,0 +1,27 @@
+<h2 class="page-title">Cadastro de Setores</h2>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Setores Cadastrados</span>
+        <button class="btn btn-primary btn-sm" onclick="abrirModalSetor()">
+            <i class="fas fa-plus"></i> Novo Setor
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Descrição</th>
+                        <th>Empresa</th>
+                        <th>Gerente Responsável</th>
+                        <th class="text-center">Qtd. Ideal Colab.</th>
+                        <th>Data Criação</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-setores"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,51 @@
+<section id="dashboard-manutencao" class="content-section d-none">
+    <h2 class="page-title">Dashboard de Análise de Manutenção</h2>
+    <div class="card mb-4">
+        <div class="card-body d-flex align-items-center gap-3">
+            <label for="dash-manut-filtro-mes" class="form-label mb-0">Período:</label>
+            <input type="month" class="form-control" id="dash-manut-filtro-mes" style="max-width: 200px;">
+            <button class="btn btn-primary" id="btn-dash-manut-aplicar">
+                <i class="fas fa-filter"></i> Aplicar
+            </button>
+        </div>
+    </div>
+
+    <div class="row" id="dash-manut-metricas">
+        <!-- Cards de métricas serão inseridos aqui pelo JS -->
+    </div>
+
+    <div class="row">
+        <div class="col-lg-7 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Ranking de Máquinas com Mais Chamados</div>
+                <div class="card-body">
+                    <div style="position: relative; height: 300px;">
+                        <canvas id="grafico-ranking-maquinas"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-5 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Tipos de Manutenção Realizados</div>
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div style="position: relative; height: 300px; width: 100%;">
+                        <canvas id="grafico-tipos-manutencao"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-robot text-primary"></i> Análise com IA</h5>
+        </div>
+        <div class="card-body">
+            <div id="dash-manut-analise-ia">
+                <p class="text-muted">Selecione um período e clique em "Aplicar" para gerar a análise.
+                </p>
+            </div>
+        </div>
+    </div>
+</section>

@@ -1,0 +1,84 @@
+<h2 class="page-title">Consulta de Antecedentes e Análise de CPF</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title mb-3"><i class="fas fa-search"></i> Nova Consulta</h5>
+        <div class="row align-items-end">
+            <div class="col-md-3 mb-3">
+                <label class="form-label">CPF do Indivíduo</label>
+                <input type="text" class="form-control" id="jur-cpf-numero" placeholder="000.000.000-00">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Nome Completo</label>
+                <input type="text" class="form-control" id="jur-cpf-nome" placeholder="Busca opcional por nome">
+            </div>
+            <div class="col-md-3 mb-3">
+                <label class="form-label">Abrangência</label>
+                <select class="form-select" id="jur-cpf-abrangencia">
+                    <option value="estadual">Estadual (MG)</option>
+                    <option value="nacional">Nacional (Brasil)</option>
+                    <option value="federal">Justiça Federal</option>
+                </select>
+            </div>
+            <div class="col-md-3 mb-3">
+                <button class="btn btn-primary w-100" onclick="consultarCPF()">
+                    <i class="fas fa-search-plus"></i> Realizar Consulta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Resultado da Análise -->
+    <div class="col-lg-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Relatório de Antecedentes</span>
+                <button class="btn btn-sm btn-outline-danger" id="btn-exportar-cpf-pdf" disabled>
+                    <i class="fas fa-file-pdf"></i> Exportar PDF
+                </button>
+            </div>
+            <div class="card-body" id="jur-cpf-resultado-relatorio">
+                <div class="text-center py-5">
+                    <i class="fas fa-id-card fa-4x text-muted mb-3"></i>
+                    <p class="text-muted">Insira um CPF para iniciar a análise de antecedentes criminais, cíveis e
+                        trabalhistas.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histórico de Consultas -->
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header">Consultas Recentes</div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="jur-cpf-historico">
+                    <!-- Preenchido via JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pontuação de Risco IA -->
+<div class="card border-warning">
+    <div class="card-header bg-warning text-dark">
+        <h5 class="mb-0"><i class="fas fa-shield-halved"></i> Análise de Risco Reputacional (IA)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4 text-center border-end">
+                <div class="display-1 fw-bold text-muted" id="jur-cpf-score">--</div>
+                <div class="text-uppercase tracking-wider">Score de Risco</div>
+            </div>
+            <div class="col-md-8">
+                <h6>Parecer da IA:</h6>
+                <div id="jur-cpf-parecer-ia" class="p-3 bg-light rounded italic">
+                    Nenhuma consulta ativa para análise.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,46 @@
+<!-- Modal Novo Evento/Atividade -->
+<div class="modal fade" id="eventoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="eventoModalTitle">Novo Evento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-evento">
+                    <input type="hidden" id="evento-id">
+                    <input type="hidden" id="evento-tipo-interno" value="evento">
+                    <div class="mb-3">
+                        <label for="evento-titulo" class="form-label">Título</label>
+                        <input type="text" class="form-control" id="evento-titulo" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="evento-data" class="form-label">Data</label>
+                            <input type="date" class="form-control" id="evento-data" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="evento-recorrencia" class="form-label">Repetir</label>
+                            <select class="form-select" id="evento-recorrencia">
+                                <option value="nao">Não se repete</option>
+                                <option value="mensal">Mensalmente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check" id="container-gerar-ano-todo" style="display: none;">
+                        <input type="checkbox" class="form-check-input" id="evento-gerar-ano-todo">
+                        <label class="form-check-label" for="evento-gerar-ano-todo">Gerar para o ano todo</label>
+                    </div>
+                    <div class="mb-3">
+                        <label for="evento-descricao" class="form-label">Descrição (Opcional)</label>
+                        <textarea class="form-control" id="evento-descricao" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEvento()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>

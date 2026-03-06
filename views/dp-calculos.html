@@ -1,0 +1,71 @@
+<h2 class="page-title">Cálculo de Folha de Pagamento</h2>
+<div class="row">
+    <!-- Coluna de Entrada de Dados -->
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="fas fa-file-invoice-dollar"></i> Entrada de Dados do
+                Mês</div>
+            <div class="card-body">
+                <form id="form-calculo-folha">
+                    <div class="mb-3">
+                        <label for="calc-funcionario" class="form-label">Funcionário</label>
+                        <select class="form-select" id="calc-funcionario" required></select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6 mb-3"><label for="calc-horas-extras" class="form-label">Horas Extras
+                                (50%)</label><input type="number" class="form-control" id="calc-horas-extras" value="0"
+                                min="0"></div>
+                        <div class="col-md-6 mb-3"><label for="calc-adicional-noturno" class="form-label">Horas
+                                Adicional Noturno</label><input type="number" class="form-control"
+                                id="calc-adicional-noturno" value="0" min="0"></div>
+                        <div class="col-md-6 mb-3"><label for="calc-faltas-horas" class="form-label">Faltas (em
+                                horas)</label><input type="number" class="form-control" id="calc-faltas-horas" value="0"
+                                min="0"></div>
+                        <div class="col-md-6 mb-3"><label for="calc-dependentes-irrf" class="form-label">Nº Dependentes
+                                (IRRF)</label><input type="number" class="form-control" id="calc-dependentes-irrf"
+                                value="0" min="0">
+                        </div>
+                        <div class="col-md-6 mb-3"><label for="calc-comissoes" class="form-label">Comissões/Prêmios
+                                (R$)</label><input type="number" step="0.01" class="form-control" id="calc-comissoes"
+                                value="0" min="0"></div>
+                        <div class="col-md-6 mb-3"><label for="calc-outros-descontos" class="form-label">Outros
+                                Descontos (R$)</label><input type="number" step="0.01" class="form-control"
+                                id="calc-outros-descontos" value="0" min="0"></div>
+                        <div class="col-12">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                    id="calc-desconto-vt"><label class="form-check-label"
+                                    for="calc-desconto-vt">Descontar
+                                    Vale-Transporte (6%)</label></div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100 mt-4" onclick="calcularFolhaPagamento()"><i
+                            class="fas fa-calculator"></i>
+                        Calcular Folha</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <!-- Coluna de Resultados (Holerite) -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="fas fa-receipt"></i> Demonstrativo de Pagamento</span>
+                <button class="btn btn-outline-secondary btn-sm" onclick="imprimirDemonstrativo()"
+                    id="btn-imprimir-holerite" style="display: none;"><i class="fas fa-print"></i>
+                    Imprimir</button>
+            </div>
+            <div class="card-body" id="holerite-resultado">
+                <p class="text-center text-muted mt-5">Selecione um funcionário e clique em
+                    "Calcular Folha" para gerar o demonstrativo.</p>
+            </div>
+        </div>
+        <!-- Card de Análise com IA -->
+        <div class="card mt-4" id="card-analise-ia-holerite" style="display: none;">
+            <div class="card-header bg-primary text-white">
+                <h5><i class="fas fa-robot"></i> Análise Inteligente do Holerite</h5>
+            </div>
+            <div class="card-body" id="holerite-analise-ia-texto">
+            </div>
+        </div>
+    </div>
+</div>

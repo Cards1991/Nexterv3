@@ -1,0 +1,31 @@
+<h2 class="page-title">Cadastro de Mecânicos</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button class="btn btn-outline-secondary" onclick="showSection('iso-manutencao')">
+        <i class="fas fa-arrow-left"></i> Voltar ao Painel
+    </button>
+    <button class="btn btn-primary" id="btn-adicionar-mecanico">
+        <i class="fas fa-plus-circle"></i> Novo Mecânico
+    </button>
+</div>
+<div class="card">
+    <div class="card-header">Mecânicos Cadastrados</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Setor / Cargo</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-mecanicos">
+                    <tr>
+                        <td colspan="4" class="text-center">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

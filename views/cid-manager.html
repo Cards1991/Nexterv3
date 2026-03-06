@@ -1,0 +1,27 @@
+<h2 class="page-title">Cadastro de Famílias de CID</h2>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Famílias de CID cadastradas</span>
+        <div class="d-flex gap-2">
+            <input type="text" class="form-control form-control-sm" id="filtro-cid-intervalo"
+                placeholder="Filtrar (ex: A00)" onkeyup="filtrarFamiliasCid()">
+            <button class="btn btn-primary btn-sm" onclick="abrirModalFamiliaCid()">
+                <i class="fas fa-plus"></i> Nova Família
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Intervalo (Início-Fim)</th>
+                        <th>Descrição</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-cid-familias"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

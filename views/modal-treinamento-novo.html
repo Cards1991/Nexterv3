@@ -1,0 +1,46 @@
+<!-- Modal Novo Treinamento -->
+<div class="modal fade" id="modalNovoTreinamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Treinamento</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-treinamento">
+                    <input type="hidden" id="treinamento-id">
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label">Título do Treinamento</label>
+                            <input type="text" class="form-control" id="treinamento-titulo" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Data</label>
+                            <input type="date" class="form-control" id="treinamento-data" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Validade (Meses)</label>
+                            <input type="number" class="form-control" id="treinamento-validade" value="12">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Conteúdo / Descrição</label>
+                            <textarea class="form-control" id="treinamento-descricao" rows="4"></textarea>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Participantes</label>
+                            <div id="participantes-container" class="border rounded p-2"
+                                style="max-height: 200px; overflow-y: auto;">
+                                <!-- Listagem de funcionários para seleção -->
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarTreinamento()">Criar
+                    Treinamento</button>
+            </div>
+        </div>
+    </div>
+</div>

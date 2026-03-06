@@ -1,0 +1,79 @@
+<h2 class="page-title">Controle de Cestas Básicas</h2>
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Logo da Empresa (para o vale)</label>
+                <input type="file" class="form-control" id="cestas-logo-input" accept="image/*">
+            </div>
+            <div class="col-md-3">
+                <label for="cestas-valor-input" class="form-label">Valor da Cesta (R$)</label>
+                <input type="number" class="form-control" id="cestas-valor-input" placeholder="Ex: 150.00" step="0.01">
+            </div>
+            <div class="col-md-6 text-end">
+                <div class="btn-group">
+                    <button class="btn btn-success" onclick="gravarCustoCestas()">
+                        <i class="fas fa-dollar-sign"></i> Gravar Custo
+                    </button>
+                    <button class="btn btn-danger" onclick="desfazerUltimoLancamentoCestas()">
+                        <i class="fas fa-undo"></i> Desfazer Último Lançamento
+                    </button>
+                    <button class="btn btn-primary" onclick="gerarRelatorioCestas()">
+                        <i class="fas fa-print"></i> Gerar Vales
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-header">Lançamento por Código/CPF</div>
+    <div class="card-body">
+        <div class="input-group mb-3">
+            <input type="text" class="form-control" id="cestas-input-colab" placeholder="Código ou CPF do colaborador">
+            <button class="btn btn-primary" onclick="adicionarLancamentoCesta()"><i class="fas fa-plus"></i>
+                Lançar</button>
+        </div>
+        <div id="cestas-feedback-colab" class="alert d-none"></div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Relatório do Mês Atual</span>
+                <button class="btn btn-sm btn-outline-danger" onclick="limparLancamentosCestas()">
+                    <i class="fas fa-trash"></i> Reiniciar Mês
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Nome</th>
+                                <th>Empresa</th>
+                                <th>Data/Hora</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-cestas-lancamentos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">Resumo por Empresa</div>
+            <div class="card-body" id="cestas-resumo-empresas"></div>
+            <div class="card-footer fw-bold d-flex justify-content-between">
+                <span>Total de Cestas:</span>
+                <span id="cestas-total-geral">0</span>
+            </div>
+        </div>
+    </div>
+</div>

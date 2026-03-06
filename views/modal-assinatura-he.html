@@ -1,0 +1,43 @@
+<!-- Modal de Assinatura de Horas Extras -->
+<div class="modal fade" id="modalAssinaturaHE" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-file-signature me-2"></i>Assinar Horas Extras</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="assinatura-he-id">
+
+                <div class="alert alert-light border">
+                    <p class="mb-1"><strong>Colaborador:</strong> <span id="assinatura-colaborador"></span></p>
+                    <p class="mb-1"><strong>Data:</strong> <span id="assinatura-data"></span></p>
+                    <p class="mb-0"><strong>Total Horas:</strong> <span id="assinatura-horas" class="fw-bold"></span>
+                    </p>
+                </div>
+
+                <p class="small text-muted mb-2">Assine abaixo utilizando o mouse ou o dedo (em dispositivos
+                    móveis):</p>
+
+                <div class="border rounded bg-white" style="position: relative;">
+                    <canvas id="signature-canvas"
+                        style="width: 100%; height: 200px; touch-action: none; display: block;"></canvas>
+                    <div class="text-muted small position-absolute bottom-0 end-0 pe-2 pb-1 user-select-none">Área
+                        de Assinatura</div>
+                </div>
+
+                <div class="d-flex justify-content-between mt-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="limparAssinatura()">
+                        <i class="fas fa-eraser me-1"></i> Limpar
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="salvarAssinatura()">
+                    <i class="fas fa-check-circle me-1"></i> Confirmar Assinatura
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

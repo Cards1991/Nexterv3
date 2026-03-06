@@ -1,20 +1,26 @@
 // Gerenciamento de funcionários
 let funcionarios = [];
 
-document.addEventListener('DOMContentLoaded', () => {
+// Função de inicialização
+async function inicializarFuncionarios() {
     const filtroEmpresa = document.getElementById('filtro-empresa-funcionarios');
-    if (filtroEmpresa) {
+    if (filtroEmpresa && !filtroEmpresa.__bound) {
         filtroEmpresa.addEventListener('change', carregarFuncionarios);
+        filtroEmpresa.__bound = true;
     }
     const filtroNome = document.getElementById('filtro-nome-funcionarios');
-    if (filtroNome) {
+    if (filtroNome && !filtroNome.__bound) {
         filtroNome.addEventListener('input', carregarFuncionarios);
+        filtroNome.__bound = true;
     }
     const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios');
-    if (filtroSemSetor) {
+    if (filtroSemSetor && !filtroSemSetor.__bound) {
         filtroSemSetor.addEventListener('change', carregarFuncionarios);
+        filtroSemSetor.__bound = true;
     }
-});
+
+    await carregarFuncionarios();
+}
 
 // Carregar empresas para selects
 async function carregarSelectEmpresas(selectId) {
@@ -48,7 +54,7 @@ async function carregarSelectLideres(selectId, funcionarioIdExcluir = null) {
 
         // Salvar valor atual se existir
         const valorAtual = select.value;
-        
+
         select.innerHTML = '<option value="">Sem líder</option>';
 
         const funcionariosSnapshot = await db.collection('funcionarios')
@@ -83,7 +89,7 @@ async function carregarFuncionarios() {
     try {
         const tbody = document.getElementById('tabela-funcionarios');
         if (!tbody) return;
-        
+
         tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
         await preencherFiltroEmpresaFuncionarios();
@@ -92,7 +98,7 @@ async function carregarFuncionarios() {
             .get();
 
         funcionarios = [];
-        
+
         if (funcionariosSnapshot.empty) {
             tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum funcionário cadastrado</td></tr>';
             return;
@@ -276,7 +282,7 @@ async function salvarFuncionario() {
         try {
             const [year, month, day] = dataAdmissao.split('-').map(Number);
             dataAdmissaoValida = new Date(year, month - 1, day);
-            
+
             if (isNaN(dataAdmissaoValida.getTime())) {
                 mostrarMensagem('Data de admissão inválida', 'warning');
                 return;
@@ -343,7 +349,7 @@ async function salvarFuncionario() {
             endereco: endereco,
 
             status: 'Ativo',
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),            
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user ? user.uid : null
         };
 
@@ -354,7 +360,7 @@ async function salvarFuncionario() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('funcionarioModal'));
         modal.hide();
         document.getElementById('form-funcionario').reset();
-        
+
         carregarFuncionarios();
         mostrarMensagem('Funcionário cadastrado com sucesso!');
     } catch (error) {
@@ -389,7 +395,7 @@ function formatarTelefone(campo) {
 function validarCPF(cpf) {
     cpf = cpf.replace(/[^\d]+/g, '');
     if (cpf === '') return false;
-    
+
     // Elimina CPFs invalidos conhecidos
     if (cpf.length !== 11 ||
         cpf === "00000000000" ||
@@ -403,7 +409,7 @@ function validarCPF(cpf) {
         cpf === "88888888888" ||
         cpf === "99999999999")
         return false;
-        
+
     // Valida 1o digito
     let add = 0;
     for (let i = 0; i < 9; i++)
@@ -413,7 +419,7 @@ function validarCPF(cpf) {
         rev = 0;
     if (rev !== parseInt(cpf.charAt(9)))
         return false;
-        
+
     // Valida 2o digito
     add = 0;
     for (let i = 0; i < 10; i++)
@@ -423,7 +429,7 @@ function validarCPF(cpf) {
         rev = 0;
     if (rev !== parseInt(cpf.charAt(10)))
         return false;
-        
+
     return true;
 }
 
@@ -437,11 +443,11 @@ async function editarFuncionario(funcionarioId) {
         }
 
         const funcionario = funcionarioDoc.data();
-        
+
         // Preencher modal de edição
         const funcionarioModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('funcionarioModal'));
         const salvarBtn = document.querySelector('#funcionarioModal .btn-primary');
-        
+
         document.querySelector('#funcionarioModal .modal-title').textContent = 'Editar Funcionário';
         document.getElementById('nome-funcionario').value = funcionario.nome;
         document.getElementById('matricula-funcionario').value = funcionario.matricula || '';
@@ -449,12 +455,12 @@ async function editarFuncionario(funcionarioId) {
         document.getElementById('rg-funcionario').value = funcionario.rg || '';
         document.getElementById('email-funcionario').value = funcionario.email;
         document.getElementById('telefone-funcionario').value = funcionario.telefone || '';
-        
+
         // Garantir que os campos PIS e Controle de Ponto existam antes de preencher
         if (!document.getElementById('pis-funcionario')) {
-             const cpfInput = document.getElementById('cpf-funcionario');
-             if (cpfInput) {
-                 const pisHtml = `
+            const cpfInput = document.getElementById('cpf-funcionario');
+            if (cpfInput) {
+                const pisHtml = `
                     <div class="col-md-6 mb-3">
                         <label for="pis-funcionario" class="form-label">PIS</label>
                         <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
@@ -471,7 +477,7 @@ async function editarFuncionario(funcionarioId) {
                     cpfParent.insertAdjacentHTML('beforeend', pisHtml);
                     cpfParent.insertAdjacentHTML('beforeend', controlePontoHtml);
                 }
-             }
+            }
         }
 
         document.getElementById('pis-funcionario').value = funcionario.pis || ''; // Preenche PIS
@@ -532,7 +538,7 @@ async function editarFuncionario(funcionarioId) {
             btnBio.className = funcionario.biometriaAtiva ? 'btn btn-sm btn-outline-warning ms-2' : 'btn btn-sm btn-outline-dark ms-2';
             btnBio.innerHTML = `<i class="fas fa-fingerprint"></i> ${funcionario.biometriaAtiva ? 'Recadastrar' : 'Cadastrar'} Digital`;
             // Atualizado para abrir o novo modal de seleção de dedo
-            btnBio.onclick = function() {
+            btnBio.onclick = function () {
                 if (typeof abrirModalSelecaoDedo === 'function') {
                     abrirModalSelecaoDedo();
                 } else {
@@ -544,18 +550,18 @@ async function editarFuncionario(funcionarioId) {
         // Carregar e selecionar empresa e setor
         const empresaSelect = document.getElementById('empresa-funcionario');
         await carregarSelectEmpresas('empresa-funcionario'); // Garante que as empresas estão carregadas
-        
+
         // Carregar líderes excluindo o próprio funcionário
         if (document.getElementById('lider-funcionario')) {
             await carregarSelectLideres('lider-funcionario', funcionarioId);
         }
-        
+
         empresaSelect.value = funcionario.empresaId;
-        
+
         // Carrega setores e funções e depois seleciona os valores corretos
         await carregarSetoresPorEmpresa(funcionario.empresaId, 'setor-funcionario');
         await carregarFuncoesPorEmpresa(funcionario.empresaId, 'cargo-funcionario');
-        
+
         // Define Setor (com fallback se não existir na lista)
         const setorSelect = document.getElementById('setor-funcionario');
         if (setorSelect) {
@@ -584,7 +590,7 @@ async function editarFuncionario(funcionarioId) {
         }
 
         funcionarioModal.show();
-        
+
         // Armazena o ID no formulário para uso na biometria
         const form = document.getElementById('form-funcionario');
         if (form) form.dataset.funcionarioId = funcionarioId;
@@ -596,8 +602,8 @@ async function editarFuncionario(funcionarioId) {
         }
 
         salvarBtn.textContent = 'Atualizar Funcionário';
-        salvarBtn.onclick = function() { atualizarFuncionario(funcionarioId); };
-        
+        salvarBtn.onclick = function () { atualizarFuncionario(funcionarioId); };
+
     } catch (error) {
         console.error('Erro ao editar funcionário:', error);
         mostrarMensagem('Erro ao carregar dados do funcionário', 'error');
@@ -670,7 +676,7 @@ async function atualizarFuncionario(funcionarioId) {
         try {
             const [year, month, day] = dataAdmissao.split('-').map(Number);
             dataAdmissaoValida = new Date(year, month - 1, day);
-            
+
             if (isNaN(dataAdmissaoValida.getTime())) {
                 mostrarMensagem('Data de admissão inválida', 'warning');
                 return;
@@ -853,7 +859,7 @@ async function excluirFuncionario(funcionarioId, nomeFuncionario) {
 
         // Se não houver movimentações, pode excluir
         await db.collection('funcionarios').doc(funcionarioId).delete();
-        
+
         mostrarMensagem('Funcionário excluído com sucesso!');
         await carregarFuncionarios(); // Recarrega a lista
     } catch (error) {
@@ -881,7 +887,7 @@ async function verDetalhesFuncionario(funcionarioId) {
         const atestadosSnapshot = await db.collection('atestados')
             .where('funcionarioId', '==', funcionarioId)
             .get();
-            
+
         const atestadosOrdenados = atestadosSnapshot.docs.map(doc => doc.data()).sort((a, b) => {
             const dateA = a.data_atestado?.toDate ? a.data_atestado.toDate() : new Date(a.data_atestado);
             const dateB = b.data_atestado?.toDate ? b.data_atestado.toDate() : new Date(b.data_atestado);
@@ -1015,8 +1021,8 @@ async function verDetalhesFuncionario(funcionarioId) {
         document.body.appendChild(modalDiv);
         const modal = new bootstrap.Modal(modalDiv);
         modal.show();
-        modalDiv.addEventListener('hidden.bs.modal', function() { 
-            document.body.removeChild(modalDiv); 
+        modalDiv.addEventListener('hidden.bs.modal', function () {
+            document.body.removeChild(modalDiv);
         });
     } catch (error) {
         console.error('Erro ao carregar detalhes do funcionário:', error);
@@ -1063,7 +1069,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId) {
 async function carregarFuncoesPorEmpresa(empresaId, selectId) {
     const select = document.getElementById(selectId);
     if (!select) return;
-    
+
     select.innerHTML = '<option value="">Selecione um cargo</option>';
     select.disabled = true;
 
@@ -1071,20 +1077,20 @@ async function carregarFuncoesPorEmpresa(empresaId, selectId) {
         select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
         return;
     }
-    
+
     try {
         const empresaDoc = await db.collection('empresas').doc(empresaId).get();
         if (!empresaDoc.exists) return;
 
         const empresa = empresaDoc.data();
-        
+
         if (empresa.funcoes && empresa.funcoes.length > 0) {
             select.disabled = false;
             empresa.funcoes.forEach(funcao => {
-                    const option = document.createElement('option');
-                    option.value = funcao;
-                    option.textContent = funcao;
-                    select.appendChild(option);
+                const option = document.createElement('option');
+                option.value = funcao;
+                option.textContent = funcao;
+                select.appendChild(option);
             });
         }
     } catch (error) {
@@ -1101,7 +1107,7 @@ async function carregarSelectFuncionariosAtivos(selectId, incluirInativos = fals
         select.innerHTML = '<option value="">Selecione um funcionário</option>';
 
         const funcionariosSnapshot = await db.collection('funcionarios').orderBy('nome').get();
-        
+
         for (const doc of funcionariosSnapshot.docs) {
             const func = doc.data();
             const option = document.createElement('option');
@@ -1182,7 +1188,7 @@ function formatarAtestadoQuantidade(atestado) {
         const totalHoursDecimal = quantidade;
         const hours = Math.floor(totalHoursDecimal);
         const minutes = Math.round((totalHoursDecimal - hours) * 60);
-        
+
         return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} horas`;
     } else { // Assumes 'dias' or default
         return `${quantidade} dia(s)`;
@@ -1195,14 +1201,14 @@ function inicializarModalFuncionario() {
     const setorSelect = document.getElementById('setor-funcionario');
 
     if (empresaSelect) {
-        empresaSelect.addEventListener('change', function() {
+        empresaSelect.addEventListener('change', function () {
             carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
             carregarFuncoesPorEmpresa(this.value, 'cargo-funcionario');
         });
     }
 
     if (setorSelect) {
-        setorSelect.addEventListener('change', async function() {
+        setorSelect.addEventListener('change', async function () {
             const setorDesc = this.value;
             const empresaId = document.getElementById('empresa-funcionario').value;
             const liderSelect = document.getElementById('lider-funcionario');
@@ -1230,28 +1236,28 @@ function inicializarModalFuncionario() {
     const telefoneInput = document.getElementById('telefone-funcionario');
 
     if (cpfInput) {
-        cpfInput.addEventListener('input', function() {
+        cpfInput.addEventListener('input', function () {
             formatarCPF(this);
         });
     }
 
     if (telefoneInput) {
-        telefoneInput.addEventListener('input', function() {
+        telefoneInput.addEventListener('input', function () {
             formatarTelefone(this);
         });
     }
 }
 
 // Inicializar quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     try {
         inicializarModalFuncionario();
-        
+
         // Carregar empresas
         if (document.getElementById('empresa-funcionario')) {
             carregarSelectEmpresas('empresa-funcionario');
         }
-        
+
         // Carregar líderes
         if (document.getElementById('lider-funcionario')) {
             carregarSelectLideres('lider-funcionario');
@@ -1263,10 +1269,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Adicionar os novos campos ao modal de funcionário (assumindo que o HTML do modal está em outro lugar)
 // Este trecho de código adiciona os campos dinamicamente ao DOM quando o modal é aberto.
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
     const funcionarioModal = document.getElementById('funcionarioModal');
     if (funcionarioModal) {
-        funcionarioModal.addEventListener('show.bs.modal', function() {
+        funcionarioModal.addEventListener('show.bs.modal', function () {
             const identificacaoTabContent = document.getElementById('identificacao'); // Assumindo que existe uma tab com id 'identificacao'
             if (identificacaoTabContent && !document.getElementById('pis-funcionario')) { // Verifica se os campos já não foram adicionados
                 const cpfInput = document.getElementById('cpf-funcionario'); // Encontra um ponto de referência
@@ -1302,24 +1308,24 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function exportarModeloCSV() {
     const headers = [
-        "Nome Completo", "CPF", "Data de Nascimento (YYYY-MM-DD)", "Sexo", "Email", "Telefone", 
+        "Nome Completo", "CPF", "Data de Nascimento (YYYY-MM-DD)", "Sexo", "Email", "Telefone",
         "Nome da Empresa", "Setor", "Cargo", "Salário", "Data de Admissão (YYYY-MM-DD)"
     ];
     const exemplo = [
-        '"João da Silva"', "537.418.338-49", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999", 
+        '"João da Silva"', "537.418.338-49", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999",
         "Empresa Exemplo", "TI", "Desenvolvedor", "5000.00", "2024-01-15"
     ];
     const exemplo2 = [
-        '"Maria Santos"', "842.765.908-52", "1992-08-10", "Feminino", "maria@email.com", "(11) 88888-8888", 
+        '"Maria Santos"', "842.765.908-52", "1992-08-10", "Feminino", "maria@email.com", "(11) 88888-8888",
         "Empresa Exemplo", "RH", "Analista", "4500.00", "2024-01-10"
     ];
     const exemplo3 = [
-        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "081.946.399-05", "1991-10-17", "Masculino", "charles.santos17101991@gmail.com", "(42)991190590", 
+        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "081.946.399-05", "1991-10-17", "Masculino", "charles.santos17101991@gmail.com", "(42)991190590",
         "Calcados Crival Ltda", "RH", "Gerente De RH", "5600.00", "2022-01-10"
     ];
-    
-    const csvContent = "data:text/csv;charset=utf-8," + 
-        headers.join(",") + "\n" + 
+
+    const csvContent = "data:text/csv;charset=utf-8," +
+        headers.join(",") + "\n" +
         exemplo.join(",") + "\n" +
         exemplo2.join(",") + "\n" +
         exemplo3.join(",");
@@ -1362,7 +1368,7 @@ async function processarArquivoCSV() {
         header: true,
         skipEmptyLines: true,
         encoding: "UTF-8", // Especifica a codificação
-        complete: async function(results) {
+        complete: async function (results) {
             const data = results.data;
 
             if (data.length === 0) {
@@ -1378,14 +1384,14 @@ async function processarArquivoCSV() {
 
             // Cache de empresas e CPFs para otimizar a validação
             const empresasSnap = await db.collection('empresas').get();
-            const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.data().nome.toLowerCase(), {id: doc.id, setores: doc.data().setores || [], funcoes: doc.data().funcoes || []}]));
-            
+            const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.data().nome.toLowerCase(), { id: doc.id, setores: doc.data().setores || [], funcoes: doc.data().funcoes || [] }]));
+
             const funcionariosSnap = await db.collection('funcionarios').get();
             const cpfsExistentes = new Set(funcionariosSnap.docs.map(doc => doc.data().cpf));
 
             for (const [index, row] of data.entries()) {
                 const linhaNum = index + 2; // +1 para o índice base 1, +1 para o cabeçalho
-                
+
                 const funcionario = {
                     nome: row['Nome Completo']?.trim(),
                     cpf: row['CPF']?.trim().replace(/\D/g, ''),
@@ -1401,7 +1407,7 @@ async function processarArquivoCSV() {
                 };
 
                 let erroMsg = '';
-                
+
                 // Validar campos obrigatórios
                 if (!funcionario.nome) erroMsg = 'O campo "Nome Completo" é obrigatório.';
                 else if (!funcionario.cpf) erroMsg = 'O campo "CPF" é obrigatório.';
@@ -1411,7 +1417,7 @@ async function processarArquivoCSV() {
                 else if (!funcionario.setor) erroMsg = 'O campo "Setor" é obrigatório.';
                 else if (!funcionario.cargo) erroMsg = 'O campo "Cargo" é obrigatório.';
                 else if (!funcionario.dataAdmissao) erroMsg = 'O campo "Data de Admissão" é obrigatório.';
-                
+
                 if (!erroMsg && !validarCPF(funcionario.cpf)) {
                     erroMsg = `CPF inválido: ${funcionario.cpf}`;
                 } else if (!erroMsg && cpfsExistentes.has(funcionario.cpf)) {
@@ -1433,7 +1439,7 @@ async function processarArquivoCSV() {
                         if (!dateRegex.test(dataLimpa)) {
                             return { data: null, erro: `Formato de data inválido para "${nomeCampo}": ${dataLimpa}. Use YYYY-MM-DD.` };
                         }
-                        
+
                         const [year, month, day] = dataLimpa.split('-').map(Number);
                         dataValida = new Date(year, month - 1, day);
 
@@ -1476,7 +1482,7 @@ async function processarArquivoCSV() {
                             email: funcionario.email,
                             telefone: funcionario.telefone,
                             empresaId: empresaData.id,
-                            sexo: funcionario.sexo,                        
+                            sexo: funcionario.sexo,
                             dataNascimento: dataNascimentoValida,
                             setor: funcionario.setor,
                             cargo: funcionario.cargo,
@@ -1486,7 +1492,7 @@ async function processarArquivoCSV() {
                             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                             createdByUid: firebase.auth().currentUser?.uid
                         };
-                        
+
                         await db.collection('funcionarios').add(novoFuncionario);
                         cpfsExistentes.add(novoFuncionario.cpf);
                         sucessoCount++;
@@ -1506,7 +1512,7 @@ async function processarArquivoCSV() {
         }
     });
 
-    reader.onerror = function() {
+    reader.onerror = function () {
         resumoDiv.innerHTML = `<div class="alert alert-danger">Erro ao ler o arquivo.</div>`;
         btnImportar.disabled = false;
         btnImportar.innerHTML = 'Iniciar Importação';
@@ -1732,133 +1738,133 @@ async function visualizarTermoAumento(funcionarioId, historicoIndex) {
 }
 
 // --- INTEGRAÇÃO BIOMETRIA ANDROID (CORRIGIDA) ---
- 
- // --- INTEGRAÇÃO BIOMETRIA CONTROLID (NOVA LÓGICA) ---
- 
- let isLocalServerOnline = false;
- const LOCAL_API_URL = 'http://localhost:3000';
- 
- /**
-  * Verifica o status do servidor local e atualiza o badge na UI.
-  */
- async function detectarServidorLocal() {
-     const badge = document.getElementById('local-server-status-badge');
-     if (!badge) return;
- 
-     try {
-         const response = await fetch(`${LOCAL_API_URL}/status`, { signal: AbortSignal.timeout(2000) });
-         if (response.ok) {
-             const data = await response.json();
-             if (data.status === 'online') {
-                 badge.className = 'badge bg-success';
-                 badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Ativo';
-                 isLocalServerOnline = true;
-             } else {
-                 throw new Error(data.message);
-             }
-         } else {
-             throw new Error(`Status: ${response.status}`);
-         }
-     } catch (error) {
-         badge.className = 'badge bg-danger';
-         badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Offline';
-         isLocalServerOnline = false;
-     }
- }
- 
- // Verifica o status do servidor a cada 10 segundos
- setInterval(detectarServidorLocal, 10000);
- // E também quando a página carrega
- document.addEventListener('DOMContentLoaded', detectarServidorLocal);
- 
- /**
-  * Função chamada ao clicar em um dedo no modal.
-  * Decide entre o fluxo automático (servidor local) e o manual.
-  */
- async function selecionarDedo(dedo) {
-     const funcionarioId = document.getElementById('form-funcionario').dataset.funcionarioId;
-     if (!funcionarioId) {
-         mostrarMensagem("ID do funcionário não encontrado.", "error");
-         return;
-     }
- 
-     if (isLocalServerOnline) {
-         await cadastrarDigitalAutomatico(funcionarioId, dedo);
-     } else {
-         await cadastrarDigitalManual(funcionarioId, dedo);
-     }
- }
- 
- /**
-  * Fluxo automático: Chama o servidor local para capturar a digital.
-  */
- async function cadastrarDigitalAutomatico(funcionarioId, dedo) {
-     mostrarMensagem(`Aguardando digital no leitor para o dedo ${dedo.replace('_', ' ')}...`, 'info');
-     
-     try {
-         const response = await fetch(`${LOCAL_API_URL}/capturar-digital`, { method: 'POST' });
-         const data = await response.json();
- 
-         if (response.ok && data.success && data.template) {
-             // Salva o template no Firestore
-             await db.collection('funcionarios').doc(funcionarioId).update({
-                 [`biometrias.${dedo}`]: {
-                     template: data.template, // Template em Base64
-                     dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
-                     ativa: true,
-                     origem: 'ControlID_Automatico'
-                 },
-                 biometriaAtiva: true
-             });
-             mostrarMensagem(`✅ Digital do ${dedo.replace('_', ' ')} cadastrada com sucesso!`, 'success');
-             carregarStatusBiometrias(funcionarioId); // Atualiza a UI
-         } else {
-             throw new Error(data.message || 'Falha na captura.');
-         }
-     } catch (error) {
-         console.error("Erro no cadastro automático:", error);
-         mostrarMensagem(`Falha ao capturar digital: ${error.message}`, 'error');
-     }
- }
- 
- /**
-  * Fluxo de fallback: Abre a interface web do ControlID e pede confirmação manual.
-  */
- async function cadastrarDigitalManual(funcionarioId, dedo) {
-     const confirmou = confirm(
-         "O servidor local não está ativo.\n\n" +
-         "1. A interface web do ControlID será aberta em uma nova aba.\n" +
-         "2. Cadastre a digital do funcionário manualmente no dispositivo.\n" +
-         "3. Volte para esta tela e clique em 'OK' para confirmar que o cadastro foi feito.\n\n" +
-         "Deseja continuar?"
-     );
- 
-     if (confirmou) {
-         // Abre a interface do ControlID
-         window.open('https://192.168.254.187', '_blank');
- 
-         // Salva um registro simples no Firestore indicando cadastro manual
-         await db.collection('funcionarios').doc(funcionarioId).update({
-             [`biometrias.${dedo}`]: {
-                 template: null, // Sem template real
-                 dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
-                 ativa: true,
-                 origem: 'ControlID_Manual'
-             },
-             biometriaAtiva: true
-         });
-         mostrarMensagem(`✅ Registro manual para o ${dedo.replace('_', ' ')} salvo!`, 'success');
-         carregarStatusBiometrias(funcionarioId); // Atualiza a UI
-     } else {
-         mostrarMensagem("Cadastro cancelado.", "info");
-     }
- }
- 
- // As funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria
- // continuam as mesmas da sua versão corrigida, pois a lógica de UI é a mesma.
- // Apenas a função `selecionarDedo` foi adaptada.
- 
- // ... (cole aqui as funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria da sua versão corrigida)
+
+// --- INTEGRAÇÃO BIOMETRIA CONTROLID (NOVA LÓGICA) ---
+
+let isLocalServerOnline = false;
+const LOCAL_API_URL = 'http://localhost:3000';
+
+/**
+ * Verifica o status do servidor local e atualiza o badge na UI.
+ */
+async function detectarServidorLocal() {
+    const badge = document.getElementById('local-server-status-badge');
+    if (!badge) return;
+
+    try {
+        const response = await fetch(`${LOCAL_API_URL}/status`, { signal: AbortSignal.timeout(2000) });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.status === 'online') {
+                badge.className = 'badge bg-success';
+                badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Ativo';
+                isLocalServerOnline = true;
+            } else {
+                throw new Error(data.message);
+            }
+        } else {
+            throw new Error(`Status: ${response.status}`);
+        }
+    } catch (error) {
+        badge.className = 'badge bg-danger';
+        badge.innerHTML = '<i class="fas fa-server me-1"></i> Servidor Local Offline';
+        isLocalServerOnline = false;
+    }
+}
+
+// Verifica o status do servidor a cada 10 segundos
+setInterval(detectarServidorLocal, 10000);
+// E também quando a página carrega
+document.addEventListener('DOMContentLoaded', detectarServidorLocal);
+
+/**
+ * Função chamada ao clicar em um dedo no modal.
+ * Decide entre o fluxo automático (servidor local) e o manual.
+ */
+async function selecionarDedo(dedo) {
+    const funcionarioId = document.getElementById('form-funcionario').dataset.funcionarioId;
+    if (!funcionarioId) {
+        mostrarMensagem("ID do funcionário não encontrado.", "error");
+        return;
+    }
+
+    if (isLocalServerOnline) {
+        await cadastrarDigitalAutomatico(funcionarioId, dedo);
+    } else {
+        await cadastrarDigitalManual(funcionarioId, dedo);
+    }
+}
+
+/**
+ * Fluxo automático: Chama o servidor local para capturar a digital.
+ */
+async function cadastrarDigitalAutomatico(funcionarioId, dedo) {
+    mostrarMensagem(`Aguardando digital no leitor para o dedo ${dedo.replace('_', ' ')}...`, 'info');
+
+    try {
+        const response = await fetch(`${LOCAL_API_URL}/capturar-digital`, { method: 'POST' });
+        const data = await response.json();
+
+        if (response.ok && data.success && data.template) {
+            // Salva o template no Firestore
+            await db.collection('funcionarios').doc(funcionarioId).update({
+                [`biometrias.${dedo}`]: {
+                    template: data.template, // Template em Base64
+                    dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                    ativa: true,
+                    origem: 'ControlID_Automatico'
+                },
+                biometriaAtiva: true
+            });
+            mostrarMensagem(`✅ Digital do ${dedo.replace('_', ' ')} cadastrada com sucesso!`, 'success');
+            carregarStatusBiometrias(funcionarioId); // Atualiza a UI
+        } else {
+            throw new Error(data.message || 'Falha na captura.');
+        }
+    } catch (error) {
+        console.error("Erro no cadastro automático:", error);
+        mostrarMensagem(`Falha ao capturar digital: ${error.message}`, 'error');
+    }
+}
+
+/**
+ * Fluxo de fallback: Abre a interface web do ControlID e pede confirmação manual.
+ */
+async function cadastrarDigitalManual(funcionarioId, dedo) {
+    const confirmou = confirm(
+        "O servidor local não está ativo.\n\n" +
+        "1. A interface web do ControlID será aberta em uma nova aba.\n" +
+        "2. Cadastre a digital do funcionário manualmente no dispositivo.\n" +
+        "3. Volte para esta tela e clique em 'OK' para confirmar que o cadastro foi feito.\n\n" +
+        "Deseja continuar?"
+    );
+
+    if (confirmou) {
+        // Abre a interface do ControlID
+        window.open('https://192.168.254.187', '_blank');
+
+        // Salva um registro simples no Firestore indicando cadastro manual
+        await db.collection('funcionarios').doc(funcionarioId).update({
+            [`biometrias.${dedo}`]: {
+                template: null, // Sem template real
+                dataCadastro: firebase.firestore.FieldValue.serverTimestamp(),
+                ativa: true,
+                origem: 'ControlID_Manual'
+            },
+            biometriaAtiva: true
+        });
+        mostrarMensagem(`✅ Registro manual para o ${dedo.replace('_', ' ')} salvo!`, 'success');
+        carregarStatusBiometrias(funcionarioId); // Atualiza a UI
+    } else {
+        mostrarMensagem("Cadastro cancelado.", "info");
+    }
+}
+
+// As funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria
+// continuam as mesmas da sua versão corrigida, pois a lógica de UI é a mesma.
+// Apenas a função `selecionarDedo` foi adaptada.
+
+// ... (cole aqui as funções abrirModalSelecaoDedo, carregarStatusBiometrias e removerBiometria da sua versão corrigida)
 
 // Variável global para saber qual dedo está sendo cadastrado
 let dedoSelecionadoParaCadastro = null;
@@ -1875,11 +1881,11 @@ function abrirModalSelecaoDedo() {
 
     // Limpa estado anterior
     dedoSelecionadoParaCadastro = null;
-    
+
     // Esconde status de leitura se visível
     const statusLeitura = document.getElementById('status-leitura-biometria');
     if (statusLeitura) statusLeitura.classList.add('d-none');
-    
+
     // Carrega as biometrias existentes para mostrar os botões verdes
     carregarStatusBiometrias(funcionarioId);
 
@@ -1893,7 +1899,7 @@ async function carregarStatusBiometrias(funcionarioId) {
     try {
         const doc = await db.collection('funcionarios').doc(funcionarioId).get();
         const biometrias = doc.data()?.biometrias || {};
-        
+
         // Para cada dedo que já existe, marca o botão como verde
         Object.keys(biometrias).forEach(dedo => {
             const btn = document.querySelector(`.btn-dedo[data-dedo="${dedo}"]`);
@@ -1943,7 +1949,7 @@ function selecionarDedo(dedo) {
 }
 
 // 4. Callback do Android (CORRIGIDO - usa campo, não subcoleção)
-window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
+window.onBiometriaCadastrada = async function (funcionarioId, sucesso) {
     // Esconde spinner
     const statusLeitura = document.getElementById('status-leitura-biometria');
     if (statusLeitura) statusLeitura.classList.add('d-none');
@@ -1951,22 +1957,22 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
     if (sucesso && dedoSelecionadoParaCadastro) {
         try {
             const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
-            
+
             // Prepara a atualização usando notação de ponto para não sobrescrever outras digitais
             const updateData = {};
-            
+
             // Define a chave específica (ex: biometrias.medio_direito)
             updateData[`biometrias.${dedoSelecionadoParaCadastro}`] = {
                 ativa: true,
                 dataCadastro: firebase.firestore.FieldValue.serverTimestamp()
             };
             updateData['biometriaAtiva'] = true; // Flag geral
-            
+
             // Executa a atualização atômica
             await funcionarioRef.update(updateData);
-            
+
             mostrarMensagem(`✅ Digital ${dedoSelecionadoParaCadastro.replace('_', ' ')} cadastrada!`, 'success');
-            
+
             // Atualiza visualmente o botão no modal
             const btn = document.querySelector(`.btn-dedo[data-dedo="${dedoSelecionadoParaCadastro}"]`);
             if (btn) {
@@ -1975,7 +1981,7 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
                 btn.innerHTML = `<i class="fas fa-check-circle me-2"></i>${btn.innerText.replace(/<[^>]*>/g, '').trim()}`;
                 btn.onclick = () => removerBiometria(funcionarioId, dedoSelecionadoParaCadastro);
             }
-            
+
         } catch (error) {
             console.error("Erro ao salvar biometria:", error);
             mostrarMensagem("Erro ao salvar no banco de dados", "error");
@@ -1983,7 +1989,7 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
     } else {
         mostrarMensagem("❌ Falha na leitura biométrica", "error");
     }
-    
+
     // Limpa a seleção
     dedoSelecionadoParaCadastro = null;
 };
@@ -1991,21 +1997,21 @@ window.onBiometriaCadastrada = async function(funcionarioId, sucesso) {
 // 5. Função para remover biometria
 async function removerBiometria(funcionarioId, dedo) {
     if (!confirm(`Remover digital do ${dedo.replace('_', ' ')}?`)) return;
-    
+
     try {
         const funcionarioRef = db.collection('funcionarios').doc(funcionarioId);
-        
+
         // Usa FieldValue.delete() para remover apenas a chave específica do mapa
         const updateData = {};
         updateData[`biometrias.${dedo}`] = firebase.firestore.FieldValue.delete();
-        
+
         await funcionarioRef.update(updateData);
-        
+
         // Opcional: Verificar se ainda restam biometrias para atualizar a flag 'biometriaAtiva'
         // Mas para remoção rápida, isso já resolve o visual.
-        
+
         mostrarMensagem(`✅ Digital removida`, 'success');
-        
+
         // Reseta o botão
         const btn = document.querySelector(`.btn-dedo[data-dedo="${dedo}"]`);
         if (btn) {
@@ -2014,7 +2020,7 @@ async function removerBiometria(funcionarioId, dedo) {
             btn.innerHTML = btn.innerText.replace(/<[^>]*>/g, '').trim();
             btn.onclick = () => selecionarDedo(dedo);
         }
-        
+
     } catch (error) {
         console.error("Erro ao remover biometria:", error);
         mostrarMensagem("Erro ao remover digital", "error");
@@ -2216,7 +2222,7 @@ async function editarAumentoSalario(funcionarioId, historicoIndex) {
         document.getElementById('aumento-data').value = formatarDataParaInput(aumento.data);
         document.getElementById('aumento-motivo').value = aumento.motivo;
         document.getElementById('aumento-assinatura').value = aumento.assinatura;
-        
+
         // Selecionar o tipo de aumento correto
         const tipoAumentoRadio = document.querySelector(`input[name="tipo-aumento"][value="${aumento.tipo}"]`);
         if (tipoAumentoRadio) {
@@ -2226,7 +2232,7 @@ async function editarAumentoSalario(funcionarioId, historicoIndex) {
         // Alterar o comportamento do botão salvar para edição
         const salvarBtn = document.querySelector('#aumentoSalarioModal .btn-primary');
         salvarBtn.textContent = 'Atualizar Aumento';
-        salvarBtn.onclick = function() { atualizarAumentoExistente(funcionarioId, historicoIndex); };
+        salvarBtn.onclick = function () { atualizarAumentoExistente(funcionarioId, historicoIndex); };
 
         // Mostrar o modal
         const modalAumento = new bootstrap.Modal(document.getElementById('aumentoSalarioModal'));
@@ -2253,7 +2259,7 @@ async function atualizarAumentoExistente(funcionarioId, historicoIndex) {
 
         const funcRef = db.collection('funcionarios').doc(funcionarioId);
         const funcDoc = await funcRef.get();
-        
+
         if (!funcDoc.exists) {
             mostrarMensagem("Funcionário não encontrado.", "error");
             return;
@@ -2289,7 +2295,7 @@ async function atualizarAumentoExistente(funcionarioId, historicoIndex) {
 
         bootstrap.Modal.getInstance(document.getElementById('aumentoSalarioModal')).hide();
         mostrarMensagem("Aumento salarial atualizado com sucesso!", "success");
-        
+
         // Recarregar os detalhes do funcionário se estiverem abertos
         await carregarFuncionarios();
 
@@ -2307,14 +2313,14 @@ async function excluirAumentoSalario(funcionarioId, historicoIndex) {
     try {
         const funcRef = db.collection('funcionarios').doc(funcionarioId);
         const funcDoc = await funcRef.get();
-        
+
         if (!funcDoc.exists) {
             mostrarMensagem("Funcionário não encontrado.", "error");
             return;
         }
 
         const funcionario = funcDoc.data();
-        
+
         if (!funcionario.historicoAumentos || historicoIndex >= funcionario.historicoAumentos.length) {
             mostrarMensagem("Registro de aumento não encontrado.", "error");
             return;
@@ -2329,7 +2335,7 @@ async function excluirAumentoSalario(funcionarioId, historicoIndex) {
         });
 
         mostrarMensagem("Registro de aumento excluído com sucesso!", "success");
-        
+
         // Recarregar os detalhes do funcionário se estiverem abertos
         await carregarFuncionarios();
 
@@ -2342,7 +2348,7 @@ async function excluirAumentoSalario(funcionarioId, historicoIndex) {
 // Função auxiliar para abrir janela de impressão
 function openPrintWindow(content, options = {}) {
     const { autoPrint = false, name = '_blank', specs = 'width=800,height=600' } = options;
-    
+
     const printWindow = window.open('', name, specs);
     printWindow.document.open();
     printWindow.document.write(content);
@@ -2363,11 +2369,11 @@ function abrirModalAumentoColetivo() {
         // Resetar formulário
         const form = document.getElementById('form-aumento-coletivo');
         if (form) form.reset();
-        
+
         // Definir data de corte como hoje por padrão
         const dataCorteInput = document.getElementById('aumento-coletivo-data-corte');
         if (dataCorteInput) dataCorteInput.valueAsDate = new Date();
-        
+
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
     } else {
@@ -2399,7 +2405,7 @@ async function aplicarAumentoColetivo() {
 
     try {
         mostrarMensagem("Aplicando aumentos... aguarde.", "info");
-        
+
         const funcionariosSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
         const batch = db.batch();
         let count = 0;
@@ -2408,14 +2414,14 @@ async function aplicarAumentoColetivo() {
         funcionariosSnap.forEach(doc => {
             const func = doc.data();
             const dataAdmissao = func.dataAdmissao?.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
-            
+
             if (dataAdmissao <= dataCorte) {
                 const salarioAtual = parseFloat(func.salario || 0);
                 if (salarioAtual > 0) {
                     const novoSalario = salarioAtual * (1 + (percentual / 100));
-                    
+
                     const funcRef = db.collection('funcionarios').doc(doc.id);
-                    batch.update(funcRef, { 
+                    batch.update(funcRef, {
                         salario: parseFloat(novoSalario.toFixed(2)),
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -2455,7 +2461,7 @@ async function aplicarAumentoColetivo() {
 async function abrirModalAumentoMassa() {
     const percentual = prompt("Digite a porcentagem de aumento para TODOS os funcionários (apenas salário em folha):", "6.0");
     if (percentual === null) return;
-    
+
     const pct = parseFloat(percentual.replace(',', '.'));
     if (isNaN(pct) || pct <= 0) {
         mostrarMensagem("Porcentagem inválida.", "warning");
@@ -2470,7 +2476,7 @@ async function abrirModalAumentoMassa() {
 async function aplicarAumentoMassa(percentual) {
     try {
         mostrarMensagem("Aplicando aumentos... aguarde.", "info");
-        
+
         const funcionariosSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
         const batch = db.batch();
         const historicoBackup = [];
@@ -2479,10 +2485,10 @@ async function aplicarAumentoMassa(percentual) {
         funcionariosSnap.forEach(doc => {
             const func = doc.data();
             const salarioAtual = parseFloat(func.salario || 0);
-            
+
             if (salarioAtual > 0) {
                 const novoSalario = salarioAtual * (1 + (percentual / 100));
-                
+
                 // Salva dados para backup/undo
                 historicoBackup.push({
                     id: doc.id,
@@ -2491,7 +2497,7 @@ async function aplicarAumentoMassa(percentual) {
 
                 // Atualiza funcionário
                 const funcRef = db.collection('funcionarios').doc(doc.id);
-                batch.update(funcRef, { 
+                batch.update(funcRef, {
                     salario: parseFloat(novoSalario.toFixed(2)),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
@@ -2536,7 +2542,7 @@ async function desfazerUltimoAumentoMassa() {
 
     try {
         let logDoc = null;
-        
+
         // Tenta buscar ordenado
         try {
             const logsSnap = await db.collection('historico_aumentos_massa').orderBy('data', 'desc').limit(1).get();
@@ -2573,9 +2579,9 @@ async function desfazerUltimoAumentoMassa() {
 
         logData.funcionariosAfetados.forEach(item => {
             const funcRef = db.collection('funcionarios').doc(item.id);
-            batch.update(funcRef, { 
+            batch.update(funcRef, {
                 salario: parseFloat(item.salarioAnterior || 0),
-                updatedAt: dataAtualizacao 
+                updatedAt: dataAtualizacao
             });
         });
 
@@ -2788,7 +2794,7 @@ async function processarArquivoAtualizacaoXLSX() {
                             createdByUid: firebase.auth().currentUser?.uid,
                             endereco: {}
                         };
-                        
+
                         let hasData = false;
 
                         for (const key in row) {
@@ -2803,7 +2809,7 @@ async function processarArquivoAtualizacaoXLSX() {
                             if (lowerKey.includes('nome') && !lowerKey.includes('empresa')) {
                                 field = 'nome';
                             } else if (lowerKey.includes('cpf')) {
-                                continue; 
+                                continue;
                             } else if (lowerKey.includes('matr')) {
                                 field = 'matricula';
                             } else if (lowerKey.includes('empresa')) {
@@ -2836,7 +2842,7 @@ async function processarArquivoAtualizacaoXLSX() {
                                 const empresaId = empresasMap.get(value.toString().toLowerCase());
                                 if (empresaId) {
                                     newData['empresaId'] = empresaId;
-                                    continue; 
+                                    continue;
                                 }
                             } else if (field === 'dataNascimento' || field === 'dataAdmissao') {
                                 let parsedDate = null;
@@ -2875,7 +2881,7 @@ async function processarArquivoAtualizacaoXLSX() {
                             batch.set(newDocRef, newData);
                             createdCount++;
                             batchSize++;
-                            
+
                             if (batchSize >= 400) {
                                 await batch.commit();
                                 batch = db.batch();
@@ -2932,34 +2938,34 @@ class LeitorControlID {
             try {
                 // Tenta primeiro com WebSocket seguro
                 this.ws = new WebSocket(`wss://${this.ip}:8181/plugin`);
-                
+
                 this.ws.onopen = () => {
                     console.log('✅ Leitor ControlID conectado via WSS');
                     this.conectado = true;
                     resolve();
                 };
-                
+
                 this.ws.onerror = (error) => {
                     console.log('❌ WSS falhou, tentando WS...');
                     // Se falhar, tenta sem SSL
                     this.ws = new WebSocket(`ws://${this.ip}:8181/plugin`);
-                    
+
                     this.ws.onopen = () => {
                         console.log('✅ Leitor ControlID conectado via WS');
                         this.conectado = true;
                         resolve();
                     };
-                    
+
                     this.ws.onerror = (err) => {
                         this.conectado = false;
                         reject(new Error('Não foi possível conectar ao leitor'));
                     };
                 };
-                
+
                 this.ws.onmessage = (event) => {
                     this.processarMensagem(event.data);
                 };
-                
+
             } catch (error) {
                 reject(error);
             }
@@ -2970,7 +2976,7 @@ class LeitorControlID {
         try {
             const msg = JSON.parse(data);
             console.log('📥 Resposta do leitor:', msg);
-            
+
             if (msg.id && this.callbacks.has(msg.id)) {
                 const callback = this.callbacks.get(msg.id);
                 callback(msg);
@@ -2986,16 +2992,16 @@ class LeitorControlID {
             mostrarMensagem('Leitor não conectado. Tente novamente.', 'warning');
             return;
         }
-        
+
         const id = this.id++;
         this.callbacks.set(id, callback);
-        
+
         this.ws.send(JSON.stringify({
             id: id,
             method: 'CaptureFingerprint',
             params: {}
         }));
-        
+
         return id;
     }
 
@@ -3017,7 +3023,7 @@ const leitorControlID = new LeitorControlID('192.168.254.187');
 async function cadastrarDigitalManual(funcionarioId, dedo) {
     // Abre a interface do ControlID
     window.open('http://192.168.254.187', '_blank');
-    
+
     // Mostra instruções
     mostrarMensagem(`
         📋 INSTRUÇÕES:
@@ -3026,7 +3032,7 @@ async function cadastrarDigitalManual(funcionarioId, dedo) {
         3. Cadastre a digital
         4. Volte aqui e clique em CONFIRMAR
     `, 'info', 15000);
-    
+
     // Botão para confirmar
     return new Promise((resolve) => {
         const btn = document.createElement('button');
@@ -3034,7 +3040,7 @@ async function cadastrarDigitalManual(funcionarioId, dedo) {
         btn.innerHTML = '✅ JÁ CADASTREI A DIGITAL';
         btn.onclick = async () => {
             btn.remove();
-            
+
             // Marca como cadastrado no Firestore
             await db.collection('funcionarios').doc(funcionarioId).update({
                 [`biometrias.${dedo}`]: {
@@ -3044,7 +3050,7 @@ async function cadastrarDigitalManual(funcionarioId, dedo) {
                 },
                 biometriaAtiva: true
             });
-            
+
             mostrarMensagem('✅ Digital cadastrada!', 'success');
             resolve();
         };
@@ -3059,11 +3065,11 @@ async function cadastrarDigitalManual(funcionarioId, dedo) {
 async function identificarFuncionarioPorDigital() {
     try {
         mostrarMensagem('👆 Coloque o dedo no leitor do relógio...', 'info');
-        
+
         if (!leitorControlID.conectado) {
             await leitorControlID.conectar();
         }
-        
+
         return new Promise((resolve, reject) => {
             leitorControlID.capturarDigital(async (resposta) => {
                 if (resposta.result && resposta.result.template) {
@@ -3072,9 +3078,9 @@ async function identificarFuncionarioPorDigital() {
                         const snapshot = await db.collection('funcionarios')
                             .where('biometrias', '!=', null)
                             .get();
-                        
+
                         let funcionarioEncontrado = null;
-                        
+
                         snapshot.forEach(doc => {
                             const dados = doc.data();
                             // Verifica em todas as biometrias do funcionário
@@ -3091,7 +3097,7 @@ async function identificarFuncionarioPorDigital() {
                                 }
                             }
                         });
-                        
+
                         if (funcionarioEncontrado) {
                             mostrarMensagem(`✅ Identificado: ${funcionarioEncontrado.nome}`, 'success');
                             resolve(funcionarioEncontrado);
@@ -3099,7 +3105,7 @@ async function identificarFuncionarioPorDigital() {
                             mostrarMensagem('❌ Digital não encontrada no sistema', 'error');
                             reject(new Error('Digital não cadastrada'));
                         }
-                        
+
                     } catch (error) {
                         console.error('Erro na busca:', error);
                         mostrarMensagem('❌ Erro ao buscar digital no sistema', 'error');
@@ -3111,7 +3117,7 @@ async function identificarFuncionarioPorDigital() {
                 }
             });
         });
-        
+
     } catch (error) {
         console.error('Erro no leitor:', error);
         mostrarMensagem('❌ Erro ao conectar com leitor', 'error');
@@ -3125,7 +3131,7 @@ async function identificarFuncionarioPorDigital() {
 
 // Modificar a função selecionarDedo para usar o ControlID em vez do Android
 const selecionarDedoOriginal = selecionarDedo;
-window.selecionarDedo = async function(dedo) {
+window.selecionarDedo = async function (dedo) {
     const form = document.getElementById('form-funcionario');
     const funcionarioId = form ? form.dataset.funcionarioId : null;
 
@@ -3147,11 +3153,11 @@ window.selecionarDedo = async function(dedo) {
     try {
         // Usa o ControlID em vez do Android
         await cadastrarDigitalManual(funcionarioId, dedo);
-        
+
         // Fecha o modal de seleção de dedo
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalSelecaoBiometria'));
         if (modal) modal.hide();
-        
+
     } catch (error) {
         console.error('Erro no cadastro:', error);
     } finally {
@@ -3190,10 +3196,5 @@ function adicionarBotaoTesteLeitor() {
     }
 }
 
-// Chamar após carregar o DOM
-document.addEventListener('DOMContentLoaded', function() {
-    // Sua inicialização existente...
-    
-    // Adicionar botão de teste no modal
-    setTimeout(adicionarBotaoTesteLeitor, 1000);
-});
+// Removido listener automático - inicializado via showSection / initializarFuncionarios
+setTimeout(adicionarBotaoTesteLeitor, 2000);

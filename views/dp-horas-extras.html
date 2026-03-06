@@ -1,0 +1,112 @@
+<section id="dp-horas-extras" class="content-section d-none">
+    <h2 class="page-title">Dashboard - Horas Extras</h2>
+
+    <!-- Filtros -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-2"><label for="he-startDate" class="form-label">Data
+                        Inicial:</label><input type="date" id="he-startDate" class="form-control" required></div>
+                <div class="col-md-2"><label for="he-endDate" class="form-label">Data
+                        Final:</label><input type="date" id="he-endDate" class="form-control" required>
+                </div>
+                <div class="col-md-3"><label for="he-companyFilter" class="form-label">Empresa:</label><select
+                        id="he-companyFilter" class="form-select">
+                        <option value="">Todas</option>
+                    </select></div>
+                <div class="col-md-2"><label for="he-sectorFilter" class="form-label">Setor:</label><select
+                        id="he-sectorFilter" class="form-select"></select></div>
+                <div class="col-md-3"><label for="he-employeeFilter" class="form-label">Colaborador:</label><select
+                        id="he-employeeFilter" class="form-select">
+                        <option value="">Todos</option>
+                    </select></div>
+                <div class="col-md-12 d-flex gap-2 justify-content-end">
+                    <button id="he-filterButton" class="btn btn-primary"><i class="fas fa-filter"></i>
+                        Filtrar</button>
+                    <button id="he-printButton" class="btn btn-outline-secondary" title="Imprimir Relatório"><i
+                            class="fas fa-print"></i> Imprimir</button>
+                    <button id="he-exportButton" class="btn btn-outline-success" title="Exportar para Excel"><i
+                            class="fas fa-file-excel"></i> Excel</button>
+                    <button class="btn btn-info" onclick="showSection('dp-horas-extras-lancamento')"
+                        title="Lançar Horas Extras"><i class="fas fa-plus-circle"></i> Lançar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard de Gráficos e Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body"><i class="fas fa-clock text-primary"></i>
+                    <div class="number" id="he-totalOvertimeCard">0</div>
+                    <div class="label">Total de Horas Extras</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card stat-card">
+                <div class="card-body"><i class="fas fa-dollar-sign text-success"></i>
+                    <div class="number" id="he-totalOvertimeValueCard">R$ 0,00</div>
+                    <div class="label">Valor Total das Horas</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Horas Extras por Setor</div>
+                <div class="card-body" style="height: 300px;"><canvas id="he-sectorChart"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Ranking de Funcionários com Mais Horas Extras (Top 10)</div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" id="he-employee-ranking"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 mb-4">
+            <div class="card">
+                <div class="card-header">Total de Horas Extras por Mês</div>
+                <div class="card-body" style="height: 300px;"><canvas id="he-monthlyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Horas Extras -->
+    <div class="card">
+        <div class="card-header">Detalhes dos Lançamentos</div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover" id="he-overtimeTable">
+                <thead>
+                    <tr>
+                        <th>Setor</th>
+                        <th>Funcionário</th>
+                        <th>Data</th>
+                        <th>Motivo</th>
+                        <th>Horas Extras</th>
+                        <th>Valor Hora Extra</th>
+                        <th>DSR</th>
+                        <th>Total</th>
+                        <th>Assinatura</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="he-overtimeList"></tbody>
+            </table>
+        </div>
+        <div class="card-footer">
+            <div class="row text-center fw-bold">
+                <div class="col">Total Horas: <span id="he-totalHours">0.00</span></div>
+                <div class="col">Total DSR: <span id="he-totalDSR">R$ 0,00</span></div>
+                <div class="col">Total Geral: <span id="he-grandTotal">R$ 0,00</span></div>
+            </div>
+        </div>
+    </div>
+</section>

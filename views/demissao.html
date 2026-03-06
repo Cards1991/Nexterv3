@@ -1,0 +1,93 @@
+<h2 class="page-title">Demissão</h2>
+<div class="card col-lg-10 mx-auto">
+    <div class="card-header"><i class="fas fa-user-minus text-danger"></i> Registrar Desligamento de
+        Funcionário</div>
+    <div class="card-body">
+        <form id="form-demissao">
+            <div class="row g-3">
+                <div class="col-md-12">
+                    <label for="demissao-funcionario" class="form-label">Funcionário a ser
+                        Desligado</label>
+                    <select class="form-select" id="demissao-funcionario" required></select>
+                </div>
+                <div class="col-md-6">
+                    <label for="demissao-setor" class="form-label">Setor</label>
+                    <input type="text" class="form-control bg-light" id="demissao-setor" readonly>
+                </div>
+                <div class="col-md-6">
+                    <label for="demissao-gerente" class="form-label">Gerente</label>
+                    <input type="text" class="form-control bg-light" id="demissao-gerente" readonly>
+                </div>
+                <div class="col-12">
+                    <div id="demissao-info-funcionario" class="p-3 rounded bg-light" style="display: none;">
+                        <!-- Informações do funcionário serão exibidas aqui -->
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label for="demissao-data" class="form-label">Data da Demissão</label>
+                    <input type="date" class="form-control" id="demissao-data" required>
+                </div>
+                <div class="col-md-4">
+                    <label for="demissao-tipo" class="form-label">Tipo de Demissão</label>
+                    <select class="form-select" id="demissao-tipo" required>
+                        <option value="">Selecione...</option>
+                        <option>Pedido de Demissão</option>
+                        <option>Demissão sem Justa Causa</option>
+                        <option>Demissão por Justa Causa</option>
+                        <option>Término de Contrato</option>
+                        <option>T.A.C - empregado</option>
+                        <option>T.a.C - empresa</option>
+                        <option>Acordo Legal</option>
+                        <option>Acordo P.F.</option>
+                        <option>Acordo Legal</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="demissao-aviso-previo" class="form-label">Aviso Prévio</label>
+                    <select class="form-select" id="demissao-aviso-previo">
+                        <option>Trabalhado</option>
+                        <option>Indenizado</option>
+                        <option>Dispensado</option>
+                    </select>
+                </div>
+                <div class="col-12 d-none" id="container-motivo-dispensa-aviso">
+                    <label for="demissao-motivo-dispensa-aviso" class="form-label">Motivo da
+                        Dispensa do Aviso Prévio</label>
+                    <textarea class="form-control" id="demissao-motivo-dispensa-aviso" rows="2"></textarea>
+                </div>
+                <div class="col-12">
+                    <label for="demissao-motivo" class="form-label">Motivo do Desligamento</label>
+                    <select class="form-select" id="demissao-motivo" required>
+                        <option value="">Selecione...</option>
+                        <option value="Mudança de carreira">Mudança de carreira</option>
+                        <option value="Problema de relacionamento">Problema de relacionamento
+                        </option>
+                        <option value="Insatisfação com o Trabalho">Insatisfação com o Trabalho
+                        </option>
+                        <option value="Questões Salariais">Questões Salariais</option>
+                        <option value="Problemas Pessoais">Problemas Pessoais</option>
+                        <option value="Não Informado">Não Informado</option>
+                        <option value="Mudança de Cidade">Mudança de Cidade</option>
+                        <option value="Não se adaptou">Não se adaptou</option>
+                    </select>
+                </div>
+                <div class="col-12"><label for="demissao-observacoes" class="form-label">Observações</label><textarea
+                        class="form-control" id="demissao-observacoes" rows="3"></textarea></div>
+                <div class="col-12">
+                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                            id="demissao-reposicao"><label class="form-check-label" for="demissao-reposicao">Necessita
+                            de Reposição?</label></div>
+                </div>
+            </div>
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn btn-info" id="btn-calcular-rescisao"
+                    onclick="movimentacoesManager.calcularRescisao()" disabled>
+                    <i class="fas fa-calculator"></i> Gerar Financeiro
+                </button>
+                <button type="button" class="btn btn-danger" onclick="movimentacoesManager.registrarDemissao()">
+                    <i class="fas fa-user-slash"></i> Confirmar e Registrar Demissão
+                </button>
+            </div>
+        </form>
+    </div>
+</div>

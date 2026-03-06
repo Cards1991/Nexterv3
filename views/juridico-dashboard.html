@@ -1,0 +1,82 @@
+<h2 class="page-title">Dashboard Jurídico - Visão Estratégica</h2>
+
+<!-- IA Autopilot - Alertas Inteligentes -->
+<div class="card border-primary mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="fas fa-robot"></i> Advogado Autopilot - Ações Prioritárias</h5>
+    </div>
+    <div class="card-body" id="jur-dash-autopilot-container">
+        <p class="text-muted text-center">Nenhuma ação prioritária no momento.</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Ranking de Processos Críticos -->
+    <div class="col-lg-7 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-fire text-danger"></i> Processos Mais Críticos
+                    (IA)</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Processo</th>
+                                <th>Cliente</th>
+                                <th>Risco IA</th>
+                                <th>Próximo Prazo</th>
+                                <th>Valor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="jur-dash-processos-criticos">
+                            <tr>
+                                <td colspan="5" class="text-center">Nenhum processo crítico
+                                    identificado.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Análise de Performance -->
+    <div class="col-lg-5 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-chart-pie"></i> Performance do Escritório</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="jur-dash-grafico-performance" style="max-height: 250px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Carga de Trabalho e Timeline -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="fas fa-calendar-alt"></i> Previsão de Carga de Trabalho
+                    (IA)</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="jur-dash-grafico-carga" style="height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="fas fa-lightbulb"></i> Insights IA</h5>
+            </div>
+            <div class="card-body" id="jur-dash-insights-ia">
+                <p class="text-muted">Nenhum insight gerado no momento.</p>
+            </div>
+        </div>
+    </div>
+</div>

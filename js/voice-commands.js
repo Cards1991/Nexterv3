@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('viewsLoaded', () => {
     const btnVoiceCommand = document.getElementById('btn-voice-command');
 
     // Verifica se a API de reconhecimento de voz é suportada pelo navegador

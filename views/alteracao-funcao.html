@@ -1,0 +1,110 @@
+<h2 class="page-title">Alteração de Função</h2>
+<!-- Container para Alertas de Exame de Função -->
+<div id="alertas-exame-funcao-container" class="mb-4">
+    <!-- Alertas serão inseridos aqui pelo JavaScript -->
+    <div class="card border-warning" id="alerta-exame-funcao-modelo" style="display: none;">
+        <div class="card-header bg-warning text-dark"><i class="fas fa-exclamation-triangle"></i>
+            <strong>Alerta: Exame de Mudança de Função Próximo</strong>
+        </div>
+        <div class="card-body" id="lista-alertas-exame-funcao"></div>
+    </div>
+</div>
+<div class="row">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header">Registrar Alteração</div>
+            <div class="card-body">
+                <form id="form-alteracao-funcao">
+                    <div class="mb-3">
+                        <label class="form-label">Funcionário</label>
+                        <select class="form-select" id="alt-funcionario" required></select>
+                    </div>
+                    <div class="mb-3 p-2 rounded bg-light">
+                        <small>Função Atual</small>
+                        <p class="mb-0" id="alt-funcao-atual">Selecione um funcionário</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data da Alteração</label>
+                            <input type="date" class="form-control" id="alt-data" required>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Novo Setor</label>
+                        <select class="form-select" id="alt-novo-setor" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nova Função/Cargo</label>
+                        <select class="form-select" id="alt-novo-cargo" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo da Alteração</label>
+                        <select class="form-select" id="alt-motivo" required>
+                            <option value="">Selecione um motivo...</option>
+                            <option value="Erro de planejamento">Erro de planejamento</option>
+                            <option value="Ajuste de produção">Ajuste de produção</option>
+                            <option value="Testes na função para futura promoção">Testes na função
+                                para futura promoção</option>
+                            <option value="Mudança temporária">Mudança temporária</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn btn-primary w-100" onclick="registrarAlteracaoFuncao()">
+                        <i class="fas fa-print"></i> Registrar e Imprimir Termo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">Histórico de Alterações Recentes</div>
+            <div class="card-body">
+                <!-- Filtros de Alteração de Função -->
+                <div class="row g-2 mb-3 align-items-end">
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm mb-1">Data Início</label>
+                        <input type="date" class="form-control form-control-sm" id="alt-filtro-inicio">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm mb-1">Data Fim</label>
+                        <input type="date" class="form-control form-control-sm" id="alt-filtro-fim">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm mb-1">Empresa</label>
+                        <select class="form-select form-select-sm" id="alt-filtro-empresa">
+                            <option value="">Todas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label form-label-sm mb-1">Nome</label>
+                        <input type="text" class="form-control form-control-sm" id="alt-filtro-nome"
+                            placeholder="Buscar por nome...">
+                    </div>
+                    <div class="col-md-12 d-flex gap-2 justify-content-end">
+                        <button class="btn btn-primary btn-sm" onclick="filtrarAlteracoesFuncao()">
+                            <i class="fas fa-filter"></i> Filtrar
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" onclick="limparFiltrosAlteracoes()">
+                            <i class="fas fa-times"></i> Limpar
+                        </button>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Funcionário</th>
+                                <th>De (Setor/Cargo)</th>
+                                <th>Para (Setor/Cargo)</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historico-alteracoes-container"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

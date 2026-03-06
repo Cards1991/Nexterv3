@@ -1,0 +1,32 @@
+<!-- Modal Novo Usuário -->
+<div class="modal fade" id="novoUsuarioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Criar Novo Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-novo-usuario">
+                    <div class="mb-3">
+                        <label class="form-label">E-mail</label>
+                        <input type="email" class="form-control" id="novo-usuario-email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Senha</label>
+                        <input type="password" class="form-control" id="novo-usuario-senha" required minlength="6">
+                        <small class="form-text text-muted">A senha deve ter no mínimo 6 caracteres.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vincular Funcionário</label>
+                        <select class="form-select" id="novo-usuario-funcionario" required></select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarNovoUsuario()">Criar Usuário</button>
+            </div>
+        </div>
+    </div>
+</div>

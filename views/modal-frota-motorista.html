@@ -1,0 +1,29 @@
+<div class="modal fade" id="frotaMotoristaModal" tabindex="-1">
+        <div class="modal-dialog">
+                <div class="modal-content">
+                        <div class="modal-header">
+                                <h5 class="modal-title" id="frotaMotoristaModalTitle">Novo Motorista</h5><button
+                                        type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                                <form id="form-frota-motorista">
+                                        <input type="hidden" id="frota-motorista-id">
+                                        <div class="mb-3"><label class="form-label">Nome</label><input type="text"
+                                                        class="form-control" id="frota-motorista-nome" required></div>
+                                        <div class="mb-3"><label class="form-label">CPF</label><input type="text"
+                                                        class="form-control" id="frota-motorista-cpf" required></div>
+                                        <div class="mb-3"><label class="form-label">Nº CNH</label><input type="text"
+                                                        class="form-control" id="frota-motorista-cnh" required></div>
+                                        <div class="mb-3"><label class="form-label">Validade CNH</label><input
+                                                        type="date" class="form-control" id="frota-motorista-validade"
+                                                        required></div>
+                                        <div class="mb-3"><label class="form-label">Setor</label><input type="text"
+                                                        class="form-control" id="frota-motorista-setor"></div>
+                                </form>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Cancelar</button><button type="button"
+                                        class="btn btn-primary" onclick="salvarMotorista()">Salvar</button></div>
+                </div>
+        </div>
+</div>

@@ -1,0 +1,69 @@
+<!-- Modal Cliente Jurídico -->
+<div class="modal fade" id="clienteJuridicoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="clienteJuridicoModalTitle"><i class="fas fa-user-tie me-2"></i>Novo
+                    Cliente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-cliente-juridico">
+                    <input type="hidden" id="jur-cliente-id">
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Pessoa</label>
+                        <div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="jur-tipo-pessoa"
+                                    id="jur-pessoa-juridica" value="PJ" checked>
+                                <label class="form-check-label" for="jur-pessoa-juridica">Pessoa Jurídica</label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="radio" name="jur-tipo-pessoa"
+                                    id="jur-pessoa-fisica" value="PF">
+                                <label class="form-check-label" for="jur-pessoa-fisica">Pessoa Física</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6" id="campo-razao-social"><label class="form-label">Razão
+                                Social</label><input type="text" class="form-control" id="jur-cliente-razao-social">
+                        </div>
+                        <div class="col-md-6"><label class="form-label" id="label-nome-fantasia">Nome
+                                Fantasia</label><input type="text" class="form-control" id="jur-cliente-nome-fantasia"
+                                required></div>
+                        <div class="col-md-6"><label class="form-label" id="label-cnpj-cpf">CNPJ</label><input
+                                type="text" class="form-control" id="jur-cliente-cnpj-cpf" required></div>
+                        <div class="col-md-6"><label class="form-label">Inscrição Estadual</label><input type="text"
+                                class="form-control" id="jur-cliente-ie"></div>
+                        <hr class="my-3">
+                        <div class="col-md-6"><label class="form-label">Pessoa de Contato</label><input type="text"
+                                class="form-control" id="jur-cliente-contato"></div>
+                        <div class="col-md-6"><label class="form-label">E-mail</label><input type="email"
+                                class="form-control" id="jur-cliente-email"></div>
+                        <div class="col-md-6"><label class="form-label">Telefone</label><input type="tel"
+                                class="form-control" id="jur-cliente-telefone"></div>
+                        <hr class="my-3">
+                        <div class="col-md-4"><label class="form-label">CEP</label><input type="text"
+                                class="form-control" id="jur-cliente-cep"></div>
+                        <div class="col-md-8"><label class="form-label">Endereço</label><input type="text"
+                                class="form-control" id="jur-cliente-endereco"></div>
+                        <div class="col-md-4"><label class="form-label">Número</label><input type="text"
+                                class="form-control" id="jur-cliente-numero"></div>
+                        <div class="col-md-8"><label class="form-label">Complemento</label><input type="text"
+                                class="form-control" id="jur-cliente-complemento"></div>
+                        <div class="col-md-6"><label class="form-label">Cidade</label><input type="text"
+                                class="form-control" id="jur-cliente-cidade"></div>
+                        <div class="col-md-6"><label class="form-label">Estado</label><input type="text"
+                                class="form-control" id="jur-cliente-estado"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarClienteJuridico()">Salvar
+                    Cliente</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,131 @@
+<!-- Modal Processo Jurídico -->
+<div class="modal fade" id="processoJuridicoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="processoJuridicoModalTitle">Novo Processo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <ul class="nav nav-tabs" id="processoTab" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" id="processo-dados-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-dados" type="button">Dados
+                            Gerais</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="processo-prazos-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-prazos" type="button">Prazos e
+                            Andamentos</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="processo-analise-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-analise" type="button">Provas e
+                            Análise</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="processo-historico-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-historico"
+                            type="button">Histórico</button></li>
+                </ul>
+
+                <div class="tab-content pt-3">
+                    <!-- Aba Dados Gerais -->
+                    <div class="tab-pane fade show active" id="tab-processo-dados" role="tabpanel">
+                        <form id="form-processo-juridico">
+                            <input type="hidden" id="jur-processo-id">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">Nº do Processo</label><input type="text"
+                                        class="form-control" id="jur-numero-processo" required></div>
+                                <div class="col-md-6"><label class="form-label">Data de Distribuição</label><input
+                                        type="date" class="form-control" id="jur-data-distribuicao" required></div>
+                                <div class="col-md-6"><label class="form-label">Cliente</label><select
+                                        class="form-select" id="jur-cliente" required></select></div>
+                                <div class="col-md-6"><label class="form-label">Parte Contrária</label><input
+                                        type="text" class="form-control" id="jur-parte-contraria" required></div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tipo de Ação</label>
+                                    <select class="form-select" id="jur-tipo-acao" required>
+                                        <option value="">Selecione...</option>
+                                        <option>Trabalhista</option>
+                                        <option>Cível</option>
+                                        <option>Tributário</option>
+                                        <option>Consumidor</option>
+                                        <option>Penal</option>
+                                        <option>Outro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Status do Processo</label>
+                                    <select class="form-select" id="jur-status" required>
+                                        <option>Ativo</option>
+                                        <option>Suspenso</option>
+                                        <option>Arquivado</option>
+                                        <option>Finalizado</option>
+                                    </select>
+                                </div>
+                                <div class="col-12"><label class="form-label">Objeto da Ação /
+                                        Descrição</label><textarea class="form-control" id="jur-descricao"
+                                        rows="2"></textarea></div>
+                            </div>
+
+                            <hr class="my-4">
+                            <h6 class="mb-3">Pedidos da Ação e Análise de Risco</h6>
+                            <div id="jur-pedidos-container">
+                                <p class="text-muted">Selecione um "Tipo de Ação" para ver os pedidos.</p>
+                            </div>
+                            <div class="row mt-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Valor da Causa (R$)</label>
+                                    <input type="number" step="0.01" class="form-control" id="jur-valor-causa"
+                                        placeholder="10000.00">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Aba Prazos e Andamentos -->
+                    <div class="tab-pane fade" id="tab-processo-prazos" role="tabpanel">
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Data da Audiência de Conciliação</label>
+                                <input type="datetime-local" class="form-control" id="jur-data-conciliacao">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data da Audiência de Instrução</label>
+                                <input type="datetime-local" class="form-control" id="jur-data-instrucao">
+                            </div>
+                            <!-- Outros prazos podem ser adicionados aqui -->
+                        </div>
+                    </div>
+
+                    <!-- Aba Análise de Provas -->
+                    <div class="tab-pane fade" id="tab-processo-analise" role="tabpanel">
+                        <p class="text-muted mt-3">Use este espaço para registrar a análise prévia das provas. Esta
+                            informação será usada pela IA para gerar insights.</p>
+                        <div class="row g-3">
+                            <div class="col-12"><label class="form-label">Análise dos Controles de Ponto</label>
+                                <textarea class="form-control" id="jur-analise-pontos" rows="3"
+                                    placeholder="Ex: Controles de ponto britânicos, sem assinatura, com rasuras..."></textarea>
+                            </div>
+                            <div class="col-12"><label class="form-label">Análise das Testemunhas</label>
+                                <textarea class="form-control" id="jur-analise-testemunhas" rows="3"
+                                    placeholder="Ex: Testemunha da empresa é o líder direto, testemunha do reclamante parece instruída..."></textarea>
+                            </div>
+                            <div class="col-12"><label class="form-label">Análise de Documentos (E-mails, Contratos,
+                                    etc.)</label>
+                                <textarea class="form-control" id="jur-analise-documentos" rows="3"
+                                    placeholder="Ex: E-mails indicam jornada extraordinária não registrada, contrato de trabalho sem cláusula de confidencialidade..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aba Histórico -->
+                    <div class="tab-pane fade" id="tab-processo-historico" role="tabpanel">
+                        <div id="jur-historico-container" style="max-height: 400px; overflow-y: auto;">
+                            <p class="text-muted">Nenhuma alteração registrada para este processo ainda.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarProcessoJuridico()">Salvar
+                    Processo</button>
+            </div>
+        </div>
+    </div>
+</div>

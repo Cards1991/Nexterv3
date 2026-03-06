@@ -1,0 +1,101 @@
+<h2 class="page-title">Documentos Inteligentes</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="input-group" style="max-width: 500px;">
+        <span class="input-group-text"><i class="fas fa-search"></i></span>
+        <input type="text" class="form-control" id="jur-doc-busca-inteligente"
+            placeholder="Busca Semântica (IA): Ex: Petição de horas extras de 2023...">
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-outline-primary" onclick="abrirModalUploadDocumento()">
+            <i class="fas fa-upload"></i> Upload
+        </button>
+        <button class="btn btn-primary" onclick="abrirModalNovoDocumento()">
+            <i class="fas fa-plus-circle"></i> Novo Modelo
+        </button>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Explorador de Arquivos -->
+    <div class="col-lg-3">
+        <div class="card h-100">
+            <div class="card-header">Categorias</div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="jur-doc-categorias">
+                    <button class="list-group-item list-group-item-action active">
+                        <i class="fas fa-folder-open text-warning me-2"></i> Todos
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Petições Iniciais
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Contestações
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Contratos
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Sentenças
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Acórdãos
+                    </button>
+                    <button class="list-group-item list-group-item-action">
+                        <i class="fas fa-folder text-warning me-2"></i> Procurações
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Documentos -->
+    <div class="col-lg-9">
+        <div class="card">
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Nome do Arquivo</th>
+                                <th>Tipo</th>
+                                <th>Tamanho</th>
+                                <th>Data</th>
+                                <th>Score Busca</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-documentos-juridico">
+                            <!-- Conteúdo via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- OCR e Análise IA -->
+<div class="card mt-4 border-info">
+    <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-microscope"></i> Analisador de Documentos IA (OCR + NLP)</h5>
+        <span class="badge bg-light text-dark">Beta</span>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6 border-end">
+                <h6>Arraste um PDF/Imagem para análise:</h6>
+                <div id="jur-doc-dropzone" class="dropzone-styled text-center p-5 border-dashed rounded">
+                    <i class="fas fa-cloud-upload-alt fa-3x mb-3 text-muted"></i>
+                    <p>Clique ou arraste o arquivo aqui</p>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <h6>Resultado do Processamento Inteligente:</h6>
+                <div id="jur-doc-resultado-ia" class="p-3 bg-light rounded" style="min-height: 150px;">
+                    <p class="text-muted small">Aguardando documento para extração de dados e análise de riscos...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

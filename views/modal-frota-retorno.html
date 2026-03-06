@@ -1,0 +1,33 @@
+<div class="modal fade" id="frotaRetornoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Retorno de Veículo</h5><button type="button" class="btn-close"
+                    data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-frota-retorno">
+                    <input type="hidden" id="frota-retorno-utilizacao-id">
+                    <input type="hidden" id="frota-retorno-veiculo-id">
+                    <p><strong>Veículo:</strong> <span id="frota-retorno-veiculo-info"></span></p>
+                    <p><strong>Motorista:</strong> <span id="frota-retorno-motorista-info"></span></p>
+                    <div class="row g-3">
+                        <div class="col-md-6"><label class="form-label">Data Retorno</label><input type="date"
+                                class="form-control" id="frota-retorno-data" required></div>
+                        <div class="col-md-6"><label class="form-label">Hora Retorno</label><input type="time"
+                                class="form-control" id="frota-retorno-hora" required></div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6"><label class="form-label">KM Inicial</label><input type="number"
+                                class="form-control" id="frota-retorno-km-inicial" readonly></div>
+                        <div class="col-md-6"><label class="form-label">KM Final</label><input type="number"
+                                class="form-control" id="frota-retorno-km-final" required></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                    data-bs-dismiss="modal">Cancelar</button><button type="button" class="btn btn-primary"
+                    onclick="registrarRetorno()">Registrar Retorno</button></div>
+        </div>
+    </div>
+</div>

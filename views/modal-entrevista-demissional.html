@@ -1,0 +1,95 @@
+<!-- Modal Entrevista Demissional -->
+<div class="modal fade" id="entrevistaDemissionalModal" tabindex="-1" data-bs-backdrop="static"
+    data-bs-keyboard="false">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-comments me-2"></i>Entrevista Demissional - <span
+                        id="entrevista-nome-funcionario"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-entrevista-demissional">
+                    <input type="hidden" id="entrevista-movimentacao-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Motivo do desligamento</label>
+                            <select class="form-select" id="entrevista-motivo" required>
+                                <option value="">Selecione...</option>
+                                <option>Mudança de Carreira</option>
+                                <option>Problemas de Relacionamento</option>
+                                <option>Insatisfação com o Trabalho</option>
+                                <option>Insatisfação com o Salário</option>
+                                <option>Outros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label fw-bold">Como você avalia sua experiência?</label>
+                            <select class="form-select" id="entrevista-experiencia" required>
+                                <option value="">Selecione...</option>
+                                <option>Excelente</option>
+                                <option>Boa</option>
+                                <option>Regular</option>
+                                <option>Ruim</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Quais os pontos positivos da empresa?</label>
+                        <textarea class="form-control" id="entrevista-pontos-positivos" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Quais os principais desafios?</label>
+                        <textarea class="form-control" id="entrevista-desafios" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">O que a empresa poderia fazer para melhorar?</label>
+                        <textarea class="form-control" id="entrevista-melhorias" rows="3"></textarea>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3"><label class="form-label fw-bold">Você sentiu-se apoiado?</label>
+                            <div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-apoio" id="apoio-sim" value="Sim"><label
+                                        class="form-check-label" for="apoio-sim">Sim</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-apoio" id="apoio-nao" value="Não"><label
+                                        class="form-check-label" for="apoio-nao">Não</label></div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3"><label class="form-label fw-bold">Recomendaria a empresa?</label>
+                            <div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-recomenda" id="recomenda-sim" value="Sim"><label
+                                        class="form-check-label" for="recomenda-sim">Sim</label>
+                                </div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-recomenda" id="recomenda-nao" value="Não"><label
+                                        class="form-check-label" for="recomenda-nao">Não</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3"><label class="form-label fw-bold">Tem interesse em
+                                retornar?</label>
+                            <div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-retorno" id="retorno-sim" value="Sim"><label
+                                        class="form-check-label" for="retorno-sim">Sim</label></div>
+                                <div class="form-check form-check-inline"><input class="form-check-input" type="radio"
+                                        name="entrevista-retorno" id="retorno-nao" value="Não"><label
+                                        class="form-check-label" for="retorno-nao">Não</label></div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Pular</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEntrevistaDemissional()">Salvar
+                    Entrevista</button>
+            </div>
+        </div>
+    </div>
+</div>

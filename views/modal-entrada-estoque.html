@@ -1,0 +1,75 @@
+<div class="modal fade" id="modalEntradaEstoque" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-arrow-circle-down me-2"></i>Entrada de Estoque
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-entrada-estoque">
+                    <div class="mb-3">
+                        <label class="form-label">EPI</label>
+                        <select class="form-select" id="entrada-epi-select" required
+                            onchange="verificarRastreioEPI()"></select>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Origem</label>
+                            <select class="form-select" id="entrada-origem" required>
+                                <option value="NFE">Nota Fiscal (NFE)</option>
+                                <option value="Movimentação Interna">Movimentação Interna</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Número do Pedido</label>
+                            <input type="text" class="form-control" id="entrada-pedido"
+                                placeholder="Digite o nº do pedido" oninput="atualizarChaveRastreio()">
+                        </div>
+                        <div class="col-md-4"><label class="form-label">Data</label><input type="date"
+                                class="form-control" id="entrada-data" required onchange="atualizarChaveRastreio()">
+                        </div>
+                        <div class="col-md-4"><label class="form-label">Quantidade</label><input type="number"
+                                class="form-control" id="entrada-quantidade" min="1" required></div>
+                        <div class="col-md-4"><label class="form-label">Custo Total (R$)</label><input type="number"
+                                class="form-control" id="entrada-custo" step="0.01"></div>
+                    </div>
+
+                    <!-- Seção de Rastreio (Condicional) -->
+                    <div id="container-rastreio-epi" class="card mt-3 border-warning" style="display: none;">
+                        <div class="card-header bg-warning text-dark fw-bold"><i class="fas fa-search-location"></i>
+                            Rastreabilidade</div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label">Chave de Rastreio (Automática)</label>
+                                <input type="text" class="form-control bg-light" id="entrada-chave-rastreio" readonly>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Motivo da Entrada</label>
+                                <select class="form-select" id="entrada-motivo-rastreio">
+                                    <option value="Lote antigo">Lote antigo</option>
+                                    <option value="Defeito de fabricação">Defeito de fabricação</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-6"><label class="form-label">Assinatura (Quem
+                                Enviou)</label><input type="text" class="form-control" id="entrada-assinatura-envio">
+                        </div>
+                        <div class="col-md-6"><label class="form-label">Assinatura (Quem
+                                Recebeu)</label><input type="text" class="form-control"
+                                id="entrada-assinatura-recebimento"></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="salvarEntradaEstoque()">Confirmar
+                    Entrada</button>
+            </div>
+        </div>
+    </div>
+</div>

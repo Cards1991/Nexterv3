@@ -1,0 +1,89 @@
+<h2 class="page-title">Faltas Diárias</h2>
+
+<!-- Card de Alerta de Faltas Recorrentes -->
+<div class="card border-danger mb-4" id="alerta-faltas-recorrentes" style="display: none;">
+    <div class="card-header bg-danger text-white">
+        <i class="fas fa-exclamation-triangle"></i> <strong>Alerta: Faltas Recorrentes</strong>
+    </div>
+    <div id="faltas-recorrentes-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
+        <p class="text-muted">Nenhum funcionário com mais de 2 faltas no período.</p>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label mb-1">Tipo Relatório</label>
+            <select class="form-select form-select-sm" id="falta-tipo-relatorio">
+                <option value="diario">Diário</option>
+                <option value="mensal">Mensal</option>
+                <option value="geral">Geral</option>
+                <option value="setor">Por Setor</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Data Inicial</label>
+            <input type="date" class="form-control form-control-sm" id="falta-filtro-data-inicio">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Data Final</label>
+            <input type="date" class="form-control form-control-sm" id="falta-filtro-data-fim">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Empresa</label>
+            <select class="form-select form-select-sm" id="falta-filtro-empresa">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Período</label>
+            <select class="form-select form-select-sm" id="falta-filtro-periodo">
+                <option value="">Todos</option>
+                <option value="manha">Manhã</option>
+                <option value="tarde">Tarde</option>
+                <option value="noite">Noite</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Setor</label>
+            <select class="form-select form-select-sm" id="falta-filtro-setor">
+                <option value="">Todos</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-falta-filtrar"><i
+                    class="fas fa-filter"></i></button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary btn-sm" onclick="imprimirRelatorioFaltas()">
+                <i class="fas fa-print"></i> Imprimir Relatório
+            </button>
+        </div>
+    </div>
+    <button class="btn btn-primary" id="btn-nova-falta"><i class="fas fa-plus-circle"></i> Nova
+        Falta</button>
+</div>
+<div class="card">
+    <div class="card-header">Registros de Faltas</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Colaborador</th>
+                        <th>Empresa/Setor</th>
+                        <th>Período</th>
+                        <th>Justificativa</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="faltas-container">
+                    <tr>
+                        <td colspan="6" class="text-center">Carregando...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

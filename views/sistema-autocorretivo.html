@@ -1,0 +1,62 @@
+<section id="sistema-autocorretivo" class="content-section d-none">
+    <h2 class="page-title">Sistema Autocorretivo de Dados</h2>
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Controle do Agente</h5>
+            <p>Use os botões abaixo para controlar o agente de correção de dados.</p>
+            <button class="btn btn-primary" id="btn-detectar-inconsistencias"><i class="fas fa-search"></i> Detectar
+                Inconsistências</button>
+            <button class="btn btn-success" id="btn-rodar-correcao"><i class="fas fa-rocket"></i> Rodar
+                Ciclo de Correção</button>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5><i class="fas fa-exclamation-triangle"></i> Pendências do Sistema</h5>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Tipo</th>
+                        <th>Descrição</th>
+                        <th>Status</th>
+                        <th>Score</th>
+                        <th>Data Detecção</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-pendencias">
+                    <tr>
+                        <td colspan="5" class="text-center">Nenhuma pendência encontrada.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <h5><i class="fas fa-history"></i> Logs de Correções</h5>
+        </div>
+        <div class="card-body table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th>Ação</th>
+                        <th>Registro</th>
+                        <th>Campo</th>
+                        <th>Valor Novo</th>
+                        <th>Score</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-logs-correcoes">
+                    <tr>
+                        <td colspan="6" class="text-center">Nenhum log de correção.</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>

@@ -111,6 +111,11 @@ service cloud.firestore {
       allow create, update: if isAuthenticated() && request.auth.uid == userId;
     }
 
+    // Regras para a coleção 'agenda_atividades'
+    match /agenda_atividades/{activityId} {
+      allow read, write: if hasAccessToSection('agenda') || hasAccessToSection('dashboard-atividades');
+    }
+
     // Regra padrão para negar acesso a coleções não explicitamente permitidas
     match /{document=**} {
       allow read, write: if false;

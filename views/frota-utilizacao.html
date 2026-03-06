@@ -1,0 +1,41 @@
+<h2 class="page-title">Controle de Utilização da Frota</h2>
+<div class="d-flex justify-content-end mb-3">
+    <button class="btn btn-primary" onclick="abrirModalSaida()"><i class="fas fa-route"></i>
+        Registrar Saída</button>
+</div>
+<div class="card mb-4">
+    <div class="card-header bg-warning text-dark">Veículos em Uso Atualmente</div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Veículo</th>
+                    <th>Motorista</th>
+                    <th>Data/Hora Saída</th>
+                    <th>Destino</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-frota-em-uso"></tbody>
+        </table>
+    </div>
+</div>
+<div class="card">
+    <div class="card-header">Histórico de Utilização</div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Veículo</th>
+                    <th>Motorista</th>
+                    <th>Saída</th>
+                    <th>Retorno</th>
+                    <th>KM Percorrido</th>
+                    <th>Destino</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-frota-historico"></tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,233 @@
+<div class="modal fade" id="funcionarioModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus me-2"></i>Novo Funcionário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Abas de Navegação Modernas -->
+                <ul class="nav nav-pills modal-tabs mb-4" id="funcionarioTab" role="tablist">
+                    <li class="nav-item" role="presentation"><button class="nav-link active" id="identificacao-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-identificacao" type="button"
+                            role="tab">Identificação</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="profissional-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-profissional" type="button"
+                            role="tab">Profissional</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="qualificacao-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-qualificacao" type="button"
+                            role="tab">Qualificação</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="desempenho-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-desempenho" type="button"
+                            role="tab">Desempenho</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="beneficios-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-beneficios" type="button"
+                            role="tab">Benefícios</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link" id="endereco-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-endereco" type="button"
+                            role="tab">Endereço</button></li>
+                </ul>
+
+                <form id="form-funcionario">
+                    <input type="hidden" id="funcionario-id">
+                    <div class="tab-content" id="funcionarioTabContent">
+                        <!-- Aba de Identificação -->
+                        <div class="tab-pane fade show active" id="tab-identificacao" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-8 form-group"><label class="form-label">Nome Completo <span
+                                            class="text-danger">*</span></label><input type="text" class="form-control"
+                                        id="nome-funcionario" required></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Matrícula</label><input
+                                        type="text" class="form-control" id="matricula-funcionario"></div>
+                                <div class="col-md-4 form-group"><label class="form-label">CPF <span
+                                            class="text-danger">*</span></label><input type="text" class="form-control"
+                                        id="cpf-funcionario" required></div>
+                                <div class="col-md-4 form-group"><label class="form-label">RG</label><input type="text"
+                                        class="form-control" id="rg-funcionario"></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Data de Nascimento <span
+                                            class="text-danger">*</span></label><input type="date" class="form-control"
+                                        id="nascimento-funcionario" required></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Sexo <span
+                                            class="text-danger">*</span></label><select class="form-select"
+                                        id="sexo-funcionario" required>
+                                        <option value="">Selecione...</option>
+                                        <option value="Masculino">Masculino</option>
+                                        <option value="Feminino">Feminino</option>
+                                        <option value="Outro">Outro</option>
+                                    </select></div>
+                                <div class="col-md-4 form-group"><label class="form-label">E-mail</label><input
+                                        type="email" class="form-control" id="email-funcionario"></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Telefone</label><input
+                                        type="tel" class="form-control" id="telefone-funcionario"></div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Profissional -->
+                        <div class="tab-pane fade" id="tab-profissional" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6 form-group"><label class="form-label">Empresa <span
+                                            class="text-danger">*</span></label><select class="form-select"
+                                        id="empresa-funcionario" required></select></div>
+                                <div class="col-md-6 form-group"><label class="form-label">Setor <span
+                                            class="text-danger">*</span></label><select class="form-select"
+                                        id="setor-funcionario" required></select></div>
+                                <div class="col-md-6 form-group"><label class="form-label">Cargo <span
+                                            class="text-danger">*</span></label><select class="form-select"
+                                        id="cargo-funcionario" required></select></div>
+                                <div class="col-md-6 form-group"><label class="form-label">Líder
+                                        Imediato</label><select class="form-select" id="lider-funcionario"></select>
+                                </div>
+                                <div class="col-md-4 form-group"><label class="form-label">Data de Admissão <span
+                                            class="text-danger">*</span></label><input type="date" class="form-control"
+                                        id="admissao-funcionario" required></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Salário
+                                        (Folha)</label><input type="number" step="0.01" min="0" class="form-control"
+                                        id="salario-funcionario" placeholder="Ex: 2500.00"></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Salário
+                                        (Extra/Fora)</label><input type="number" step="0.01" min="0"
+                                        class="form-control" id="salario-por-fora-funcionario" placeholder="Ex: 500.00">
+                                </div>
+                                <div class="col-md-4 form-group"><label class="form-label">Jornada
+                                        (h/semana)</label><input type="number" class="form-control"
+                                        id="jornada-funcionario" placeholder="Ex: 44"></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Tipo de
+                                        Contrato</label><select class="form-select" id="contrato-funcionario">
+                                        <option value="CLT">CLT</option>
+                                        <option value="PJ">PJ</option>
+                                        <option value="Estágio">Estágio</option>
+                                        <option value="Aprendiz">Aprendiz</option>
+                                    </select></div>
+                                <div class="col-md-4 form-group"><label class="form-label">Regime de
+                                        Trabalho</label><select class="form-select" id="regime-funcionario">
+                                        <option value="Presencial">Presencial</option>
+                                        <option value="Híbrido">Híbrido</option>
+                                        <option value="Remoto">Remoto</option>
+                                    </select></div>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-12 text-end">
+                                <button type="button" class="btn btn-outline-dark btn-sm" id="btn-cadastrar-biometria"
+                                    onclick="abrirModalSelecaoDedo()"><i class="fas fa-fingerprint"></i> Gerenciar
+                                    Digitais</button>
+                                <span id="status-biometria" class="ms-2 badge bg-secondary">Não cadastrada</span>
+                            </div>
+                        </div>
+
+                        <!-- Aba Qualificação -->
+                        <div class="tab-pane fade" id="tab-qualificacao" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6 form-group">
+                                    <label class="form-label">Escolaridade</label>
+                                    <select class="form-select" id="escolaridade-funcionario">
+                                        <option value="">Selecione...</option>
+                                        <option>Fundamental Incompleto</option>
+                                        <option>Fundamental Completo</option>
+                                        <option>Médio Incompleto</option>
+                                        <option>Médio Completo</option>
+                                        <option>Superior Incompleto</option>
+                                        <option>Superior Completo</option>
+                                        <option>Pós-graduação</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 form-group"><label class="form-label">Idiomas</label><input
+                                        type="text" class="form-control" id="idiomas-funcionario"
+                                        placeholder="Ex: Inglês (Avançado), Espanhol (Básico)"></div>
+                                <div class="col-12 form-group"><label class="form-label">Certificações</label><textarea
+                                        class="form-control" id="certificacoes-funcionario" rows="3"
+                                        placeholder="Liste as certificações relevantes"></textarea></div>
+                                <div class="col-12 form-group"><label class="form-label">Cursos
+                                        Relevantes</label><textarea class="form-control" id="cursos-funcionario"
+                                        rows="3" placeholder="Liste os cursos concluídos"></textarea></div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Desempenho -->
+                        <div class="tab-pane fade" id="tab-desempenho" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6 form-group"><label class="form-label">Última Avaliação de
+                                        Desempenho (Nota 0-10)</label><input type="number" step="0.1" min="0" max="10"
+                                        class="form-control" id="desempenho-avaliacao"></div>
+                                <div class="col-md-6 form-group"><label class="form-label">Data da Última
+                                        Avaliação</label><input type="date" class="form-control"
+                                        id="desempenho-data-avaliacao"></div>
+                                <div class="col-12 form-group"><label class="form-label">Metas e
+                                        KPIs</label><textarea class="form-control" id="desempenho-metas" rows="3"
+                                        placeholder="Descreva as metas atuais do colaborador"></textarea></div>
+                                <div class="col-12 form-group"><label class="form-label">Feedback e
+                                        PDI</label><textarea class="form-control" id="desempenho-feedback" rows="3"
+                                        placeholder="Resumo do último feedback e Plano de Desenvolvimento Individual"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Benefícios -->
+                        <div class="tab-pane fade" id="tab-beneficios" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-6 form-group">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                            id="beneficio-plano-saude"><label class="form-check-label">Plano de
+                                            Saúde</label></div>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                            id="beneficio-vale-transporte"><label
+                                            class="form-check-label">Vale-Transporte</label></div>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                            id="beneficio-vale-alimentacao"><label
+                                            class="form-check-label">Vale-Alimentação/Refeição</label></div>
+                                </div>
+                                <div class="col-md-6 form-group">
+                                    <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
+                                            id="beneficio-seguro-vida"><label class="form-check-label">Seguro de
+                                            Vida</label></div>
+                                </div>
+                                <div class="col-12 form-group"><label class="form-label">Outros Benefícios ou
+                                        Incentivos</label><textarea class="form-control" id="beneficio-outros" rows="2"
+                                        placeholder="Ex: Auxílio-creche, Bônus anual"></textarea></div>
+                            </div>
+                        </div>
+
+                        <!-- Aba Endereço -->
+                        <div class="tab-pane fade" id="tab-endereco" role="tabpanel">
+                            <div class="row g-3 mt-2">
+                                <div class="col-md-3 form-group"><label class="form-label">CEP</label><input type="text"
+                                        class="form-control" id="endereco-cep" onblur="buscarCep(this.value)"
+                                        placeholder="00000-000"></div>
+                                <div class="col-md-7 form-group">
+                                    <label class="form-label">Logradouro</label>
+                                    <div class="input-group">
+                                        <input type="text" class="form-control" id="endereco-logradouro"
+                                            placeholder="Nome da Rua">
+                                        <button class="btn btn-outline-secondary" type="button"
+                                            onclick="buscarEnderecoManual(this)" title="Buscar e Validar Endereço"><i
+                                                class="fas fa-search"></i></button>
+                                    </div>
+                                </div>
+                                <div class="col-md-2 form-group"><label class="form-label">Número</label><input
+                                        type="text" class="form-control" id="endereco-numero"></div>
+                                <div class="col-md-5 form-group"><label class="form-label">Bairro <span
+                                            class="text-danger">*</span></label><input type="text" class="form-control"
+                                        id="endereco-bairro"></div>
+                                <div class="col-md-5 form-group"><label class="form-label">Cidade <span
+                                            class="text-danger">*</span></label><input type="text" class="form-control"
+                                        id="endereco-cidade"></div>
+                                <div class="col-md-2 form-group"><label class="form-label">UF</label><input type="text"
+                                        class="form-control" id="endereco-estado" maxlength="2"></div>
+                                <input type="hidden" id="endereco-latitude"><input type="hidden"
+                                    id="endereco-longitude">
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarFuncionario()">Salvar
+                    Funcionário</button>
+            </div>
+        </div>
+    </div>
+</div>

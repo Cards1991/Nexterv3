@@ -1,0 +1,41 @@
+<div class="modal fade" id="frotaSaidaModal" tabindex="-1">
+        <div class="modal-dialog">
+                <div class="modal-content">
+                        <div class="modal-header">
+                                <h5 class="modal-title">Registrar Saída de Veículo</h5><button type="button"
+                                        class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                                <form id="form-frota-saida">
+                                        <input type="hidden" id="frota-saida-id">
+                                        <div class="mb-3"><label class="form-label">Veículo</label><select
+                                                        class="form-select" id="frota-saida-veiculo" required></select>
+                                        </div>
+                                        <div class="mb-3"><label class="form-label">Motorista</label><select
+                                                        class="form-select" id="frota-saida-motorista"
+                                                        required></select></div>
+                                        <div class="row g-3">
+                                                <div class="col-md-6"><label class="form-label">Data Saída</label><input
+                                                                type="date" class="form-control" id="frota-saida-data"
+                                                                required></div>
+                                                <div class="col-md-6"><label class="form-label">Hora Saída</label><input
+                                                                type="time" class="form-control" id="frota-saida-hora"
+                                                                required></div>
+                                        </div>
+                                        <div class="mb-3"><label class="form-label">KM Inicial</label><input
+                                                        type="number" class="form-control" id="frota-saida-km-inicial"
+                                                        readonly></div>
+                                        <div class="mb-3"><label class="form-label">Destino</label><input type="text"
+                                                        class="form-control" id="frota-saida-destino" required></div>
+                                        <div class="mb-3"><label class="form-label">Motivo</label><textarea
+                                                        class="form-control" id="frota-saida-motivo"
+                                                        rows="2"></textarea></div>
+                                </form>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Cancelar</button><button type="button"
+                                        class="btn btn-primary" onclick="registrarSaida()">Registrar Saída</button>
+                        </div>
+                </div>
+        </div>
+</div>

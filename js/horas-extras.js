@@ -7,7 +7,7 @@ let __he_funcionarios_map = {}; // Mapa para vincular funcionário à empresa
 
 async function inicializarHorasExtras() {
     console.log('Inicializando Dashboard de Horas Extras...');
-    
+
     // Configurar filtros e botões
     const filterButton = document.getElementById('he-filterButton');
     const printButton = document.getElementById('he-printButton');
@@ -41,9 +41,9 @@ async function preencherFiltrosHorasExtras() {
         // Carregar Empresas e Setores
         const empresasSnap = await db.collection('empresas').orderBy('nome').get();
         const todosSetores = new Set();
-        
+
         companyFilter.innerHTML = '<option value="">Todas as Empresas</option>';
-        
+
         empresasSnap.forEach(doc => {
             const emp = doc.data();
             // Popula filtro de empresa
@@ -115,13 +115,13 @@ async function listarHorasExtras() {
         // Filtra os documentos em memória
         const docs = querySnapshot.docs.filter(doc => {
             const data = doc.data();
-            
+
             // Filtro de Status: Exibir apenas horas autorizadas (ignora pendentes)
             if (data.status === 'pendente') return false;
 
             // Filtro de Setor
             if (sector !== "Todos" && data.sector !== sector) return false;
-            
+
             // Filtro de Colaborador
             if (employeeId && data.employeeId !== employeeId) return false;
 
@@ -241,10 +241,13 @@ function criarGraficosHorasExtras(sectorData, employeeData, monthlyData, totalHo
     Object.values(heCharts).forEach(chart => chart.destroy());
     heCharts = {};
 
-    document.getElementById('he-totalOvertimeCard').textContent = totalHours.toFixed(2);
-    document.getElementById('he-totalOvertimeValueCard').textContent = `R$ ${totalValue.toFixed(2)}`;
+    const elTotalCard = document.getElementById('he-totalOvertimeCard');
+    if (elTotalCard) elTotalCard.textContent = totalHours.toFixed(2);
 
-    const sortData = (data) => Object.fromEntries(Object.entries(data).sort(([,a],[,b]) => b-a));
+    const elValueCard = document.getElementById('he-totalOvertimeValueCard');
+    if (elValueCard) elValueCard.textContent = `R$ ${totalValue.toFixed(2)}`;
+
+    const sortData = (data) => Object.fromEntries(Object.entries(data).sort(([, a], [, b]) => b - a));
 
     const chartOptions = {
         responsive: true,
@@ -301,8 +304,8 @@ async function imprimirRelatorioHorasExtras() {
         totalGeralHoras += horas;
         totalGeralValor += valor;
 
-        const assinaturaImg = item.signed && item.signatureUrl 
-            ? `<img src="${item.signatureUrl}" style="height: 30px; max-width: 100px;" alt="Assinado">` 
+        const assinaturaImg = item.signed && item.signatureUrl
+            ? `<img src="${item.signatureUrl}" style="height: 30px; max-width: 100px;" alt="Assinado">`
             : '<span style="color: #999; font-size: 10px;">Pendente</span>';
 
         linhasHtml += `
@@ -373,7 +376,7 @@ async function abrirModalAssinatura(id) {
 
         const modalEl = document.getElementById('modalAssinaturaHE');
         const modal = new bootstrap.Modal(modalEl);
-        
+
         // Inicializar ou limpar o SignaturePad quando o modal for exibido
         modalEl.addEventListener('shown.bs.modal', function () {
             const canvas = document.getElementById('signature-canvas');
@@ -421,11 +424,11 @@ async function salvarAssinatura() {
 
         // 1. Converter assinatura para imagem (Base64 -> Blob)
         const dataUrl = signaturePad.toDataURL('image/png');
-        
+
         // 2. Upload para Firebase Storage
         const storageRef = firebase.storage().ref();
         const assinaturaRef = storageRef.child(`assinaturas_he/${id}_${Date.now()}.png`);
-        
+
         await assinaturaRef.putString(dataUrl, 'data_url');
         const downloadURL = await assinaturaRef.getDownloadURL();
 

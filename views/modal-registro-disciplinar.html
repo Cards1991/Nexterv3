@@ -1,0 +1,73 @@
+<!-- Modal Novo Registro Disciplinar -->
+<div class="modal fade" id="registroDisciplinarModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="registroDisciplinarModalTitle"><i
+                        class="fas fa-exclamation-triangle me-2"></i>Novo Registro Disciplinar</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-registro-disciplinar">
+                    <input type="hidden" id="registro-disciplinar-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="disciplinar-funcionario" class="form-label">Funcionário</label>
+                            <select class="form-select" id="disciplinar-funcionario" required>
+                                <option value="">Selecione o funcionário</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="disciplinar-data" class="form-label">Data da Ocorrência</label>
+                            <input type="date" class="form-control" id="disciplinar-data" required>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="disciplinar-classificacao" class="form-label">Classificação da Ocorrência
+                                (Art. 482 CLT)</label>
+                            <select class="form-select" id="disciplinar-classificacao" required>
+                                <option value="">Selecione a classificação...</option>
+                                <option value="A">A) Ato de improbidade</option>
+                                <option value="B">B) Incontinência de conduta ou mau procedimento</option>
+                                <option value="C">C) Negociação habitual sem permissão</option>
+                                <option value="D">D) Condenação criminal</option>
+                                <option value="E">E) Desídia no desempenho das funções</option>
+                                <option value="F">F) Embriaguez habitual ou em serviço</option>
+                                <option value="G">G) Violação de segredo da empresa</option>
+                                <option value="H">H) Ato de indisciplina ou de insubordinação</option>
+                                <option value="I">I) Abandono de emprego</option>
+                                <option value="J">J) Ato lesivo da honra ou da boa fama (contra qualquer pessoa)
+                                </option>
+                                <option value="K">K) Ato lesivo da honra ou da boa fama (contra
+                                    empregador/superiores)</option>
+                                <option value="L">L) Prática constante de jogos de azar</option>
+                                <option value="M">M) Perda da habilitação profissional</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="disciplinar-tipo" class="form-label">Medida Aplicada</label>
+                            <select class="form-select" id="disciplinar-tipo" required>
+                                <option value="">Selecione a medida</option>
+                                <option value="Advertência Verbal">Advertência Verbal</option>
+                                <option value="Advertência Escrita">Advertência Escrita</option>
+                                <option value="Suspensão 1 dia">Suspensão 1 dia</option>
+                                <option value="Suspensão 2 dias">Suspensão 2 dias</option>
+                                <option value="Suspensão 3 dias">Suspensão 3 dias</option>
+                                <option value="Outro">Outro</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label for="disciplinar-ocorrencia" class="form-label">Descrição da Ocorrência</label>
+                            <textarea class="form-control" id="disciplinar-ocorrencia" rows="4"
+                                placeholder="Descreva detalhadamente o que aconteceu..." required></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarRegistroDisciplinar()">Salvar
+                    Registro</button>
+            </div>
+        </div>
+    </div>
+</div>

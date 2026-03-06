@@ -1,0 +1,97 @@
+<div class="modal fade" id="modalNovoEPI" tabindex="-1" aria-labelledby="modalEPITitulo" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalEPITitulo">Novo EPI</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-epi">
+                    <input type="hidden" id="epi-id">
+                    <div class="mb-3">
+                        <label for="epi-empresa" class="form-label">Empresa *</label>
+                        <select class="form-select" id="epi-empresa" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="epi-descricao" class="form-label">Descrição do EPI</label>
+                        <input type="text" class="form-control" id="epi-descricao" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="epi-classe" class="form-label">Classe</label>
+                            <select class="form-select" id="epi-classe" required onchange="toggleModeloEPI()">
+                                <option value="">Selecione...</option>
+                                <option value="Calçados">Calçados</option>
+                                <option value="Vestuario">Vestuário</option>
+                                <option value="Protetores">Protetores</option>
+                                <option value="Máscaras">Máscaras</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6" id="container-epi-modelo" style="display: none;">
+                            <label for="epi-modelo" class="form-label">Modelo</label>
+                            <select class="form-select" id="epi-modelo">
+                                <option value="Mono densidade">Mono densidade</option>
+                                <option value="Bidensidade">Bidensidade</option>
+                                <option value="Infinity">Infinity</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="epi-ca" class="form-label">CA (Certificado de Aprovação)</label>
+                            <input type="text" class="form-control" id="epi-ca" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="epi-validade" class="form-label">Validade do CA</label>
+                            <input type="date" class="form-control" id="epi-validade" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="epi-fornecedor" class="form-label">Fornecedor</label>
+                            <input type="text" class="form-control" id="epi-fornecedor">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="epi-lote" class="form-label">Lote</label>
+                            <input type="text" class="form-control" id="epi-lote" placeholder="Cód. do Lote">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label for="epi-unidade" class="form-label">Unidade de Medida</label>
+                            <select class="form-select" id="epi-unidade">
+                                <option value="Unidade">Unidade</option>
+                                <option value="Par">Par</option>
+                                <option value="Caixa">Caixa</option>
+                                <option value="Pacote">Pacote</option>
+                                <option value="Litro">Litro</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="epi-quantidade" class="form-label">Qtd. Estoque</label>
+                            <input type="number" class="form-control" id="epi-quantidade" value="0" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="epi-minimo" class="form-label">Estoque Mínimo</label>
+                            <input type="number" class="form-control" id="epi-minimo" value="0" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="epi-ideal" class="form-label">Estoque Ideal</label>
+                            <input type="number" class="form-control" id="epi-ideal" value="0" min="0">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label for="epi-custo" class="form-label">Custo Unit. (R$)</label>
+                            <input type="number" class="form-control" id="epi-custo" step="0.01" min="0"
+                                placeholder="0,00">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEPI()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>

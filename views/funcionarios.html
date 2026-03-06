@@ -1,0 +1,72 @@
+<h2 class="page-title">Funcionários Ativos</h2>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Cadastro de Funcionários</span>
+        <div class="btn-group">
+            <button class="btn btn-warning btn-sm text-white" onclick="reprocessarCustosFuncionarios()">
+                <i class="fas fa-sync-alt"></i> Reprocessar Custos
+            </button>
+            <button class="btn btn-info btn-sm text-white" onclick="abrirModalAumentoColetivo()">
+                <i class="fas fa-chart-line"></i> Aumento Coletivo
+            </button>
+            <button class="btn btn-info btn-sm text-white" data-bs-toggle="modal"
+                data-bs-target="#atualizarFuncionariosModal">
+                <i class="fas fa-sync-alt"></i> Atualizar via XLSX
+            </button>
+            <button class="btn btn-success btn-sm" onclick="exportarFuncionariosExcel()">
+                <i class="fas fa-file-excel"></i> Exportar Excel
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportarModeloCSV()">
+                <i class="fas fa-file-csv"></i> Exportar Modelo (CSV)
+            </button>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importarFuncionariosModal">
+                <i class="fas fa-file-import"></i> Importar Funcionários (CSV)
+            </button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#funcionarioModal">
+                <i class="fas fa-plus"></i> Novo Funcionário
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="mb-3 d-flex justify-content-end gap-3 align-items-center flex-wrap">
+            <div class="form-check form-switch">
+                <input class="form-check-input" type="checkbox" id="filtro-sem-setor-funcionarios">
+                <label class="form-check-label" for="filtro-sem-setor-funcionarios">Sem
+                    Setor</label>
+            </div>
+            <div class="input-group" style="max-width: 350px;">
+                <span class="input-group-text"><i class="fas fa-search"></i></span>
+                <input type="text" class="form-control" id="filtro-nome-funcionarios" placeholder="Buscar por nome...">
+            </div>
+            <div class="input-group" style="max-width: 350px;">
+                <span class="input-group-text"><i class="fas fa-filter"></i></span>
+                <select class="form-select" id="filtro-empresa-funcionarios">
+                    <option value="">Filtrar por Empresa...</option>
+                    <!-- Opções serão preenchidas via JavaScript -->
+                </select>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>CPF</th>
+                        <th>Empresa</th>
+                        <th>Setor</th>
+                        <th>Cargo</th>
+                        <th>Idade</th>
+                        <th>Tempo de Empresa</th>
+                        <th>Status</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-funcionarios">
+                    <tr>
+                        <td colspan="9" class="text-center">Carregando funcionários...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

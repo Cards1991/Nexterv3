@@ -1,0 +1,24 @@
+<!-- Modal Análise de Risco IA -->
+<div class="modal fade" id="analiseRiscoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-robot"></i> Análise de Risco do Processo (IA)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="analise-risco-modal-body">
+                <div class="text-center p-5">
+                    <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
+                    <p>Aguarde, a IA está analisando os documentos e o histórico do processo...</p>
+                </div>
+                <!-- O conteúdo da análise será injetado aqui -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" onclick="imprimirAnaliseRisco()">
+                    <i class="fas fa-print"></i> Imprimir Relatório (PDF)
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>

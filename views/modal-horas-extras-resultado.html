@@ -1,0 +1,27 @@
+<!-- Modal Resultado Cálculo Horas Extras -->
+<div class="modal fade" id="he-resultModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-check-circle text-success"></i> Horas Extras Calculadas
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <h6>Resumo do Lançamento</h6>
+                <p class="mb-1"><strong>Funcionário:</strong> <span id="he-modalEmployeeName"></span></p>
+                <p class="mb-1"><strong>Data:</strong> <span id="he-modalDate"></span></p>
+                <p><strong>Motivo:</strong> <span id="he-modalReason"></span></p>
+                <hr>
+                <div id="he-modalResult">
+                    <!-- Resultados do cálculo serão inseridos aqui -->
+                </div>
+                <p><strong>Valor DSR:</strong> R$ <span id="he-modalDsr"></span></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="he-saveButton">Confirmar e Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>

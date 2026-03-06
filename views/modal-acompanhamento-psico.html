@@ -1,0 +1,76 @@
+<div class="modal fade" id="acompanhamentoPsicossocialModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-clipboard-check me-2"></i> Acompanhamento
+                    Psicossocial</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-acompanhamento-psicossocial" onsubmit="return false;">
+                    <input type="hidden" id="psico-atestado-id">
+                    <p><strong>Funcionário:</strong> <span id="psico-nome-funcionario"></span></p>
+                    <p><strong>CID do Atestado Inicial:</strong> <span id="psico-cid-atestado"></span>
+                    </p>
+                    <div class="mb-3">
+                        <label for="psico-estagio" class="form-label">Estágio da Investigação</label>
+                        <select class="form-select" id="psico-estagio" required>
+                            <option value="Análise Inicial">Análise Inicial</option>
+                            <option value="Conversa Agendada">Conversa Agendada</option>
+                            <option value="Conversado com Funcionário">Conversado com Funcionário
+                            </option>
+                            <option value="Plano de Ação Definido">Plano de Ação Definido</option>
+                            <option value="Monitoramento">Monitoramento</option>
+                            <option value="Caso Encerrado">Caso Encerrado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="psico-data-evento-container" style="display: none;">
+                        <label for="psico-data-evento" class="form-label">Data do Evento</label>
+                        <input type="date" class="form-control" id="psico-data-evento">
+                    </div>
+                    <div class="mb-3">
+                        <label for="psico-observacoes" class="form-label">Observações e Próximos
+                            Passos</label>
+                        <textarea class="form-control" id="psico-observacoes" rows="4"
+                            placeholder="Descreva a conversa, ações tomadas, e o que foi combinado..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="psico-observacoes-internas" class="form-label"><i
+                                class="fas fa-user-shield text-info"></i> Observações Internas (Não sai
+                            na impressão)</label>
+                        <textarea class="form-control" id="psico-observacoes-internas" rows="2"
+                            placeholder="Anotações para controle interno, não visíveis para o colaborador."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="psico-atribuir-para" class="form-label"><i class="fas fa-user-tag me-2"></i>Atribuir
+                            Acompanhamento Para</label>
+                        <select class="form-select" id="psico-atribuir-para">
+                            <option value="">Não atribuir / Manter comigo</option>
+                        </select>
+                    </div>
+                    <hr>
+                    <h6><i class="fas fa-history me-2"></i>Histórico do Caso</h6>
+                    <div id="psico-historico-container"
+                        style="max-height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px; border-radius: 5px;">
+                        <p class="text-muted small">Nenhum registro anterior.</p>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <div class="me-auto d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-outline-secondary"
+                        onclick="SaudePsicossocialImprimirHistorico()"><i class="fas fa-print"></i>
+                        Imprimir Histórico</button>
+                    <div class="form-check mb-0">
+                        <input class="form-check-input" type="checkbox" id="check-imprimir-internas">
+                        <label class="form-check-label small" for="check-imprimir-internas">Incluir Obs.
+                            Internas</label>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" id="btn-salvar-acompanhamento"
+                    onclick="salvarAcompanhamentoPsicossocial()">Salvar Acompanhamento</button>
+            </div>
+        </div>
+    </div>
+</div>

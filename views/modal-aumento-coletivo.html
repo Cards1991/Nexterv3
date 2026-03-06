@@ -1,0 +1,39 @@
+<!-- Modal Aumento Coletivo -->
+<div class="modal fade" id="modalAumentoColetivo" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-chart-line me-2"></i>Aumento Salarial Coletivo</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-light border-info">
+                    <i class="fas fa-info-circle text-info"></i> O aumento será aplicado apenas ao <strong>Salário
+                        em Folha</strong> de funcionários ativos admitidos até a data de corte.
+                </div>
+                <form id="form-aumento-coletivo">
+                    <div class="mb-3">
+                        <label class="form-label">Porcentagem de Aumento (%)</label>
+                        <input type="number" class="form-control" id="aumento-coletivo-percentual" step="0.01"
+                            placeholder="Ex: 5.5" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data de Corte (Admissão até)</label>
+                        <input type="date" class="form-control" id="aumento-coletivo-data-corte" required>
+                        <div class="form-text">Funcionários admitidos após esta data não receberão o aumento.</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo</label>
+                        <input type="text" class="form-control" id="aumento-coletivo-motivo" value="Dissídio Coletivo"
+                            required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="aplicarAumentoColetivo()">Aplicar
+                    Aumento</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,63 @@
+<h2 class="page-title">Gestão de Saúde Psicossocial</h2>
+<p class="text-muted">Acompanhamento de casos relacionados a CIDs psicossociais (F00-F99, Z65).</p>
+
+<!-- KPIs -->
+<div class="row mb-4">
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-notes-medical text-primary"></i>
+                <div class="number" id="psico-kpi-total-casos">0</div>
+                <div class="label">Total de Casos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-folder-open text-warning"></i>
+                <div class="number" id="psico-kpi-casos-abertos">0</div>
+                <div class="label">Casos em Aberto</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4 col-md-6 mb-3">
+        <div class="card stat-card h-100">
+            <div class="card-body"><i class="fas fa-calendar-day text-danger"></i>
+                <div class="number" id="psico-kpi-media-dias">0</div>
+                <div class="label">Média de Dias de Afastamento</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12 mb-4">
+        <div class="card">
+            <div class="card-header">Casos Registrados</div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Colaborador</th>
+                                <th>CID</th>
+                                <th>Data do Atestado</th>
+                                <th>Dias</th>
+                                <th>Estágio do Acompanhamento</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-casos-psicossociais">
+                            <!-- Conteúdo será carregado via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-12">
+        <div class="card">
+            <div class="card-header">Tendência de Casos (Últimos 6 meses)</div>
+            <div class="card-body" style="height: 300px;"><canvas id="grafico-tendencia-psicossocial"></canvas></div>
+        </div>
+    </div>
+</div>

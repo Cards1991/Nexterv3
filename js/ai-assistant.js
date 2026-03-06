@@ -1,7 +1,7 @@
 // js/ai-assistant.js
 // Módulo para o Assistente de IA e Chat Inteligente
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('viewsLoaded', () => {
     console.log("Módulo Assistente de IA carregado e DOM pronto.");
 
     const chatFab = document.getElementById('ai-chat-fab');
@@ -42,11 +42,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const appendMessage = (text, sender) => {
         const messageDiv = document.createElement('div');
         messageDiv.className = `chat-message ${sender}`;
-        
+
         const bubble = document.createElement('div');
         bubble.className = 'message-bubble';
         bubble.innerHTML = text; // Usamos innerHTML para permitir formatação
-        
+
         messageDiv.appendChild(bubble);
         chatBody.appendChild(messageDiv);
         chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll para a última mensagem
@@ -66,7 +66,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatBody.appendChild(typingIndicator);
         chatBody.scrollTop = chatBody.scrollHeight;
     };
-    
+
     const removeTypingIndicator = () => {
         const typingIndicator = document.getElementById('typing-indicator');
         if (typingIndicator) {
@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (lowerCaseCommand.includes('ações')) {
             return "Com base nos dados atuais, sugiro as seguintes ações: <br>1. Revisar as <strong>3 pendências</strong> de cadastro com score de confiança médio. <br>2. Acompanhar o funcionário <strong>João Silva</strong>, que apresenta alto risco de turnover.";
         }
-        
+
         return "Desculpe, não entendi o comando. Tente algo como 'analise inconsistências' ou 'mostre os riscos de demissão'.";
     };
 

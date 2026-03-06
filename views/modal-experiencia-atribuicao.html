@@ -1,0 +1,27 @@
+<!-- Modal Atribuição de Líder (Experiência) -->
+<div class="modal fade" id="modalAtribuicaoExperiencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Atribuir Gestor para Avaliação</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-atribuicao-exp">
+                    <input type="hidden" id="atribuicao-exp-colab-id">
+                    <div class="mb-3">
+                        <label class="form-label">Selecione o Líder Responsável</label>
+                        <select class="form-select" id="atribuicao-exp-lider" required>
+                            <option value="">Carregando líderes...</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" onclick="atualizarLiderAvaliacao()">Salvar
+                    Atribuição</button>
+            </div>
+        </div>
+    </div>
+</div>

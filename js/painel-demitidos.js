@@ -1,9 +1,11 @@
 // js/painel-demitidos.js
 
-document.addEventListener('DOMContentLoaded', () => {
-    let dadosCarregados = false;
-    let demitidosCache = [];
+// Variáveis globais para manter o estado fora do DOMContentLoaded
+let __demitidos_cache = [];
 
+window.inicializarPainelDemitidos = async function() {
+    console.log("Inicializando Painel de Demitidos...");
+    
     const renderTabelaDemitidos = (demitidos) => {
         const tabelaContainer = document.getElementById('tabela-demitidos-container');
         if (!demitidos || demitidos.length === 0) {
@@ -30,8 +32,8 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const filtrarDemitidos = () => {
-        const termoBusca = document.getElementById('busca-demitidos').value.toLowerCase();
-        const filtrados = demitidosCache.filter(d => 
+        const termoBusca = document.getElementById('busca-demitidos')?.value.toLowerCase() || '';
+        const filtrados = __demitidos_cache.filter(d => 
             (d.nome && d.nome.toLowerCase().includes(termoBusca)) || 
             (d.cpf && d.cpf.includes(termoBusca))
         );
@@ -66,7 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (movimentacoesSnap.empty) {
                 tabelaContainer.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum funcionário demitido encontrado.</td></tr>';
-                demitidosCache = [];
+                __demitidos_cache = [];
                 return;
             }
 
@@ -95,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }));
             }
             // 4. Combinar os dados e renderizar
-            demitidosCache = movimentacoesSnap.docs.map(doc => {
+            __demitidos_cache = movimentacoesSnap.docs.map(doc => {
                 const mov = doc.data();
                 const func = funcionariosMap.get(mov.funcionarioId) || {};
                 
@@ -119,8 +121,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             console.error("Erro ao carregar painel de demitidos:", error);
             tabelaContainer.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Falha ao carregar dados. Verifique o console.</td></tr>';
-        } finally {
-            dadosCarregados = true;
         }
     };
 
@@ -135,11 +135,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        let dadosParaExportar = demitidosCache;
+        let dadosParaExportar = __demitidos_cache;
         const termoBusca = document.getElementById('busca-demitidos')?.value.toLowerCase();
         
         if (termoBusca) {
-             dadosParaExportar = demitidosCache.filter(d => 
+             dadosParaExportar = __demitidos_cache.filter(d => 
                 (d.nome && d.nome.toLowerCase().includes(termoBusca)) || 
                 (d.cpf && d.cpf.includes(termoBusca))
             );
@@ -176,7 +176,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnBusca = document.getElementById('btn-busca-demitidos');
 
     if (btnBusca) {
-        btnBusca.addEventListener('click', carregarPainelDemitidos);
+        // Remove listener anterior para evitar duplicação se re-inicializado
+        const novoBtn = btnBusca.cloneNode(true);
+        btnBusca.parentNode.replaceChild(novoBtn, btnBusca);
+        novoBtn.addEventListener('click', carregarPainelDemitidos);
         
         // Adiciona botão de exportar se não existir
         if (!document.getElementById('btn-exportar-demitidos')) {
@@ -186,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
             btnExport.innerHTML = '<i class="fas fa-file-excel"></i> Exportar';
             btnExport.title = "Exportar para Excel";
             btnExport.onclick = exportarDemitidosExcel;
-            btnBusca.parentNode.appendChild(btnExport);
+            novoBtn.parentNode.appendChild(btnExport);
         }
     }
     if (buscaInput) {
@@ -435,29 +438,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // Adiciona um observador para carregar os dados quando a seção se tornar visível
-    const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-            if (mutation.attributeName === 'class') {
-                const painel = mutation.target; // A seção #painel-demitidos
-                if (!painel.classList.contains('d-none')) {
-                    // Se a seção ficou visível, carrega os dados.
-                    carregarPainelDemitidos();
-                } else {
-                    // Se a seção ficou oculta, reseta o flag para recarregar na próxima vez.
-                    dadosCarregados = false;
-                }
-            }
-        });
-    });
-
-    const painelDemitidosSection = document.getElementById('painel-demitidos');
-    if (painelDemitidosSection) {
-        observer.observe(painelDemitidosSection, { attributes: true });
-    }
-
-    // Carrega inicialmente se a seção já estiver visível
-    if (painelDemitidosSection && !painelDemitidosSection.classList.contains('d-none')) {
-        carregarPainelDemitidos();
-    }
-});
+    // Carregamento inicial
+    await carregarPainelDemitidos();
+};

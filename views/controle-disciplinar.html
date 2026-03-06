@@ -1,0 +1,84 @@
+<section id="controle-disciplinar" class="content-section d-none">
+    <h2 class="page-title">Controle Disciplinar</h2>
+
+    <!-- Dashboard de Análise Disciplinar -->
+    <div class="row mb-4">
+        <div class="col-lg-8">
+            <div class="card h-100">
+                <div class="card-header">Análise de Ocorrências</div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="card stat-card text-center">
+                                <div class="card-body">
+                                    <div class="number" id="disciplinar-total-registros">0</div>
+                                    <div class="label">Total de Registros</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-8">
+                            <div style="position: relative; height: 150px;">
+                                <canvas id="grafico-classificacao-ocorrencias"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card ai-analysis h-100">
+                <h5><i class="fas fa-robot"></i> Análise e Sugestões</h5>
+                <p id="disciplinar-analise-ia">Aguardando dados para análise...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex justify-content-end mb-3">
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary" onclick="abrirModalImpressaoDisciplinar()">
+                <i class="fas fa-print"></i> Imprimir Relatório por Funcionário
+            </button>
+            <button class="btn btn-primary" id="btn-novo-registro-disciplinar">
+                <i class="fas fa-plus-circle"></i> Novo Registro
+            </button>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">Registros Disciplinares</div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Classificação</th>
+                            <th>Data</th>
+                            <th>Ocorrência</th>
+                            <th>Medida Aplicada</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-controle-disciplinar"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">Resumo por Funcionário</div>
+        <div class="card-body">
+            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>Funcionário</th>
+                            <th>Total de Registros</th>
+                            <th>Última Ocorrência</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-resumo-funcionarios-disciplinar"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>

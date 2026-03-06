@@ -1,0 +1,53 @@
+<!-- Modal Nova Solicitação de Reposição -->
+<div class="modal fade" id="reposicaoNovaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-briefcase me-2"></i>Nova Solicitação de Reposição</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-reposicao-nova">
+                    <input type="hidden" id="rep-solicitacao-id">
+                    <div class="mb-3">
+                        <label class="form-label">Funcionário desligado</label>
+                        <select class="form-select" id="rep-nova-funcionario" required>
+                            <option value="">Selecione um funcionário (demitido)</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Empresa</label>
+                                <select class="form-select" id="rep-nova-empresa">
+                                    <option value="">Selecione</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Setor</label>
+                                <select class="form-select" id="rep-nova-setor" disabled>
+                                    <option value="">Selecione a empresa</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" class="form-control" id="rep-nova-cargo" placeholder="Ex: Analista">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="rep-nova-observacoes" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="criarReposicaoManual()">Abrir
+                    Solicitação</button>
+            </div>
+        </div>
+    </div>
+</div>

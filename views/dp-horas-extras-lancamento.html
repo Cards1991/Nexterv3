@@ -1,0 +1,50 @@
+<section id="dp-horas-extras-lancamento" class="content-section d-none">
+    <h2 class="page-title">Lançamento de Horas Extras</h2>
+    <div class="card col-lg-8 mx-auto">
+        <div class="card-header">
+            <i class="fas fa-stopwatch"></i> Registrar Horas Extras Diárias
+        </div>
+        <div class="card-body">
+            <form id="form-lancamento-horas-extras">
+                <div class="row g-3">
+                    <div class="col-md-12">
+                        <label for="he-lanc-employeeSelect" class="form-label">Funcionário</label>
+                        <select id="he-lanc-employeeSelect" class="form-select" required></select>
+                    </div>
+                    <div class="col-md-4"><label class="form-label">CPF</label><input type="text" id="he-lanc-cpf"
+                            class="form-control" readonly></div>
+                    <div class="col-md-4"><label class="form-label">Salário Base</label><input type="number"
+                            id="he-lanc-salary" class="form-control" readonly></div>
+                    <div class="col-md-4"><label class="form-label">Setor</label><input type="text" id="he-lanc-sector"
+                            class="form-control" readonly></div>
+                    <hr class="my-3">
+                    <div class="col-md-4">
+                        <label for="he-lanc-date" class="form-label">Data</label>
+                        <input type="date" id="he-lanc-date" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="he-lanc-entryTime" class="form-label">Hora de Entrada</label>
+                        <input type="time" id="he-lanc-entryTime" class="form-control" required>
+                    </div>
+                    <div class="col-md-4">
+                        <label for="he-lanc-exitTime" class="form-label">Hora de Saída</label>
+                        <input type="time" id="he-lanc-exitTime" class="form-control" required>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="he-lanc-reason" class="form-label">Motivo</label>
+                        <select id="he-lanc-reason" class="form-select" required></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="he-lanc-overtimeType" class="form-label">Tipo de Hora Extra</label>
+                        <select id="he-lanc-overtimeType" class="form-select" required>
+                            <option value="50">50% (Dias de Semana)</option>
+                            <option value="100">100% (Domingos/Feriados)</option>
+                        </select>
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary w-100 mt-4"><i class="fas fa-calculator"></i> Calcular e
+                    Salvar</button>
+            </form>
+        </div>
+    </div>
+</section>

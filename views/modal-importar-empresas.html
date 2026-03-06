@@ -1,0 +1,32 @@
+<!-- Modal de Importação de Empresas -->
+<div class="modal fade" id="importarEmpresasModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-file-csv me-2"></i>Importar Empresas via CSV</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selecione o arquivo CSV preenchido a partir do modelo. As colunas devem seguir exatamente a ordem
+                    do modelo para garantir a importação correta.</p>
+                <div class="mb-3">
+                    <label for="csv-empresas-file-input" class="form-label">Arquivo CSV</label>
+                    <input class="form-control" type="file" id="csv-empresas-file-input" accept=".csv">
+                </div>
+                <div id="importacao-empresas-resultado" class="mt-3" style="display: none;">
+                    <h6>Resultado da Importação:</h6>
+                    <div id="importacao-empresas-resumo"></div>
+                    <div id="importacao-empresas-erros-container" class="mt-2"
+                        style="max-height: 200px; overflow-y: auto;">
+                        <ul id="importacao-empresas-erros-lista" class="list-group"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btn-iniciar-importacao-empresas"
+                    onclick="processarArquivoEmpresasCSV()">Iniciar Importação</button>
+            </div>
+        </div>
+    </div>
+</div>

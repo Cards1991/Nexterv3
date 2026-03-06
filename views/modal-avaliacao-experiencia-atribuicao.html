@@ -1,0 +1,37 @@
+<div class="modal fade" id="modalAtribuicaoExperiencia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="attrib-exp-titulo">Atribuir Avaliação</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <!-- Container para alertas de faltas/atestados -->
+                <div id="aval-exp-alerts" class="mb-3"></div>
+
+                <form id="form-atribuicao-experiencia">
+                    <input type="hidden" id="attrib-exp-funcionario-id">
+                    <input type="hidden" id="attrib-exp-periodo">
+
+                    <div class="mb-3">
+                        <label class="form-label">Colaborador</label>
+                        <input type="text" class="form-control bg-light" id="attrib-exp-nome" readonly>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Atribuir Responsável</label>
+                        <select class="form-select" id="attrib-exp-usuario" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                        <div class="form-text">O usuário selecionado verá esta avaliação na sua agenda.</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarAtribuicaoExperiencia()">Salvar
+                    Atribuição</button>
+            </div>
+        </div>
+    </div>
+</div>

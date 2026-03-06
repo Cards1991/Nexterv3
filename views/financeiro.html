@@ -1,0 +1,65 @@
+<h2 class="page-title">Painel Financeiro</h2>
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label mb-1">Origem</label>
+            <select class="form-select form-select-sm" id="fin-filtro-origem">
+                <option value="">Todas</option>
+                <option>FOPAG</option>
+                <option>IMPOSTOS</option>
+                <option>DESPESAS COM M.O.</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Subdivisão</label>
+            <select class="form-select form-select-sm" id="fin-filtro-subdivisao">
+                <option value="">Todas</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Vencimento De:</label>
+            <input type="date" class="form-control form-control-sm" id="fin-filtro-inicio">
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Até:</label>
+            <input type="date" class="form-control form-control-sm" id="fin-filtro-fim">
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-fin-filtrar"><i class="fas fa-filter"></i></button>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-primary btn-sm" onclick="imprimirRelatorioFinanceiro()"><i
+                    class="fas fa-print"></i> Imprimir
+                Selecionados</button>
+        </div>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalLancamentoFinanceiro(null)">
+        <i class="fas fa-plus-circle"></i> Novo Lançamento
+    </button>
+</div>
+<div class="card">
+    <div class="card-header d-flex justify-content-between">
+        <span>Lançamentos Financeiros</span>
+        <span id="fin-total-valor" class="fw-bold">Total: R$ 0,00</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" class="form-check-input" id="fin-print-select-all"></th>
+                        <th>Vencimento</th>
+                        <th>Empresa</th>
+                        <th>Funcionário</th>
+                        <th>Origem</th>
+                        <th>Subdivisão</th>
+                        <th>Valor (R$)</th>
+                        <th>Observação</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-financeiro"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

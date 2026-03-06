@@ -1,0 +1,43 @@
+<h2 class="page-title">Saúde Ocupacional - Consumo de EPI</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <button class="btn btn-primary" id="btn-novo-consumo" onclick="abrirModalConsumoEPI()">
+            <i class="fas fa-hand-holding-medical"></i> Registrar Entrega
+        </button>
+        <button class="btn btn-outline-warning ms-2" onclick="reprocessarCustosEPI()"
+            title="Atualizar registros antigos com custo zero">
+            <i class="fas fa-sync-alt"></i> Reprocessar Custos
+        </button>
+    </div>
+    <div class="d-flex gap-2">
+        <input type="date" class="form-control" id="filtro-consumo-inicio">
+        <input type="date" class="form-control" id="filtro-consumo-fim">
+        <button class="btn btn-outline-secondary" onclick="carregarHistoricoConsumoEPI()"><i
+                class="fas fa-filter"></i></button>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Histórico de Entregas</div>
+    <div class="card-body table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Colaborador</th>
+                    <th>EPI</th>
+                    <th>CA</th>
+                    <th>Qtd</th>
+                    <th>Responsável</th>
+                    <th class="text-end">Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-consumo-epi">
+                <tr>
+                    <td colspan="7" class="text-center">Carregando...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

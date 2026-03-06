@@ -1,0 +1,117 @@
+<h2 class="page-title">Análise de Pessoas (People Analytics)</h2>
+
+<!-- Mapa de Distribuição -->
+<div class="card mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-map-marked-alt text-primary"></i> Mapa de Distribuição de
+            Colaboradores</h5>
+        <div class="btn-group">
+            <button class="btn btn-sm btn-outline-success" onclick="sincronizarGeolocalizacao()"
+                title="Gerar coordenadas para cadastros antigos"><i class="fas fa-map-marker-alt"></i> Geocodificar
+                Pendentes</button>
+            <button class="btn btn-sm btn-outline-primary" onclick="carregarMapaColaboradores()"><i
+                    class="fas fa-sync-alt"></i> Atualizar Mapa</button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="p-2 bg-light border-bottom d-flex gap-2 align-items-center flex-wrap">
+            <input type="text" id="filtro-mapa-nome" class="form-control form-control-sm" style="max-width: 200px;"
+                placeholder="Filtrar por Nome" oninput="filtrarMapaLocalmente()">
+            <select id="filtro-mapa-bairro" class="form-select form-select-sm" style="max-width: 250px;"
+                onchange="filtrarMapaLocalmente()">
+                <option value="">Todos os Bairros</option>
+            </select>
+            <span id="total-mapa-display" class="badge bg-primary">Total: 0</span>
+        </div>
+        <div id="mapa-colaboradores" style="height: 500px; width: 100%;"></div>
+    </div>
+</div>
+
+<div id="dashboard-analise-pessoas">
+    <!-- KPIs -->
+    <div class="row mb-4" id="analise-pessoas-kpis"></div>
+    <!-- Insights IA -->
+    <div class="card ai-analysis mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5><i class="fas fa-robot"></i> Insights Estratégicos e Sugestões</h5>
+        </div>
+        <div class="card-body" id="analise-pessoas-insights-ia"></div>
+    </div>
+    <!-- Gráficos -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Distribuição por Gênero</div>
+                <div class="card-body position-relative" style="height: 300px;"><canvas
+                        id="grafico-pessoas-genero"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Distribuição por Empresa</div>
+                <div class="card-body position-relative" style="height: 300px;"><canvas
+                        id="grafico-pessoas-setor"></canvas></div>
+            </div>
+        </div>
+        <div class="col-lg-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Proporção de Cargos</div>
+                <div class="card-body position-relative" style="height: 400px;"><canvas
+                        id="grafico-pessoas-cargos"></canvas></div>
+            </div>
+        </div>
+    </div>
+    <!-- Tabelas -->
+    <div class="row">
+        <div class="col-lg-12 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Ranking de Tempo de Empresa</div>
+                <div class="card-body table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Funcionário</th>
+                                <th>Tempo de Casa</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-pessoas-ranking-tempo"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Top 10 Maiores Salários</div>
+                <div class="card-body table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Funcionário</th>
+                                <th>Salário</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-pessoas-top-salarios"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6 mb-4">
+            <div class="card h-100">
+                <div class="card-header">Top 10 Menores Salários</div>
+                <div class="card-body table-responsive" style="max-height: 400px;">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Funcionário</th>
+                                <th>Salário</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-pessoas-bottom-salarios"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Outras Análises -->
+    <div id="analise-pessoas-outros"></div>
+</div>

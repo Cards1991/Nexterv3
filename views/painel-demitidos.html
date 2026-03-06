@@ -1,0 +1,41 @@
+<h2 class="page-title">Painel de Demitidos</h2>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Funcionários Desligados</span>
+        <div class="input-group" style="max-width: 400px;">
+            <input type="text" class="form-control" placeholder="Buscar por nome ou CPF..." id="busca-demitidos">
+            <button class="btn btn-outline-secondary" type="button" id="btn-busca-demitidos"><i
+                    class="fas fa-search"></i></button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+            <table class="table table-hover">
+                <thead class="sticky-top bg-white">
+                    <tr>
+                        <th>Nome do Funcionário</th>
+                        <th>Empresa</th>
+                        <th>Setor</th>
+                        <th>Data da Demissão</th>
+                        <th>Tipo de Demissão</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-demitidos-container">
+                    <tr>
+                        <td colspan="5" class="text-center">Carregando demitidos...</td>
+                    </tr>
+                    <!-- Exemplo de linha:
+                    <tr>
+                        <td>Nome do Ex-Funcionário</td>
+                        <td>Empresa Exemplo / Setor Exemplo</td>
+                        <td>DD/MM/AAAA</td>
+                        <td>Pedido de Demissão</td>
+                        <td class="text-end"><div class="btn-group btn-group-sm"><button class="btn btn-info" title="Visualizar"><i class="fas fa-eye"></i></button><button class="btn btn-warning" title="Alterar"><i class="fas fa-edit"></i></button><button class="btn btn-danger" title="Excluir"><i class="fas fa-trash"></i></button></div></td>
+                    </tr>
+                    -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

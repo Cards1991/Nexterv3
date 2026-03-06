@@ -1,0 +1,46 @@
+<!-- Modal de Permissões -->
+<div class="modal fade" id="permissoesModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-shield me-2"></i>Editar Permissões - <span
+                        id="perm-user-email"></span></h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-permissoes">
+                    <input type="hidden" id="perm-user-uid">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nome do Usuário</label>
+                            <input type="text" class="form-control" id="perm-user-nome">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Restringir ao Setor (deixe em branco para acesso a
+                                todos)</label>
+                            <select class="form-select" id="perm-user-setor">
+                                <option value="">Todos os setores</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Vincular Funcionário</label>
+                        <select class="form-select" id="perm-user-funcionario"></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Seções Permitidas</label>
+                        <div id="perm-secoes-container" class="row"></div>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="perm-is-admin">
+                        <label class="form-check-label" for="perm-is-admin">É Administrador (acesso total)</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="salvarPermissoes()">Salvar
+                    Permissões</button>
+            </div>
+        </div>
+    </div>
+</div>

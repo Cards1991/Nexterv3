@@ -1,0 +1,263 @@
+<!-- Modal Cálculo de Rescisão -->
+<div class="modal fade" id="calculoRescisaoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                        <div class="modal-header">
+                                <h5 class="modal-title"><i class="fas fa-calculator me-2"></i>Cálculo Prévio de Rescisão
+                                        - <span id="rescisao-funcionario-nome"></span></h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                                <form id="form-calculo-rescisao"
+                                        oninput="movimentacoesManager.atualizarTotaisRescisao()">
+                                        <div class="row g-3">
+                                                <div class="col-md-6">
+                                                        <div class="card border-success h-100 shadow-sm">
+                                                                <div class="card-header bg-success text-white fw-bold">
+                                                                        <i class="fas fa-plus-circle me-2"></i>
+                                                                        Proventos
+                                                                </div>
+                                                                <div class="card-body bg-light">
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Saldo
+                                                                                        de
+                                                                                        Salário</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-saldo-salario">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Férias
+                                                                                        Vencidas</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-ferias-vencidas">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Médias
+                                                                                        s/ Férias
+                                                                                        Vencidas</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-media-ferias-vencidas">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">1/3
+                                                                                        Constitucional
+                                                                                        (Vencidas)</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba bg-white"
+                                                                                        id="rescisao-terco-ferias-vencidas"
+                                                                                        readonly
+                                                                                        title="Calculado automaticamente">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Férias
+                                                                                        Proporcionais</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-ferias-proporcionais">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Média
+                                                                                        Férias
+                                                                                        Proporcionais</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-media-ferias-proporcionais">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">1/3
+                                                                                        Férias
+                                                                                        Proporcionais</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba bg-white"
+                                                                                        id="rescisao-terco-ferias-proporcionais"
+                                                                                        readonly
+                                                                                        title="Calculado automaticamente">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Horas
+                                                                                        Extras</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-horas-extras">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">DSR
+                                                                                        Horas
+                                                                                        Extras</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-dsr-horas-extras">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Médias
+                                                                                        sobre
+                                                                                        Horas</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-media-horas">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">13º
+                                                                                        Salário</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-13-salario">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Indenização
+                                                                                        art
+                                                                                        482CLT</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm verba"
+                                                                                        id="rescisao-indenizacao">
+                                                                        </div>
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                                <div class="col-md-6">
+                                                        <div class="card border-danger h-100 shadow-sm">
+                                                                <div class="card-header bg-danger text-white fw-bold">
+                                                                        <i class="fas fa-minus-circle me-2"></i>
+                                                                        Descontos
+                                                                </div>
+                                                                <div class="card-body bg-light">
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Faltas</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-faltas">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">DSR
+                                                                                        (Desconto)</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-dsr">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">INSS
+                                                                                        s/
+                                                                                        Salários</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-inss"></div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Farmácia</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-farmacia">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">I.R.R.F</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-irrf"></div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">INSS
+                                                                                        s/
+                                                                                        13º</label><input type="number"
+                                                                                        step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-inss-13">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Aviso
+                                                                                        Prévio
+                                                                                        (Desconto)</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-aviso">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Vales</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-vales">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Consulta
+                                                                                        Médica</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-consulta">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Consignados</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-consignado">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Diferença
+                                                                                        Salarial
+                                                                                        (Mês Ant.)</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-dif-salarial">
+                                                                        </div>
+                                                                        <div class="mb-2"><label
+                                                                                        class="form-label small fw-bold">Outros
+                                                                                        Descontos</label><input
+                                                                                        type="number" step="0.01"
+                                                                                        class="form-control form-control-sm desconto"
+                                                                                        id="rescisao-desconto-outros">
+                                                                        </div>
+                                                                </div>
+                                                        </div>
+                                                </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row text-center">
+                                                <div class="col-4">
+                                                        <div class="fw-bold">Total Verbas</div>
+                                                        <div class="fs-5 text-success" id="rescisao-total-verbas">R$
+                                                                0,00</div>
+                                                </div>
+                                                <div class="col-4">
+                                                        <div class="fw-bold">Total Descontos</div>
+                                                        <div class="fs-5 text-danger" id="rescisao-total-descontos">R$
+                                                                0,00</div>
+                                                </div>
+                                                <div class="col-4">
+                                                        <div class="fw-bold">Líquido a Receber</div>
+                                                        <div class="fs-4 fw-bold text-primary"
+                                                                id="rescisao-total-liquido">R$ 0,00</div>
+                                                </div>
+                                        </div>
+                                        <hr>
+                                        <div class="row">
+                                                <div class="col-md-6">
+                                                        <label class="form-label fw-bold">Valor de FGTS (Para fins
+                                                                rescisórios)</label><input type="number" step="0.01"
+                                                                class="form-control" id="rescisao-fgts-valor">
+                                                </div>
+                                                <div class="col-md-6">
+                                                        <label class="form-label fw-bold">Multa Rescisória
+                                                                (40%)</label><input type="number" step="0.01"
+                                                                class="form-control" id="rescisao-multa-rescisoria">
+                                                </div>
+                                        </div>
+                                </form>
+                        </div>
+                        <div class="modal-footer justify-content-between">
+                                <div>
+                                        <button type="button" class="btn btn-outline-secondary"
+                                                onclick="movimentacoesManager.imprimirTermoRescisao()"><i
+                                                        class="fas fa-print"></i> Imprimir
+                                                Termo</button>
+                                </div>
+                                <div>
+                                        <button type="button" class="btn btn-secondary"
+                                                data-bs-dismiss="modal">Cancelar</button>
+                                        <button type="button" class="btn btn-success"
+                                                onclick="movimentacoesManager.lancarRescisaoFinanceiro()">
+                                                <i class="fas fa-paper-plane"></i> Lançar no Financeiro
+                                        </button>
+                                </div>
+                        </div>
+                </div>
+        </div>
+</div>

@@ -1,15 +1,23 @@
-document.addEventListener('DOMContentLoaded', () => {
+function inicializarPontoPF() {
     const btnRegistrarPonto = document.getElementById('btn-registrar-ponto-pf');
     if (btnRegistrarPonto) {
-        btnRegistrarPonto.addEventListener('click', () => {
+        // Redefinir para evitar listeners duplicados
+        const newBtn = btnRegistrarPonto.cloneNode(true);
+        btnRegistrarPonto.parentNode.replaceChild(newBtn, btnRegistrarPonto);
+
+        newBtn.addEventListener('click', () => {
             registrarPontoPorBiometria();
         });
     }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    inicializarPontoPF();
 });
 
 function registrarPontoPorBiometria() {
     const statusDiv = document.getElementById('ponto-pf-status');
-    
+
     console.log("Solicitando autenticação biométrica...");
     statusDiv.innerHTML = `<div class="alert alert-info">Aguardando autenticação biométrica...</div>`;
 
@@ -33,7 +41,7 @@ function registrarPontoPorBiometria() {
 }
 
 // Callback que será chamado pelo código nativo Android após a autenticação
-window.onBiometriaIdentificada = async function(funcionarioId) {
+window.onBiometriaIdentificada = async function (funcionarioId) {
     const statusDiv = document.getElementById('ponto-pf-status');
     statusDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Processando ID: ${funcionarioId}...</div>`;
 
@@ -57,7 +65,7 @@ window.onBiometriaIdentificada = async function(funcionarioId) {
             .where('status', '==', 'aberto')
             // Firestore não permite where em campos diferentes com desigualdade, então filtramos a data no cliente
             .get();
-        
+
         const pontosAbertosHoje = pontoAbertoSnapshot.docs.filter(doc => {
             const dataPonto = doc.data().data.toDate();
             return dataPonto >= inicioDoDia && dataPonto <= fimDoDia;
@@ -77,7 +85,7 @@ window.onBiometriaIdentificada = async function(funcionarioId) {
                 totalHoras: 0
             };
             await db.collection('pontos_pf').add(novoPonto);
-            
+
             const horaEntrada = new Date().toLocaleTimeString('pt-BR');
             statusDiv.innerHTML = `<div class="alert alert-success">
                 <strong>Entrada registrada para ${nomeFuncionario}</strong><br>
@@ -129,7 +137,7 @@ async function calcularValorEstimadoHE(start, end, employeeId) {
         if (funcDoc.exists) {
             salario = parseFloat(funcDoc.data().salario || 0);
         }
-        
+
         if (salario <= 0) {
             console.warn(`Salário não encontrado ou zerado para funcionário ${employeeId}.`);
             return 0;
@@ -171,7 +179,7 @@ async function criarSolicitacaoHoraExtra(funcionarioId, nomeFuncionario, funcion
         };
 
         await db.collection('solicitacoes_horas').add(solicitacao);
-        
+
         console.log("Solicitação de hora extra criada com sucesso.");
         statusDiv.innerHTML += `<div class="alert alert-secondary mt-2">Solicitação de hora extra enviada para aprovação.</div>`;
 

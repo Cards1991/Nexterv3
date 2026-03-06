@@ -1,0 +1,110 @@
+<h2 class="page-title">Gestão de Processos Jurídicos</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div class="row g-2 align-items-end">
+        <div class="col-auto">
+            <label class="form-label mb-1">Status</label>
+            <select class="form-select form-select-sm" id="jur-filtro-status">
+                <option value="">Todos</option>
+                <option value="Ativo">Ativo</option>
+                <option value="Arquivado">Arquivado</option>
+                <option value="Suspenso">Suspenso</option>
+                <option value="Finalizado">Finalizado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Risco</label>
+            <select class="form-select form-select-sm" id="jur-filtro-risco">
+                <option value="">Todos</option>
+                <option value="Baixo">Baixo</option>
+                <option value="Médio">Médio</option>
+                <option value="Alto">Alto</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <label class="form-label mb-1">Tipo</label>
+            <select class="form-select form-select-sm" id="jur-filtro-tipo">
+                <option value="">Todos</option>
+                <option value="Trabalhista">Trabalhista</option>
+                <option value="Cível">Cível</option>
+                <option value="Tributário">Tributário</option>
+                <option value="Consumidor">Consumidor</option>
+                <option value="Penal">Penal</option>
+                <option value="Outro">Outro</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-filtrar-processos">
+                <i class="fas fa-filter"></i> Filtrar
+            </button>
+        </div>
+    </div>
+    <button class="btn btn-primary" onclick="abrirModalProcesso()">
+        <i class="fas fa-plus-circle"></i> Novo Processo
+    </button>
+</div>
+
+<!-- Métricas -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Processos Ativos</h5>
+                <h2 id="jur-total-processos" class="mb-0">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark">
+            <div class="card-body">
+                <h5 class="card-title">Risco Estimado</h5>
+                <h2 id="jur-risco-estimado" class="mb-0">R$ 0,00</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5 class="card-title">Prazos Próximos (7 dias)</h5>
+                <h2 id="jur-prazos-criticos" class="mb-0">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Processos Ganhos (Mês)</h5>
+                <h2 id="jur-processos-ganhos" class="mb-0">0</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Lista de Processos</span>
+        <div class="input-group input-group-sm" style="max-width: 300px;">
+            <input type="text" class="form-control" id="jur-busca-processo" placeholder="Buscar por número ou parte...">
+            <button class="btn btn-outline-secondary" type="button"><i class="fas fa-search"></i></button>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Processo / Tipo</th>
+                        <th>Cliente / Reclamante</th>
+                        <th>Fase Atual</th>
+                        <th>Risco / Valor</th>
+                        <th>Última Movimentação</th>
+                        <th class="text-end">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-processos-juridico">
+                    <!-- Conteúdo via JS -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

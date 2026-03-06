@@ -26,7 +26,7 @@ SaudePsicossocial.state = {
 // FUNÇÕES DE FORMATAÇÃO
 // ========================================
 
-SaudePsicossocial.formatarDuracaoConsolidada = function(totalDias) {
+SaudePsicossocial.formatarDuracaoConsolidada = function (totalDias) {
     if (!totalDias && totalDias !== 0) return '0 dias';
     if (totalDias > 0 && totalDias < 1) {
         const totalHoras = totalDias * 8;
@@ -37,13 +37,13 @@ SaudePsicossocial.formatarDuracaoConsolidada = function(totalDias) {
     return Number.isInteger(totalDias) ? `${totalDias} dia(s)` : `${totalDias.toFixed(2).replace('.', ',')} dias`;
 };
 
-SaudePsicossocial.formatarDuracaoAtestado = function(atestado) {
+SaudePsicossocial.formatarDuracaoAtestado = function (atestado) {
     if (atestado.duracaoTipo === 'horas') return `${atestado.duracaoValor} horas`;
     const d = atestado.dias || 0;
     return Number.isInteger(d) ? `${d} dia(s)` : `${d.toFixed(2).replace('.', ',')} dia(s)`;
 };
 
-SaudePsicossocial.formatarData = function(data) {
+SaudePsicossocial.formatarData = function (data) {
     if (!data) return 'N/A';
     try {
         // CORREÇÃO: Verifica se é Timestamp do Firebase
@@ -58,7 +58,7 @@ SaudePsicossocial.formatarData = function(data) {
     }
 };
 
-SaudePsicossocial.formatarDataHora = function(data) {
+SaudePsicossocial.formatarDataHora = function (data) {
     if (!data) return 'N/A';
     try {
         if (data && typeof data.toDate === 'function') {
@@ -71,7 +71,7 @@ SaudePsicossocial.formatarDataHora = function(data) {
     }
 };
 
-SaudePsicossocial.formatarDataParaInput = function(data) {
+SaudePsicossocial.formatarDataParaInput = function (data) {
     if (!data) return '';
     try {
         if (data && typeof data.toDate === 'function') {
@@ -84,7 +84,7 @@ SaudePsicossocial.formatarDataParaInput = function(data) {
     }
 };
 
-SaudePsicossocial.converterParaDate = function(data) {
+SaudePsicossocial.converterParaDate = function (data) {
     if (!data) return null;
     if (data && typeof data.toDate === 'function') {
         return data.toDate();
@@ -93,14 +93,14 @@ SaudePsicossocial.converterParaDate = function(data) {
     return new Date(data);
 };
 
-SaudePsicossocial.escapeHTML = function(text) {
+SaudePsicossocial.escapeHTML = function (text) {
     if (!text) return '';
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
 };
 
-SaudePsicossocial.mostrarMensagem = function(texto, tipo) {
+SaudePsicossocial.mostrarMensagem = function (texto, tipo) {
     console.log(`[${tipo}] ${texto}`);
     if (typeof window.mostrarMensagem === 'function') {
         window.mostrarMensagem(texto, tipo);
@@ -115,7 +115,7 @@ SaudePsicossocial.mostrarMensagem = function(texto, tipo) {
 // INICIALIZAÇÃO
 // ========================================
 
-SaudePsicossocial.inicializar = async function() {
+SaudePsicossocial.inicializar = async function () {
     console.log("Inicializando Gestão de Saúde Psicossocial...");
     await SaudePsicossocial.carregarDados();
 };
@@ -124,9 +124,9 @@ SaudePsicossocial.inicializar = async function() {
 // CARREGAMENTO DE DADOS
 // ========================================
 
-SaudePsicossocial.carregarDados = async function() {
+SaudePsicossocial.carregarDados = async function () {
     if (SaudePsicossocial.state.carregando) return;
-    
+
     const tbody = document.getElementById('tabela-casos-psicossociais');
     if (!tbody) return;
 
@@ -136,7 +136,7 @@ SaudePsicossocial.carregarDados = async function() {
     try {
         const dataLimite = new Date();
         dataLimite.setFullYear(dataLimite.getFullYear() - 1);
-        
+
         const snapshot = await db.collection('atestados')
             .where('data_atestado', '>=', dataLimite)
             .orderBy('data_atestado', 'asc')
@@ -152,7 +152,7 @@ SaudePsicossocial.carregarDados = async function() {
         atestados.forEach(atestado => {
             const funcId = atestado.funcionarioId;
             if (!funcId) return;
-            
+
             if (!casosMap.has(funcId)) {
                 casosMap.set(funcId, {
                     idCaso: atestado.id,
@@ -163,7 +163,7 @@ SaudePsicossocial.carregarDados = async function() {
                     totalDias: 0
                 });
             }
-            
+
             const caso = casosMap.get(funcId);
             caso.atestados.push(atestado);
             caso.totalDias += (atestado.dias || 0);
@@ -188,7 +188,7 @@ SaudePsicossocial.carregarDados = async function() {
 // RENDERIZAÇÃO
 // ========================================
 
-SaudePsicossocial.renderizarTabela = function() {
+SaudePsicossocial.renderizarTabela = function () {
     const tbody = document.getElementById('tabela-casos-psicossociais');
     if (!tbody) return;
 
@@ -208,7 +208,7 @@ SaudePsicossocial.renderizarTabela = function() {
     tbody.innerHTML = casos.map(c => {
         const primeiro = c.atestados[0];
         const estagio = primeiro?.investigacaoPsicossocial?.estagio || 'Não iniciado';
-        
+
         const badgeClass = {
             'Não iniciado': 'bg-secondary',
             'Análise Inicial': 'bg-warning text-dark',
@@ -238,42 +238,42 @@ SaudePsicossocial.renderizarTabela = function() {
     }).join('');
 };
 
-SaudePsicossocial.renderizarMetricas = function() {
+SaudePsicossocial.renderizarMetricas = function () {
     const total = document.getElementById('psico-kpi-total-casos');
     const abertos = document.getElementById('psico-kpi-casos-abertos');
     const media = document.getElementById('psico-kpi-media-dias');
-    
+
     if (total && abertos && media) {
-        const numAbertos = SaudePsicossocial.state.cache.casos.filter(c => 
+        const numAbertos = SaudePsicossocial.state.cache.casos.filter(c =>
             c.atestados[0]?.investigacaoPsicossocial?.estagio !== 'Caso Encerrado'
         ).length;
-        
+
         const totalDias = SaudePsicossocial.state.cache.atestados.reduce((acc, a) => acc + (a.dias || 0), 0);
         const mediaDias = SaudePsicossocial.state.cache.atestados.length ? (totalDias / SaudePsicossocial.state.cache.atestados.length).toFixed(1) : '0.0';
-        
+
         total.textContent = SaudePsicossocial.state.cache.casos.length;
         abertos.textContent = numAbertos;
         media.textContent = mediaDias;
     }
 };
 
-SaudePsicossocial.renderizarGrafico = function() {
+SaudePsicossocial.renderizarGrafico = function () {
     const canvas = document.getElementById('grafico-tendencia-psicossocial');
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const hoje = new Date();
     const meses = {};
-    
+
     for (let i = 5; i >= 0; i--) {
         const d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
         meses[d.toLocaleString('pt-BR', { month: 'short', year: '2-digit' })] = 0;
     }
 
     const seisMesesAtras = new Date(hoje.getFullYear(), hoje.getMonth() - 5, 1);
-    
+
     SaudePsicossocial.state.cache.atestados.forEach(a => {
         const data = SaudePsicossocial.converterParaDate(a.data_atestado);
         if (data && data >= seisMesesAtras) {
@@ -312,7 +312,7 @@ SaudePsicossocial.renderizarGrafico = function() {
 // MODAL
 // ========================================
 
-SaudePsicossocial.abrirModal = async function(casoId) {
+SaudePsicossocial.abrirModal = async function (casoId) {
     const modalEl = document.getElementById('acompanhamentoPsicossocialModal');
     if (!modalEl) return;
 
@@ -346,12 +346,12 @@ SaudePsicossocial.abrirModal = async function(casoId) {
 
     const estagioSelect = document.getElementById('psico-estagio');
     const dataContainer = document.getElementById('psico-data-evento-container');
-    
-    const toggleData = function() {
+
+    const toggleData = function () {
         const show = ['Conversa Agendada', 'Conversado com Funcionário', 'Plano de Ação Definido', 'Caso Encerrado'].includes(estagioSelect.value);
         dataContainer.style.display = show ? 'block' : 'none';
     };
-    
+
     estagioSelect.onchange = toggleData;
     toggleData();
 
@@ -366,13 +366,13 @@ SaudePsicossocial.abrirModal = async function(casoId) {
     modal.show();
 };
 
-SaudePsicossocial.carregarUsuarios = async function() {
+SaudePsicossocial.carregarUsuarios = async function () {
     if (SaudePsicossocial.state.usuariosCache) return;
-    
+
     try {
         const snapshot = await db.collection('usuarios').orderBy('nome').get();
         SaudePsicossocial.state.usuariosCache = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        
+
         const select = document.getElementById('psico-atribuir-para');
         if (select && select.options.length <= 1) {
             SaudePsicossocial.state.usuariosCache.forEach(u => {
@@ -387,10 +387,10 @@ SaudePsicossocial.carregarUsuarios = async function() {
 };
 
 // CORREÇÃO: Função principal que estava causando o erro
-SaudePsicossocial.renderizarHistorico = function(casoId, caso, investigacao) {
+SaudePsicossocial.renderizarHistorico = function (casoId, caso, investigacao) {
     const container = document.getElementById('psico-historico-container');
     if (!container) return;
-    
+
     // Atestados
     const atestados = caso.atestados.map(a => {
         const dataAtestado = SaudePsicossocial.converterParaDate(a.data_atestado);
@@ -415,7 +415,7 @@ SaudePsicossocial.renderizarHistorico = function(casoId, caso, investigacao) {
         if (item.data) {
             dataItem = SaudePsicossocial.converterParaDate(item.data);
         }
-        
+
         return {
             tipo: 'acompanhamento',
             data: dataItem || new Date(),
@@ -466,10 +466,10 @@ SaudePsicossocial.renderizarHistorico = function(casoId, caso, investigacao) {
 // OPERAÇÕES DE ESCRITA
 // ========================================
 
-SaudePsicossocial.salvarAcompanhamento = async function() {
+SaudePsicossocial.salvarAcompanhamento = async function () {
     const btn = document.getElementById('btn-salvar-acompanhamento');
     if (btn.disabled) return;
-    
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
@@ -480,7 +480,7 @@ SaudePsicossocial.salvarAcompanhamento = async function() {
         const obsInternas = document.getElementById('psico-observacoes-internas').value.trim();
         const dataEventoStr = document.getElementById('psico-data-evento').value;
         const atribuidoId = document.getElementById('psico-atribuir-para').value;
-        
+
         if (!obs) throw new Error("Observações são obrigatórias");
 
         let dataEvento = null;
@@ -491,7 +491,7 @@ SaudePsicossocial.salvarAcompanhamento = async function() {
 
         const atestadoRef = db.collection('atestados').doc(atestadoId);
         const atestadoDoc = await atestadoRef.get();
-        
+
         if (!atestadoDoc.exists) throw new Error("Atestado não encontrado");
 
         const investigacao = atestadoDoc.data().investigacaoPsicossocial || {};
@@ -557,11 +557,11 @@ SaudePsicossocial.salvarAcompanhamento = async function() {
     }
 };
 
-SaudePsicossocial.editarHistorico = async function(casoId, index) {
+SaudePsicossocial.editarHistorico = async function (casoId, index) {
     try {
         const atestadoRef = db.collection('atestados').doc(casoId);
         const doc = await atestadoRef.get();
-        
+
         if (!doc.exists) {
             SaudePsicossocial.mostrarMensagem("Registro não encontrado", "error");
             return;
@@ -596,17 +596,17 @@ SaudePsicossocial.editarHistorico = async function(casoId, index) {
     }
 };
 
-SaudePsicossocial.atualizarHistorico = async function() {
+SaudePsicossocial.atualizarHistorico = async function () {
     const btn = document.getElementById('btn-salvar-acompanhamento');
     if (btn.disabled) return;
-    
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atualizando...';
 
     try {
         const casoId = SaudePsicossocial.state.casoEditando;
         const index = SaudePsicossocial.state.indiceEditando;
-        
+
         if (!casoId || index === null) {
             throw new Error("Modo de edição não está ativo");
         }
@@ -620,7 +620,7 @@ SaudePsicossocial.atualizarHistorico = async function() {
 
         const atestadoRef = db.collection('atestados').doc(casoId);
         const doc = await atestadoRef.get();
-        
+
         if (!doc.exists) throw new Error("Registro não encontrado");
 
         const investigacao = doc.data().investigacaoPsicossocial || {};
@@ -655,10 +655,10 @@ SaudePsicossocial.atualizarHistorico = async function() {
 
         const caso = SaudePsicossocial.state.cache.casos.find(c => c.idCaso === casoId);
         if (caso) {
-            caso.atestados[0].investigacaoPsicossocial = { 
+            caso.atestados[0].investigacaoPsicossocial = {
                 ...caso.atestados[0].investigacaoPsicossocial,
-                estagio, 
-                historico 
+                estagio,
+                historico
             };
         }
 
@@ -689,13 +689,13 @@ SaudePsicossocial.atualizarHistorico = async function() {
     }
 };
 
-SaudePsicossocial.excluirHistorico = async function(casoId, index) {
+SaudePsicossocial.excluirHistorico = async function (casoId, index) {
     if (!confirm("Tem certeza que deseja excluir este registro?")) return;
 
     try {
         const atestadoRef = db.collection('atestados').doc(casoId);
         const doc = await atestadoRef.get();
-        
+
         if (!doc.exists) {
             SaudePsicossocial.mostrarMensagem("Registro não encontrado", "error");
             return;
@@ -747,7 +747,7 @@ SaudePsicossocial.excluirHistorico = async function(casoId, index) {
 // IMPRESSÃO
 // ========================================
 
-SaudePsicossocial.imprimirHistorico = async function() {
+SaudePsicossocial.imprimirHistorico = async function () {
     const casoId = document.getElementById('psico-atestado-id')?.value;
     const incluirInternas = document.getElementById('check-imprimir-internas')?.checked;
 
@@ -821,7 +821,7 @@ SaudePsicossocial.imprimirHistorico = async function() {
         const historicoAcompanhamento = (investigacao.historico || []).map(item => {
             let detalhes = item.observacoes || '';
             // Limpeza de texto
-            detalhes = detalhes.replace(/<[^>]*>?/gm, ''); 
+            detalhes = detalhes.replace(/<[^>]*>?/gm, '');
 
             if (incluirInternas && item.observacoesInternas && item.observacoesInternas.trim().length > 1) {
                 detalhes += `<br><span class="obs-interna"><strong>Obs. Interna:</strong> ${item.observacoesInternas}</span>`;
@@ -970,23 +970,12 @@ SaudePsicossocial.imprimirHistorico = async function() {
 // INICIALIZAÇÃO AUTOMÁTICA
 // ========================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    if (typeof db !== 'undefined') {
-        SaudePsicossocial.inicializar();
-    } else {
-        console.log("Aguardando Firebase...");
-        setTimeout(() => {
-            if (typeof db !== 'undefined') {
-                SaudePsicossocial.inicializar();
-            }
-        }, 1000);
-    }
-});
+// Removido listener automático - agora inicializado via app.js / showSection
 
 // Expõe funções necessárias globalmente
 window.SaudePsicossocial = SaudePsicossocial;
 
 // Função global para impressão do histórico (usada pelo botão no HTML do modal de Saúde Psicossocial)
-window.SaudePsicossocialImprimirHistorico = function() {
+window.SaudePsicossocialImprimirHistorico = function () {
     SaudePsicossocial.imprimirHistorico();
 };

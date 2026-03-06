@@ -1,0 +1,34 @@
+<h2 class="page-title">Empresas e Setores</h2>
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Empresas Cadastradas</span>
+        <div class="btn-group">
+            <button class="btn btn-outline-secondary btn-sm" onclick="exportarModeloEmpresasCSV()">
+                <i class="fas fa-file-csv"></i> Exportar Modelo (CSV)
+            </button>
+            <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#importarEmpresasModal">
+                <i class="fas fa-file-import"></i> Importar Empresas (CSV)
+            </button>
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#empresaModal">
+                <i class="fas fa-plus"></i> Nova Empresa
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Nome da Empresa</th>
+                        <th>CNPJ</th>
+                        <th>Setores</th>
+                        <th>Funcionários</th>
+                        <th>Funções</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-empresas"></tbody>
+            </table>
+        </div>
+    </div>
+</div>

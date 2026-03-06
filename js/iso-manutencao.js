@@ -28,7 +28,7 @@ async function inicializarManutencao() {
             mostrarMensagem("Firebase não inicializado. Recarregue a página.", "error");
             return;
         }
-        
+
         if (typeof db === 'undefined') {
             mostrarMensagem("Banco de dados não disponível.", "error");
             return;
@@ -37,12 +37,12 @@ async function inicializarManutencao() {
         // Configurar botões
         const btnNovo = document.getElementById('btn-novo-chamado-manutencao');
         const btnFiltrar = document.getElementById('btn-filtrar-manutencao');
-        
+
         if (btnNovo && !btnNovo.hasAttribute('data-listener-bound')) {
             btnNovo.addEventListener('click', () => abrirModalChamado(null));
             btnNovo.setAttribute('data-listener-bound', 'true');
         }
-        
+
         if (btnFiltrar && !btnFiltrar.hasAttribute('data-listener-bound')) {
             btnFiltrar.addEventListener('click', carregarChamadosManutencao);
             btnFiltrar.setAttribute('data-listener-bound', 'true');
@@ -50,10 +50,10 @@ async function inicializarManutencao() {
 
         // Carregar configurações do gerente
         await carregarConfigGerente();
-        
+
         // Carregar chamados
         await carregarChamadosManutencao();
-        
+
         // Adicionar botão de configurações WhatsApp
         setTimeout(adicionarBotaoConfigWhatsApp, 1000);
     } catch (e) {
@@ -82,7 +82,7 @@ async function carregarConfigGerente() {
             .where('receberNotificacoes', '==', true)
             .limit(1)
             .get();
-        
+
         if (!gerentesSnap.empty) {
             const gerente = gerentesSnap.docs[0].data();
             WHATSAPP_CONFIG.gerenteTelefone = gerente.telefone || WHATSAPP_CONFIG.gerenteTelefone;
@@ -113,10 +113,10 @@ function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
             console.warn('Número de telefone inválido para WhatsApp');
             return false;
         }
-        
+
         // URL do sistema (para acesso rápido)
         const urlSistema = window.location.origin;
-        
+
         // Preparar mensagem
         const mensagem = WHATSAPP_CONFIG.mensagemPadrao
             .replace('{maquina}', chamadoData.maquinaNome || chamadoData.maquinaId || 'N/A')
@@ -128,16 +128,16 @@ function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
 
         // Codificar mensagem para URL
         const mensagemCodificada = encodeURIComponent(mensagem);
-        
+
         // Criar link do WhatsApp
         const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
-        
+
         // Abrir em nova janela
         const novaJanela = window.open(whatsappLink, '_blank');
-        
+
         if (novaJanela) {
             console.log('WhatsApp aberto para envio de notificação');
-            
+
             // Fechar janela após alguns segundos (opcional)
             setTimeout(() => {
                 try {
@@ -148,11 +148,11 @@ function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
                     console.log('Não foi possível fechar a janela automaticamente');
                 }
             }, 5000);
-            
+
             return true;
         } else {
             console.warn('Pop-up bloqueado. Por favor, permita pop-ups para envio automático.');
-            
+
             // Alternativa: Mostrar link para clique manual
             mostrarLinkWhatsAppManual(whatsappLink);
             return false;
@@ -167,7 +167,7 @@ function mostrarLinkWhatsAppManual(link) {
     // Remove alerta anterior se existir
     const alertaAnterior = document.getElementById('whatsapp-manual-alert');
     if (alertaAnterior) alertaAnterior.remove();
-    
+
     const linkManual = document.createElement('div');
     linkManual.className = 'alert alert-info mt-3';
     linkManual.id = 'whatsapp-manual-alert';
@@ -187,7 +187,7 @@ function mostrarLinkWhatsAppManual(link) {
             </div>
         </div>
     `;
-    
+
     // Adicionar à página (no topo)
     const container = document.querySelector('.container-fluid') || document.body;
     if (container.firstChild) {
@@ -199,11 +199,11 @@ function mostrarLinkWhatsAppManual(link) {
 
 function enviarAlertaCriticoWhatsApp(chamadoData) {
     if (!chamadoData.maquinaParada || !WHATSAPP_CONFIG.enabled) return false;
-    
+
     try {
         const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
         if (!telefone) return false;
-        
+
         const mensagemAlerta = `🔥 *ALERTA CRÍTICO - MÁQUINA PARADA* 🔥\n\n` +
             `🚫 MÁQUINA: ${chamadoData.maquinaNome || chamadoData.maquinaId}\n` +
             `📋 MOTIVO: ${chamadoData.motivo}\n` +
@@ -215,21 +215,21 @@ function enviarAlertaCriticoWhatsApp(chamadoData) {
 
         const mensagemCodificada = encodeURIComponent(mensagemAlerta);
         const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
-        
+
         // Abre em nova janela
         const janelaAlerta = window.open(whatsappLink, '_blank', 'width=600,height=700');
-        
+
         if (janelaAlerta) {
             console.log('Alerta crítico enviado via WhatsApp');
-            
+
             // Fecha após 10 segundos
             setTimeout(() => {
                 try {
                     if (!janelaAlerta.closed) janelaAlerta.close();
-                } catch (e) {}
+                } catch (e) { }
             }, 10000);
         }
-        
+
         return true;
     } catch (error) {
         console.error('Erro ao enviar alerta crítico:', error);
@@ -245,7 +245,7 @@ async function reenviarNotificacao(chamadoId) {
     }
 
     const enviado = enviarNotificacaoWhatsApp(chamado);
-    
+
     if (enviado) {
         // Marca como enviado no banco de dados
         try {
@@ -354,12 +354,12 @@ async function salvarConfigWhatsApp() {
     const mensagemInput = document.getElementById('config-whatsapp-mensagem');
     const nomeInput = document.getElementById('config-whatsapp-nome');
     const ativoInput = document.getElementById('config-whatsapp-ativo');
-    
+
     if (!telefoneInput || !mensagemInput) {
         mostrarMensagem("Elementos do formulário não encontrados", "error");
         return;
     }
-    
+
     const telefone = telefoneInput.value.trim();
     const mensagem = mensagemInput.value.trim();
     const nome = nomeInput ? nomeInput.value.trim() : '';
@@ -371,13 +371,13 @@ async function salvarConfigWhatsApp() {
         telefoneInput.focus();
         return;
     }
-    
+
     if (!mensagem) {
         mostrarMensagem("A mensagem padrão é obrigatória", "warning");
         mensagemInput.focus();
         return;
     }
-    
+
     if (ativo && !formatarTelefoneWhatsApp(telefone)) {
         mostrarMensagem("Número de telefone inválido", "warning");
         telefoneInput.focus();
@@ -399,7 +399,7 @@ async function salvarConfigWhatsApp() {
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
             atualizadoPor: firebase.auth().currentUser?.uid || 'sistema'
         }, { merge: true });
-        
+
         mostrarMensagem("Configurações do WhatsApp salvas com sucesso!", "success");
         bootstrap.Modal.getInstance(document.getElementById('configWhatsAppModal')).hide();
     } catch (error) {
@@ -414,7 +414,7 @@ function testarWhatsApp() {
         mostrarMensagem("Campo de telefone não encontrado", "error");
         return;
     }
-    
+
     const telefone = telefoneInput.value.trim();
     if (!telefone) {
         mostrarMensagem("Informe um telefone para testar", "warning");
@@ -427,11 +427,11 @@ function testarWhatsApp() {
         mostrarMensagem("Número de telefone inválido", "warning");
         return;
     }
-    
+
     const mensagemTeste = "🔔 *TESTE DE NOTIFICAÇÃO*\n\nEsta é uma mensagem de teste do sistema de manutenção.\n\n✅ Sistema funcionando corretamente!\n\nHora: " + new Date().toLocaleTimeString('pt-BR');
     const mensagemCodificada = encodeURIComponent(mensagemTeste);
     const whatsappLink = `https://wa.me/${telefoneFormatado}?text=${mensagemCodificada}`;
-    
+
     const janelaTeste = window.open(whatsappLink, '_blank');
     if (!janelaTeste) {
         mostrarLinkWhatsAppManual(whatsappLink);
@@ -441,7 +441,7 @@ function testarWhatsApp() {
 function adicionarBotaoConfigWhatsApp() {
     // Seleciona o container dos botões de ação na seção de manutenção
     const actionContainer = document.querySelector('#iso-manutencao .d-flex.gap-2');
-    
+
     if (actionContainer && !document.getElementById('btn-config-whatsapp')) {
         const btnConfig = document.createElement('button');
         btnConfig.id = 'btn-config-whatsapp';
@@ -449,7 +449,7 @@ function adicionarBotaoConfigWhatsApp() {
         btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar WhatsApp';
         btnConfig.title = 'Configurar notificações por WhatsApp';
         btnConfig.onclick = abrirConfigWhatsApp;
-        
+
         // Adiciona o botão junto aos outros botões de gerenciamento
         actionContainer.appendChild(btnConfig);
     }
@@ -468,7 +468,7 @@ async function carregarChamadosManutencao() {
         console.error("Elemento tabela-chamados-manutencao não encontrado");
         return;
     }
-    
+
     tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
@@ -510,7 +510,7 @@ async function carregarChamadosManutencao() {
 
                 const timeA = a.dataAbertura?.toMillis() || 0;
                 const timeB = b.dataAbertura?.toMillis() || 0;
-                
+
                 return timeB - timeA;
             });
 
@@ -544,9 +544,9 @@ async function carregarChamadosManutencao() {
                     default:
                         statusBadge = `<span class="badge bg-secondary">${chamado.status}</span>`;
                 }
-                
+
                 let prioridadeBadgeClass = 'bg-secondary';
-                switch(chamado.prioridade) {
+                switch (chamado.prioridade) {
                     case 'Urgente': prioridadeBadgeClass = 'bg-danger'; break;
                     case 'Prioritário': prioridadeBadgeClass = 'bg-warning text-dark'; break;
                     case 'Normal': prioridadeBadgeClass = 'bg-success'; break;
@@ -596,7 +596,7 @@ async function carregarChamadosManutencao() {
                 }
 
                 // Botão para reenviar notificação WhatsApp
-                const botaoWhatsApp = WHATSAPP_CONFIG.enabled ? 
+                const botaoWhatsApp = WHATSAPP_CONFIG.enabled ?
                     `<button class="btn btn-sm ${chamado.notificacaoEnviada ? 'btn-success' : 'btn-outline-success'}" 
                             title="${chamado.notificacaoEnviada ? 'Notificação enviada' : 'Enviar notificação WhatsApp'}" 
                             onclick="reenviarNotificacao('${chamado.id}')">
@@ -824,7 +824,7 @@ async function abrirModalChamado(chamadoId = null) {
 
     const form = document.getElementById('form-chamado-manutencao');
     if (form) form.reset();
-    
+
     document.getElementById('chamado-id').value = chamadoId || '';
     document.getElementById('chamado-prioridade').value = 'Normal';
     document.getElementById('chamado-enviar-whatsapp').checked = WHATSAPP_CONFIG.enabled;
@@ -896,7 +896,7 @@ async function abrirModalChamado(chamadoId = null) {
                 document.getElementById('chamado-obs').value = data.observacoes || '';
                 document.getElementById('chamado-prioridade').value = data.prioridade || 'Normal';
                 document.getElementById('chamado-tipo-manutencao').value = data.tipoManutencao || 'Corretiva';
-                if(data.mecanicoResponsavelId) document.getElementById('chamado-mecanico-abertura').value = data.mecanicoResponsavelId;
+                if (data.mecanicoResponsavelId) document.getElementById('chamado-mecanico-abertura').value = data.mecanicoResponsavelId;
                 document.getElementById('chamado-maquina-parada').checked = data.maquinaParada || false;
             }
         } catch (error) {
@@ -910,7 +910,7 @@ async function abrirModalChamado(chamadoId = null) {
     const mesSelect = document.getElementById('chamado-mes-referencia');
 
     if (tipoManutencaoSelect && mesContainer && mesSelect) {
-        tipoManutencaoSelect.addEventListener('change', function() {
+        tipoManutencaoSelect.addEventListener('change', function () {
             if (this.value === 'Preventiva Mensal') {
                 mesContainer.style.display = 'block';
                 mesSelect.required = true;
@@ -941,7 +941,7 @@ async function salvarChamado() {
     const mesReferencia = document.getElementById('chamado-mes-referencia')?.value;
     const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp')?.checked && WHATSAPP_CONFIG.enabled;
     const chamadoId = document.getElementById('chamado-id')?.value;
-    
+
     const mecanicoSelect = document.getElementById('chamado-mecanico-abertura');
     const mecanicoId = mecanicoSelect?.value;
     const mecanicoNome = mecanicoSelect && mecanicoSelect.selectedIndex > 0 ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text : null;
@@ -983,7 +983,7 @@ async function salvarChamado() {
 
         let docRef;
         let chamadoCompleto;
-        
+
         if (chamadoId) {
             // Atualizar chamado existente
             await db.collection('manutencao_chamados').doc(chamadoId).update(chamadoData);
@@ -998,16 +998,16 @@ async function salvarChamado() {
             chamadoData.pecasUtilizadas = null;
             chamadoData.tipoManutencao = null;
             chamadoData.mecanicoResponsavelNome = null;
-            
+
             docRef = await db.collection('manutencao_chamados').add(chamadoData);
             const novoId = docRef.id;
             chamadoCompleto = { id: novoId, ...chamadoData };
-            
+
             // ENVIA NOTIFICAÇÃO WHATSAPP
             let notificacaoEnviada = false;
             if (enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
                 let telefoneDestino = null;
-                
+
                 // Se selecionou mecânico, busca o telefone dele
                 if (mecanicoId) {
                     const mecDoc = await db.collection('funcionarios').doc(mecanicoId).get();
@@ -1016,15 +1016,15 @@ async function salvarChamado() {
 
                 // Envia notificação principal
                 notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto, telefoneDestino);
-                
+
                 // Se for máquina parada, envia alerta crítico
                 if (maquinaParada) {
                     setTimeout(() => enviarAlertaCriticoWhatsApp(chamadoCompleto), 1000);
                 }
-                
+
                 // Atualiza status da notificação
                 if (notificacaoEnviada) {
-                    await docRef.update({ 
+                    await docRef.update({
                         notificacaoEnviada: true,
                         notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
                     });
@@ -1040,10 +1040,10 @@ async function salvarChamado() {
             }
             mostrarMensagem(mensagemSucesso, "success");
         }
-        
+
         // Fecha o modal
         bootstrap.Modal.getInstance(document.getElementById('manutencaoChamadoModal')).hide();
-        
+
         // Recarrega a lista
         await carregarChamadosManutencao();
 
@@ -1064,20 +1064,20 @@ async function atualizarPrioridade(chamadoId, novaPrioridade) {
         mostrarMensagem("Dados inválidos para atualizar prioridade", "warning");
         return;
     }
-    
+
     try {
         await db.collection('manutencao_chamados').doc(chamadoId).update({
             prioridade: novaPrioridade,
             prioridadeAtualizadaEm: firebase.firestore.FieldValue.serverTimestamp(),
             prioridadeAtualizadaPor: firebase.auth().currentUser?.uid
         });
-        
+
         // Se for Urgente e máquina parada, reenvia notificação
         const chamado = __chamados_cache.find(c => c.id === chamadoId);
         if (novaPrioridade === 'Urgente' && chamado?.maquinaParada && WHATSAPP_CONFIG.enabled) {
-            setTimeout(() => enviarAlertaCriticoWhatsApp({...chamado, prioridade: 'Urgente'}), 500);
+            setTimeout(() => enviarAlertaCriticoWhatsApp({ ...chamado, prioridade: 'Urgente' }), 500);
         }
-        
+
         mostrarMensagem(`Prioridade atualizada para ${novaPrioridade}!`, "info");
     } catch (error) {
         console.error("Erro ao atualizar prioridade:", error);
@@ -1128,12 +1128,12 @@ async function iniciarAtendimento(chamadoId) {
 
         // Adiciona o listener para o checkbox
         const paradaCheck = document.getElementById('iniciar-atendimento-parada-check');
-        paradaCheck.addEventListener('change', function() {
+        paradaCheck.addEventListener('change', function () {
             const container = document.getElementById('parada-prevista-container');
             const input = document.getElementById('parada-inicio-previsto');
             container.style.display = this.checked ? 'block' : 'none';
             input.disabled = !this.checked;
-            
+
             if (this.checked) {
                 // Define data/hora atual como padrão
                 const now = new Date();
@@ -1219,7 +1219,7 @@ async function confirmarInicioAtendimento() {
             if (chamadoDoc.exists && !chamadoDoc.data().paradaInicioTimestamp) {
                 updateData.paradaInicioTimestamp = new Date(inicioPrevisto);
             }
-            
+
             // Envia notificação de máquina que vai parar
             const chamado = __chamados_cache.find(c => c.id === chamadoId);
             if (chamado && WHATSAPP_CONFIG.enabled) {
@@ -1230,7 +1230,7 @@ async function confirmarInicioAtendimento() {
                         `Mecânico: ${mecanicoNome}\n` +
                         `Previsão de parada: ${new Date(inicioPrevisto).toLocaleString('pt-BR')}\n\n` +
                         `Preparem-se para a parada programada!`;
-                    
+
                     const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
                     if (telefone) {
                         const mensagemCodificada = encodeURIComponent(mensagem);
@@ -1379,7 +1379,7 @@ async function finalizarChamado() {
         mostrarMensagem("Selecione o mecânico responsável.", "warning");
         return;
     }
-    
+
     if (!observacoesMecanico) {
         mostrarMensagem("Preencha as observações do mecânico.", "warning");
         return;
@@ -1408,7 +1408,7 @@ async function finalizarChamado() {
             const diffMs = dataEncerramento - inicio;
             const horasCalc = Math.floor(diffMs / 3600000);
             const minutosCalc = Math.floor((diffMs % 3600000) / 60000);
-            
+
             tempoParada = `${horasCalc}h ${minutosCalc}m`;
         }
 
@@ -1439,7 +1439,7 @@ async function finalizarChamado() {
                     `Tempo de parada: ${tempoParada || 'N/A'}\n` +
                     `Concluído em: ${dataEncerramento.toLocaleString('pt-BR')}\n\n` +
                     `🔧 *SERVIÇO REALIZADO:*\n${observacoesMecanico.substring(0, 200)}${observacoesMecanico.length > 200 ? '...' : ''}`;
-                
+
                 const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
                 if (telefone) {
                     const mensagemCodificada = encodeURIComponent(mensagemConclusao);
@@ -1467,7 +1467,7 @@ async function excluirChamado(chamadoId) {
     if (!confirm("Tem certeza que deseja excluir este chamado permanentemente?\n\n⚠️ Esta ação não pode ser desfeita!")) {
         return;
     }
-    
+
     try {
         await db.collection('manutencao_chamados').doc(chamadoId).delete();
         mostrarMensagem("Chamado excluído com sucesso!", "info");
@@ -1510,8 +1510,8 @@ async function imprimirChamado(chamadoId) {
             patrimonio = maquinaData.patrimonio || 'N/A';
             maquinaNome = maquinaData.nome || chamado.maquinaId;
         }
-    } catch (e) { 
-        console.error("Erro ao buscar patrimônio da máquina:", e); 
+    } catch (e) {
+        console.error("Erro ao buscar patrimônio da máquina:", e);
     }
 
     const conteudo = `
@@ -1607,7 +1607,7 @@ async function imprimirChamado(chamadoId) {
     printWindow.document.write(conteudo);
     printWindow.document.close();
     printWindow.focus();
-    
+
     setTimeout(() => {
         printWindow.print();
         // Não fecha automaticamente para permitir visualização
@@ -1715,24 +1715,24 @@ function mostrarMensagem(mensagem, tipo = "info") {
         box-shadow: 0 0.5rem 1rem rgba(0,0,0,0.15);
         animation: slideIn 0.3s ease-out;
     `;
-    
+
     let icon = '';
-    switch(tipo) {
+    switch (tipo) {
         case 'success': icon = '<i class="fas fa-check-circle me-2"></i>'; break;
         case 'error': icon = '<i class="fas fa-exclamation-circle me-2"></i>'; break;
         case 'warning': icon = '<i class="fas fa-exclamation-triangle me-2"></i>'; break;
         default: icon = '<i class="fas fa-info-circle me-2"></i>'; break;
     }
-    
+
     toast.innerHTML = `
         <div class="d-flex justify-content-between align-items-start">
             <div>${icon} <span>${mensagem}</span></div>
             <button type="button" class="btn-close ms-2" onclick="this.parentElement.parentElement.remove()"></button>
         </div>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Remove automaticamente após 5 segundos
     setTimeout(() => {
         if (toast.parentElement) {
@@ -1745,39 +1745,39 @@ function mostrarMensagem(mensagem, tipo = "info") {
 // Função utilitária para formatar telefone WhatsApp
 function formatarTelefoneWhatsApp(telefone) {
     if (!telefone) return '';
-    
+
     // Remove tudo que não é número
     const numeros = telefone.replace(/\D/g, '');
-    
+
     // Validações
     if (numeros.length < 10 || numeros.length > 13) {
         console.warn('Número de telefone inválido:', telefone);
         return '';
     }
-    
+
     // WhatsApp espera: código do país + DDD + número
     // Ex: 55 (Brasil) + 11 (SP) + 999999999 = 13 dígitos
-    
+
     // Se já tem código do país (começa com 55) e tem 13 dígitos
     if (numeros.startsWith('55') && numeros.length === 13) {
         return numeros;
     }
-    
+
     // Se tem 11 dígitos (DDD 2 + número 9)
     if (numeros.length === 11) {
         return '55' + numeros;
     }
-    
+
     // Se tem 10 dígitos (DDD 2 + número 8 - antigo)
     if (numeros.length === 10) {
         return '55' + numeros;
     }
-    
+
     // Se tem 12 dígitos (código país + 10 dígitos)
     if (numeros.length === 12) {
         return numeros;
     }
-    
+
     console.warn('Formato de telefone não reconhecido:', telefone);
     return '';
 }
@@ -1852,9 +1852,4 @@ if (!document.querySelector('#manutencao-styles')) {
 window.addEventListener('beforeunload', limparListenerManutencao);
 window.addEventListener('pagehide', limparListenerManutencao);
 
-// Inicializa quando o DOM estiver carregado
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', inicializarManutencao);
-} else {
-    setTimeout(inicializarManutencao, 100);
-}
+// Removido listener automático - agora inicializado via app.js / showSection

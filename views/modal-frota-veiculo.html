@@ -1,0 +1,48 @@
+<!-- Modais de Logística -->
+<div class="modal fade" id="frotaVeiculoModal" tabindex="-1">
+        <div class="modal-dialog">
+                <div class="modal-content">
+                        <div class="modal-header">
+                                <h5 class="modal-title" id="frotaVeiculoModalTitle">Novo Veículo</h5><button
+                                        type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                                <form id="form-frota-veiculo">
+                                        <input type="hidden" id="frota-veiculo-id">
+                                        <div class="row g-3">
+                                                <div class="col-md-6"><label class="form-label">Placa</label><input
+                                                                type="text" class="form-control"
+                                                                id="frota-veiculo-placa" required></div>
+                                                <div class="col-md-6"><label class="form-label">Ano</label><input
+                                                                type="number" class="form-control"
+                                                                id="frota-veiculo-ano"></div>
+                                                <div class="col-md-6"><label class="form-label">Marca</label><input
+                                                                type="text" class="form-control"
+                                                                id="frota-veiculo-marca" required></div>
+                                                <div class="col-md-6"><label class="form-label">Modelo</label><input
+                                                                type="text" class="form-control"
+                                                                id="frota-veiculo-modelo" required></div>
+                                                <div class="col-md-6"><label class="form-label">KM Atual</label><input
+                                                                type="number" class="form-control"
+                                                                id="frota-veiculo-km"></div>
+                                                <div class="col-md-6"><label class="form-label">Venc.
+                                                                Documento</label><input type="date" class="form-control"
+                                                                id="frota-veiculo-venc-doc"></div>
+                                                <div class="col-md-6"><label class="form-label">Setor
+                                                                Responsável</label><input type="text"
+                                                                class="form-control" id="frota-veiculo-setor"></div>
+                                                <div class="col-md-6"><label class="form-label">Status</label><select
+                                                                class="form-select" id="frota-veiculo-status">
+                                                                <option>Ativo</option>
+                                                                <option>Em Manutenção</option>
+                                                                <option>Inativo</option>
+                                                        </select></div>
+                                        </div>
+                                </form>
+                        </div>
+                        <div class="modal-footer"><button type="button" class="btn btn-secondary"
+                                        data-bs-dismiss="modal">Cancelar</button><button type="button"
+                                        class="btn btn-primary" onclick="salvarVeiculo()">Salvar</button></div>
+                </div>
+        </div>
+</div>

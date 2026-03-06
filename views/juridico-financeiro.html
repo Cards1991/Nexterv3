@@ -1,0 +1,88 @@
+<h2 class="page-title">Financeiro Jurídico</h2>
+
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <h5 class="card-title">Receita Total (Mês)</h5>
+                <h2 id="jur-fin-receita-total" class="mb-0">R$ 0,00</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <h5 class="card-title">Despesas (Mês)</h5>
+                <h2 id="jur-fin-despesas-total" class="mb-0">R$ 0,00</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-primary text-white">
+            <div class="card-body">
+                <h5 class="card-title">Saldo Líquido</h5>
+                <h2 id="jur-fin-saldo" class="mb-0">R$ 0,00</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <h5 class="card-title">Inadimplência</h5>
+                <h2 id="jur-fin-inadimplencia" class="mb-0">0%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>Fluxo de Caixa</span>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-primary" onclick="abrirModalLancamentoFinanceiro()">
+                        <i class="fas fa-plus-circle"></i> Novo Lançamento
+                    </button>
+                    <button class="btn btn-outline-secondary" onclick="exportarFinanceiroExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar
+                    </button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div style="height: 300px;">
+                    <canvas id="jur-fin-grafico-fluxo"></canvas>
+                </div>
+                <div class="table-responsive mt-4">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Descrição</th>
+                                <th>Categoria</th>
+                                <th>Tipo</th>
+                                <th>Valor</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-financeiro-juridico"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card mb-4">
+            <div class="card-header">Honorários por Tipo</div>
+            <div class="card-body">
+                <canvas id="jur-fin-grafico-honorarios"></canvas>
+            </div>
+        </div>
+        <div class="card">
+            <div class="card-header">Próximos Vencimentos</div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush" id="jur-fin-vencimentos"></div>
+            </div>
+        </div>
+    </div>
+</div>

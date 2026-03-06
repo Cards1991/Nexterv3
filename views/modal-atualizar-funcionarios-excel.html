@@ -1,0 +1,35 @@
+<!-- Modal de Atualização de Funcionários via CSV -->
+<div class="modal fade" id="atualizarFuncionariosModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-sync-alt me-2"></i>Atualizar Funcionários via Excel</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Selecione um arquivo Excel (.xlsx) para atualizar os dados dos funcionários existentes. O sistema
+                    usará a coluna <strong>'cpf'</strong> para encontrar os funcionários e atualizar seus dados.</p>
+                <div class="alert alert-info small">
+                    <i class="fas fa-info-circle"></i> As colunas no arquivo Excel devem ter os nomes exatos
+                    conforme a documentação. Apenas os funcionários encontrados pelo CPF serão atualizados.
+                </div>
+                <div class="mb-3">
+                    <label for="csv-atualizacao-file-input" class="form-label">Arquivo Excel (.xlsx)</label>
+                    <input class="form-control" type="file" id="csv-atualizacao-file-input" accept=".xlsx, .xls">
+                </div>
+                <div id="atualizacao-resultado" class="mt-3" style="display: none;">
+                    <h6>Resultado da Atualização:</h6>
+                    <div id="atualizacao-resumo"></div>
+                    <div id="atualizacao-erros-container" class="mt-2" style="max-height: 200px; overflow-y: auto;">
+                        <ul id="atualizacao-erros-lista" class="list-group"></ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btn-iniciar-atualizacao"
+                    onclick="processarArquivoAtualizacaoXLSX()">Iniciar Atualização</button>
+            </div>
+        </div>
+    </div>
+</div>

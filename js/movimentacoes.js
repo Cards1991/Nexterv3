@@ -2219,3 +2219,11 @@ function openPrintWindow(html, options = {}) {
     `);
     printWindow.document.close();
 }
+
+// Função global para inicialização via Router
+window.inicializarMovimentacoes = function() {
+    if (window.movimentacoesManager) {
+        window.movimentacoesManager.init();
+        window.movimentacoesManager.carregarDadosIniciais();
+    }
+};

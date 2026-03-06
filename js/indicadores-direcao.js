@@ -21,9 +21,9 @@ async function inicializarIndicadoresDirecao() {
         btnFiltrar.addEventListener('click', carregarDadosIndicadores);
         btnFiltrar.dataset.listener = 'true';
     }
-    
+
     const filtroMotivo = document.getElementById('ind-filtro-motivo-rescisao');
-    if(filtroMotivo && !filtroMotivo.dataset.listener) {
+    if (filtroMotivo && !filtroMotivo.dataset.listener) {
         filtroMotivo.addEventListener('change', carregarDadosIndicadores);
         filtroMotivo.dataset.listener = 'true';
     }
@@ -56,14 +56,14 @@ async function carregarDadosIndicadores() {
         // Datas para Horas Extras (26 do mês anterior a 25 do mês atual)
         const dataInicioHE = new Date(ano, mes - 2, 26);
         const dataFimHE = new Date(ano, mes - 1, 25);
-        
+
         const toISODate = (d) => {
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             return `${year}-${month}-${day}`;
         };
-        
+
         const startHEStr = toISODate(dataInicioHE);
         const endHEStr = toISODate(dataFimHE);
 
@@ -94,17 +94,18 @@ async function carregarDadosIndicadores() {
             const dataAdm = f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao);
             return dataAdm >= dataInicio && dataAdm <= dataFim;
         }).length;
-        document.getElementById('ind-kpi-admissoes').textContent = admissoes;
+        const elAdmissoes = document.getElementById('ind-kpi-admissoes');
+        if (elAdmissoes) elAdmissoes.textContent = admissoes;
 
         // 2. Demissões no mês (Separadas por tipo)
         const demissoes = movimentacoes.filter(m => m.tipo === 'demissao');
-        
+
         let pedidos = 0;
         let dispensas = 0;
         let acordos = 0;
 
         demissoes.forEach(d => {
-            const tipo = d.tipoDemissao || d.tipo_demissao || ''; 
+            const tipo = d.tipoDemissao || d.tipo_demissao || '';
             if (tipo.includes('Pedido')) {
                 pedidos++;
             } else if (tipo.includes('Acordo') || tipo.includes('T.A.C') || tipo.includes('T.a.C')) {
@@ -113,27 +114,27 @@ async function carregarDadosIndicadores() {
                 dispensas++;
             }
         });
-        if(document.getElementById('ind-kpi-demissoes-pedidos')) document.getElementById('ind-kpi-demissoes-pedidos').textContent = pedidos;
-        if(document.getElementById('ind-kpi-demissoes-dispensas')) document.getElementById('ind-kpi-demissoes-dispensas').textContent = dispensas;
-        if(document.getElementById('ind-kpi-demissoes-acordos')) document.getElementById('ind-kpi-demissoes-acordos').textContent = acordos;
+        if (document.getElementById('ind-kpi-demissoes-pedidos')) document.getElementById('ind-kpi-demissoes-pedidos').textContent = pedidos;
+        if (document.getElementById('ind-kpi-demissoes-dispensas')) document.getElementById('ind-kpi-demissoes-dispensas').textContent = dispensas;
+        if (document.getElementById('ind-kpi-demissoes-acordos')) document.getElementById('ind-kpi-demissoes-acordos').textContent = acordos;
 
         // Lógica de Reconstrução Histórica: Quem estava ativo no final do mês do filtro?
         const funcionariosAtivos = todosFuncionarios.filter(f => {
             const dataAdmissao = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)) : null;
-            
+
             // 1. Se não tem admissão ou foi admitido DEPOIS do mês do filtro, não conta.
             if (!dataAdmissao || dataAdmissao > dataFim) return false;
 
             // 2. Se está inativo HOJE, verificamos QUANDO saiu.
             if (f.status === 'Inativo') {
                 let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
-                
+
                 // Tenta outras fontes de data se ultimaMovimentacao falhar
                 if (!dataDemissao && f.dataDemissao) {
-                     dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
+                    dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
                 }
                 if (!dataDemissao && f.dataDesligamento) {
-                     dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
+                    dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
                 }
 
                 // Se não tem data de demissão mas está inativo, consideramos inativo para evitar divergência
@@ -150,12 +151,13 @@ async function carregarDadosIndicadores() {
         // 3. Total de funcionários em experiência (Baseado na data do filtro)
         const dataCorteExp = new Date(dataFim); // Usa a data do filtro, não "hoje"
         dataCorteExp.setDate(dataCorteExp.getDate() - 90);
-        
+
         const emExperiencia = funcionariosAtivos.filter(f => {
             const dataAdmissao = f.dataAdmissao?.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao);
             return dataAdmissao >= dataCorteExp;
         }).length;
-        document.getElementById('ind-kpi-experiencia').textContent = emExperiencia;
+        const elExperiencia = document.getElementById('ind-kpi-experiencia');
+        if (elExperiencia) elExperiencia.textContent = emExperiencia;
 
         // NOVO: Total de Funcionários
         const totalFuncionarios = funcionariosAtivos.length;
@@ -210,7 +212,7 @@ async function carregarDadosIndicadores() {
 async function calcularCustoRescisao(demissoes) {
     const filtroMotivoEl = document.getElementById('ind-filtro-motivo-rescisao');
     const custoEl = document.getElementById('ind-custo-rescisao');
-    
+
     // Popula o filtro de motivos com base nas demissões do período
     const motivosUnicos = [...new Set(demissoes.map(d => d.motivo).filter(Boolean))];
     const valorAtualFiltro = filtroMotivoEl.value;
@@ -227,7 +229,7 @@ async function calcularCustoRescisao(demissoes) {
     if (motivoFiltro) {
         demissoesConsideradas = demissoes.filter(d => d.motivo === motivoFiltro);
     }
-    
+
     // Obtém IDs únicos dos demitidos para buscar seus lançamentos financeiros
     const idsDemitidos = [...new Set(demissoesConsideradas.map(d => d.funcionarioId).filter(id => id))];
 
@@ -244,12 +246,12 @@ async function calcularCustoRescisao(demissoes) {
         chunks.push(idsDemitidos.slice(i, i + 10));
     }
 
-    const promises = chunks.map(chunk => 
+    const promises = chunks.map(chunk =>
         db.collection('lancamentos_financeiros').where('funcionarioId', 'in', chunk).get()
     );
 
     const snapshots = await Promise.all(promises);
-    
+
     snapshots.forEach(snap => {
         snap.forEach(doc => {
             const l = doc.data();
@@ -319,10 +321,10 @@ function gerarRelatorioConferenciaAtivos() {
         mostrarMensagem("Nenhum dado para gerar relatório. Por favor, clique em 'Analisar Período' primeiro.", "warning");
         return;
     }
-    
+
     // Ordena por nome
     const lista = [...__indicadores_funcionarios_ativos_cache].sort((a, b) => a.nome.localeCompare(b.nome));
-    
+
     const filtroMesEl = document.getElementById('ind-filtro-mes');
     const periodo = filtroMesEl ? filtroMesEl.value : 'Período Atual';
 
@@ -362,27 +364,27 @@ function gerarRelatorioConferenciaAtivos() {
                 </thead>
                 <tbody>
     `;
-    
+
     lista.forEach((f, index) => {
         const adm = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)).toLocaleDateString('pt-BR') : '-';
-        
+
         let dem = '-';
         let statusDisplay = f.status;
-        
+
         if (f.status === 'Inativo') {
             let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
             if (!dataDemissao && f.dataDemissao) dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
             if (!dataDemissao && f.dataDesligamento) dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
-            
+
             if (dataDemissao) dem = dataDemissao.toLocaleDateString('pt-BR');
             statusDisplay = `<span class="badge-inativo">Inativo (Saiu após período)</span>`;
         }
-        
+
         html += `<tr><td>${index + 1}</td><td>${f.nome}</td><td>${f.setor || '-'}</td><td>${adm}</td><td>${statusDisplay}</td><td>${dem}</td></tr>`;
     });
-    
+
     html += `</tbody></table></body></html>`;
-    
+
     const win = window.open('', '_blank');
     win.document.write(html);
     win.document.close();
@@ -409,15 +411,15 @@ function exportarRelatorioConferenciaExcel() {
 
     const dadosExportacao = lista.map(f => {
         const adm = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)).toLocaleDateString('pt-BR') : '-';
-        
+
         let dem = '-';
         let statusDisplay = f.status;
-        
+
         if (f.status === 'Inativo') {
             let dataDemissao = f.ultimaMovimentacao ? (f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao)) : null;
             if (!dataDemissao && f.dataDemissao) dataDemissao = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
             if (!dataDemissao && f.dataDesligamento) dataDemissao = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
-            
+
             if (dataDemissao) dem = dataDemissao.toLocaleDateString('pt-BR');
             statusDisplay = 'Inativo (Saiu após período)';
         }

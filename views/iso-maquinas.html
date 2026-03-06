@@ -1,0 +1,34 @@
+<h2 class="page-title">Cadastro de Máquinas</h2>
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button class="btn btn-outline-secondary" onclick="showSection('iso-manutencao')">
+        <i class="fas fa-arrow-left"></i> Voltar ao Painel
+    </button>
+    <button class="btn btn-primary" id="btn-nova-maquina">
+        <i class="fas fa-plus-circle"></i> Nova Máquina
+    </button>
+</div>
+<div class="card">
+    <div class="card-header">Máquinas Cadastradas</div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Patrimônio</th>
+                        <th>Nome da Máquina</th>
+                        <th>Empresa/Setor</th>
+                        <th>Gerente Responsável</th>
+                        <th>Texto p/ QR Code</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-maquinas">
+                    <tr>
+                        <td colspan="6" class="text-center">Carregando máquinas...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
