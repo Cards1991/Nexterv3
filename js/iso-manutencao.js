@@ -119,7 +119,7 @@ function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
         
         // Preparar mensagem
         const mensagem = WHATSAPP_CONFIG.mensagemPadrao
-            .replace('{maquina}', chamadoData.maquinaId || 'N/A')
+            .replace('{maquina}', chamadoData.maquinaNome || chamadoData.maquinaId || 'N/A')
             .replace('{motivo}', chamadoData.motivo || 'N/A')
             .replace('{prioridade}', chamadoData.prioridade || 'Normal')
             .replace('{status}', chamadoData.status || 'Aberto')
@@ -205,7 +205,7 @@ function enviarAlertaCriticoWhatsApp(chamadoData) {
         if (!telefone) return false;
         
         const mensagemAlerta = `🔥 *ALERTA CRÍTICO - MÁQUINA PARADA* 🔥\n\n` +
-            `🚫 MÁQUINA: ${chamadoData.maquinaId}\n` +
+            `🚫 MÁQUINA: ${chamadoData.maquinaNome || chamadoData.maquinaId}\n` +
             `📋 MOTIVO: ${chamadoData.motivo}\n` +
             `⏰ HORA: ${new Date().toLocaleTimeString('pt-BR')}\n` +
             `📈 PRIORIDADE: ${chamadoData.prioridade || 'Urgente'}\n` +
@@ -930,7 +930,9 @@ async function abrirModalChamado(chamadoId = null) {
 }
 
 async function salvarChamado() {
-    const maquinaId = document.getElementById('chamado-maquina')?.value;
+    const maquinaSelect = document.getElementById('chamado-maquina');
+    const maquinaId = maquinaSelect?.value;
+    const maquinaNome = maquinaSelect.options[maquinaSelect.selectedIndex].text;
     const motivo = document.getElementById('chamado-motivo')?.value;
     const observacoes = document.getElementById('chamado-obs')?.value;
     const maquinaParada = document.getElementById('chamado-maquina-parada')?.checked || false;
@@ -965,6 +967,7 @@ async function salvarChamado() {
 
         const chamadoData = {
             maquinaId,
+            maquinaNome,
             motivo,
             observacoes,
             maquinaParada,

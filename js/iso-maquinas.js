@@ -74,7 +74,7 @@ async function carregarMaquinas() {
         tbody.innerHTML = '';
         maquinasSnap.forEach(doc => {
             const maquina = doc.data();
-            const qrText = `${URL_BASE_QRCODE}/manutencao-mobile.html?maquina=${encodeURIComponent(maquina.codigo)}`;
+            const qrText = `${URL_BASE_QRCODE || window.location.origin}/manutencao-mobile.html?maquina=${encodeURIComponent(maquina.codigo)}`;
 
             const row = `
                 <tr>

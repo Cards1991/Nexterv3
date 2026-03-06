@@ -65,7 +65,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Redirecionar após breve delay para mostrar mensagem de sucesso
                 setTimeout(() => {
-                    window.location.href = 'index.html'; // CORREÇÃO AQUI
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const redirectUrl = urlParams.get('redirect_url');
+                    if (redirectUrl) {
+                        window.location.href = redirectUrl;
+                    } else {
+                        window.location.href = 'index.html';
+                    }
                 }, 600);
                 
             } catch (error) {
