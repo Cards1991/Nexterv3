@@ -11,7 +11,7 @@ const TODAS_SECOES = [
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
-    'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'controle-cestas',
+    'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
     'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
@@ -305,6 +305,11 @@ async function carregarDadosSecao(sectionName) {
             case 'controle-cestas':
                 if (typeof inicializarControleCestas === 'function') {
                     await inicializarControleCestas();
+                }
+                break;
+            case 'controle-disciplinar':
+                if (typeof inicializarControleDisciplinar === 'function') {
+                    await inicializarControleDisciplinar();
                 }
                 break;
             case 'dp-horas-extras':

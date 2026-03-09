@@ -2,16 +2,25 @@
 // Módulo: Controle Disciplinar
 // Descrição: Gerenciamento de controle disciplinar de funcionários
 // ========================================
-document.addEventListener('DOMContentLoaded', function() {
+
+// Função de inicialização do módulo
+function inicializarControleDisciplinar() {
     console.log('Módulo Controle Disciplinar carregado');
     
     // Adiciona o evento de clique ao botão para abrir o modal de novo registro
     const btnNovoRegistro = document.getElementById('btn-novo-registro-disciplinar');
-    if (btnNovoRegistro) {
+    if (btnNovoRegistro && !btnNovoRegistro.dataset.initialized) {
         btnNovoRegistro.addEventListener('click', () => abrirModalNovoRegistroDisciplinar());
+        btnNovoRegistro.dataset.initialized = 'true'; // Previne múltiplos listeners
     }
+    
+    // Chama a configuração de filtros e o carregamento dos dados
     setupFiltrosDisciplinares();
-});
+    carregarDadosDisciplinares();
+}
+
+// Adiciona a função ao escopo global para ser chamada pelo app.js
+window.inicializarControleDisciplinar = inicializarControleDisciplinar;
 
 function setupFiltrosDisciplinares() {
     const tableContainer = document.getElementById('tabela-controle-disciplinar')?.closest('.table-responsive') || document.getElementById('tabela-controle-disciplinar')?.parentElement;
