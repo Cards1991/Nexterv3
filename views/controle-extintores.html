@@ -1,0 +1,417 @@
+<h2 class="page-title">Controle de Extintores</h2>
+
+<!-- Alertas -->
+<div id="extintores-alertas" class="d-none mb-3"></div>
+
+<!-- Dashboard KPIs -->
+<div class="row mb-4">
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Extintores</h6>
+                <h2 id="kpi-extintores-total">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Válidos</h6>
+                <h2 id="kpi-extintores-validos">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Próximo Venc.</h6>
+                <h2 id="kpi-extintores-proximo">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Vencidos</h6>
+                <h2 id="kpi-extintores-vencidos">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4 mb-3">
+        <div class="card stat-card h-100 border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">% Conformidade</h6>
+                <h2 id="kpi-extintores-conformidade">0%</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Status de Validade</div>
+            <div class="card-body">
+                <canvas id="chart-extintores-status" style="height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Distribuição por Tipo</div>
+            <div class="card-body">
+                <canvas id="chart-extintores-tipo" style="height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Abas -->
+<ul class="nav nav-tabs" id="extintores-tabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-tab="extintores" data-bs-toggle="tab" data-bs-target="#extintores-lista-pane">
+            <i class="fas fa-fire-extinguisher me-2"></i>Extintores
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="inspecoes" data-bs-toggle="tab" data-bs-target="#extintores-inspecoes-pane">
+            <i class="fas fa-search me-2"></i>Inspeções
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="recargas" data-bs-toggle="tab" data-bs-target="#extintores-recargas-pane">
+            <i class="fas fa-redo me-2"></i>Recargas
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="mapa" data-bs-toggle="tab" data-bs-target="#extintores-mapa-pane">
+            <i class="fas fa-map me-2"></i>Mapa
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content mt-3">
+    <!-- MÓDULO 1: EXTINTORES -->
+    <div class="tab-pane fade show active" id="extintores-lista-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Cadastro de Extintores</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalExtintor()">
+                    <i class="fas fa-plus me-1"></i> Novo Extintor
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select" id="extintores-filtro-tipo">
+                            <option value="">Todos os tipos</option>
+                            <option value="Água">Água</option>
+                            <option value="Pó Químico">Pó Químico</option>
+                            <option value="CO₂">CO₂</option>
+                            <option value="Espuma">Espuma</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Patrimônio</th>
+                                <th>Tipo</th>
+                                <th>Capacidade</th>
+                                <th>Localização</th>
+                                <th>Selo INMETRO</th>
+                                <th>Validade</th>
+                                <th>Próxima Insp.</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extintores-tabela">
+                            <tr><td colspan="10" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 2: INSPEÇÕES -->
+    <div class="tab-pane fade" id="extintores-inspecoes-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Inspeções Mensais</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalInspecao()">
+                    <i class="fas fa-plus me-1"></i> Nova Inspeção
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Extintor</th>
+                                <th>Lacre</th>
+                                <th>Manômetro</th>
+                                <th>Sem Danos</th>
+                                <th>Local OK</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extintores-inspecoes-tabela">
+                            <tr><td colspan="8" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 3: RECARGAS -->
+    <div class="tab-pane fade" id="extintores-recargas-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Controle de Recargas</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalRecarga()">
+                    <i class="fas fa-plus me-1"></i> Registrar Recarga
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Extintor</th>
+                                <th>Empresa</th>
+                                <th>Nota Fiscal</th>
+                                <th>Próxima Validade</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="extintores-recargas-tabela">
+                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 4: MAPA -->
+    <div class="tab-pane fade" id="extintores-mapa-pane">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Mapa de Localização</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle me-2"></i>
+                    Configure a localização dos extintores em cada cadastro para que apareçam no mapa.
+                </div>
+                <div id="extintores-mapa" style="height: 500px; background: #f8f9fa; border-radius: 8px;">
+                    <div class="d-flex justify-content-center align-items-center h-100 text-muted">
+                        <div class="text-center">
+                            <i class="fas fa-map-marked-alt fa-3x mb-3"></i>
+                            <p>Mapa de localização dos extintores</p>
+                            <small>Configure coordenadas no cadastro de cada extintor</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAIS -->
+
+<!-- Modal Extintor -->
+<div class="modal fade" id="extintor-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Extintor</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="extintor-form">
+                    <input type="hidden" id="extintor-id">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Código Interno</label>
+                            <input type="text" class="form-control" id="extintor-codigo" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Número de Patrimônio</label>
+                            <input type="text" class="form-control" id="extintor-patrimonio">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="extintor-tipo">
+                                <option value="Água">Água</option>
+                                <option value="Pó Químico">Pó Químico</option>
+                                <option value="CO₂">CO₂</option>
+                                <option value="Espuma">Espuma</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Capacidade (kg)</label>
+                            <input type="text" class="form-control" id="extintor-capacidade">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Localização</label>
+                        <input type="text" class="form-control" id="extintor-localizacao" placeholder="Ex: Rua A - Setor Produção">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Número do Selo INMETRO</label>
+                        <input type="text" class="form-control" id="extintor-selo">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data de Validade</label>
+                            <input type="date" class="form-control" id="extintor-validade">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Próxima Inspeção</label>
+                            <input type="date" class="form-control" id="extintor-inspecao">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarExtintor({
+                    id: document.getElementById('extintor-id').value,
+                    codigo: document.getElementById('extintor-codigo').value,
+                    patrimonio: document.getElementById('extintor-patrimonio').value,
+                    tipo: document.getElementById('extintor-tipo').value,
+                    capacidade: document.getElementById('extintor-capacidade').value,
+                    localizacao: document.getElementById('extintor-localizacao').value,
+                    selolNETRO: document.getElementById('extintor-selo').value,
+                    validade: document.getElementById('extintor-validade').value ? new Date(document.getElementById('extintor-validade').value) : null,
+                    proximaInspecao: document.getElementById('extintor-inspecao').value ? new Date(document.getElementById('extintor-inspecao').value) : null
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Inspeção -->
+<div class="modal fade" id="extintor-inspecao-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Inspeção</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="extintor-inspecao-form">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="inspecao-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Extintor</label>
+                        <select class="form-select" id="inspecao-extintor" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Checklist</label>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="inspecao-lacre" checked>
+                            <label class="form-check-label">Lacre intacto</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="inspecao-manometro" checked>
+                            <label class="form-check-label">Manômetro na faixa verde</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="inspecao-danos" checked>
+                            <label class="form-check-label">Sem danos visíveis</label>
+                        </div>
+                        <div class="form-check">
+                            <input type="checkbox" class="form-check-input" id="inspecao-local" checked>
+                            <label class="form-check-label">Local desobstruído</label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="inspecao-status">
+                            <option value="OK">OK</option>
+                            <option value="Necessita Manutenção">Necessita Manutenção</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarInspecao({
+                    data: document.getElementById('inspecao-data').value ? new Date(document.getElementById('inspecao-data').value) : null,
+                    extintorCodigo: document.getElementById('inspecao-extintor').value,
+                    lacre: document.getElementById('inspecao-lacre').checked,
+                    manometro: document.getElementById('inspecao-manometro').checked,
+                    semDanos: document.getElementById('inspecao-danos').checked,
+                    localDesobstruido: document.getElementById('inspecao-local').checked,
+                    status: document.getElementById('inspecao-status').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Recarga -->
+<div class="modal fade" id="extintor-recarga-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Recarga</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="extintor-recarga-form">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="recarga-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Extintor</label>
+                        <select class="form-select" id="recarga-extintor" required>
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Empresa Responsável</label>
+                        <input type="text" class="form-control" id="recarga-empresa">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nota Fiscal</label>
+                        <input type="text" class="form-control" id="recarga-nota">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Próxima Validade</label>
+                        <input type="date" class="form-control" id="recarga-proxima">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarRecarga({
+                    data: document.getElementById('recarga-data').value ? new Date(document.getElementById('recarga-data').value) : null,
+                    extintorCodigo: document.getElementById('recarga-extintor').value,
+                    empresa: document.getElementById('recarga-empresa').value,
+                    notaFiscal: document.getElementById('recarga-nota').value,
+                    proximaValidade: document.getElementById('recarga-proxima').value ? new Date(document.getElementById('recarga-proxima').value) : null
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+

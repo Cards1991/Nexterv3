@@ -241,6 +241,7 @@ async function calcularCustoRescisao(demissoes) {
     // Busca lançamentos financeiros específicos para os funcionários demitidos
     // Divide em lotes de 10 para respeitar o limite do operador 'in' do Firestore
     let totalCusto = 0;
+    let detalhesCustos = []; // Array para armazenar os detalhes
     const chunks = [];
     for (let i = 0; i < idsDemitidos.length; i += 10) {
         chunks.push(idsDemitidos.slice(i, i + 10));
@@ -256,19 +257,57 @@ async function calcularCustoRescisao(demissoes) {
         snap.forEach(doc => {
             const l = doc.data();
             // Garante que estamos pegando apenas custos gerados pela folha de pagamento
-            if (l.origem !== 'FOPAG') return;
+            if ((l.origem || l.contaOrigem) !== 'FOPAG') return;
 
             // Verifica se é verba rescisória
             const isRescisao = l.subdivisao === 'Rescisões';
             const isEncargoRescisorio = l.subdivisao === 'Encargos' && (l.motivo && (l.motivo.includes('Rescis') || l.motivo.includes('rescis')));
 
             if (isRescisao || isEncargoRescisorio) {
-                totalCusto += (parseFloat(l.valor) || 0);
+                const valor = parseFloat(l.valor) || 0;
+                totalCusto += valor;
+                detalhesCustos.push({
+                    nome: l.funcionarioNome || 'Nome não informado',
+                    valor: valor,
+                    data: l.dataVencimento ? new Date(l.dataVencimento.seconds * 1000).toLocaleDateString('pt-BR') : '-'
+                });
             }
         });
     });
 
     custoEl.textContent = `R$ ${totalCusto.toFixed(2).replace('.', ',')}`;
+    
+    // Torna o card clicável para ver detalhes
+    const cardBody = custoEl.closest('.card-body');
+    if (cardBody) {
+        cardBody.style.cursor = 'pointer';
+        cardBody.title = 'Clique para ver o detalhamento';
+        cardBody.onclick = () => mostrarDetalhesCustoRescisao(detalhesCustos);
+    }
+}
+
+/**
+ * Mostra um modal com a lista de custos que compõem o total.
+ */
+function mostrarDetalhesCustoRescisao(detalhes) {
+    if (!detalhes || detalhes.length === 0) return;
+
+    let html = `
+        <table class="table table-sm table-striped">
+            <thead><tr><th>Funcionário</th><th>Data Ref.</th><th class="text-end">Valor</th></tr></thead>
+            <tbody>
+    `;
+    
+    detalhes.forEach(d => {
+        html += `<tr><td>${d.nome}</td><td>${d.data}</td><td class="text-end">R$ ${d.valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>`;
+    });
+    
+    html += `</tbody></table>`;
+
+    // Usa a função genérica de modal do app.js
+    if (typeof abrirModalGenerico === 'function') {
+        abrirModalGenerico('Detalhamento do Custo Rescisório', html);
+    }
 }
 
 /**

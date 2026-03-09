@@ -459,6 +459,21 @@ document.addEventListener('DOMContentLoaded', () => {
         const modalEl = document.getElementById('setorModal');
         if (!modalEl) return;
         
+        // Injeta o campo de horário se não existir no formulário
+        if (!document.getElementById('setor-horario-entrada')) {
+            const qtdIdealInput = document.getElementById('setor-qtd-ideal');
+            const formSetor = document.getElementById('form-setor');
+            const newField = document.createElement('div');
+            newField.className = 'mb-3';
+            newField.innerHTML = `<label class="form-label">Horário de Entrada</label><input type="time" class="form-control" id="setor-horario-entrada">`;
+
+            if (qtdIdealInput && qtdIdealInput.closest('.mb-3')) {
+                qtdIdealInput.closest('.mb-3').after(newField);
+            } else if (formSetor) {
+                formSetor.appendChild(newField);
+            }
+        }
+        
         const form = document.getElementById('form-setor');
         form.reset();
         document.getElementById('setor-id').value = id || '';
@@ -487,7 +502,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.getElementById('setor-gerente').value = data.gerenteResponsavel || '';
                 document.getElementById('setor-qtd-ideal').value = data.qtdIdeal || '';
                 document.getElementById('setor-observacao').value = data.observacoes || '';
-                document.getElementById('setor-horario-entrada').value = data.horarioEntrada || ''; // Novo campo
+                const horarioEl = document.getElementById('setor-horario-entrada');
+                if (horarioEl) horarioEl.value = data.horarioEntrada || '';
             }
         }
         
@@ -495,14 +511,25 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     window.salvarSetor = async function() {
-        const id = document.getElementById('setor-id').value;
+        const idEl = document.getElementById('setor-id');
+        const empresaEl = document.getElementById('setor-empresa');
+        const descricaoEl = document.getElementById('setor-descricao');
+        const gerenteEl = document.getElementById('setor-gerente');
+        const qtdIdealEl = document.getElementById('setor-qtd-ideal');
+        const observacaoEl = document.getElementById('setor-observacao');
+        const horarioEl = document.getElementById('setor-horario-entrada');
+
+        if (!empresaEl || !descricaoEl) { console.error("Elementos do formulário de setor não encontrados."); return; }
+
+        const id = idEl ? idEl.value : '';
+
         const dados = {
-            empresaId: document.getElementById('setor-empresa').value,
-            descricao: document.getElementById('setor-descricao').value,
-            gerenteResponsavel: document.getElementById('setor-gerente').value,
-            qtdIdeal: parseInt(document.getElementById('setor-qtd-ideal').value) || 0,
-            observacoes: document.getElementById('setor-observacao').value,
-            horarioEntrada: document.getElementById('setor-horario-entrada').value, // Novo campo
+            empresaId: empresaEl.value,
+            descricao: descricaoEl.value.trim(),
+            gerenteResponsavel: gerenteEl ? gerenteEl.value : '',
+            qtdIdeal: qtdIdealEl ? (parseInt(qtdIdealEl.value) || 0) : 0,
+            observacao: observacaoEl ? observacaoEl.value : '',
+            horarioEntrada: horarioEl ? horarioEl.value : '',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 

@@ -1,0 +1,40 @@
+<div class="container-fluid mt-4">
+    <h2>Gestão de Setores Macro</h2>
+    <p>Crie e gerencie setores macro para agrupar múltiplos setores.</p>
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="mb-3">
+                        <label for="macro-setor-nome" class="form-label">Nome do Setor Macro</label>
+                        <input type="text" class="form-control" id="macro-setor-nome" placeholder="Ex: Macro Administrativo">
+                    </div>
+                </div>
+                <div class="col-md-8">
+                    <div class="mb-3">
+                        <label for="setores-disponiveis" class="form-label">Setores para Vincular</label>
+                        <select multiple class="form-control" id="setores-disponiveis">
+                            <!-- Opções de setores serão carregadas dinamicamente -->
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button id="btn-salvar-macro-setor" class="btn btn-primary">Salvar Setor Macro</button>
+        </div>
+    </div>
+
+    <div class="card mt-4">
+        <div class="card-header">
+            Setores Macro Cadastrados
+        </div>
+        <div class="card-body">
+            <div id="lista-macro-setores" class="table-responsive">
+                <!-- A lista de setores macro será exibida aqui -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Adicionar o script específico para esta página -->
+<script src="js/setor-macro.js"></script>

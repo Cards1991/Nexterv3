@@ -4,6 +4,7 @@ let heCharts = {}; // Armazena instâncias dos gráficos para destruí-los depoi
 let signaturePad = null; // Instância global do SignaturePad
 let __he_filtered_data = []; // Cache dos dados filtrados para impressão
 let __he_funcionarios_map = {}; // Mapa para vincular funcionário à empresa
+let __he_macro_setores_map = {}; // Mapa para armazenar os macro setores
 
 async function inicializarHorasExtras() {
     console.log('Inicializando Dashboard de Horas Extras...');
@@ -12,6 +13,7 @@ async function inicializarHorasExtras() {
     const filterButton = document.getElementById('he-filterButton');
     const printButton = document.getElementById('he-printButton');
     const exportButton = document.getElementById('he-exportButton');
+    const reprocessButton = document.getElementById('he-reprocessButton');
 
     if (filterButton && !filterButton.bound) {
         filterButton.addEventListener('click', () => listarHorasExtras());
@@ -25,6 +27,10 @@ async function inicializarHorasExtras() {
         exportButton.addEventListener('click', () => exportarTabelaParaExcel('he-overtimeTable', 'Relatorio_Horas_Extras.xlsx'));
         exportButton.bound = true;
     }
+    if (reprocessButton && !reprocessButton.bound) {
+        reprocessButton.addEventListener('click', () => reprocessarHorasExtras());
+        reprocessButton.bound = true;
+    }
 
     await preencherFiltrosHorasExtras();
     await listarHorasExtras();
@@ -34,31 +40,70 @@ async function preencherFiltrosHorasExtras() {
     const sectorFilter = document.getElementById('he-sectorFilter');
     const companyFilter = document.getElementById('he-companyFilter');
     const employeeFilter = document.getElementById('he-employeeFilter');
+    const macroSectorFilter = document.getElementById('he-macroSectorFilter');
 
     if (!sectorFilter) return;
 
     try {
-        // Carregar Empresas e Setores
-        const empresasSnap = await db.collection('empresas').orderBy('nome').get();
-        const todosSetores = new Set();
+        // Carregar Empresas, Setores e Macro Setores em paralelo
+        const [empresasSnap, setoresSnap, macroSetoresSnap, funcSnap] = await Promise.all([
+            db.collection('empresas').orderBy('nome').get(),
+            db.collection('setores').orderBy('descricao').get(),
+            db.collection('macro_setores').get(),
+            db.collection('funcionarios').orderBy('nome').get()
+        ]);
 
+        // Processar Empresas
         companyFilter.innerHTML = '<option value="">Todas as Empresas</option>';
-
         empresasSnap.forEach(doc => {
-            const emp = doc.data();
-            // Popula filtro de empresa
-            companyFilter.innerHTML += `<option value="${doc.id}">${emp.nome}</option>`;
-            // Coleta setores
-            (emp.setores || []).forEach(setor => todosSetores.add(setor));
+            companyFilter.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
+        });
+
+        // Processar Setores e guardar em um mapa para referência
+        const todosSetores = new Map();
+        setoresSnap.forEach(doc => {
+            todosSetores.set(doc.id, doc.data().descricao);
         });
 
         sectorFilter.innerHTML = '<option value="Todos">Todos os Setores</option>';
-        [...todosSetores].sort().forEach(setor => {
+        [...todosSetores.values()].sort().forEach(setor => {
             sectorFilter.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
+        
+        // Processar Macro Setores
+        macroSectorFilter.innerHTML = '<option value="">Nenhum</option>';
+        __he_macro_setores_map = {};
+        macroSetoresSnap.forEach(doc => {
+            const data = doc.data();
+            __he_macro_setores_map[doc.id] = data.setoresIds;
+            macroSectorFilter.innerHTML += `<option value="${doc.id}">${data.nome}</option>`;
+        });
+
+        // Event listener para o filtro de macro setor
+        macroSectorFilter.addEventListener('change', async (e) => {
+            const macroSetorId = e.target.value;
+            const setoresDoMacro = __he_macro_setores_map[macroSetorId] || [];
+            
+            // Habilita a seleção múltipla no filtro de setores
+            sectorFilter.multiple = true;
+            sectorFilter.size = macroSetorId ? Math.min(setoresDoMacro.length, 5) : 1;
+
+
+            if (macroSetorId) {
+                // Seleciona os setores correspondentes
+                 Array.from(sectorFilter.options).forEach(option => {
+                    const setorId = [...todosSetores].find(([id, desc]) => desc === option.value)?.[0];
+                    option.selected = setoresDoMacro.includes(setorId);
+                });
+            } else {
+                // Se nenhum macro setor for selecionado, volta ao estado normal
+                sectorFilter.multiple = false;
+                sectorFilter.value = 'Todos';
+            }
+        });
+
 
         // Carregar Funcionários e criar mapa de vínculo
-        const funcSnap = await db.collection('funcionarios').orderBy('nome').get();
         employeeFilter.innerHTML = '<option value="">Todos os Colaboradores</option>';
         __he_funcionarios_map = {};
 
@@ -76,24 +121,28 @@ async function preencherFiltrosHorasExtras() {
         console.error("Erro ao popular filtros:", error);
     }
 
-    // Definir datas padrão (Hoje) para otimizar carregamento
+    // Definir datas padrão
     const hoje = new Date();
-    const hojeStr = hoje.toISOString().split('T')[0];
-    document.getElementById('he-startDate').value = hojeStr;
-    document.getElementById('he-endDate').value = hojeStr;
+    const primeiroDiaDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    document.getElementById('he-startDate').valueAsDate = primeiroDiaDoMes;
+    document.getElementById('he-endDate').valueAsDate = hoje;
 }
+
 
 async function listarHorasExtras() {
     const tbody = document.getElementById('he-overtimeList');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     const startDate = document.getElementById('he-startDate').value;
     const endDate = document.getElementById('he-endDate').value;
-    const sector = document.getElementById('he-sectorFilter').value;
+    const sectorFilter = document.getElementById('he-sectorFilter');
     const companyId = document.getElementById('he-companyFilter').value;
     const employeeId = document.getElementById('he-employeeFilter').value;
+    
+    // Obter os setores selecionados (pode ser um ou vários)
+    const selectedSectors = Array.from(sectorFilter.selectedOptions).map(opt => opt.value);
 
     if (!startDate || !endDate) {
         mostrarMensagem("Por favor, selecione as datas inicial e final.", "warning");
@@ -104,39 +153,32 @@ async function listarHorasExtras() {
     let sectorData = {}, employeeData = {}, monthlyData = {};
 
     try {
-        // CORREÇÃO: Filtragem de setor movida para o cliente para evitar erro de índice composto no Firestore
         let query = db.collection('overtime')
             .where('date', '>=', startDate)
             .where('date', '<=', endDate);
 
         const querySnapshot = await query.get();
-        tbody.innerHTML = ''; // Limpa a tabela para novos dados
+        tbody.innerHTML = '';
 
-        // Filtra os documentos em memória
         const docs = querySnapshot.docs.filter(doc => {
             const data = doc.data();
 
-            // Filtro de Status: Exibir apenas horas autorizadas (ignora pendentes)
             if (data.status === 'pendente') return false;
 
-            // Filtro de Setor
-            if (sector !== "Todos" && data.sector !== sector) return false;
+            // Filtro de Setor (agora suporta múltiplos)
+            if (!selectedSectors.includes('Todos') && !selectedSectors.includes(data.sector)) return false;
 
-            // Filtro de Colaborador
             if (employeeId && data.employeeId !== employeeId) return false;
-
-            // Filtro de Empresa (usando o mapa de funcionários)
-            if (companyId && __he_funcionarios_map[data.employeeId]?.empresaId !== companyId) return false;
+            if (companyId && (__he_funcionarios_map[data.employeeId]?.empresaId !== companyId)) return false;
 
             return true;
         });
-
-        // Salva para impressão
+        
         __he_filtered_data = docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         if (docs.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum registro encontrado para o período.</td></tr>';
-            criarGraficosHorasExtras({}, {}, {}, 0, 0); // Limpa os gráficos
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum registro encontrado para o período.</td></tr>';
+            criarGraficosHorasExtras({}, {}, {}, 0, 0);
             return;
         }
 
@@ -156,14 +198,12 @@ async function listarHorasExtras() {
             totalDSRValue += dsrValue;
             totalValue += overtimePay + dsrValue;
 
-            // Lógica de Status de Assinatura
             let assinaturaHtml = '';
             let deleteButton = '';
 
             if (overtime.signed) {
                 const dataAssinatura = overtime.signedAt ? new Date(overtime.signedAt.toDate()).toLocaleString('pt-BR') : 'Data desc.';
                 assinaturaHtml = `<span class="badge bg-success" title="Assinado em ${dataAssinatura}"><i class="fas fa-file-signature"></i> Assinado</span>`;
-                // Botão de excluir desabilitado para registros assinados
                 deleteButton = `<button class="btn btn-sm btn-outline-secondary" disabled title="Registro assinado não pode ser excluído"><i class="fas fa-trash"></i></button>`;
             } else {
                 assinaturaHtml = `<button class="btn btn-sm btn-outline-primary" onclick="abrirModalAssinatura('${doc.id}')" title="Assinar"><i class="fas fa-pen-nib"></i> Assinar</button>`;
@@ -177,13 +217,11 @@ async function listarHorasExtras() {
                     <td>${formatarData(date)}</td>
                     <td>${overtime.reason}</td>
                     <td>${extraHours.toFixed(2)}</td>
-                    <td>${overtimePay.toFixed(2)}</td>
-                    <td>${dsrValue.toFixed(2)}</td>
-                    <td>${(overtimePay + dsrValue).toFixed(2)}</td>
+                    <td>R$ ${overtimePay.toFixed(2)}</td>
+                    <td>R$ ${dsrValue.toFixed(2)}</td>
+                    <td>R$ ${(overtimePay + dsrValue).toFixed(2)}</td>
                     <td class="text-center">${assinaturaHtml}</td>
-                    <td>
-                        ${deleteButton}
-                    </td>
+                    <td>${deleteButton}</td>
                 </tr>
             `;
             tbody.innerHTML += row;
@@ -197,9 +235,81 @@ async function listarHorasExtras() {
 
     } catch (error) {
         console.error("Erro ao listar horas extras: ", error);
-        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados. Verifique os índices do Firestore ou as permissões. Detalhe: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" class="text-center text-danger">Erro ao carregar dados. Detalhe: ${error.message}</td></tr>`;
     }
 }
+
+async function reprocessarHorasExtras() {
+    if (!confirm("Isso irá recalcular os valores de todas as horas extras visíveis na tabela. Esta ação não pode ser desfeita. Deseja continuar?")) {
+        return;
+    }
+
+    const registrosParaReprocessar = __he_filtered_data.filter(item => !item.signed);
+
+    if (registrosParaReprocessar.length === 0) {
+        mostrarMensagem("Não há registros não assinados para reprocessar nos filtros atuais.", "info");
+        return;
+    }
+
+    mostrarMensagem(`Reprocessando ${registrosParaReprocessar.length} registros...`, "info");
+    const reprocessButton = document.getElementById('he-reprocessButton');
+    reprocessButton.disabled = true;
+    reprocessButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Reprocessando...`;
+
+    try {
+        const batch = db.batch();
+        const funcionariosCache = {};
+
+        for (const item of registrosParaReprocessar) {
+            let funcionarioData = funcionariosCache[item.employeeId];
+            if (!funcionarioData) {
+                const funcDoc = await db.collection('funcionarios').doc(item.employeeId).get();
+                if (funcDoc.exists) {
+                    funcionarioData = funcDoc.data();
+                    funcionariosCache[item.employeeId] = funcionarioData;
+                } else {
+                    console.warn(`Funcionário com ID ${item.employeeId} não encontrado. Pulando item.`);
+                    continue;
+                }
+            }
+
+            // Lógica de cálculo (simplificada, idealmente viria de uma função centralizada)
+            const salarioBase = parseFloat(funcionarioData.salario) || 0;
+            const jornadaMensal = parseFloat(funcionarioData.jornada) || 220;
+            const valorHora = salarioBase / jornadaMensal;
+
+            const percentualHE = parseFloat(item.percentage) || 1.5; // 50% extra
+            const valorHoraExtra = valorHora * percentualHE;
+            const totalHorasExtras = valorHoraExtra * (parseFloat(item.hours) || 0);
+
+            // Recálculo do DSR (exemplo simples)
+            // A lógica real pode ser mais complexa e depender de dias úteis/domingos no período.
+            const diasNoMes = new Date(new Date(item.date).getFullYear(), new Date(item.date).getMonth() + 1, 0).getDate();
+            const domingosEFeriados = 5; // Valor exemplo, deveria ser calculado
+            const diasUteis = diasNoMes - domingosEFeriados;
+            const valorDSR = (totalHorasExtras / diasUteis) * domingosEFeriados;
+            
+            const docRef = db.collection('overtime').doc(item.id);
+            batch.update(docRef, {
+                overtimePay: parseFloat(totalHorasExtras.toFixed(2)),
+                dsr: parseFloat(valorDSR.toFixed(2)),
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        await batch.commit();
+        mostrarMensagem("Horas extras reprocessadas com sucesso! A lista será atualizada.", "success");
+
+    } catch (error) {
+        console.error("Erro ao reprocessar horas extras:", error);
+        mostrarMensagem(`Erro ao reprocessar: ${error.message}`, "error");
+    } finally {
+        reprocessButton.disabled = false;
+        reprocessButton.innerHTML = `<i class="fas fa-sync-alt"></i> Reprocessar`;
+        await listarHorasExtras(); // Atualiza a visualização
+    }
+}
+
 
 function renderizarRankingHorasExtras(employeeData) {
     const container = document.getElementById('he-employee-ranking');

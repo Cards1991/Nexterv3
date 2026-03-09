@@ -1,0 +1,475 @@
+<h2 class="page-title">Brigada de Incêndio (NR-23)</h2>
+
+<!-- Alertas -->
+<div id="brigada-alertas" class="d-none mb-3"></div>
+
+<!-- Dashboard KPIs -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Brigadistas</h6>
+                <h2 id="kpi-brigada-total">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Ativos</h6>
+                <h2 id="kpi-brigada-ativos">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Curso Válido</h6>
+                <h2 id="kpi-brigada-curso-valido">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Tempo Evacuação</h6>
+                <h2 id="kpi-brigada-tempo">0 min</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Distribuição por Função -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-medal text-danger fa-2x mb-2"></i>
+                <h5>Líderes</h5>
+                <h3 id="kpi-brigada-lider">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-running text-warning fa-2x mb-2"></i>
+                <h5>Abandono</h5>
+                <h3 id="kpi-brigada-abandono">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-fire-extinguisher text-primary fa-2x mb-2"></i>
+                <h5>Combate</h5>
+                <h3 id="kpi-brigada-combate">0</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <i class="fas fa-first-aid text-success fa-2x mb-2"></i>
+                <h5>1º Socorros</h5>
+                <h3 id="kpi-brigada-socorros">0</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráficos -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Evolução Tempo de Evacuação</div>
+            <div class="card-body">
+                <canvas id="chart-brigada-simulados" style="height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">Ocorrências por Tipo</div>
+            <div class="card-body">
+                <canvas id="chart-brigada-ocorrencias" style="height: 200px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Abas -->
+<ul class="nav nav-tabs" id="brigada-tabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-tab="brigadistas" data-bs-toggle="tab" data-bs-target="#brigada-brigadistas-pane">
+            <i class="fas fa-users me-2"></i>Brigadistas
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="simulados" data-bs-toggle="tab" data-bs-target="#brigada-simulados-pane">
+            <i class="fas fa-fire-crackle me-2"></i>Simulados
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="escala" data-bs-toggle="tab" data-bs-target="#brigada-escala-pane">
+            <i class="fas fa-clock me-2"></i>Escala
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="ocorrencias" data-bs-toggle="tab" data-bs-target="#brigada-ocorrencias-pane">
+            <i class="fas fa-exclamation-triangle me-2"></i>Ocorrências
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content mt-3">
+    <!-- MÓDULO 1: BRIGADISTAS -->
+    <div class="tab-pane fade show active" id="brigada-brigadistas-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Brigadistas</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalBrigadista()">
+                    <i class="fas fa-plus me-1"></i> Novo Brigadista
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select" id="brigada-filtro-turno">
+                            <option value="">Todos os turnos</option>
+                            <option value="Manhã">Manhã</option>
+                            <option value="Tarde">Tarde</option>
+                            <option value="Noite">Noite</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Setor</th>
+                                <th>Turno</th>
+                                <th>Função</th>
+                                <th>Data Curso</th>
+                                <th>Validade</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brigada-brigadistas-tabela">
+                            <tr><td colspan="8" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 2: SIMULADOS -->
+    <div class="tab-pane fade" id="brigada-simulados-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Simulados Realizados</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalSimulado()">
+                    <i class="fas fa-plus me-1"></i> Registrar Simulado
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Tempo Evacuação</th>
+                                <th>Avaliação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brigada-simulados-tabela">
+                            <tr><td colspan="5" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 3: ESCALA -->
+    <div class="tab-pane fade" id="brigada-escala-pane">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Escala da Brigada por Turno</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-primary text-white">Manhã</div>
+                            <div class="card-body">
+                                <h6>Brigadistas:</h6>
+                                <ul class="list-group" id="escala-manha">
+                                    <li class="list-group-item text-muted">Carregando...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-warning text-dark">Tarde</div>
+                            <div class="card-body">
+                                <h6>Brigadistas:</h6>
+                                <ul class="list-group" id="escala-tarde">
+                                    <li class="list-group-item text-muted">Carregando...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-dark text-white">Noite</div>
+                            <div class="card-body">
+                                <h6>Brigadistas:</h6>
+                                <ul class="list-group" id="escala-noite">
+                                    <li class="list-group-item text-muted">Carregando...</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 4: OCORRÊNCIAS -->
+    <div class="tab-pane fade" id="brigada-ocorrencias-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Registro de Ocorrências</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalOcorrencia()">
+                    <i class="fas fa-plus me-1"></i> Nova Ocorrência
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Tipo</th>
+                                <th>Local</th>
+                                <th>Responsável</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="brigada-ocorrencias-tabela">
+                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAIS -->
+
+<!-- Modal Brigadista -->
+<div class="modal fade" id="brigada-brigadista-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Brigadista</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="brigada-brigadista-form">
+                    <input type="hidden" id="brigada-brigadista-id">
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="brigada-brigadista-nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Setor</label>
+                        <input type="text" class="form-control" id="brigada-brigadista-setor">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Turno</label>
+                            <select class="form-select" id="brigada-brigadista-turno">
+                                <option value="Manhã">Manhã</option>
+                                <option value="Tarde">Tarde</option>
+                                <option value="Noite">Noite</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Função</label>
+                            <select class="form-select" id="brigada-brigadista-funcao">
+                                <option value="Líder">Líder</option>
+                                <option value="Abandono">Abandono</option>
+                                <option value="Combate">Combate</option>
+                                <option value="Primeiros Socorros">Primeiros Socorros</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data do Curso</label>
+                            <input type="date" class="form-control" id="brigada-brigadista-curso-data">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Validade do Curso</label>
+                            <input type="date" class="form-control" id="brigada-brigadista-curso-validade">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="brigada-brigadista-status">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarBrigadista({
+                    id: document.getElementById('brigada-brigadista-id').value,
+                    nome: document.getElementById('brigada-brigadista-nome').value,
+                    setor: document.getElementById('brigada-brigadista-setor').value,
+                    turno: document.getElementById('brigada-brigadista-turno').value,
+                    funcao: document.getElementById('brigada-brigadista-funcao').value,
+                    dataCurso: document.getElementById('brigada-brigadista-curso-data').value ? new Date(document.getElementById('brigada-brigadista-curso-data').value) : null,
+                    validadeCurso: document.getElementById('brigada-brigadista-curso-validade').value ? new Date(document.getElementById('brigada-brigadista-curso-validade').value) : null,
+                    status: document.getElementById('brigada-brigadista-status').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Simulado -->
+<div class="modal fade" id="brigada-simulado-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Registrar Simulado</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="brigada-simulado-form">
+                    <input type="hidden" id="brigada-simulado-id">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="brigada-simulado-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Simulado</label>
+                        <select class="form-select" id="brigada-simulado-tipo">
+                            <option value="Incêndio">Incêndio</option>
+                            <option value="Evacuação">Evacuação</option>
+                            <option value="Abandono">Abandono</option>
+                            <option value="Primeiros Socorros">Primeiros Socorros</option>
+                            <option value="Misto">Misto</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tempo de Evacuação (minutos)</label>
+                        <input type="number" class="form-control" id="brigada-simulado-tempo">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Avaliação</label>
+                        <select class="form-select" id="brigada-simulado-avaliacao">
+                            <option value="Excelente">Excelente</option>
+                            <option value="Bom">Bom</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Ruim">Ruim</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Pontos de Melhoria</label>
+                        <textarea class="form-control" id="brigada-simulado-melhorias" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarSimulado({
+                    id: document.getElementById('brigada-simulado-id').value,
+                    data: document.getElementById('brigada-simulado-data').value ? new Date(document.getElementById('brigada-simulado-data').value) : null,
+                    tipo: document.getElementById('brigada-simulado-tipo').value,
+                    tempoEvacuacao: parseInt(document.getElementById('brigada-simulado-tempo').value) || 0,
+                    avaliacao: document.getElementById('brigada-simulado-avaliacao').value,
+                    melhorias: document.getElementById('brigada-simulado-melhorias').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ocorrência -->
+<div class="modal fade" id="brigada-ocorrencia-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ocorrência</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="brigada-ocorrencia-form">
+                    <input type="hidden" id="brigada-ocorrencia-id">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="brigada-ocorrencia-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Ocorrência</label>
+                        <select class="form-select" id="brigada-ocorrencia-tipo">
+                            <option value="Incêndio">Incêndio</option>
+                            <option value="Acidente de Trabalho">Acidente de Trabalho</option>
+                            <option value="Emergência Médica">Emergência Médica</option>
+                            <option value="Vazamento">Vazamento</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Local</label>
+                        <input type="text" class="form-control" id="brigada-ocorrencia-local">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-control" id="brigada-ocorrencia-descricao" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Responsável</label>
+                        <input type="text" class="form-control" id="brigada-ocorrencia-responsavel">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="brigada-ocorrencia-status">
+                            <option value="Aberta">Aberta</option>
+                            <option value="Em Andamento">Em Andamento</option>
+                            <option value="Encerrada">Encerrada</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarOcorrencia({
+                    id: document.getElementById('brigada-ocorrencia-id').value,
+                    data: document.getElementById('brigada-ocorrencia-data').value ? new Date(document.getElementById('brigada-ocorrencia-data').value) : null,
+                    tipo: document.getElementById('brigada-ocorrencia-tipo').value,
+                    local: document.getElementById('brigada-ocorrencia-local').value,
+                    descricao: document.getElementById('brigada-ocorrencia-descricao').value,
+                    responsavel: document.getElementById('brigada-ocorrencia-responsavel').value,
+                    status: document.getElementById('brigada-ocorrencia-status').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+

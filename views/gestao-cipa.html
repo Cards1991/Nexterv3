@@ -1,0 +1,607 @@
+<h2 class="page-title">Gestão de CIPA (NR-5)</h2>
+
+<!-- Alertas -->
+<div id="cipa-alertas-mandato" class="d-none mb-3"></div>
+
+<!-- Dashboard KPIs -->
+<div class="row mb-4">
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-primary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Total Membros</h6>
+                <h2 id="kpi-cipa-membros">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-info">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Titulares</h6>
+                <h2 id="kpi-cipa-titulares">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-secondary">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Suplentes</h6>
+                <h2 id="kpi-cipa-suplentes">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-success">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Reuniões Ano</h6>
+                <h2 id="kpi-cipa-reunioes">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-warning">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Ações Pendentes</h6>
+                <h2 id="kpi-cipa-acoes-pendentes">0</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-2 mb-3">
+        <div class="card stat-card h-100 border-danger">
+            <div class="card-body text-center">
+                <h6 class="text-muted">Em Andamento</h6>
+                <h2 id="kpi-cipa-acoes-andamento">0</h2>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gráfico de Ações -->
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">Status das Ações</div>
+            <div class="card-body">
+                <canvas id="chart-cipa-acoes"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">Ações Concluídas</div>
+            <div class="card-body">
+                <h2 id="kpi-cipa-acoes-concluidas">0</h2>
+                <small class="text-muted">ações concluídas</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Abas -->
+<ul class="nav nav-tabs" id="cipa-tabs" role="tablist">
+    <li class="nav-item">
+        <button class="nav-link active" data-tab="membros" data-bs-toggle="tab" data-bs-target="#cipa-membros-pane">
+            <i class="fas fa-users me-2"></i>Membros
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="eleicoes" data-bs-toggle="tab" data-bs-target="#cipa-eleicoes-pane">
+            <i class="fas fa-vote-yea me-2"></i>Processo Eleitoral
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="treinamentos" data-bs-toggle="tab" data-bs-target="#cipa-treinamentos-pane">
+            <i class="fas fa-graduation-cap me-2"></i>Treinamentos
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="reunioes" data-bs-toggle="tab" data-bs-target="#cipa-reunioes-pane">
+            <i class="fas fa-calendar-meeting me-2"></i>Reuniões
+        </button>
+    </li>
+    <li class="nav-item">
+        <button class="nav-link" data-tab="acoes" data-bs-toggle="tab" data-bs-target="#cipa-acoes-pane">
+            <i class="fas fa-tasks me-2"></i>Plano de Ação
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content mt-3">
+    <!-- MÓDULO 1: MEMBROS -->
+    <div class="tab-pane fade show active" id="cipa-membros-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Membros da CIPA</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalCipa()">
+                    <i class="fas fa-plus me-1"></i> Novo Membro
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <select class="form-select" id="cipa-filtro-status">
+                            <option value="">Todos os status</option>
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Matrícula</th>
+                                <th>Setor</th>
+                                <th>Cargo</th>
+                                <th>Tipo</th>
+                                <th>Início Mandato</th>
+                                <th>Fim Mandato</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cipa-membros-tabela">
+                            <tr><td colspan="9" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 2: PROCESSO ELEITORAL -->
+    <div class="tab-pane fade" id="cipa-eleicoes-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Processos Eleitorais</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalEleicaoCipa()">
+                    <i class="fas fa-plus me-1"></i> Nova Eleição
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data Abertura</th>
+                                <th>Ano</th>
+                                <th>Edital</th>
+                                <th>Candidatos</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cipa-eleicoes-tabela">
+                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 3: TREINAMENTOS -->
+    <div class="tab-pane fade" id="cipa-treinamentos-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Treinamentos CIPA</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalTreinamentoCipa()">
+                    <i class="fas fa-plus me-1"></i> Novo Treinamento
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Participante</th>
+                                <th>Curso</th>
+                                <th>Carga Horária</th>
+                                <th>Instrutor</th>
+                                <th>Data</th>
+                                <th>Validade</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cipa-treinamentos-tabela">
+                            <tr><td colspan="8" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 4: REUNIÕES -->
+    <div class="tab-pane fade" id="cipa-reunioes-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Reuniões Mensais</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalReuniaoCipa()">
+                    <i class="fas fa-plus me-1"></i> Nova Reunião
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Pauta</th>
+                                <th>Participantes</th>
+                                <th>Ata</th>
+                                <th>Plano de Ação</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cipa-reunioes-tabela">
+                            <tr><td colspan="6" class="text-center">Carregando...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MÓDULO 5: PLANO DE AÇÃO (KANBAN) -->
+    <div class="tab-pane fade" id="cipa-acoes-pane">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Plano de Ação</h5>
+                <button class="btn btn-primary btn-sm" onclick="abrirModalAcaoCipa()">
+                    <i class="fas fa-plus me-1"></i> Nova Ação
+                </button>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-danger text-white">
+                                <i class="fas fa-clock me-1"></i> Pendente
+                            </div>
+                            <div class="card-body p-2" id="kanban-pendente" style="min-height: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-warning text-dark">
+                                <i class="fas fa-spinner me-1"></i> Em Andamento
+                            </div>
+                            <div class="card-body p-2" id="kanban-andamento" style="min-height: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card bg-light">
+                            <div class="card-header bg-success text-white">
+                                <i class="fas fa-check me-1"></i> Concluído
+                            </div>
+                            <div class="card-body p-2" id="kanban-concluido" style="min-height: 200px;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAIS -->
+
+<!-- Modal Membro -->
+<div class="modal fade" id="cipa-membro-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Membro da CIPA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cipa-membro-form">
+                    <input type="hidden" id="cipa-membro-id">
+                    <div class="mb-3">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="cipa-membro-nome" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Matrícula</label>
+                        <input type="text" class="form-control" id="cipa-membro-matricula">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Setor</label>
+                        <input type="text" class="form-control" id="cipa-membro-setor">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cargo</label>
+                        <input type="text" class="form-control" id="cipa-membro-cargo">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" id="cipa-membro-tipo">
+                            <option value="Titular">Titular</option>
+                            <option value="Suplente">Suplente</option>
+                            <option value="Presidente">Presidente</option>
+                            <option value="Vice-presidente">Vice-presidente</option>
+                            <option value="Designado">Designado</option>
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Início do Mandato</label>
+                            <input type="date" class="form-control" id="cipa-membro-inicio">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fim do Mandato</label>
+                            <input type="date" class="form-control" id="cipa-membro-fim">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="cipa-membro-status">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarMembroCipa({
+                    id: document.getElementById('cipa-membro-id').value,
+                    nome: document.getElementById('cipa-membro-nome').value,
+                    matricula: document.getElementById('cipa-membro-matricula').value,
+                    setor: document.getElementById('cipa-membro-setor').value,
+                    cargo: document.getElementById('cipa-membro-cargo').value,
+                    tipo: document.getElementById('cipa-membro-tipo').value,
+                    dataInicioMandato: document.getElementById('cipa-membro-inicio').value ? new Date(document.getElementById('cipa-membro-inicio').value) : null,
+                    dataFimMandato: document.getElementById('cipa-membro-fim').value ? new Date(document.getElementById('cipa-membro-fim').value) : null,
+                    status: document.getElementById('cipa-membro-status').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Eleição -->
+<div class="modal fade" id="cipa-eleicao-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Processo Eleitoral</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cipa-eleicao-form">
+                    <input type="hidden" id="cipa-eleicao-id">
+                    <div class="mb-3">
+                        <label class="form-label">Ano</label>
+                        <input type="number" class="form-control" id="cipa-eleicao-ano" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data de Abertura</label>
+                        <input type="date" class="form-control" id="cipa-eleicao-data">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="cipa-eleicao-edital">
+                        <label class="form-check-label">Edital Publicado</label>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Período Inscrição - Início</label>
+                            <input type="date" class="form-control" id="cipa-eleicao-inscricao-inicio">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Período Inscrição - Fim</label>
+                            <input type="date" class="form-control" id="cipa-eleicao-inscricao-fim">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Total de Candidatos</label>
+                        <input type="number" class="form-control" id="cipa-eleicao-candidatos">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Status</label>
+                        <select class="form-select" id="cipa-eleicao-status">
+                            <option value="Em Andamento">Em Andamento</option>
+                            <option value="Concluída">Concluída</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEleicaoCipa({
+                    id: document.getElementById('cipa-eleicao-id').value,
+                    ano: parseInt(document.getElementById('cipa-eleicao-ano').value),
+                    dataAbertura: document.getElementById('cipa-eleicao-data').value ? new Date(document.getElementById('cipa-eleicao-data').value) : null,
+                    editalPublicado: document.getElementById('cipa-eleicao-edital').checked,
+                    periodoInscricao: {
+                        inicio: document.getElementById('cipa-eleicao-inscricao-inicio').value,
+                        fim: document.getElementById('cipa-eleicao-inscricao-fim').value
+                    },
+                    totalCandidatos: parseInt(document.getElementById('cipa-eleicao-candidatos').value) || 0,
+                    status: document.getElementById('cipa-eleicao-status').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Treinamento -->
+<div class="modal fade" id="cipa-treinamento-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Treinamento CIPA</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cipa-treinamento-form">
+                    <input type="hidden" id="cipa-treinamento-id">
+                    <div class="mb-3">
+                        <label class="form-label">Participante</label>
+                        <input type="text" class="form-control" id="cipa-treinamento-participante" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Curso</label>
+                        <input type="text" class="form-control" id="cipa-treinamento-curso" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Carga Horária</label>
+                        <input type="number" class="form-control" id="cipa-treinamento-carga">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Instrutor</label>
+                        <input type="text" class="form-control" id="cipa-treinamento-instrutor">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Data do Curso</label>
+                            <input type="date" class="form-control" id="cipa-treinamento-data">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Validade</label>
+                            <input type="date" class="form-control" id="cipa-treinamento-validade">
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarTreinamentoCipa({
+                    id: document.getElementById('cipa-treinamento-id').value,
+                    participante: document.getElementById('cipa-treinamento-participante').value,
+                    curso: document.getElementById('cipa-treinamento-curso').value,
+                    cargaHoraria: parseInt(document.getElementById('cipa-treinamento-carga').value) || 0,
+                    instrutor: document.getElementById('cipa-treinamento-instrutor').value,
+                    dataCurso: document.getElementById('cipa-treinamento-data').value ? new Date(document.getElementById('cipa-treinamento-data').value) : null,
+                    validade: document.getElementById('cipa-treinamento-validade').value ? new Date(document.getElementById('cipa-treinamento-validade').value) : null
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Reunião -->
+<div class="modal fade" id="cipa-reuniao-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reunião</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cipa-reuniao-form">
+                    <input type="hidden" id="cipa-reuniao-id">
+                    <div class="mb-3">
+                        <label class="form-label">Data</label>
+                        <input type="date" class="form-control" id="cipa-reuniao-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Pauta</label>
+                        <textarea class="form-control" id="cipa-reuniao-pauta" rows="3"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Participantes (nomes separados por vírgula)</label>
+                        <input type="text" class="form-control" id="cipa-reuniao-participantes">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="cipa-reuniao-ata">
+                        <label class="form-check-label">Ata Salva</label>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="cipa-reuniao-plano">
+                        <label class="form-check-label">Plano de Ação Gerado</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarReuniaoCipa({
+                    id: document.getElementById('cipa-reuniao-id').value,
+                    data: document.getElementById('cipa-reuniao-data').value ? new Date(document.getElementById('cipa-reuniao-data').value) : null,
+                    pauta: document.getElementById('cipa-reuniao-pauta').value,
+                    participantes: document.getElementById('cipa-reuniao-participantes').value.split(',').map(p => p.trim()),
+                    ata: document.getElementById('cipa-reuniao-ata').checked,
+                    planoAcao: document.getElementById('cipa-reuniao-plano').checked
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ação -->
+<div class="modal fade" id="cipa-acao-modal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Ação do Plano</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="cipa-acao-form">
+                    <input type="hidden" id="cipa-acao-id">
+                    <div class="mb-3">
+                        <label class="form-label">Título</label>
+                        <input type="text" class="form-control" id="cipa-acao-titulo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Setor</label>
+                        <input type="text" class="form-control" id="cipa-acao-setor">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Risco</label>
+                        <input type="text" class="form-control" id="cipa-acao-risco" placeholder="Ex: Queda, Incêndio, Ergonômico">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Responsável</label>
+                        <input type="text" class="form-control" id="cipa-acao-responsavel">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Prazo</label>
+                            <input type="date" class="form-control" id="cipa-acao-prazo">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="cipa-acao-status">
+                                <option value="Pendente">Pendente</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Concluído">Concluído</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Prioridade</label>
+                        <select class="form-select" id="cipa-acao-prioridade">
+                            <option value="Baixa">Baixa</option>
+                            <option value="Média">Média</option>
+                            <option value="Alta">Alta</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descrição</label>
+                        <textarea class="form-control" id="cipa-acao-descricao" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarAcaoCipa({
+                    id: document.getElementById('cipa-acao-id').value,
+                    titulo: document.getElementById('cipa-acao-titulo').value,
+                    setor: document.getElementById('cipa-acao-setor').value,
+                    risco: document.getElementById('cipa-acao-risco').value,
+                    responsavel: document.getElementById('cipa-acao-responsavel').value,
+                    prazo: document.getElementById('cipa-acao-prazo').value ? new Date(document.getElementById('cipa-acao-prazo').value) : null,
+                    status: document.getElementById('cipa-acao-status').value,
+                    prioridade: document.getElementById('cipa-acao-prioridade').value,
+                    descricao: document.getElementById('cipa-acao-descricao').value
+                })">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+

@@ -1339,7 +1339,10 @@ let chartEpiSetor = null;
 let chartEpiCusto = null;
 
 async function carregarDashboardConsumoEPI() {
-    let inicio = document.getElementById('dash-epi-inicio').value;
+    const inicioInput = document.getElementById('dash-epi-inicio');
+    if (!inicioInput) return; // Sai se o dashboard não estiver presente na tela
+
+    let inicio = inicioInput.value;
     let fim = document.getElementById('dash-epi-fim').value;
     const empresa = document.getElementById('dash-epi-empresa').value;
     const setor = document.getElementById('dash-epi-setor').value;
@@ -1350,6 +1353,7 @@ async function carregarDashboardConsumoEPI() {
         inicio = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
         fim = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
         document.getElementById('dash-epi-inicio').value = inicio;
+        inicioInput.value = inicio;
         document.getElementById('dash-epi-fim').value = fim;
     }
 
@@ -1442,6 +1446,14 @@ async function carregarDashboardConsumoEPI() {
         document.getElementById('kpi-epi-total-itens').textContent = totalItens;
         document.getElementById('kpi-epi-valor-total').textContent = `R$ ${totalValor.toFixed(2).replace('.', ',')}`;
         document.getElementById('kpi-epi-tempo-reposicao').textContent = tempoMedio !== '-' ? `${tempoMedio} dias` : '-';
+        const elTotalItens = document.getElementById('kpi-epi-total-itens');
+        if (elTotalItens) elTotalItens.textContent = totalItens;
+        
+        const elValorTotal = document.getElementById('kpi-epi-valor-total');
+        if (elValorTotal) elValorTotal.textContent = `R$ ${totalValor.toFixed(2).replace('.', ',')}`;
+        
+        const elTempoReposicao = document.getElementById('kpi-epi-tempo-reposicao');
+        if (elTempoReposicao) elTempoReposicao.textContent = tempoMedio !== '-' ? `${tempoMedio} dias` : '-';
 
         // Renderizar Ranking Colaboradores
         const rankingColabSorted = Object.entries(rankingColaboradores)
@@ -1455,6 +1467,16 @@ async function carregarDashboardConsumoEPI() {
                 <td class="text-end">R$ ${dados.custo.toFixed(2).replace('.', ',')}</td>
             </tr>
         `).join('') || '<tr><td colspan="3" class="text-center text-muted">Sem dados</td></tr>';
+        const elRankingColab = document.getElementById('ranking-epi-colaboradores');
+        if (elRankingColab) {
+            elRankingColab.innerHTML = rankingColabSorted.map(([nome, dados]) => `
+                <tr>
+                    <td>${nome}</td>
+                    <td class="text-center">${dados.qtd}</td>
+                    <td class="text-end">R$ ${dados.custo.toFixed(2).replace('.', ',')}</td>
+                </tr>
+            `).join('') || '<tr><td colspan="3" class="text-center text-muted">Sem dados</td></tr>';
+        }
 
         // Renderizar Ranking Demora
         const rankingDemoraSorted = Object.entries(demoraPorItem)
@@ -1468,116 +1490,130 @@ async function carregarDashboardConsumoEPI() {
                 <td class="text-center"><span class="badge bg-warning text-dark">${r.media.toFixed(1)} dias</span></td>
             </tr>
         `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados de compras concluídas</td></tr>';
+        const elRankingDemora = document.getElementById('ranking-epi-demora');
+        if (elRankingDemora) {
+            elRankingDemora.innerHTML = rankingDemoraSorted.map(r => `
+                <tr>
+                    <td>${r.item}</td>
+                    <td class="text-center"><span class="badge bg-warning text-dark">${r.media.toFixed(1)} dias</span></td>
+                </tr>
+            `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados de compras concluídas</td></tr>';
+        }
 
         // Gráfico Setor (por Custo)
-        const ctxSetor = document.getElementById('chart-epi-setor').getContext('2d');
-        if (chartEpiSetor) chartEpiSetor.destroy();
-        
-        // Ordenar dados para melhor visualização
-        const sortedPorSetor = Object.entries(porSetor).sort(([,a],[,b]) => b-a);
-
-        // Adicionar scrollbar ao container do gráfico e altura dinâmica
         const canvasSetor = document.getElementById('chart-epi-setor');
-        const containerSetor = canvasSetor.parentElement;
-        containerSetor.style.maxHeight = '400px';
-        containerSetor.style.overflowY = 'auto';
-        canvasSetor.height = sortedPorSetor.length * 30; // Altura dinâmica para permitir scrollbar
+        if (canvasSetor) {
+            const ctxSetor = canvasSetor.getContext('2d');
+            if (chartEpiSetor) chartEpiSetor.destroy();
+            
+            // Ordenar dados para melhor visualização
+            const sortedPorSetor = Object.entries(porSetor).sort(([,a],[,b]) => b-a);
 
-        chartEpiSetor = new Chart(ctxSetor, {
-            type: 'bar',
-            data: {
-                labels: sortedPorSetor.map(item => item[0]),
-                datasets: [{
-                    label: 'Custo (R$)',
-                    data: sortedPorSetor.map(item => item[1]),
-                    backgroundColor: '#4361ee',
-                    borderRadius: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y', // Gráfico de barras horizontal
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: { display: false }, // Título já está no card-header
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return ` Custo: R$ ${context.raw.toFixed(2)}`;
-                            }
-                        }
-                    }
+            // Configurar container com scrollbar
+            const containerSetor = canvasSetor.parentElement;
+            containerSetor.style.maxHeight = '400px';
+            containerSetor.style.overflowY = 'auto';
+            canvasSetor.height = sortedPorSetor.length * 30;
+
+            chartEpiSetor = new Chart(ctxSetor, {
+                type: 'bar',
+                data: {
+                    labels: sortedPorSetor.map(item => item[0]),
+                    datasets: [{
+                        label: 'Custo (R$)',
+                        data: sortedPorSetor.map(item => item[1]),
+                        backgroundColor: '#4361ee',
+                        borderRadius: 4
+                    }]
                 },
-                scales: {
-                    x: {
-                        beginAtZero: true, // Começa no zero
-                        grid: { display: false }, // Remove linhas de grade X
-                        border: { display: false }, // Remove borda do eixo X
-                        ticks: {
-                            callback: function(value) {
-                                return 'R$ ' + value;
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: false },
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Custo: R$ ${context.raw.toFixed(2)}`;
+                                }
                             }
                         }
                     },
-                    y: {
-                        grid: { display: false }, // Remove linhas de grade Y
-                        border: { display: false } // Remove borda do eixo Y
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value;
+                                }
+                            }
+                        },
+                        y: {
+                            grid: { display: false },
+                            border: { display: false }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
 
         // Gráfico Custo Mensal (Evolução)
-        const ctxCusto = document.getElementById('chart-epi-custo-mensal').getContext('2d');
-        if (chartEpiCusto) chartEpiCusto.destroy();
+        const canvasCusto = document.getElementById('chart-epi-custo-mensal');
+        if (canvasCusto) {
+            const ctxCusto = canvasCusto.getContext('2d');
+            if (chartEpiCusto) chartEpiCusto.destroy();
 
-        // Ordenar os meses para garantir a ordem cronológica
-        const sortedPorMes = Object.entries(porMes).sort((a, b) => {
-            const meses = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
-            const [mesAStr, anoA] = a[0].split('/');
-            const [mesBStr, anoB] = b[0].split('/');
-            const dataA = new Date(`20${anoA}`, meses[mesAStr.toLowerCase()]);
-            const dataB = new Date(`20${anoB}`, meses[mesBStr.toLowerCase()]);
-            return dataA - dataB;
-        });
+            // Ordenar os meses para garantir a ordem cronológica
+            const sortedPorMes = Object.entries(porMes).sort((a, b) => {
+                const meses = { 'jan': 0, 'fev': 1, 'mar': 2, 'abr': 3, 'mai': 4, 'jun': 5, 'jul': 6, 'ago': 7, 'set': 8, 'out': 9, 'nov': 10, 'dez': 11 };
+                const [mesAStr, anoA] = a[0].split('/');
+                const [mesBStr, anoB] = b[0].split('/');
+                const dataA = new Date(`20${anoA}`, meses[mesAStr.toLowerCase()]);
+                const dataB = new Date(`20${anoB}`, meses[mesBStr.toLowerCase()]);
+                return dataA - dataB;
+            });
 
-        chartEpiCusto = new Chart(ctxCusto, {
-            type: 'line',
-            data: {
-                labels: sortedPorMes.map(item => item[0]),
-                datasets: [{
-                    label: 'Custo (R$)',
-                    data: sortedPorMes.map(item => item[1]),
-                    borderColor: '#f72585',
-                    backgroundColor: 'rgba(247, 37, 133, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    title: { display: false }, // Título já está no card-header
-                    legend: { display: false }
+            chartEpiCusto = new Chart(ctxCusto, {
+                type: 'line',
+                data: {
+                    labels: sortedPorMes.map(item => item[0]),
+                    datasets: [{
+                        label: 'Custo (R$)',
+                        data: sortedPorMes.map(item => item[1]),
+                        borderColor: '#f72585',
+                        backgroundColor: 'rgba(247, 37, 133, 0.1)',
+                        fill: true,
+                        tension: 0.3
+                    }]
                 },
-                scales: {
-                    x: {
-                        grid: { display: false }
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: { display: false },
+                        legend: { display: false }
                     },
-                    y: {
-                        beginAtZero: true, // Começa no zero
-                        grid: { display: false }, // Remove linhas de grade Y
-                        ticks: {
-                            callback: function(value) {
-                                return 'R$ ' + value;
+                    scales: {
+                        x: {
+                            grid: { display: false }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { display: false },
+                            ticks: {
+                                callback: function(value) {
+                                    return 'R$ ' + value;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+        }
 
     } catch (error) {
         console.error("Erro dashboard EPI:", error);
