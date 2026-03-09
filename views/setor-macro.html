@@ -13,10 +13,15 @@
                 </div>
                 <div class="col-md-8">
                     <div class="mb-3">
-                        <label for="setores-disponiveis" class="form-label">Setores para Vincular</label>
-                        <select multiple class="form-control" id="setores-disponiveis">
-                            <!-- Opções de setores serão carregadas dinamicamente -->
-                        </select>
+                        <label for="search-setores-disponiveis" class="form-label">Buscar e Selecionar Setores</label>
+                        <input type="text" id="search-setores-disponiveis" class="form-control mb-2" placeholder="Digite para buscar...">
+                        <div id="lista-setores-container" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
+                            <!-- Lista de setores com checkboxes será carregada dinamicamente -->
+                            <div class="text-center text-muted py-3">
+                                <i class="fas fa-spinner fa-spin"></i> Carregando setores...
+                            </div>
+                        </div>
+                        <small class="text-muted">Selecione um ou mais setores usando as checkboxes acima</small>
                     </div>
                 </div>
             </div>

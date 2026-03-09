@@ -503,6 +503,11 @@ async function carregarDadosSecao(sectionName) {
                     await inicializarControleExtintores();
                 }
                 break;
+            case 'setor-macro':
+                if (typeof inicializarSetorMacro === 'function') {
+                    inicializarSetorMacro();
+                }
+                break;
         }
     } catch (error) {
     }

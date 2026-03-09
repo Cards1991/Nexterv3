@@ -10,6 +10,9 @@ let __solicitacoes_lista_cache = []; // Cache para replicação direta
 let __dash_sol_charts = {}; // Cache para gráficos do dashboard
 let __dash_sol_dados_cache = []; // Cache de dados para o relatório
 
+// Flag para evitar dupla submissão
+let __salvando_solicitacao = false;
+
 /**
  * Inicializa a tela de solicitação de horas extras.
  * É chamada quando a seção 'dp-horas-solicitacao' é exibida.
@@ -34,6 +37,34 @@ async function inicializarTelaSolicitacao() {
         btnFiltrar.addEventListener('click', renderMinhasSolicitacoes);
         btnFiltrar.bound = true;
     }
+    
+    // Adicionar listener para o formulário de solicitação
+    const formSolicitacao = document.getElementById('form-solicitacao-horas');
+    if (formSolicitacao && !formSolicitacao.bound) {
+        formSolicitacao.addEventListener('submit', async function(e) {
+            e.preventDefault(); // Evita o comportamento padrão de submissão
+            e.stopPropagation();
+            
+            // Evita dupla submissão
+            if (__salvando_solicitacao) {
+                console.log("Solicitação já está sendo enviada, aguarde...");
+                return;
+            }
+            
+            __salvando_solicitacao = true;
+            
+            try {
+                await salvarNovaSolicitacao();
+            } catch (err) {
+                console.error("Erro ao salvar solicitação:", err);
+                mostrarMensagem("Falha ao salvar a solicitação.", "error");
+            } finally {
+                __salvando_solicitacao = false;
+            }
+        });
+        formSolicitacao.bound = true;
+    }
+    
     await carregarFuncionariosParaCache(); // Pré-carrega os funcionários
     await popularFiltrosSolicitacao();
     await popularFiltroSolicitantes(); // Popula o filtro de usuários
@@ -378,6 +409,13 @@ async function popularSelectSolicitantes() {
  * Salva a nova solicitação de horas extras no Firestore.
  */
 async function salvarNovaSolicitacao() {
+    const user = firebase.auth().currentUser;
+    if (!user) {
+        mostrarMensagem('Sessão expirada. Faça login novamente para continuar.', 'error');
+        // Opcional: redirecionar para a página de login
+        return;
+    }
+
     const solicitacaoId = document.getElementById('sol-id').value;
     const employeeSelect = document.getElementById('sol-employee');
     const employeeId = employeeSelect.value;
@@ -389,7 +427,7 @@ async function salvarNovaSolicitacao() {
     const reason = document.getElementById('sol-reason').value;
 
     const requesterSelect = document.getElementById('sol-requester');
-    const requesterId = requesterSelect ? requesterSelect.value : user.uid;
+    const requesterId = requesterSelect && requesterSelect.value ? requesterSelect.value : user.uid;
     const requesterName = requesterSelect ? requesterSelect.options[requesterSelect.selectedIndex].text : (user.displayName || user.email);
 
     if (!employeeId || !startDate || !startTime || !endTime) {
@@ -411,7 +449,6 @@ async function salvarNovaSolicitacao() {
             return;
         }
 
-        const user = firebase.auth().currentUser;
         // Adiciona o cálculo do valor estimado na criação
         const valorEstimado = await calcularValorEstimado(start, end, employeeId);
 
@@ -949,16 +986,8 @@ function imprimirRelatorioDesempenho() {
     openPrintWindow(conteudo, { autoPrint: true });
 }
 
-// Adiciona o listener para o formulário do modal
-document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('form-solicitacao-horas');
-    if (form) {
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
-            salvarNovaSolicitacao();
-        });
-    }
-});
+// Event listener for form submit is now handled inside inicializarTelaSolicitacao()
+// This ensures proper binding when the section is loaded
 
 // Garante compatibilidade com chamadas `onclick` antigas no HTML
 window.abrirModalSolicitacaoHoras = abrirModalNovaSolicitacao;
