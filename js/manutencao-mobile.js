@@ -19,10 +19,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const urlParams = new URLSearchParams(window.location.search);
     // CORREÇÃO: Aceita tanto 'maquinaId' quanto 'maquina' (legado)
-    const maquinaId = urlParams.get('maquinaId') || urlParams.get('maquina');
+    // Adicionado .trim() para remover espaços em branco acidentais do QR Code.
+    const maquinaIdRaw = urlParams.get('maquinaId') || urlParams.get('maquina');
+    const maquinaId = maquinaIdRaw ? maquinaIdRaw.trim() : null;
     
     // Se não tiver maquinaId, redireciona ou mostra erro
-    if (!maquinaId) {
+    if (!maquinaId || maquinaId.length === 0) {
         mostrarMensagemMobile("QR Code inválido. Máquina não identificada.", "danger");
         setTimeout(() => {
             window.location.href = 'login.html';
@@ -92,15 +94,20 @@ function adicionarBotaoSair(user) {
 }
 
 async function fetchMachineInfo(maquinaId) {
+    // Adicionado log para depuração
+    console.log(`[DEBUG] Buscando no Firestore: collection='maquinas', doc='${maquinaId}'`);
     try {
         const maquinaDoc = await db.collection('maquinas').doc(maquinaId).get();
         if (maquinaDoc.exists) {
+            console.log("[DEBUG] Máquina encontrada:", maquinaDoc.data());
             document.getElementById('chamado-maquina-nome').value = maquinaDoc.data().nome || 'Nome não encontrado';
         } else {
+            console.warn(`[DEBUG] Documento com ID '${maquinaId}' não foi encontrado na coleção 'maquinas'. Verifique se o ID no QR Code corresponde exatamente ao ID do documento no Firebase.`);
             document.getElementById('chamado-maquina-nome').value = 'Máquina não encontrada';
             mostrarMensagemMobile("Máquina não encontrada no sistema.", "danger");
         }
     } catch (error) {
+        // Este erro agora é mais provável de ser um problema de rede ou configuração do Firebase, não de permissões de regra.
         console.error("Erro ao buscar informação da máquina:", error);
         mostrarMensagemMobile("Erro ao carregar dados da máquina.", "danger");
     }

@@ -380,6 +380,26 @@ async function abrirModalNovaSolicitacao() {
             sectorInput.value = selectedOption.dataset.setor || '';
         }
     });
+
+    // Listener para Forma de Pagamento - Define hora inicial 18:15 quando for "Folha"
+    const formaPagamentoSelect = document.getElementById('sol-forma-pagamento');
+    if (formaPagamentoSelect) {
+        // Remove listener anterior para evitar duplicação
+        formaPagamentoSelect.removeEventListener('change', handleFormaPagamentoChange);
+        
+        formaPagamentoSelect.addEventListener('change', handleFormaPagamentoChange);
+    }
+}
+
+// Função para tratar mudança na forma de pagamento
+function handleFormaPagamentoChange() {
+    const formaPagamento = document.getElementById('sol-forma-pagamento').value;
+    const startTimeInput = document.getElementById('sol-start-time');
+    
+    if (formaPagamento === 'folha' && startTimeInput) {
+        // Se for pagamento na folha, define hora inicial como 18:15
+        startTimeInput.value = '18:15';
+    }
 }
 
 async function popularSelectSolicitantes() {
@@ -425,6 +445,7 @@ async function salvarNovaSolicitacao() {
     const endDate = startDate; // A data de fim é a mesma da de início
     const endTime = document.getElementById('sol-end-time').value;
     const reason = document.getElementById('sol-reason').value;
+    const formaPagamento = document.getElementById('sol-forma-pagamento').value;
 
     const requesterSelect = document.getElementById('sol-requester');
     const requesterId = requesterSelect && requesterSelect.value ? requesterSelect.value : user.uid;
@@ -458,6 +479,7 @@ async function salvarNovaSolicitacao() {
             start: firebase.firestore.Timestamp.fromDate(start),
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason || '',
+            formaPagamento: formaPagamento || 'por-fora',
             status: 'pendente',
             valorEstimado: valorEstimado,
             createdByUid: requesterId,
@@ -1001,6 +1023,7 @@ window.editarSolicitacao = editarSolicitacao;
 window.abrirDashboardSolicitante = abrirDashboardSolicitante;
 window.carregarDadosDashboardSolicitante = carregarDadosDashboardSolicitante;
 window.imprimirRelatorioDesempenho = imprimirRelatorioDesempenho;
+window.handleFormaPagamentoChange = handleFormaPagamentoChange;
 
 /**
  * Calcula o valor estimado de uma solicitação de horas extras.

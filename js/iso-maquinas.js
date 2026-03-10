@@ -18,18 +18,8 @@ function inicializarModuloMaquinas(dbInstance) {
 
 async function inicializarMaquinas() {
     try {
-        // Verificar se o Firestore está disponível
-        if (!__db) {
-            console.error("Firestore não inicializado no módulo de máquinas");
-            // Tentar obter do escopo global como fallback
-            if (typeof window.db !== 'undefined') {
-                __db = window.db;
-            } else if (typeof firebase !== 'undefined' && firebase.app()) {
-                __db = firebase.firestore();
-            } else {
-                throw new Error("Firestore não disponível");
-            }
-        }
+        // Neste ponto, __db já deve estar inicializado por inicializarModuloMaquinas
+        if (!__db) throw new Error("Firestore não disponível");
 
         await carregarMaquinas();
         const btnNova = document.getElementById('btn-nova-maquina');
