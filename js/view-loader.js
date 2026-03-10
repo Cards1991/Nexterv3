@@ -6,7 +6,7 @@
 const ViewLoader = {
     // Registered views to be loaded
     views: [
-        { id: 'sidebar-container', url: 'views/sidebar.html' },
+        { id: 'sidebar', url: 'views/sidebar.html' },
         { id: 'header-container', url: 'views/header.html' }
     ],
 

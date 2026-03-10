@@ -5,6 +5,7 @@
 
 let listenerAutorizacao = null;
 let cacheSolicitacoes = [];
+let __auth_funcionarios_cache = null;
 let __auth_funcionarios_cache_timestamp = null;
 const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutos
 
@@ -251,6 +252,7 @@ function renderizarTabela(solicitacoes, container) {
                     <tr>
                         <th>Data</th>
                         <th>Funcionário</th>
+                        <th>Setor</th>
                         <th>Período</th>
                         <th class="text-end">Valor Est.</th>
                         <th class="text-center">Status</th>
@@ -278,6 +280,7 @@ function renderizarTabela(solicitacoes, container) {
                     <div>${s.employeeName || 'N/A'}</div>
                     <small class="text-muted">${s.createdByName || ''}</small>
                 </td>
+                <td>${s.setor || 'N/A'}</td>
                 <td>
                     <small>${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
                 </td>
@@ -286,9 +289,9 @@ function renderizarTabela(solicitacoes, container) {
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-info" onclick="abrirModalAjuste('${s.id}', true)" title="Visualizar"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-outline-primary" onclick="abrirModalAjuste('${s.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                         ${s.status === 'pendente' ? `
                             <button class="btn btn-success" onclick="aprovarSolicitacao('${s.id}')" title="Aprovar"><i class="fas fa-check"></i></button>
-                            <button class="btn btn-primary" onclick="abrirModalAjuste('${s.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                             <button class="btn btn-warning" onclick="rejeitarSolicitacao('${s.id}')" title="Rejeitar"><i class="fas fa-times"></i></button>
                         ` : ''}
                         <button class="btn btn-outline-danger" onclick="excluirSolicitacaoDeHoras('${s.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
@@ -587,16 +590,250 @@ async function calcularValorEstimado(start, end, employeeId, salariosMap = null)
 
 function imprimirTabelaAutorizacao() {
     const tabela = document.getElementById('tabela-autorizacao');
-    if (!tabela) return;
+    if (!tabela) {
+        mostrarMensagem("Tabela não encontrada para impressão.", "warning");
+        return;
+    }
 
-    const tabelaClone = tabela.cloneNode(true);
-    Array.from(tabelaClone.querySelectorAll('tr')).forEach(row => row.deleteCell(-1)); // Remove coluna de ações
+    // Obter dados do cache para incluir informações extras
+    const dados = cacheSolicitacoes || [];
+    
+    // Data atual formatada
+    const dataAtual = new Date().toLocaleDateString('pt-BR', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+    });
+    
+    // Obter filtros ativos para exibir no relatório
+    const filtroStatus = document.getElementById('auth-filtro-status')?.value || 'Todos';
+    const filtroSetor = document.getElementById('auth-filtro-setor')?.value || 'Todos';
+    const filtroDataInicio = document.getElementById('auth-filtro-data-inicio')?.value || '';
+    const filtroDataFim = document.getElementById('auth-filtro-data-fim')?.value || '';
+    
+    const periodoFormatado = filtroDataInicio && filtroDataFim 
+        ? `${filtroDataInicio} a ${filtroDataFim}` 
+        : 'Período não especificado';
+
+    // Calcular totais
+    const totalGeral = dados.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    const totalAprovadas = dados.filter(s => s.status === 'aprovado').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    const totalPendentes = dados.filter(s => s.status === 'pendente').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    const totalRejeitadas = dados.filter(s => s.status === 'rejeitado').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
+    // Gerar HTML da tabela com motivo
+    let htmlTabela = `
+        <thead style="background-color: #2c3e50; color: white;">
+            <tr>
+                <th style="padding: 12px; text-align: left;">Data</th>
+                <th style="padding: 12px; text-align: left;">Funcionário</th>
+                <th style="padding: 12px; text-align: left;">Setor</th>
+                <th style="padding: 12px; text-align: left;">Período</th>
+                <th style="padding: 12px; text-align: left;">Motivo</th>
+                <th style="padding: 12px; text-align: center;">Status</th>
+                <th style="padding: 12px; text-align: right;">Valor</th>
+            </tr>
+        </thead>
+        <tbody>`;
+
+    dados.forEach(s => {
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
+        
+        const statusConfig = {
+            'pendente': { class: '#ffc107', text: 'Pendente', color: '#856404' },
+            'aprovado': { class: '#28a745', text: 'Aprovado', color: '#155724' },
+            'rejeitado': { class: '#dc3545', text: 'Rejeitado', color: '#721c24' },
+            'cancelado': { class: '#6c757d', text: 'Cancelado', color: '#383d41' }
+        }[s.status] || { class: '#6c757d', text: s.status, color: '#383d41' };
+
+        const motivo = s.reason || 'Não especificado';
+        
+        htmlTabela += `
+            <tr style="border-bottom: 1px solid #dee2e6;">
+                <td style="padding: 10px;">${createdAt.toLocaleDateString('pt-BR')}</td>
+                <td style="padding: 10px;"><strong>${s.employeeName || 'N/A'}</strong></td>
+                <td style="padding: 10px;">${s.setor || 'N/A'}</td>
+                <td style="padding: 10px;">
+                    ${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                </td>
+                <td style="padding: 10px; max-width: 200px;">${motivo}</td>
+                <td style="padding: 10px; text-align: center;">
+                    <span style="background-color: ${statusConfig.class}; color: ${statusConfig.color}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                        ${statusConfig.text}
+                    </span>
+                </td>
+                <td style="padding: 10px; text-align: right; font-weight: bold;">R$ ${(s.valorEstimado || 0).toFixed(2).replace('.', ',')}</td>
+            </tr>`;
+    });
+
+    htmlTabela += `
+        </tbody>
+        <tfoot style="background-color: #f8f9fa; font-weight: bold;">
+            <tr>
+                <td colspan="6" style="padding: 12px; text-align: right;">Total Geral:</td>
+                <td style="padding: 12px; text-align: right; font-size: 14px;">R$ ${totalGeral.toFixed(2).replace('.', ',')}</td>
+            </tr>
+        </tfoot>`;
 
     const conteudo = `
-        <html><head><title>Relatório de Autorizações</title>
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <style>@page { size: landscape; } body { font-family: sans-serif; padding: 20px; }</style>
-        </head><body><h2>Relatório de Autorização de Horas Extras</h2>${tabelaClone.outerHTML}</body></html>`;
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Relatório de Autorização de Horas Extras</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+            <style>
+                @page { size: landscape; margin: 0.5cm; }
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                    padding: 20px; 
+                    color: #333;
+                    font-size: 12px;
+                }
+                .header-report {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 20px;
+                    padding-bottom: 15px;
+                    border-bottom: 3px solid #2c3e50;
+                }
+                .header-report h1 {
+                    color: #2c3e50;
+                    margin: 0;
+                    font-size: 24px;
+                    font-weight: 600;
+                }
+                .header-report .logo {
+                    font-size: 28px;
+                    color: #2c3e50;
+                }
+                .info-filtros {
+                    background: linear-gradient(to right, #f8f9fa, #e9ecef);
+                    padding: 15px;
+                    border-radius: 8px;
+                    margin-bottom: 20px;
+                    border-left: 4px solid #2c3e50;
+                }
+                .info-filtros .label {
+                    font-weight: 600;
+                    color: #495057;
+                }
+                .info-filtros .value {
+                    color: #2c3e50;
+                }
+                .resumo-cards {
+                    display: flex;
+                    justify-content: space-between;
+                    margin-bottom: 20px;
+                    gap: 15px;
+                }
+                .resumo-card {
+                    flex: 1;
+                    padding: 15px;
+                    border-radius: 8px;
+                    text-align: center;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+                .resumo-card.aprovado { background: linear-gradient(135deg, #d4edda, #c3e6cb); border: 1px solid #28a745; }
+                .resumo-card.pendente { background: linear-gradient(135deg, #fff3cd, #ffeeba); border: 1px solid #ffc107; }
+                .resumo-card.rejeitado { background: linear-gradient(135deg, #f8d7da, #f5c6cb); border: 1px solid #dc3545; }
+                .resumo-card.geral { background: linear-gradient(135deg, #e2e3e5, #d6d8db); border: 1px solid #6c757d; }
+                .resumo-card .valor { font-size: 18px; font-weight: bold; }
+                .resumo-card .titulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
+                
+                table { 
+                    width: 100%; 
+                    border-collapse: collapse; 
+                    font-size: 11px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                .table thead th {
+                    background-color: #2c3e50 !important;
+                    color: white !important;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    font-size: 10px;
+                    letter-spacing: 0.5px;
+                }
+                .table tbody tr:hover {
+                    background-color: #f8f9fa;
+                }
+                .footer-report {
+                    margin-top: 20px;
+                    padding-top: 15px;
+                    border-top: 2px solid #dee2e6;
+                    text-align: center;
+                    color: #6c757d;
+                    font-size: 10px;
+                }
+            </style>
+        </head>
+        <body>
+            <div class="header-report">
+                <div>
+                    <h1><i class="fas fa-clock"></i> Relatório de Autorização de Horas Extras</h1>
+                    <p style="margin: 5px 0 0 0; color: #6c757d;">Nexter - Sistema de Gestão de RH</p>
+                </div>
+                <div class="logo">
+                    <i class="fas fa-building"></i>
+                </div>
+            </div>
+
+            <div class="info-filtros">
+                <div class="row">
+                    <div class="col-md-3">
+                        <span class="label">Data de Emissão:</span>
+                        <span class="value">${dataAtual}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="label">Período:</span>
+                        <span class="value">${periodoFormatado}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="label">Setor:</span>
+                        <span class="value">${filtroSetor}</span>
+                    </div>
+                    <div class="col-md-3">
+                        <span class="label">Status:</span>
+                        <span class="value">${filtroStatus === 'pendente' ? 'Pendente' : filtroStatus === 'aprovado' ? 'Aprovado' : filtroStatus === 'rejeitado' ? 'Rejeitado' : 'Todos'}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="resumo-cards">
+                <div class="resumo-card aprovado">
+                    <div class="titulo">Aprovadas</div>
+                    <div class="valor">R$ ${totalAprovadas.toFixed(2).replace('.', ',')}</div>
+                </div>
+                <div class="resumo-card pendente">
+                    <div class="titulo">Pendentes</div>
+                    <div class="valor">R$ ${totalPendentes.toFixed(2).replace('.', ',')}</div>
+                </div>
+                <div class="resumo-card rejeitado">
+                    <div class="titulo">Rejeitadas</div>
+                    <div class="valor">R$ ${totalRejeitadas.toFixed(2).replace('.', ',')}</div>
+                </div>
+                <div class="resumo-card geral">
+                    <div class="titulo">Total Geral</div>
+                    <div class="valor">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
+                </div>
+            </div>
+
+            <table class="table table-bordered table-striped">
+                ${htmlTabela}
+            </table>
+
+            <div class="footer-report">
+                <p>Relatório gerado automaticamente pelo Sistema Nexter em ${dataAtual}</p>
+                <p>Total de registros: ${dados.length}</p>
+            </div>
+        </body>
+        </html>`;
+
     openPrintWindow(conteudo, { autoPrint: true });
 }
 

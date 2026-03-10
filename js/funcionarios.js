@@ -115,9 +115,14 @@ async function carregarFuncionarios() {
         funcionarios = funcionariosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // Aplicar filtros
-        const filtroEmpresaId = document.getElementById('filtro-empresa-funcionarios').value;
-        const filtroNome = document.getElementById('filtro-nome-funcionarios').value.toLowerCase();
-        const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios')?.checked;
+        const filtroEmpresaEl = document.getElementById('filtro-empresa-funcionarios');
+        const filtroEmpresaId = filtroEmpresaEl ? filtroEmpresaEl.value : '';
+
+        const filtroNomeEl = document.getElementById('filtro-nome-funcionarios');
+        const filtroNome = filtroNomeEl ? filtroNomeEl.value.toLowerCase() : '';
+        
+        const filtroSemSetorEl = document.getElementById('filtro-sem-setor-funcionarios');
+        const filtroSemSetor = filtroSemSetorEl ? filtroSemSetorEl.checked : false;
 
         let funcionariosFiltrados = funcionarios;
 
@@ -1308,19 +1313,19 @@ document.addEventListener('DOMContentLoaded', function () {
  */
 function exportarModeloCSV() {
     const headers = [
-        "Nome Completo", "CPF", "Data de Nascimento (YYYY-MM-DD)", "Sexo", "Email", "Telefone",
+        "Nome Completo", "CPF", "PIS", "Data de Nascimento (YYYY-MM-DD)", "Sexo", "Email", "Telefone",
         "Nome da Empresa", "Setor", "Cargo", "Salário", "Data de Admissão (YYYY-MM-DD)"
     ];
     const exemplo = [
-        '"João da Silva"', "537.418.338-49", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999",
+        '"João da Silva"', "537.418.338-49", "12345678901", "1990-05-20", "Masculino", "joao@email.com", "(11) 99999-9999",
         "Empresa Exemplo", "TI", "Desenvolvedor", "5000.00", "2024-01-15"
     ];
     const exemplo2 = [
-        '"Maria Santos"', "842.765.908-52", "1992-08-10", "Feminino", "maria@email.com", "(11) 88888-8888",
+        '"Maria Santos"', "842.765.908-52", "10987654321", "1992-08-10", "Feminino", "maria@email.com", "(11) 88888-8888",
         "Empresa Exemplo", "RH", "Analista", "4500.00", "2024-01-10"
     ];
     const exemplo3 = [
-        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "081.946.399-05", "1991-10-17", "Masculino", "charles.santos17101991@gmail.com", "(42)991190590",
+        '"CHARLES AUGUSTO RIBEIRO DOS SANTOS"', "081.946.399-05", "12035669865", "1991-10-17", "Masculino", "charles.santos17101991@gmail.com", "(42)991190590",
         "Calcados Crival Ltda", "RH", "Gerente De RH", "5600.00", "2022-01-10"
     ];
 
@@ -2722,6 +2727,8 @@ async function processarArquivoAtualizacaoXLSX() {
                                 field = 'telefone';
                             } else if (lowerKey === 'sexo' || lowerKey.includes('gênero') || lowerKey.includes('genero')) {
                                 field = 'sexo';
+                            } else if (lowerKey.includes('pis')) {
+                                field = 'pis';
                             } else if (lowerKey.includes('status')) {
                                 field = 'status';
                             }

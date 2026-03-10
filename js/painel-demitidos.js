@@ -113,12 +113,20 @@ async function carregarPainelDemitidos() {
 
             // Verifica se já tem custo lançado
             const custoLancado = custosMap[doc.id];
+            console.log(`[DEBUG] Funcionário: ${f.nome}, Custo Lançado: ${custoLancado}`);
             let btnAcao = '';
+            let btnCancelar = '';
 
             if (custoLancado !== undefined) {
                 btnAcao = `
                     <button class="btn btn-sm btn-info text-white" onclick="visualizarCustoRescisao('${f.nome}', ${custoLancado})" title="Visualizar Valor Lançado">
                         <i class="fas fa-eye"></i> Ver Custo
+                    </button>
+                `;
+                // Se o custo já foi lançado, não pode cancelar a demissão, então o botão fica desabilitado
+                btnCancelar = `
+                    <button class="btn btn-sm btn-outline-warning me-2" disabled title="Não é possível cancelar uma demissão com custo já lançado.">
+                        <i class="fas fa-undo"></i>
                     </button>
                 `;
             } else {
@@ -127,7 +135,13 @@ async function carregarPainelDemitidos() {
                         <i class="fas fa-dollar-sign"></i> Lançar Custo
                     </button>
                 `;
+                btnCancelar = `
+                    <button class="btn btn-sm btn-outline-warning me-2" onclick="cancelarDemissao('${doc.id}', '${f.nome}')" title="Cancelar Demissão">
+                        <i class="fas fa-undo"></i>
+                    </button>
+                `;
             }
+            console.log(`[DEBUG] Botão Cancelar HTML para ${f.nome}: ${btnCancelar}`);
 
             html += `
                 <tr>
@@ -140,6 +154,7 @@ async function carregarPainelDemitidos() {
                     <td>${dataDemissao}</td>
                     <td>${motivo}</td>
                     <td class="text-end">
+                        ${btnCancelar}
                         ${btnAcao}
                     </td>
                 </tr>
@@ -151,6 +166,45 @@ async function carregarPainelDemitidos() {
     } catch (error) {
         console.error("Erro ao carregar demitidos:", error);
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
+    }
+}
+
+async function cancelarDemissao(id, nome) {
+    if (!confirm(`Tem certeza que deseja cancelar a demissão de ${nome}?\n\nEsta ação irá reativar o funcionário no sistema.`)) {
+        return;
+    }
+
+    try {
+        const funcRef = db.collection('funcionarios').doc(id);
+
+        await funcRef.update({
+            status: 'Ativo',
+            dataDesligamento: firebase.firestore.FieldValue.delete(),
+            motivoDesligamento: firebase.firestore.FieldValue.delete(),
+            dataDemissao: firebase.firestore.FieldValue.delete(),
+            tipoDemissao: firebase.firestore.FieldValue.delete()
+        });
+
+        // Opcional: Remover a movimentação de demissão correspondente
+        const movimentacaoQuery = await db.collection('movimentacoes')
+            .where('funcionarioId', '==', id)
+            .where('tipo', '==', 'demissao')
+            .get();
+        
+        if (!movimentacaoQuery.empty) {
+            const batch = db.batch();
+            movimentacaoQuery.docs.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+        }
+
+        alert(`${nome} foi reativado(a) com sucesso!`);
+        carregarPainelDemitidos();
+
+    } catch (error) {
+        console.error("Erro ao cancelar demissão:", error);
+        alert("Ocorreu um erro ao tentar reativar o funcionário.");
     }
 }
 
@@ -372,3 +426,4 @@ window.salvarCustoRescisao = salvarCustoRescisao;
 window.abrirModalImportacaoCustos = abrirModalImportacaoCustos;
 window.processarImportacaoCustos = processarImportacaoCustos;
 window.visualizarCustoRescisao = visualizarCustoRescisao;
+window.cancelarDemissao = cancelarDemissao;

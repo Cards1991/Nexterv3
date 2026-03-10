@@ -543,3 +543,29 @@ document.addEventListener('DOMContentLoaded', () => {
         if (typeof carregarSetores === 'function') carregarSetores(); else location.reload();
     };
 });
+
+// 9. Fix para Modal de Afastamentos
+document.addEventListener('click', function(e) {
+    if (e.target && (e.target.id === 'btn-novo-afastamento' || e.target.closest('#btn-novo-afastamento'))) {
+        const modalEl = document.getElementById('modalNovoAfastamento');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            
+            // Carregar colaboradores se o select estiver vazio
+            const select = document.getElementById('afastamento-colaborador');
+            if (select && select.options.length <= 1) {
+                select.innerHTML = '<option value="">Carregando...</option>';
+                db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get().then(snap => {
+                    select.innerHTML = '<option value="">Selecione...</option>';
+                    snap.forEach(doc => {
+                        const f = doc.data();
+                        select.innerHTML += `<option value="${doc.id}">${f.nome}</option>`;
+                    });
+                }).catch(err => {
+                    console.error("Erro ao carregar colaboradores:", err);
+                });
+            }
+        }
+    }
+});

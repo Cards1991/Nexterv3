@@ -1,21 +1,20 @@
-# TODO - Implementação do Relatório de Ponto Eletrônico
+# TODO - Modificações Solicitadas
 
 ## Tarefas:
-- [x] 1. Modificar js/afd-parser.js para adicionar lógica de classificação de ponto
-- [x] 2. Modificar index.html para adicionar estrutura do relatório estilizado
-- [x] 3. Testar a funcionalidade
+- [x] 1. Analisar o código existente
+- [x] 2. Confirmar plano com o usuário
+- [x] 3. Modificar js/iso-manutencao.js - Remover campos do modal
+- [x] 4. Modificar js/funcionarios.js - Adicionar mapeamento PIS
+- [x] 5. Testar as modificações
 
-## Detalhes das Modificações:
+## Resumo das Alterações:
 
-### js/afd-parser.js:
-- Adicionar função para classificar ponto por horário (antecipada, atraso, normal)
-- Adicionar lógica para detectar faltantes (comparar funcionários com registros)
-- Criar relatório estilizado com 3 seções: Entradas Antecipadas, Atrasos, Faltas
+### 1. js/iso-manutencao.js
+- Removido o campo "Tipo de Manutenção" do modal de abertura de chamado
+- Campo "Prioridade Inicial" foi desabilitado (o gerente de manutenção preencherá posteriormente)
+- Atualizada a função `salvarChamado()` para não exigir mais esses campos
 
-### index.html:
-- Adicionar cards/tabelas para o relatório estilizado
-- Adicionar filtros de data
-- Adicionar botão de exportação
-
-## Status: ✅ CONCLUÍDO
+### 2. js/funcionarios.js
+- Adicionado mapeamento do campo PIS na função `processarArquivoAtualizacaoXLSX()`
+- Agora o sistema reconhece colunas que contenham "pis" no Excel e atualiza o campo correspondente
 

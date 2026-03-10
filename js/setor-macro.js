@@ -7,12 +7,11 @@ let setorMacroInicializado = false;
 const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === 1) { // Element node
-                // Verifica se é a view setor-macro ou contém os elementos necessários
-                if (node.id === 'dynamic-content' || node.querySelector('#lista-setores-container')) {
+            if (node.nodeType === 1) {
+                if (node.id === 'dynamic-content' || (node.querySelector && node.querySelector('#lista-setores-container'))) {
                     if (!setorMacroInicializado) {
                         console.log("View setor-macro detectada via MutationObserver!");
-                        setTimeout(inicializarSetorMacro, 100);
+                        setTimeout(() => inicializarSetorMacro(), 100);
                         setorMacroInicializado = true;
                     }
                 }
@@ -33,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Verifica se os elementos já existem (caso a view esteja estática)
     const listaSetoresContainer = document.getElementById('lista-setores-container');
     if (listaSetoresContainer) {
         inicializarSetorMacro();
@@ -41,120 +39,189 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Função principal de inicialização do Setor Macro
-function inicializarSetorMacro() {
-    const listaSetoresContainer = document.getElementById('lista-setores-container');
-    const searchInput = document.getElementById('search-setores-disponiveis');
-    
-    // Se os elementos não existirem ainda, não faz nada
-    if (!listaSetoresContainer || !searchInput) {
-        console.log("Aguardando elementos do Setor Macro...");
-        return;
-    }
-
+async function inicializarSetorMacro() {
     console.log("Inicializando Setor Macro...");
     
+    const listaSetoresContainer = document.getElementById('lista-setores-container');
+    const searchInput = document.getElementById('search-setores-disponiveis');
+    const filtroEmpresaSelect = document.getElementById('filtro-empresa-setores');
     const btnSalvar = document.getElementById('btn-salvar-macro-setor');
     const nomeMacroSetorInput = document.getElementById('macro-setor-nome');
     const listaMacroSetoresDiv = document.getElementById('lista-macro-setores');
-
-    // Array para armazenar os setores carregados
-    let setoresData = [];
-
-    // Função para carregar setores na lista com checkboxes
-   async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado = null) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-
-    if (!empresaId) {
-        select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+    
+    // Verifica se todos os elementos necessários existem
+    if (!listaSetoresContainer || !searchInput || !filtroEmpresaSelect || !btnSalvar || !nomeMacroSetorInput || !listaMacroSetoresDiv) {
+        console.log("Aguardando elementos do Setor Macro...", {
+            listaSetoresContainer: !!listaSetoresContainer,
+            searchInput: !!searchInput,
+            filtroEmpresaSelect: !!filtroEmpresaSelect,
+            btnSalvar: !!btnSalvar,
+            nomeMacroSetorInput: !!nomeMacroSetorInput,
+            listaMacroSetoresDiv: !!listaMacroSetoresDiv
+        });
         return;
     }
 
-    select.innerHTML = '<option value="">Carregando...</option>';
+    // Variáveis globais do módulo
+    let setoresData = [];
+    let empresasMap = new Map();
 
-    try {
-        // Busca os setores da empresa selecionada
-        const setoresSnapshot = await db.collection('setores')
-            .where('empresaId', '==', empresaId)
-            .get();
-
-        if (setoresSnapshot.empty) {
-            select.innerHTML = '<option value="">Nenhum setor cadastrado para esta empresa</option>';
-            return;
-        }
-
-        select.innerHTML = '<option value="">Selecione um setor...</option>';
-
-        // Ordena os setores por descrição
-        const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
-            const descA = a.data().descricao || '';
-            const descB = b.data().descricao || '';
-            return descA.localeCompare(descB);
-        });
-
-        setoresDocs.forEach(doc => {
-            const setor = doc.data();
-            const option = document.createElement('option');
+    // FUNÇÃO: Carrega empresas para o filtro
+    async function carregarEmpresasParaFiltro() {
+        console.log("Carregando empresas para o filtro...");
+        
+        try {
+            const empresasSnap = await db.collection('empresas').orderBy('nome').get();
             
-            // CORREÇÃO: Usar o ID do documento como value, não a descrição
-            option.value = doc.id; // ANTES: setor.descricao
-            option.textContent = setor.descricao;
+            // Limpa o select e adiciona a opção "Todas"
+            filtroEmpresaSelect.innerHTML = '<option value="">Todas as empresas</option>';
             
-            // Se houver um setor selecionado (ID do documento), marca como selected
-            if (setorSelecionado && setorSelecionado === doc.id) {
-                option.selected = true;
+            // Limpa e recria o mapa de empresas
+            empresasMap.clear();
+            
+            if (empresasSnap.empty) {
+                console.warn("Nenhuma empresa encontrada");
+                return;
             }
             
-            select.appendChild(option);
-        });
-
-    } catch (error) {
-        console.error("Erro ao carregar setores:", error);
-        select.innerHTML = '<option value="">Erro ao carregar setores</option>';
+            empresasSnap.forEach(doc => {
+                const empresa = doc.data();
+                empresasMap.set(doc.id, empresa.nome);
+                
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = empresa.nome;
+                filtroEmpresaSelect.appendChild(option);
+            });
+            
+            console.log(`Carregadas ${empresasMap.size} empresas`);
+            
+        } catch (error) {
+            console.error("Erro ao carregar empresas:", error);
+            filtroEmpresaSelect.innerHTML = '<option value="">Erro ao carregar empresas</option>';
+        }
     }
+
+    // FUNÇÃO: Carrega setores
+    async function carregarSetoresDisponiveis() {
+        const empresaId = filtroEmpresaSelect.value;
+        console.log(`Carregando setores para empresa: ${empresaId || 'TODAS'}`);
+        
+        listaSetoresContainer.innerHTML = '<div class="text-center text-muted py-3"><i class="fas fa-spinner fa-spin"></i> Carregando setores...</div>';
+
+        try {
+            let query = db.collection('setores');
+            
+            if (empresaId) {
+                query = query.where('empresaId', '==', empresaId);
+            }
+            
+            const setoresSnap = await query.orderBy('descricao').get();
+
+            setoresData = [];
+            
+            if (setoresSnap.empty) {
+                listaSetoresContainer.innerHTML = '<div class="text-muted p-2">Nenhum setor encontrado</div>';
+                return;
+            }
+            
+            setoresSnap.forEach(doc => {
+                const setor = doc.data();
+                const nomeEmpresa = empresasMap.get(setor.empresaId) || 'Empresa não encontrada';
+                
+                setoresData.push({
+                    id: doc.id,
+                    descricao: setor.descricao || 'Sem descrição',
+                    empresaId: setor.empresaId,
+                    empresaNome: nomeEmpresa,
+                    displayText: `${setor.descricao} <small class="text-muted">(${nomeEmpresa})</small>`
+                });
+            });
+
+            console.log(`Carregados ${setoresData.length} setores`);
+            renderizarListaSetores(setoresData);
+
+        } catch (error) {
+            console.error("Erro ao carregar setores:", error);
+            listaSetoresContainer.innerHTML = '<div class="text-danger p-2">Erro ao carregar setores. Verifique o console.</div>';
+        }
+    }
+
+    // FUNÇÃO: Renderiza a lista de setores
+// FUNÇÃO: Renderiza a lista de setores com checkboxes
+function renderizarListaSetores(setores) {
+    if (setores.length === 0) {
+        listaSetoresContainer.innerHTML = '<div class="text-muted p-2">Nenhum setor encontrado</div>';
+        return;
+    }
+
+    let html = '';
+    setores.forEach(setor => {
+        // CORREÇÃO: Garantir que o id seja único e o label esteja associado corretamente
+        const checkboxId = `setor-${setor.id.replace(/[^a-zA-Z0-9]/g, '-')}`; // Remove caracteres especiais do ID
+        
+        html += `
+            <div class="form-check setor-item mb-1" data-id="${setor.id}">
+                <input class="form-check-input setor-checkbox" type="checkbox" value="${setor.id}" id="${checkboxId}">
+                <label class="form-check-label" for="${checkboxId}">
+                    ${setor.displayText}
+                </label>
+            </div>
+        `;
+    });
+
+    listaSetoresContainer.innerHTML = html;
 }
 
-    // Função para renderizar a lista de setores com checkboxes
-    function renderizarListaSetores(setores) {
-        if (setores.length === 0) {
-            listaSetoresContainer.innerHTML = '<div class="text-muted p-2">Nenhum setor encontrado</div>';
-            return;
-        }
+    // FUNÇÃO: Configura o listener de busca
+    function configurarListenerBusca() {
+        const searchInput = document.getElementById('search-setores-disponiveis');
+        if (!searchInput) return;
+        
+        // Remove listeners antigos clonando o elemento
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        newSearchInput.addEventListener('input', (e) => {
+            const termoBusca = e.target.value.toLowerCase().trim();
+            
+            if (!termoBusca) {
+                renderizarListaSetores(setoresData);
+                return;
+            }
 
-        let html = '';
-        setores.forEach(setor => {
-            html += `
-                <div class="form-check setor-item" data-id="${setor.id}">
-                    <input class="form-check-input setor-checkbox" type="checkbox" value="${setor.id}" id="setor-${setor.id}">
-                    <label class="form-check-label" for="setor-${setor.id}">
-                        ${setor.displayText}
-                    </label>
-                </div>
-            `;
+            const setoresFiltrados = setoresData.filter(setor => 
+                setor.descricao.toLowerCase().includes(termoBusca) ||
+                setor.empresaNome.toLowerCase().includes(termoBusca)
+            );
+
+            renderizarListaSetores(setoresFiltrados);
         });
-
-        listaSetoresContainer.innerHTML = html;
     }
 
-    // Função para obter os setores selecionados
+    // FUNÇÃO: Obtém setores selecionados
     function getSetoresSelecionados() {
         const checkboxes = document.querySelectorAll('.setor-checkbox:checked');
         return Array.from(checkboxes).map(cb => cb.value);
     }
 
-    // Função para limpar as selections
+    // FUNÇÃO: Limpa seleções
     function limparSelecoes() {
         const checkboxes = document.querySelectorAll('.setor-checkbox');
         checkboxes.forEach(cb => cb.checked = false);
+        
+        const searchInput = document.getElementById('search-setores-disponiveis');
         if (searchInput) searchInput.value = '';
+        
         renderizarListaSetores(setoresData);
     }
 
-    // Função para carregar e exibir os macro setores existentes
+    // FUNÇÃO: Carrega macro setores existentes
     async function carregarMacroSetores() {
-        if (!listaMacroSetoresDiv) return;
+        console.log("Carregando macro setores...");
         
         listaMacroSetoresDiv.innerHTML = '<p class="text-muted">Carregando...</p>';
+        
         try {
             const [empresasSnap, setoresSnap, macroSetoresSnap] = await Promise.all([
                 db.collection('empresas').get(),
@@ -170,22 +237,9 @@ function inicializarSetorMacro() {
                 return;
             }
 
-            const table = document.createElement('table');
-            table.className = 'table table-hover';
-            table.innerHTML = `
-                <thead>
-                    <tr>
-                        <th>Nome do Macro Setor</th>
-                        <th>Setores Vinculados</th>
-                        <th class="text-end">Ações</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            `;
-            const tbody = table.querySelector('tbody');
-
-            for (const doc of macroSetoresSnap.docs) {
+            let html = '<table class="table table-hover"><thead><tr><th>Nome</th><th>Setores Vinculados</th><th class="text-end">Ações</th></tr></thead><tbody>';
+            
+            macroSetoresSnap.forEach(doc => {
                 const macroSetor = doc.data();
                 const setoresVinculadosIds = macroSetor.setoresIds || [];
 
@@ -194,21 +248,21 @@ function inicializarSetorMacro() {
                     if (!setor) return '<span class="text-danger">Setor não encontrado</span>';
                     const nomeEmpresa = empresasMap.get(setor.empresaId) || 'Empresa desconhecida';
                     return `• ${setor.descricao} <small class="text-muted">(${nomeEmpresa})</small>`;
-                }).join('<br>');
+                }).join('<br>') || 'Nenhum setor vinculado';
 
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${macroSetor.nome}</td>
-                    <td>${nomesSetores || 'Nenhum setor vinculado'}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-danger" data-id="${doc.id}">Excluir</button>
-                    </td>
+                html += `
+                    <tr>
+                        <td>${macroSetor.nome}</td>
+                        <td>${nomesSetores}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-danger excluir-macro" data-id="${doc.id}">Excluir</button>
+                        </td>
+                    </tr>
                 `;
-                tbody.appendChild(tr);
-            }
-
-            listaMacroSetoresDiv.innerHTML = '';
-            listaMacroSetoresDiv.appendChild(table);
+            });
+            
+            html += '</tbody></table>';
+            listaMacroSetoresDiv.innerHTML = html;
 
         } catch (error) {
             console.error("Erro ao carregar macro setores:", error);
@@ -216,13 +270,18 @@ function inicializarSetorMacro() {
         }
     }
 
-    // Função para salvar o macro setor
+    // FUNÇÃO: Salva macro setor
     async function salvarMacroSetor() {
         const nome = nomeMacroSetorInput.value.trim();
         const setoresSelecionados = getSetoresSelecionados();
 
-        if (!nome || setoresSelecionados.length === 0) {
-            alert('Por favor, preencha o nome do macro setor e selecione pelo menos um setor.');
+        if (!nome) {
+            alert('Por favor, preencha o nome do macro setor.');
+            return;
+        }
+
+        if (setoresSelecionados.length === 0) {
+            alert('Selecione pelo menos um setor.');
             return;
         }
 
@@ -238,22 +297,25 @@ function inicializarSetorMacro() {
 
             nomeMacroSetorInput.value = '';
             limparSelecoes();
+            filtroEmpresaSelect.value = '';
             
+            await carregarSetoresDisponiveis();
             await carregarMacroSetores();
+            
             alert('Setor Macro salvo com sucesso!');
 
         } catch (error) {
-            console.error("Erro ao salvar macro setor:", error);
-            alert('Ocorreu um erro ao salvar o Setor Macro.');
+            console.error("Erro ao salvar:", error);
+            alert('Erro ao salvar o Setor Macro.');
         } finally {
             btnSalvar.disabled = false;
             btnSalvar.textContent = 'Salvar Setor Macro';
         }
     }
 
-    // Função para excluir o macro setor
+    // FUNÇÃO: Exclui macro setor
     async function excluirMacroSetor(event) {
-        if (event.target.classList.contains('btn-outline-danger')) {
+        if (event.target.classList.contains('excluir-macro')) {
             const docId = event.target.dataset.id;
             if (confirm('Tem certeza que deseja excluir este Setor Macro?')) {
                 try {
@@ -261,22 +323,39 @@ function inicializarSetorMacro() {
                     await carregarMacroSetores();
                     alert('Setor Macro excluído com sucesso!');
                 } catch (error) {
-                    console.error("Erro ao excluir macro setor:", error);
-                    alert('Ocorreu um erro ao excluir o Setor Macro.');
+                    console.error("Erro ao excluir:", error);
+                    alert('Erro ao excluir o Setor Macro.');
                 }
             }
         }
     }
 
-    // Adicionar Event Listeners
+    // INICIALIZAÇÃO PRINCIPAL
+    console.log("Iniciando carregamento dos dados...");
+    
+    // Carrega empresas primeiro
+    await carregarEmpresasParaFiltro();
+    
+    // Depois carrega os setores
+    await carregarSetoresDisponiveis();
+    
+    // Configura o listener de busca
+    configurarListenerBusca();
+    
+    // Carrega os macros existentes
+    await carregarMacroSetores();
+    
+    // Configura o listener do filtro de empresa
+    filtroEmpresaSelect.addEventListener('change', () => {
+        carregarSetoresDisponiveis();
+    });
+    
+    // Configura os listeners dos botões
     btnSalvar.addEventListener('click', salvarMacroSetor);
     listaMacroSetoresDiv.addEventListener('click', excluirMacroSetor);
-
-    // Inicialização
-    carregarSetoresDisponiveis();
-    carregarMacroSetores();
+    
+    console.log("Setor Macro inicializado com sucesso!");
 }
 
-// Exportar a função de inicialização para o escopo global
+// Exporta a função para o escopo global
 window.inicializarSetorMacro = inicializarSetorMacro;
-

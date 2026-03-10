@@ -1,7 +1,7 @@
 // js/ai-assistant.js
 // Módulo para o Assistente de IA e Chat Inteligente
 
-document.addEventListener('viewsLoaded', () => {
+document.addEventListener('DOMContentLoaded', () => {
     console.log("Módulo Assistente de IA carregado e DOM pronto.");
 
     const chatFab = document.getElementById('ai-chat-fab');

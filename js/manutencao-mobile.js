@@ -1,286 +1,200 @@
-// =========================================================
-// Módulo Mobile de Abertura de Chamados (Via QR Code)
-// Versão com Login Obrigatório e Carregamento Dinâmico
-// =========================================================
-
-let db;
-let auth;
-let currentUser = null;
-let isLoggedIn = false;
-
-/**
- * Carrega dinamicamente os scripts do Firebase SDK
- * Usa versão 8.x para manter compatibilidade com o HTML
- */
-async function carregarFirebaseSDK() {
-    // Verificar se já está carregado
-    if (typeof firebase !== 'undefined') {
-        console.log("✅ Firebase SDK já carregado");
+document.addEventListener('DOMContentLoaded', () => {
+    // Verifica se é a página mobile pelo ID ou parâmetro
+    const isMobilePage = document.getElementById('chamado-maquina-id') !== null;
+    
+    if (!isMobilePage) {
         return;
     }
 
-    console.log("📦 Carregando Firebase SDK dinamicamente...");
-
-    const loadScript = (src) => {
-        return new Promise((resolve, reject) => {
-            const script = document.createElement('script');
-            script.src = src;
-            script.async = false; // Garante execução em ordem
-            script.onload = () => {
-                console.log(`📦 Script carregado: ${src}`);
-                resolve();
-            };
-            script.onerror = () => reject(new Error(`Falha ao carregar script: ${src}`));
-            document.head.appendChild(script);
-        });
-    };
-
-    try {
-        // Usar versão 8.x para manter compatibilidade (mesma do HTML)
-        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js');
-        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js');
-        await loadScript('https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js');
-
-        // Aguardar inicialização interna
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        if (typeof firebase === 'undefined') {
-            throw new Error("Firebase não ficou disponível após carregamento");
-        }
-        console.log("✅ Todos os scripts Firebase carregados com sucesso");
-    } catch (error) {
-        console.error("❌ Erro ao carregar scripts:", error);
-        throw error;
+    // Garante que o Firebase está pronto
+    if (typeof firebase === 'undefined' || !firebase.apps.length || typeof auth === 'undefined') {
+        console.error("Firebase não inicializado corretamente.");
+        mostrarMensagemMobile("Erro crítico de conexão. Recarregue a página.", "danger");
+        return;
     }
-}
 
-/**
- * Inicializa o ambiente mobile
- */
-async function inicializarMobile() {
-    try {
-        console.log("📱 Inicializando módulo mobile...");
+    // Define a persistência como SESSION. Isso significa que se o usuário fechar a aba
+    // e escanear o QR Code novamente, ele terá que fazer login de novo.
+    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
-        // 1. Carregar Firebase SDK dinamicamente se necessário
-        await carregarFirebaseSDK();
-
-        // 2. Verificar se Firebase SDK está disponível
-        if (typeof firebase === 'undefined') {
-            console.error("❌ Firebase SDK não carregado");
-            throw new Error("Firebase SDK não encontrado.");
-        }
-        console.log("✅ Firebase SDK carregado");
-
-        // 3. Inicializar Firebase App se necessário
-        if (!firebase.apps.length) {
-            if (!window.__FIREBASE_CONFIG__) {
-                console.error("❌ Configuração do Firebase não encontrada");
-                throw new Error("Configuração do Firebase não encontrada.");
-            }
-            firebase.initializeApp(window.__FIREBASE_CONFIG__);
-            console.log("🚀 Firebase inicializado com sucesso!");
-        }
-
-        // 4. Inicializar serviços
-        auth = firebase.auth();
-        db = firebase.firestore();
-        window.db = db; // Expor para funções legadas
-        console.log("✅ Serviços Firebase inicializados");
-
-        // 5. Configurar observador de autenticação
-        configurarObservadorAuth();
-
-    } catch (error) {
-        console.error("❌ Erro crítico na inicialização:", error);
-        alert("Erro ao inicializar sistema: " + error.message);
+    const urlParams = new URLSearchParams(window.location.search);
+    // CORREÇÃO: Aceita tanto 'maquinaId' quanto 'maquina' (legado)
+    const maquinaId = urlParams.get('maquinaId') || urlParams.get('maquina');
+    
+    // Se não tiver maquinaId, redireciona ou mostra erro
+    if (!maquinaId) {
+        mostrarMensagemMobile("QR Code inválido. Máquina não identificada.", "danger");
+        setTimeout(() => {
+            window.location.href = 'login.html';
+        }, 3000);
+        return;
     }
-}
 
-/**
- * Configura o observador de estado de autenticação
- */
-function configurarObservadorAuth() {
-    auth.onAuthStateChanged((user) => {
+    // Configura o formulário
+    document.getElementById('chamado-maquina-id').value = maquinaId;
+    
+    // Carrega informações da máquina
+    fetchMachineInfo(maquinaId);
+
+    // Monitora o estado de autenticação
+    auth.onAuthStateChanged(user => {
         if (user) {
-            console.log("✅ Usuário autenticado:", user.uid);
-            currentUser = user;
-            isLoggedIn = true;
-            inicializarPaginaChamado();
+            // Usuário está logado, mostra o formulário de chamado
+            document.getElementById('login-section').classList.add('d-none');
+            document.getElementById('chamado-section').classList.remove('d-none');
+            
+            // Adiciona botão de sair para permitir troca de usuário
+            adicionarBotaoSair(user);
         } else {
-            console.log("🔒 Usuário não autenticado");
-            currentUser = null;
-            isLoggedIn = false;
-            mostrarTelaLogin();
+            // Usuário não está logado, mostra a tela de login
+            document.getElementById('login-section').classList.remove('d-none');
+            document.getElementById('chamado-section').classList.add('d-none');
         }
     });
-}
 
-function mostrarTelaLogin() {
-    console.log("Redirecionando para login...");
-    const redirectUrl = window.location.href;
-    window.location.href = `login.html?redirect_url=${encodeURIComponent(redirectUrl)}`;
-}
-
-// =========================================================
-// Lógica da Aplicação
-// =========================================================
-
-function inicializarPaginaChamado() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const maquinaCodigo = urlParams.get('maquina');
-
-    if (!maquinaCodigo) {
-        alert("Código da máquina (parâmetro 'maquina') não encontrado na URL.");
-        return;
+    // Listener para o formulário de login
+    const formLogin = document.getElementById('form-login-manutencao');
+    if (formLogin) {
+        formLogin.addEventListener('submit', handleLogin);
     }
 
-    carregarDadosMaquina(maquinaCodigo);
-    popularMecanicos();
-    configurarCamposCondicionais();
+    // Listener para o formulário de chamado
+    const formChamado = document.getElementById('form-chamado-manutencao');
+    if (formChamado) {
+        formChamado.addEventListener('submit', salvarChamadoMobile);
+    }
+});
+
+function adicionarBotaoSair(user) {
+    const container = document.querySelector('#chamado-section .login-card');
+    // Evita duplicar o botão
+    if (container && !document.getElementById('user-info-mobile')) {
+        const userInfo = document.createElement('div');
+        userInfo.id = 'user-info-mobile';
+        userInfo.className = 'text-center mb-3 pb-3 border-bottom';
+        userInfo.innerHTML = `
+            <small class="text-muted d-block mb-1">Logado como: <strong>${user.email}</strong></small>
+            <button class="btn btn-sm btn-outline-danger" onclick="firebase.auth().signOut()">
+                <i class="fas fa-sign-out-alt"></i> Sair
+            </button>
+        `;
+        // Insere antes do formulário
+        const form = document.getElementById('form-chamado-manutencao');
+        container.insertBefore(userInfo, form);
+    }
 }
 
-async function carregarDadosMaquina(codigo) {
-    const nomeInput = document.getElementById('chamado-maquina-nome');
-    const idInput = document.getElementById('chamado-maquina-id');
-    
-    if (!nomeInput || !idInput) return;
-
+async function fetchMachineInfo(maquinaId) {
     try {
-        const querySnapshot = await db.collection('maquinas').where('codigo', '==', codigo).limit(1).get();
-        if (querySnapshot.empty) {
-            alert("Máquina não encontrada no sistema.");
-            nomeInput.value = "Máquina Inválida";
-            return;
+        const maquinaDoc = await db.collection('maquinas').doc(maquinaId).get();
+        if (maquinaDoc.exists) {
+            document.getElementById('chamado-maquina-nome').value = maquinaDoc.data().nome || 'Nome não encontrado';
+        } else {
+            document.getElementById('chamado-maquina-nome').value = 'Máquina não encontrada';
+            mostrarMensagemMobile("Máquina não encontrada no sistema.", "danger");
         }
-        const maquinaDoc = querySnapshot.docs[0];
-        const maquinaData = maquinaDoc.data();
-        
-        nomeInput.value = maquinaData.nome || "Nome não cadastrado";
-        idInput.value = maquinaDoc.id; // Armazena o ID do documento
-
     } catch (error) {
-        console.error("Erro ao buscar dados da máquina:", error);
-        alert("Erro ao carregar dados da máquina.");
+        console.error("Erro ao buscar informação da máquina:", error);
+        mostrarMensagemMobile("Erro ao carregar dados da máquina.", "danger");
     }
 }
 
-async function popularMecanicos() {
-    const mecanicoSelect = document.getElementById('chamado-mecanico-abertura');
-    if (!mecanicoSelect) return;
-
-    mecanicoSelect.innerHTML = '<option value="">Carregando...</option>';
-    try {
-        const mecanicosSnap = await db.collection('funcionarios').where('isMecanico', '==', true).orderBy('nome').get();
-        
-        mecanicoSelect.innerHTML = '<option value="">Selecione se souber quem atenderá</option>';
-        mecanicosSnap.forEach(doc => {
-            const f = doc.data();
-            mecanicoSelect.innerHTML += `<option value="${doc.id}">${f.nome}</option>`;
-        });
-    } catch (error) {
-        console.error("Erro ao carregar mecânicos:", error);
-        mecanicoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
-    }
-}
-
-function configurarCamposCondicionais() {
-    const tipoManutencaoSelect = document.getElementById('chamado-tipo-manutencao');
-    const mesContainer = document.getElementById('chamado-mes-container');
-    const mesSelect = document.getElementById('chamado-mes-referencia');
-
-    if (tipoManutencaoSelect && mesContainer && mesSelect) {
-        tipoManutencaoSelect.addEventListener('change', function() {
-            if (this.value === 'Preventiva Mensal') {
-                mesContainer.style.display = 'block';
-                mesSelect.required = true;
-                const mesAtual = new Date().getMonth() + 1;
-                mesSelect.value = mesAtual.toString();
-            } else {
-                mesContainer.style.display = 'none';
-                mesSelect.required = false;
-                mesSelect.value = '';
-            }
-        });
-    }
-}
-
-async function salvarChamadoMobile() {
-    const maquinaId = document.getElementById('chamado-maquina-id')?.value;
-    const maquinaNome = document.getElementById('chamado-maquina-nome')?.value; // Usado para notificação
-    const motivo = document.getElementById('chamado-motivo')?.value;
-    const observacoes = document.getElementById('chamado-obs')?.value;
-    const maquinaParada = document.getElementById('chamado-maquina-parada')?.checked || false;
-    const prioridade = document.getElementById('chamado-prioridade')?.value || 'Normal';
-    const tipoManutencao = document.getElementById('chamado-tipo-manutencao')?.value;
-    const mesReferencia = document.getElementById('chamado-mes-referencia')?.value;
-    
-    const mecanicoSelect = document.getElementById('chamado-mecanico-abertura');
-    const mecanicoId = mecanicoSelect?.value;
-    const mecanicoNome = mecanicoSelect && mecanicoSelect.selectedIndex > 0 ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text : null;
-    
-    // Validações
-    if (!maquinaId) {
-        alert("Máquina inválida. Não é possível abrir o chamado.");
-        return;
-    }
-    if (!motivo || !tipoManutencao) {
-        alert("Selecione o tipo de manutenção e descreva o motivo.");
-        return;
-    }
-    if (tipoManutencao === 'Preventiva Mensal' && !mesReferencia) {
-        alert("Selecione o mês de referência para manutenção preventiva.");
-        return;
-    }
-
-    const btnSalvar = document.querySelector('button[onclick="salvarChamadoMobile()"]');
-    const textoOriginal = btnSalvar ? btnSalvar.innerHTML : '';
+async function handleLogin(event) {
+    event.preventDefault();
+    const email = document.getElementById('login-manutencao-email').value;
+    const password = document.getElementById('login-manutencao-senha').value;
+    const errorDiv = document.getElementById('login-manutencao-erro');
 
     try {
-        if (btnSalvar) {
-            btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
-            btnSalvar.disabled = true;
-        }
+        await auth.signInWithEmailAndPassword(email, password);
+        // O onAuthStateChanged vai cuidar de mostrar o formulário correto
+        errorDiv.classList.add('d-none');
+    } catch (error) {
+        console.error("Erro de login:", error);
+        errorDiv.textContent = "E-mail ou senha inválidos.";
+        errorDiv.classList.remove('d-none');
+    }
+}
 
+async function salvarChamadoMobile(event) {
+    event.preventDefault();
+
+    const user = auth.currentUser;
+    if (!user) {
+        mostrarMensagemMobile("Sessão expirada. Faça login novamente.", "danger");
+        return;
+    }
+
+    const maquinaId = document.getElementById('chamado-maquina-id').value;
+    const maquinaNome = document.getElementById('chamado-maquina-nome').value;
+    const motivo = document.getElementById('chamado-motivo').value;
+    const observacoes = document.getElementById('chamado-obs').value;
+    const maquinaParada = document.getElementById('chamado-maquina-parada').checked;
+
+    if (!maquinaId || !motivo) {
+        mostrarMensagemMobile("O motivo da manutenção é obrigatório.", "warning");
+        return;
+    }
+
+    const btn = event.submitter;
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Abrindo...';
+
+    try {
         const chamadoData = {
-            maquinaId: maquinaId,
-            maquinaNome: maquinaNome, // Adicionando nome da máquina para facilitar
-            motivo: motivo,
-            observacoes: observacoes,
-            maquinaParada: maquinaParada,
-            prioridade: prioridade,
-            tipoManutencao: tipoManutencao,
-            mesReferencia: tipoManutencao === 'Preventiva Mensal' ? mesReferencia : null,
-            paradaInicioTimestamp: maquinaParada ? firebase.firestore.FieldValue.serverTimestamp() : null,
-            dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
+            maquinaId,
+            maquinaNome,
+            motivo,
+            observacoes,
+            maquinaParada,
+            prioridade: maquinaParada ? 'Urgente' : 'Normal', // Prioridade automática
             status: 'Aberto',
-            createdByNome: currentUser ? (currentUser.displayName || currentUser.email) : 'Abertura via QR Code',
-            createdByUid: currentUser ? currentUser.uid : null,
-            notificacaoEnviada: false,
-            mecanicoResponsavelId: mecanicoId || null,
-            mecanicoResponsavelNome: mecanicoNome || null,
-            dataEncerramento: null,
-            tempoParada: null,
-            pecasUtilizadas: null
+            dataAbertura: firebase.firestore.FieldValue.serverTimestamp(),
+            createdByUid: user.uid,
+            createdByNome: user.displayName || user.email,
+            origem: 'QR Code' // Identifica a origem do chamado
         };
-        
-        // Salva no Firestore
+
+        if (maquinaParada) {
+            chamadoData.paradaInicioTimestamp = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
         await db.collection('manutencao_chamados').add(chamadoData);
 
-        alert("Chamado de manutenção aberto com sucesso!");
-        
-        // Redireciona ou limpa o formulário
-        window.location.href = 'index.html?section=iso-manutencao'; // Volta para a tela principal
+        document.getElementById('chamado-section').innerHTML = `
+            <div class="text-center p-4">
+                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                <h4>Chamado Aberto com Sucesso!</h4>
+                <p>A equipe de manutenção já foi notificada.</p>
+                <p class="text-muted small">Você já pode fechar esta página.</p>
+            </div>
+        `;
 
     } catch (error) {
         console.error("Erro ao salvar chamado:", error);
-        alert("Erro ao salvar chamado: " + error.message);
-    } finally {
-        if (btnSalvar) {
-            btnSalvar.innerHTML = textoOriginal;
-            btnSalvar.disabled = false;
-        }
+        mostrarMensagemMobile("Erro ao abrir o chamado. Tente novamente.", "danger");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Abrir Chamado';
     }
 }
 
-// Inicializar quando o DOM estiver pronto
-document.addEventListener('DOMContentLoaded', inicializarMobile);
+function mostrarMensagemMobile(mensagem, tipo = 'info') {
+    const container = document.getElementById('feedback-container');
+    if (!container) return;
+
+    const alertId = `alert-${Date.now()}`;
+    const alertHtml = `
+        <div id="${alertId}" class="alert alert-${tipo} alert-dismissible fade show" role="alert">
+            ${mensagem}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    `;
+    container.insertAdjacentHTML('beforeend', alertHtml);
+
+    setTimeout(() => {
+        const alertEl = document.getElementById(alertId);
+        if (alertEl) {
+            bootstrap.Alert.getOrCreateInstance(alertEl).close();
+        }
+    }, 5000);
+}

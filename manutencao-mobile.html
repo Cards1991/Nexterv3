@@ -1,84 +1,78 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Manutenção Mobile</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/login.css"> <!-- Reutilizando o estilo do login -->
 </head>
+
 <body>
-    <div class="container mt-5">
-        <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h5 class="modal-title">
-                    <i class="fas fa-tools"></i> Abrir Chamado de Manutenção
-                </h5>
-            </div>
-            <div class="card-body">
-                <form id="form-chamado-manutencao">
-                    <div class="mb-3">
-                        <label class="form-label">Máquina *</label>
-                        <input type="text" class="form-control" id="chamado-maquina-nome" readonly>
-                        <input type="hidden" id="chamado-maquina-id">
+    <div class="login-container">
+        <div id="feedback-container" class="position-absolute top-0 end-0 p-3" style="z-index: 1050;"></div>
+
+        <!-- Tela de Login (Visível por padrão) -->
+        <div class="card-floater" id="login-section">
+            <div class="login-card">
+                <div class="text-center mb-4">
+                    <div class="brand-icon mb-2"><i class="fas fa-tools"></i></div>
+                    <h3 class="brand-title">Manutenção</h3>
+                    <p class="text-muted small">Faça login para abrir um chamado.</p>
+                </div>
+                <form id="form-login-manutencao">
+                    <div class="form-floating mb-3">
+                        <input type="email" class="form-control" id="login-manutencao-email" placeholder="seu.email@crival.com" required>
+                        <label for="login-manutencao-email">E-mail</label>
                     </div>
-                    <div class="mb-3">
-                        <label class="form-label">Tipo de Manutenção *</label>
-                        <select class="form-select" id="chamado-tipo-manutencao" required>
-                            <option value="Corretiva">Corretiva</option>
-                            <option value="Preventiva Mensal">Preventiva Mensal</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Prioridade Inicial</label>
-                        <select class="form-select" id="chamado-prioridade">
-                            <option value="Normal">Normal</option>
-                            <option value="Prioritário">Prioritário</option>
-                            <option value="Urgente">Urgente</option>
-                        </select>
-                    </div>
-                     <div class="mb-3">
-                        <label class="form-label">Mecânico (Para Notificação)</label>
-                        <select class="form-select" id="chamado-mecanico-abertura"><option value="">Selecione...</option></select>
-                    </div>
-                    <div class="mb-3" id="chamado-mes-container" style="display: none;">
-                        <label class="form-label">Mês de Referência</label>
-                        <select class="form-select" id="chamado-mes-referencia">
-                            <option value="">Selecione o mês...</option>
-                            <option value="1">Janeiro</option>
-                            <option value="2">Fevereiro</option>
-                            <option value="3">Março</option>
-                            <option value="4">Abril</option>
-                            <option value="5">Maio</option>
-                            <option value="6">Junho</option>
-                            <option value="7">Julho</option>
-                            <option value="8">Agosto</option>
-                            <option value="9">Setembro</option>
-                            <option value="10">Outubro</option>
-                            <option value="11">Novembro</option>
-                            <option value="12">Dezembro</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Motivo da Manutenção *</label>
-                        <input type="text" class="form-control" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Observações</label>
-                        <textarea class="form-control" id="chamado-obs" rows="3" placeholder="Detalhes adicionais..."></textarea>
-                    </div>
-                    <div class="form-check form-switch mb-3">
-                        <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
-                        <label class="form-check-label" for="chamado-maquina-parada">
-                            <strong><i class="fas fa-exclamation-triangle text-danger"></i> A máquina está parada?</strong>
-                        </label>
+                    <div class="form-floating mb-3">
+                        <input type="password" class="form-control" id="login-manutencao-senha" placeholder="Sua senha" required>
+                        <label for="login-manutencao-senha">Senha</label>
                     </div>
                     <div class="d-grid">
-                        <button type="button" class="btn btn-primary" onclick="salvarChamadoMobile()">
-                            <i class="fas fa-paper-plane"></i> Abrir Chamado
-                        </button>
+                        <button type="submit" class="btn btn-login text-white">Entrar</button>
                     </div>
+                </form>
+                <div id="login-manutencao-erro" class="alert alert-danger d-none small mt-3"></div>
+            </div>
+        </div>
+
+        <!-- Formulário de Chamado (Oculto por padrão) -->
+        <div class="card-floater d-none" id="chamado-section">
+            <div class="login-card">
+                <div class="text-center mb-4">
+                    <div class="brand-icon mb-2"><i class="fas fa-tools"></i></div>
+                    <h3 class="brand-title">Novo Chamado</h3>
+                </div>
+                <form id="form-chamado-manutencao">
+                    <fieldset>
+                        <div class="mb-3">
+                            <label class="form-label">Máquina</label>
+                            <input type="text" class="form-control bg-light" id="chamado-maquina-nome" readonly>
+                            <input type="hidden" id="chamado-maquina-id">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo da Manutenção *</label>
+                            <input type="text" class="form-control" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Observações</label>
+                            <textarea class="form-control" id="chamado-obs" rows="2" placeholder="Detalhes adicionais..."></textarea>
+                        </div>
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
+                            <label class="form-check-label" for="chamado-maquina-parada">
+                                <strong><i class="fas fa-exclamation-triangle text-danger"></i> A máquina está parada?</strong>
+                            </label>
+                        </div>
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-login text-white">
+                                <i class="fas fa-paper-plane"></i> Abrir Chamado
+                            </button>
+                        </div>
+                    </fieldset>
                 </form>
             </div>
         </div>
@@ -88,22 +82,24 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-    
+
     <!-- Configuração do Firebase e Fallback -->
     <script src="js/env-loader.js"></script>
-    <script src="firebase-config.js"></script>
     <script>
-        // Garante a inicialização do Firebase se o firebase-config.js falhar
+        // Inicializa o Firebase antes de carregar as configurações adicionais
         if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
-            console.warn("⚠️ Inicializando Firebase via env-loader (fallback)...");
+            console.log("🚀 Inicializando Firebase...");
             firebase.initializeApp(window.__FIREBASE_CONFIG__);
         }
         if (firebase.apps.length && !window.db) {
             window.db = firebase.firestore();
+            window.auth = firebase.auth();
         }
     </script>
-    
+    <script src="firebase-config.js"></script>
+
     <script src="js/utils.js"></script>
     <script src="js/manutencao-mobile.js"></script>
 </body>
+
 </html>

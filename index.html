@@ -273,7 +273,7 @@
 <body class="sidebar-collapsed">
     <div class="app-container">
         <!-- Sidebar: views/sidebar.html -->
-        <div id="sidebar-container"></div>
+        <div id="sidebar"></div>
         <div class="main-content">
             <!-- Header: views/header.html -->
             <div id="header-container"></div>
@@ -282,6 +282,50 @@
                 <!-- Seções são carregadas dinamicamente aqui pelo showSection() do app.js -->
                 <div id="dynamic-content"></div>
             </main>
+        </div>
+    </div>
+
+    <!-- Chat Inteligente (AI Assistant) -->
+    <div class="chat-fab" id="ai-chat-fab">
+        <i class="fas fa-robot"></i>
+    </div>
+    <div class="chat-window" id="ai-chat-window">
+        <div class="chat-header">
+            <h5>Assistente Inteligente</h5>
+            <button type="button" class="btn-close btn-close-white" id="ai-chat-close"></button>
+        </div>
+        <div class="chat-body" id="ai-chat-body">
+            <div class="chat-message assistant">
+                <div class="message-bubble">
+                    Olá! Sou seu assistente de gestão. Como posso ajudar hoje?
+                </div>
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" class="form-control" id="ai-chat-input" placeholder="Digite sua pergunta...">
+            <button class="btn btn-primary" id="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
+        </div>
+    </div>
+
+    <!-- Chat Inteligente (AI Assistant) -->
+    <div class="chat-fab" id="ai-chat-fab">
+        <i class="fas fa-robot"></i>
+    </div>
+    <div class="chat-window" id="ai-chat-window">
+        <div class="chat-header">
+            <h5>Assistente Inteligente</h5>
+            <button type="button" class="btn-close btn-close-white" id="ai-chat-close"></button>
+        </div>
+        <div class="chat-body" id="ai-chat-body">
+            <div class="chat-message assistant">
+                <div class="message-bubble">
+                    Olá! Sou seu assistente de gestão. Como posso ajudar hoje?
+                </div>
+            </div>
+        </div>
+        <div class="chat-footer">
+            <input type="text" class="form-control" id="ai-chat-input" placeholder="Digite sua pergunta...">
+            <button class="btn btn-primary" id="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
         </div>
     </div>
 
@@ -346,10 +390,12 @@
     <script type="module" src="js/body-map-3d.js"></script>
     <script src="js/ponto-pf.js" defer></script>
     <script src="js/custom-fixes.js" defer></script>
+    <script src="js/setor-macro.js"></script>
     <!-- OCORRÊNCIAS POR ÚLTIMO OU COM DEFER -->
     <script src="js/ocorrencias.js"></script>
     <script src="js/manutencao-qr.js"></script>
     <script src="js/experiencia-export.js"></script>
+    <script src="js/manutencao-mobile.js"></script>
 
 </body>
 

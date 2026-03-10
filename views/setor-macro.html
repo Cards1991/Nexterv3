@@ -13,8 +13,14 @@
                 </div>
                 <div class="col-md-8">
                     <div class="mb-3">
+                        <label for="filtro-empresa-setores" class="form-label">Filtrar por Empresa</label>
+                        <select id="filtro-empresa-setores" class="form-select mb-2">
+                            <!-- Opções de empresa serão carregadas aqui -->
+                        </select>
+                        
                         <label for="search-setores-disponiveis" class="form-label">Buscar e Selecionar Setores</label>
                         <input type="text" id="search-setores-disponiveis" class="form-control mb-2" placeholder="Digite para buscar...">
+                        
                         <div id="lista-setores-container" class="border rounded p-2" style="max-height: 200px; overflow-y: auto;">
                             <!-- Lista de setores com checkboxes será carregada dinamicamente -->
                             <div class="text-center text-muted py-3">

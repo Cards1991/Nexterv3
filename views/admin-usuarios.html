@@ -1,0 +1,120 @@
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Administração de Usuários</h2>
+        <button class="btn btn-primary" onclick="abrirModalNovoUsuario()">
+            <i class="fas fa-user-plus"></i> Novo Usuário
+        </button>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead class="bg-light">
+                        <tr>
+                            <th>Email</th>
+                            <th>Nome</th>
+                            <th>Admin</th>
+                            <th>Restrição de Setor</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-usuarios-admin">
+                        <!-- Preenchido via JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Permissões -->
+<div class="modal fade" id="permissoesModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Gerenciar Permissões</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="perm-user-uid">
+                <div class="mb-3">
+                    <label class="form-label">Usuário:</label>
+                    <span id="perm-user-email" class="fw-bold"></span>
+                </div>
+                <div class="mb-3">
+                    <label for="perm-user-nome" class="form-label">Nome de Exibição</label>
+                    <input type="text" class="form-control" id="perm-user-nome">
+                </div>
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="perm-user-funcionario" class="form-label">Vincular a Funcionário (Opcional)</label>
+                        <select class="form-select" id="perm-user-funcionario">
+                            <option value="">Carregando...</option>
+                        </select>
+                        <div class="form-text">Vincular este usuário a um cadastro de funcionário existente.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="perm-user-setor" class="form-label">Restrição de Setor</label>
+                        <select class="form-select" id="perm-user-setor">
+                            <option value="">Todos os setores</option>
+                        </select>
+                        <div class="form-text">Se selecionado, o usuário verá apenas dados deste setor.</div>
+                    </div>
+                </div>
+
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="perm-is-admin">
+                    <label class="form-check-label fw-bold" for="perm-is-admin">Administrador do Sistema</label>
+                </div>
+
+                <hr>
+                <h6>Acesso às Seções</h6>
+                <div class="row" id="perm-secoes-container">
+                    <!-- Checkboxes gerados via JS -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarPermissoes()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Novo Usuário -->
+<div class="modal fade" id="novoUsuarioModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Novo Usuário</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-novo-usuario">
+                    <div class="mb-3">
+                        <label for="novo-usuario-email" class="form-label">E-mail</label>
+                        <input type="email" class="form-control" id="novo-usuario-email" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="novo-usuario-senha" class="form-label">Senha Provisória</label>
+                        <input type="text" class="form-control" id="novo-usuario-senha" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label for="novo-usuario-funcionario" class="form-label">Vincular a Funcionário</label>
+                        <select class="form-select" id="novo-usuario-funcionario" required>
+                            <option value="">Carregando...</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarNovoUsuario()">Criar Usuário</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/admin.js"></script>

@@ -5,6 +5,7 @@ let signaturePad = null; // Instância global do SignaturePad
 let __he_filtered_data = []; // Cache dos dados filtrados para impressão
 let __he_funcionarios_map = {}; // Mapa para vincular funcionário à empresa
 let __he_macro_setores_map = {}; // Mapa para armazenar os macro setores
+let __he_todos_setores_map = new Map(); // Mapa global de setores (ID -> Descrição)
 
 async function inicializarHorasExtras() {
     console.log('Inicializando Dashboard de Horas Extras...');
@@ -64,6 +65,7 @@ async function preencherFiltrosHorasExtras() {
         setoresSnap.forEach(doc => {
             todosSetores.set(doc.id, doc.data().descricao);
         });
+        __he_todos_setores_map = todosSetores;
 
         sectorFilter.innerHTML = '<option value="Todos">Todos os Setores</option>';
         [...todosSetores.values()].sort().forEach(setor => {
@@ -80,26 +82,30 @@ async function preencherFiltrosHorasExtras() {
         });
 
         // Event listener para o filtro de macro setor
-        macroSectorFilter.addEventListener('change', async (e) => {
+        macroSectorFilter.addEventListener('change', (e) => {
             const macroSetorId = e.target.value;
-            const setoresDoMacro = __he_macro_setores_map[macroSetorId] || [];
+            const setoresDoMacroIds = __he_macro_setores_map[macroSetorId] || [];
             
-            // Habilita a seleção múltipla no filtro de setores
-            sectorFilter.multiple = true;
-            sectorFilter.size = macroSetorId ? Math.min(setoresDoMacro.length, 5) : 1;
-
-
-            if (macroSetorId) {
-                // Seleciona os setores correspondentes
-                 Array.from(sectorFilter.options).forEach(option => {
-                    const setorId = [...todosSetores].find(([id, desc]) => desc === option.value)?.[0];
-                    option.selected = setoresDoMacro.includes(setorId);
-                });
-            } else {
-                // Se nenhum macro setor for selecionado, volta ao estado normal
-                sectorFilter.multiple = false;
-                sectorFilter.value = 'Todos';
-            }
+            // Resetar filtro de setor para "Todos"
+            sectorFilter.value = 'Todos';
+            
+            // Filtrar opções do select de setores
+            Array.from(sectorFilter.options).forEach(option => {
+                if (option.value === 'Todos') {
+                    option.style.display = '';
+                    return;
+                }
+                
+                // Encontrar ID do setor pelo nome (descrição)
+                const entry = [...__he_todos_setores_map.entries()].find(([id, desc]) => desc === option.value);
+                const sectorId = entry ? entry[0] : null;
+                
+                if (macroSetorId) {
+                    option.style.display = (sectorId && setoresDoMacroIds.includes(sectorId)) ? '' : 'none';
+                } else {
+                    option.style.display = '';
+                }
+            });
         });
 
 
@@ -140,6 +146,7 @@ async function listarHorasExtras() {
     const sectorFilter = document.getElementById('he-sectorFilter');
     const companyId = document.getElementById('he-companyFilter').value;
     const employeeId = document.getElementById('he-employeeFilter').value;
+    const macroSectorFilter = document.getElementById('he-macroSectorFilter');
     
     // Obter os setores selecionados (pode ser um ou vários)
     const selectedSectors = Array.from(sectorFilter.selectedOptions).map(opt => opt.value);
@@ -149,6 +156,7 @@ async function listarHorasExtras() {
         return;
     }
 
+    const macroSectorId = macroSectorFilter ? macroSectorFilter.value : '';
     let totalExtraHours = 0, totalDSRValue = 0, totalValue = 0;
     let sectorData = {}, employeeData = {}, monthlyData = {};
 
@@ -167,6 +175,13 @@ async function listarHorasExtras() {
 
             // Filtro de Setor (agora suporta múltiplos)
             if (!selectedSectors.includes('Todos') && !selectedSectors.includes(data.sector)) return false;
+
+            // Filtro de Setor Macro
+            if (macroSectorId) {
+                const setoresDoMacroIds = __he_macro_setores_map[macroSectorId] || [];
+                const setoresDoMacroDescs = setoresDoMacroIds.map(id => __he_todos_setores_map.get(id)).filter(Boolean);
+                if (!setoresDoMacroDescs.includes(data.sector)) return false;
+            }
 
             if (employeeId && data.employeeId !== employeeId) return false;
             if (companyId && (__he_funcionarios_map[data.employeeId]?.empresaId !== companyId)) return false;
