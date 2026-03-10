@@ -43,6 +43,19 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Regras para a coleção 'maquinas'
+    match /maquinas/{maquinaId} {
+      allow read: if hasAccessToSection('iso-maquinas') || hasAccessToSection('iso-manutencao') || hasAccessToSection('manutencao');
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Regras para a coleção 'manutencao_chamados'
+    match /manutencao_chamados/{chamadoId} {
+      allow read: if hasAccessToSection('iso-manutencao') || hasAccessToSection('manutencao');
+      allow create: if isAuthenticated(); // Qualquer usuário autenticado pode criar chamado
+      allow update, delete: if isAdmin();
+    }
+
     // Regras para a coleção 'funcionarios'
     match /funcionarios/{funcionarioId} {
       allow read: if hasAccessToSection('funcionarios') && 

@@ -1,12 +1,27 @@
 <h2 class="page-title">Gestão de Afastamentos</h2>
 
-<!-- Dashboard de Alertas de Perícia -->
-<div class="card border-warning mb-4">
-    <div class="card-header bg-warning text-dark">
-        <i class="fas fa-bell"></i> <strong>Alertas: Perícias do INSS Próximas</strong>
+<div class="row">
+    <!-- Dashboard de Alertas de Perícia -->
+    <div class="col-md-6">
+        <div class="card border-warning mb-4">
+            <div class="card-header bg-warning text-dark">
+                <i class="fas fa-bell"></i> <strong>Alertas: Perícias do INSS Próximas</strong>
+            </div>
+            <div id="pericias-proximas-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
+                <p class="text-muted">Nenhum alerta de perícia nos próximos 5 dias úteis.</p>
+            </div>
+        </div>
     </div>
-    <div id="pericias-proximas-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
-        <p class="text-muted">Nenhum alerta de perícia nos próximos 5 dias úteis.</p>
+    <!-- Dashboard de Alertas de Retorno -->
+    <div class="col-md-6">
+        <div class="card border-info mb-4">
+            <div class="card-header bg-info text-white">
+                <i class="fas fa-walking"></i> <strong>Alertas: Retorno de Afastamento</strong>
+            </div>
+            <div id="retornos-proximos-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
+                <p class="text-muted">Nenhum retorno de afastamento nos próximos 5 dias.</p>
+            </div>
+        </div>
     </div>
 </div>
 

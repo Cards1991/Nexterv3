@@ -4,7 +4,8 @@ let __afastamentos_cache = [];
 async function carregarAfastamentos() {
     try {
         const tbody = document.getElementById('afastamentos-container');
-        await carregarAlertasPericia(); // Carrega o dashboard de alertas
+        await carregarAlertasPericia(); // Carrega o dashboard de alertas de perícia
+        await carregarAlertasRetorno(); // Carrega o dashboard de alertas de retorno
 
         if (!tbody) return;
 
@@ -66,6 +67,77 @@ async function carregarAfastamentos() {
     } catch (e) {
         console.error('Erro ao carregar afastamentos:', e);
         mostrarMensagem('Erro ao carregar afastamentos', 'error');
+    }
+}
+
+/**
+ * Carrega e exibe alertas para afastamentos que terminam nos próximos 5 dias.
+ * Cria dinamicamente o card de alertas se ele não existir.
+ */
+async function carregarAlertasRetorno() {
+    const tableCard = document.getElementById('afastamentos-container')?.closest('.card');
+    if (!tableCard) {
+        console.warn("Card da tabela de afastamentos não encontrado. Não é possível adicionar alertas de retorno.");
+        return;
+    }
+
+    let alertCard = document.getElementById('card-alertas-retorno');
+    if (!alertCard) {
+        alertCard = document.createElement('div');
+        alertCard.id = 'card-alertas-retorno';
+        alertCard.className = 'card mb-4 shadow-sm';
+        alertCard.innerHTML = `
+            <div class="card-header bg-info text-white">
+                <h5 class="card-title mb-0"><i class="fas fa-calendar-check me-2"></i>Alertas de Retorno de Afastamento</h5>
+            </div>
+            <div id="retornos-proximos-container" class="list-group list-group-flush">
+                <p class="text-muted m-2">Nenhum alerta de retorno nos próximos 5 dias.</p>
+            </div>
+        `;
+        tableCard.parentNode.insertBefore(alertCard, tableCard);
+    }
+
+    const container = document.getElementById('retornos-proximos-container');
+    container.innerHTML = '<p class="text-muted m-2"><i class="fas fa-spinner fa-spin"></i> Carregando alertas de retorno...</p>';
+
+    try {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        const dataLimite = new Date();
+        dataLimite.setDate(hoje.getDate() + 5);
+
+        const snap = await db.collection('afastamentos')
+            .where('status', '==', 'Ativo')
+            .where('data_termino_prevista', '>=', hoje)
+            .where('data_termino_prevista', '<=', dataLimite)
+            .orderBy('data_termino_prevista', 'asc')
+            .get();
+
+        const alertas = snap.docs.map(doc => {
+            const afastamento = doc.data();
+            const dataRetorno = afastamento.data_termino_prevista.toDate();
+            const diffTime = dataRetorno.getTime() - hoje.getTime();
+            const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            return { nome: afastamento.colaborador_nome, dataRetorno, diasRestantes, tipo: afastamento.tipo_afastamento };
+        });
+
+        if (alertas.length === 0) {
+            container.innerHTML = '<p class="text-muted m-2">Nenhum alerta de retorno nos próximos 5 dias.</p>';
+            return;
+        }
+
+        container.innerHTML = alertas.map(alerta => {
+            const badgeClass = alerta.diasRestantes <= 2 ? 'bg-danger' : alerta.diasRestantes <= 3 ? 'bg-warning text-dark' : 'bg-info';
+            const diasTexto = alerta.diasRestantes === 0 ? 'Retorna hoje' : alerta.diasRestantes === 1 ? 'Retorna amanhã' : `Retorna em ${alerta.diasRestantes} dias`;
+            return `<div class="list-group-item d-flex justify-content-between align-items-center"><div><strong>${alerta.nome}</strong><br><small class="text-muted">Término: ${alerta.dataRetorno.toLocaleDateString('pt-BR')} (${alerta.tipo})</small></div><span class="badge ${badgeClass} rounded-pill">${diasTexto}</span></div>`;
+        }).join('');
+
+    } catch (error) {
+        console.error("Erro ao carregar alertas de retorno:", error);
+        container.innerHTML = '<p class="text-danger m-2">Erro ao carregar alertas de retorno.</p>';
+        if (error.message.includes('index')) {
+            mostrarMensagem('Índice do Firestore ausente para alertas de retorno. Verifique o console.', 'warning');
+        }
     }
 }
 
@@ -393,9 +465,7 @@ function abrirModalNovoAfastamento() {
                                         <option value="">Selecione</option>
                                         <option value="Doença">Doença</option>
                                         <option value="Acidente">Acidente</option>
-                                        <option value="Acidente de Trajeto">Acidente de Trajeto</option>
                                         <option value="Maternidade">Maternidade</option>
-                                        <option value="Serviço Militar">Serviço Militar</option>
                                         <option value="Outros">Outros</option>
                                     </select>
                                 </div>

@@ -30,21 +30,28 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
     }
 
-    // Configura o formulário
-    document.getElementById('chamado-maquina-id').value = maquinaId;
-    
-    // Carrega informações da máquina
-    fetchMachineInfo(maquinaId);
-
     // Monitora o estado de autenticação
-    auth.onAuthStateChanged(user => {
+    auth.onAuthStateChanged(async (user) => {
         if (user) {
-            // Usuário está logado, mostra o formulário de chamado
-            document.getElementById('login-section').classList.add('d-none');
-            document.getElementById('chamado-section').classList.remove('d-none');
-            
-            // Adiciona botão de sair para permitir troca de usuário
-            adicionarBotaoSair(user);
+            try {
+                // Força a atualização do token para garantir que o estado de autenticação
+                // seja propagado para todos os serviços do Firebase, incluindo o Firestore.
+                // Isso ajuda a prevenir "race conditions" onde o Firestore faz uma requisição
+                // antes de seu estado interno de autenticação ser atualizado.
+                await user.getIdToken(true);
+
+                // Usuário está logado, mostra o formulário de chamado
+                document.getElementById('login-section').classList.add('d-none');
+                document.getElementById('chamado-section').classList.remove('d-none');
+                // Configura o formulário e carrega os dados da máquina APÓS o login
+                document.getElementById('chamado-maquina-id').value = maquinaId;
+                fetchMachineInfo(maquinaId);
+                adicionarBotaoSair(user);
+            } catch (tokenError) {
+                console.error("Erro ao atualizar token de autenticação:", tokenError);
+                mostrarMensagemMobile("Erro de autenticação. Por favor, faça login novamente.", "danger");
+                auth.signOut(); // Força o logout se o token não puder ser atualizado
+            }
         } else {
             // Usuário não está logado, mostra a tela de login
             document.getElementById('login-section').classList.remove('d-none');
