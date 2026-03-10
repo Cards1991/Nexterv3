@@ -1,4 +1,7 @@
-document.addEventListener('DOMContentLoaded', () => {
+// Aguarda o evento 'firebaseMobileReady' que é disparado pelo firebase-config-mobile.js
+// Isso garante que o Firebase e suas variáveis globais (db, auth) estejam totalmente
+// inicializados antes que este script tente usá-los.
+document.addEventListener('firebaseMobileReady', () => {
     // Verifica se é a página mobile pelo ID ou parâmetro
     const isMobilePage = document.getElementById('chamado-maquina-id') !== null;
     
@@ -12,10 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
         mostrarMensagemMobile("Erro crítico de conexão. Recarregue a página.", "danger");
         return;
     }
-
-    // Define a persistência como SESSION. Isso significa que se o usuário fechar a aba
-    // e escanear o QR Code novamente, ele terá que fazer login de novo.
-    auth.setPersistence(firebase.auth.Auth.Persistence.SESSION);
 
     const urlParams = new URLSearchParams(window.location.search);
     // CORREÇÃO: Aceita tanto 'maquinaId' quanto 'maquina' (legado)

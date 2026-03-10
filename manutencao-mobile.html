@@ -83,21 +83,11 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
-    <!-- Configuração do Firebase e Fallback -->
+    <!-- Configuração do Firebase específica para o Módulo Mobile -->
     <script src="js/env-loader.js"></script>
-    <script>
-        // Inicializa o Firebase antes de carregar as configurações adicionais
-        if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
-            console.log("🚀 Inicializando Firebase...");
-            firebase.initializeApp(window.__FIREBASE_CONFIG__);
-        }
-        if (firebase.apps.length && !window.db) {
-            window.db = firebase.firestore();
-            window.auth = firebase.auth();
-        }
-    </script>
-    <script src="firebase-config.js"></script>
+    <script src="firebase-config-mobile.js"></script>
 
+    <!-- Utilitários e Lógica da Página -->
     <script src="js/utils.js"></script>
     <script src="js/manutencao-mobile.js"></script>
 </body>

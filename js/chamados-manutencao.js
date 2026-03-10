@@ -1,9 +1,9 @@
 // =================================================================
 // Módulo de Chamados de Manutenção (Separado para evitar erros de persistência)
 // =================================================================
-console.log("Carregando módulo de chamados de manutenção...");
+console.log("Carregando módulo de gestão de chamados de manutenção...");
 
-let __chamados_cache = [];
+let __chamados_manutencao_cache = []; // Cache para a tela de gestão de chamados
 let __chamados_listener = null;
 
 /**
@@ -90,7 +90,7 @@ async function renderChamados() {
             docs = docs.filter(c => c.maquinaId === maquinaId);
         }
 
-        __chamados_cache = docs;
+        __chamados_manutencao_cache = docs;
 
         if (docs.length === 0) {
             container.innerHTML = '<p class="text-muted text-center mt-4">Nenhum chamado encontrado.</p>';
@@ -437,4 +437,3 @@ window.visualizarChamado = visualizarChamado;
 window.iniciarChamado = iniciarChamado;
 window.concluirChamado = concluirChamado;
 window.renderChamados = renderChamados;
-

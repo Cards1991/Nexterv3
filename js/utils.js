@@ -69,6 +69,22 @@ function formatarData(data) {
 }
 
 /**
+ * Formata um objeto Date ou Timestamp do Firestore para uma string YYYY-MM-DD.
+ * Ideal para preencher campos <input type="date">.
+ * @param {Date|firebase.firestore.Timestamp} data - O objeto de data.
+ * @returns {string} A data formatada ou uma string vazia.
+ */
+function formatarDataParaInput(data) {
+    if (!data) return '';
+    // Converte Timestamp para Date se necessário
+    const dateObj = data.toDate ? data.toDate() : new Date(data);
+    const year = dateObj.getFullYear();
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
  * Formata um número de telefone para o padrão do WhatsApp (55 + DDD + Número).
  * @param {string} numero O número de telefone.
  * @returns {string} O número formatado.

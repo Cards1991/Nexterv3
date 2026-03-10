@@ -5,7 +5,7 @@
 // Lista de todas as seções disponíveis no sistema (MODIFICADO)
 const TODAS_SECOES = [
     'empresas', 'funcionarios', 'afastamentos', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
-    'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'manutencao-mobile', 'chamados-manutencao',    
+    'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',    
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',

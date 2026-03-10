@@ -1,42 +1,10 @@
-// js/setor-macro.js
+// Variáveis globais do módulo
+let __setoresData = [];
 
-// Flag para evitar múltiplas inicializações
-let setorMacroInicializado = false;
-
-// MutationObserver para detectar quando a view setor-macro é inserida no DOM
-const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-        mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === 1) {
-                if (node.id === 'dynamic-content' || (node.querySelector && node.querySelector('#lista-setores-container'))) {
-                    if (!setorMacroInicializado) {
-                        console.log("View setor-macro detectada via MutationObserver!");
-                        setTimeout(() => inicializarSetorMacro(), 100);
-                        setorMacroInicializado = true;
-                    }
-                }
-            }
-        });
-    });
-});
-
-// Inicia o observer no body
-observer.observe(document.body, { 
-    childList: true, 
-    subtree: true 
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    if (typeof db === "undefined") {
-        console.error("Firebase DB not initialized");
-        return;
-    }
-
-    const listaSetoresContainer = document.getElementById('lista-setores-container');
-    if (listaSetoresContainer) {
-        inicializarSetorMacro();
-    }
-});
+// FUNÇÃO: Limpa seleções de checkboxes
+function limparSelecoes() {
+    document.querySelectorAll('.setor-checkbox').forEach(cb => cb.checked = false);
+}
 
 // Função principal de inicialização do Setor Macro
 async function inicializarSetorMacro() {
@@ -50,6 +18,14 @@ async function inicializarSetorMacro() {
     const listaMacroSetoresDiv = document.getElementById('lista-macro-setores');
     
     // Verifica se todos os elementos necessários existem
+    // Adiciona dinamicamente o campo oculto para o ID do macro setor em edição
+    if (nomeMacroSetorInput && !document.getElementById('macro-setor-id')) {
+        const hiddenInput = document.createElement('input');
+        hiddenInput.type = 'hidden';
+        hiddenInput.id = 'macro-setor-id';
+        nomeMacroSetorInput.form.appendChild(hiddenInput);
+    }
+
     if (!listaSetoresContainer || !searchInput || !filtroEmpresaSelect || !btnSalvar || !nomeMacroSetorInput || !listaMacroSetoresDiv) {
         console.log("Aguardando elementos do Setor Macro...", {
             listaSetoresContainer: !!listaSetoresContainer,
@@ -63,7 +39,6 @@ async function inicializarSetorMacro() {
     }
 
     // Variáveis globais do módulo
-    let setoresData = [];
     let empresasMap = new Map();
 
     // FUNÇÃO: Carrega empresas para o filtro
@@ -118,7 +93,7 @@ async function inicializarSetorMacro() {
             
             const setoresSnap = await query.orderBy('descricao').get();
 
-            setoresData = [];
+            __setoresData = [];
             
             if (setoresSnap.empty) {
                 listaSetoresContainer.innerHTML = '<div class="text-muted p-2">Nenhum setor encontrado</div>';
@@ -129,7 +104,7 @@ async function inicializarSetorMacro() {
                 const setor = doc.data();
                 const nomeEmpresa = empresasMap.get(setor.empresaId) || 'Empresa não encontrada';
                 
-                setoresData.push({
+                __setoresData.push({
                     id: doc.id,
                     descricao: setor.descricao || 'Sem descrição',
                     empresaId: setor.empresaId,
@@ -138,8 +113,8 @@ async function inicializarSetorMacro() {
                 });
             });
 
-            console.log(`Carregados ${setoresData.length} setores`);
-            renderizarListaSetores(setoresData);
+            console.log(`Carregados ${__setoresData.length} setores`);
+            renderizarListaSetores(__setoresData);
 
         } catch (error) {
             console.error("Erro ao carregar setores:", error);
@@ -186,11 +161,11 @@ function renderizarListaSetores(setores) {
             const termoBusca = e.target.value.toLowerCase().trim();
             
             if (!termoBusca) {
-                renderizarListaSetores(setoresData);
+                renderizarListaSetores(__setoresData);
                 return;
             }
 
-            const setoresFiltrados = setoresData.filter(setor => 
+            const setoresFiltrados = __setoresData.filter(setor => 
                 setor.descricao.toLowerCase().includes(termoBusca) ||
                 setor.empresaNome.toLowerCase().includes(termoBusca)
             );
@@ -203,17 +178,6 @@ function renderizarListaSetores(setores) {
     function getSetoresSelecionados() {
         const checkboxes = document.querySelectorAll('.setor-checkbox:checked');
         return Array.from(checkboxes).map(cb => cb.value);
-    }
-
-    // FUNÇÃO: Limpa seleções
-    function limparSelecoes() {
-        const checkboxes = document.querySelectorAll('.setor-checkbox');
-        checkboxes.forEach(cb => cb.checked = false);
-        
-        const searchInput = document.getElementById('search-setores-disponiveis');
-        if (searchInput) searchInput.value = '';
-        
-        renderizarListaSetores(setoresData);
     }
 
     // FUNÇÃO: Carrega macro setores existentes
@@ -253,9 +217,10 @@ function renderizarListaSetores(setores) {
                 html += `
                     <tr>
                         <td>${macroSetor.nome}</td>
-                        <td>${nomesSetores}</td>
+                        <td><small>${nomesSetores}</small></td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-danger excluir-macro" data-id="${doc.id}">Excluir</button>
+                            <button class="btn btn-sm btn-outline-primary" onclick="editarMacroSetor('${doc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                            <button class="btn btn-sm btn-outline-danger" onclick="excluirMacroSetor('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
@@ -272,6 +237,7 @@ function renderizarListaSetores(setores) {
 
     // FUNÇÃO: Salva macro setor
     async function salvarMacroSetor() {
+        const docId = document.getElementById('macro-setor-id').value;
         const nome = nomeMacroSetorInput.value.trim();
         const setoresSelecionados = getSetoresSelecionados();
 
@@ -289,20 +255,31 @@ function renderizarListaSetores(setores) {
         btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
         try {
-            await db.collection('macro_setores').add({
+            const data = {
                 nome: nome,
                 setoresIds: setoresSelecionados,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+
+            if (docId) {
+                await db.collection('macro_setores').doc(docId).update(data);
+                alert('Setor Macro atualizado com sucesso!');
+            } else {
+                data.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                await db.collection('macro_setores').add(data);
+                alert('Setor Macro salvo com sucesso!');
+            }
 
             nomeMacroSetorInput.value = '';
+            document.getElementById('macro-setor-id').value = ''; // Limpa o ID
             limparSelecoes();
             filtroEmpresaSelect.value = '';
             
+            const btnCancelarEdicao = document.getElementById('btn-cancelar-edicao-macro');
+            if (btnCancelarEdicao) btnCancelarEdicao.remove();
+
             await carregarSetoresDisponiveis();
             await carregarMacroSetores();
-            
-            alert('Setor Macro salvo com sucesso!');
 
         } catch (error) {
             console.error("Erro ao salvar:", error);
@@ -310,23 +287,6 @@ function renderizarListaSetores(setores) {
         } finally {
             btnSalvar.disabled = false;
             btnSalvar.textContent = 'Salvar Setor Macro';
-        }
-    }
-
-    // FUNÇÃO: Exclui macro setor
-    async function excluirMacroSetor(event) {
-        if (event.target.classList.contains('excluir-macro')) {
-            const docId = event.target.dataset.id;
-            if (confirm('Tem certeza que deseja excluir este Setor Macro?')) {
-                try {
-                    await db.collection('macro_setores').doc(docId).delete();
-                    await carregarMacroSetores();
-                    alert('Setor Macro excluído com sucesso!');
-                } catch (error) {
-                    console.error("Erro ao excluir:", error);
-                    alert('Erro ao excluir o Setor Macro.');
-                }
-            }
         }
     }
 
@@ -352,10 +312,84 @@ function renderizarListaSetores(setores) {
     
     // Configura os listeners dos botões
     btnSalvar.addEventListener('click', salvarMacroSetor);
-    listaMacroSetoresDiv.addEventListener('click', excluirMacroSetor);
     
     console.log("Setor Macro inicializado com sucesso!");
 }
 
+// FUNÇÃO: Exclui macro setor (movida para o escopo global)
+async function excluirMacroSetor(docId) {
+    if (confirm('Tem certeza que deseja excluir este Setor Macro?')) {
+        try {
+            await db.collection('macro_setores').doc(docId).delete();
+            // A função carregarMacroSetores não está no escopo global, então recarregamos a seção
+            if (typeof showSection === 'function') {
+                showSection('setor-macro');
+            }
+            mostrarMensagem('Setor Macro excluído com sucesso!', 'success');
+        } catch (error) {
+            console.error("Erro ao excluir:", error);
+            alert('Erro ao excluir o Setor Macro.');
+        }
+    }
+}
+
+// NOVA FUNÇÃO: Editar macro setor (movida para o escopo global)
+async function editarMacroSetor(docId) {
+    const nomeMacroSetorInput = document.getElementById('macro-setor-nome');
+    const btnSalvar = document.getElementById('btn-salvar-macro-setor');
+    const hiddenIdInput = document.getElementById('macro-setor-id');
+
+    try {
+        const doc = await db.collection('macro_setores').doc(docId).get();
+        if (!doc.exists) {
+            alert('Setor Macro não encontrado.');
+            return;
+        }
+        const macroSetor = doc.data();
+
+        // Preenche o formulário
+        nomeMacroSetorInput.value = macroSetor.nome;
+        if (hiddenIdInput) hiddenIdInput.value = docId;
+
+        // Limpa checkboxes anteriores
+        limparSelecoes();
+
+        // Marca os checkboxes correspondentes
+        const setoresIds = macroSetor.setoresIds || [];
+        setoresIds.forEach(setorId => {
+            const checkbox = document.querySelector(`.setor-checkbox[value="${setorId}"]`);
+            if (checkbox) checkbox.checked = true;
+        });
+
+        // Altera o botão para modo de edição
+        btnSalvar.textContent = 'Atualizar Setor Macro';
+        
+        // Adiciona botão de cancelar edição se não existir
+        if (!document.getElementById('btn-cancelar-edicao-macro')) {
+            const btnCancelar = document.createElement('button');
+            btnCancelar.type = 'button';
+            btnCancelar.id = 'btn-cancelar-edicao-macro';
+            btnCancelar.className = 'btn btn-secondary ms-2';
+            btnCancelar.textContent = 'Cancelar Edição';
+            btnCancelar.onclick = () => {
+                nomeMacroSetorInput.value = '';
+                if (hiddenIdInput) hiddenIdInput.value = '';
+                limparSelecoes();
+                btnSalvar.textContent = 'Salvar Setor Macro';
+                btnCancelar.remove();
+            };
+            btnSalvar.parentNode.insertBefore(btnCancelar, btnSalvar.nextSibling);
+        }
+
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    } catch (error) {
+        console.error("Erro ao carregar macro setor para edição:", error);
+        alert('Erro ao carregar dados para edição.');
+    }
+}
+
 // Exporta a função para o escopo global
 window.inicializarSetorMacro = inicializarSetorMacro;
+window.excluirMacroSetor = excluirMacroSetor; // Exporta para o onclick
+window.editarMacroSetor = editarMacroSetor; // Exporta para o onclick

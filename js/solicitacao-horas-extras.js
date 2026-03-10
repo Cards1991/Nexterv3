@@ -93,6 +93,7 @@ async function renderMinhasSolicitacoes() {
         const setor = document.getElementById('sol-filtro-setor').value;
         const periodo = document.getElementById('sol-filtro-periodo').value;
         const usuarioFiltro = document.getElementById('sol-filtro-usuario').value;
+        const formaPagamento = document.getElementById('auth-filtro-pagamento')?.value; // Para a tela de autorização
 
         // CORREÇÃO: Buscamos por ordem de criação (índice padrão) e filtramos data do evento localmente
         // Isso evita o erro de índice inexistente no Firestore
@@ -121,6 +122,11 @@ async function renderMinhasSolicitacoes() {
         // Filtro por Solicitante (Usuário)
         if (usuarioFiltro) {
             docs = docs.filter(s => s.createdByUid === usuarioFiltro);
+        }
+
+        // Filtro por Forma de Pagamento (Adicionado para a tela de autorização)
+        if (formaPagamento) {
+            docs = docs.filter(s => s.formaPagamento === formaPagamento);
         }
 
         // Filtro por Período (Manhã, Tarde, Noite)
@@ -355,16 +361,6 @@ async function abrirModalNovaSolicitacao() {
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 
-    // Carregar lista de solicitantes (usuários do sistema)
-    await popularSelectSolicitantes();
-    
-    // Define o usuário atual como padrão se for uma nova solicitação
-    const currentUser = firebase.auth().currentUser;
-    const reqSelect = document.getElementById('sol-requester');
-    if (reqSelect && currentUser && !document.getElementById('sol-id').value) {
-        reqSelect.value = currentUser.uid;
-    }
-
     // 3. Carrega os funcionários do cache (agora é síncrono e rápido)
     const select = document.getElementById('sol-employee');
     select.innerHTML = '<option value="">Selecione um funcionário</option>'; // Default option
@@ -372,12 +368,57 @@ async function abrirModalNovaSolicitacao() {
     select.disabled = __funcionarios_ativos_solicitacao_cache.length === 0;
 
     // Adiciona um listener para preencher o setor quando um funcionário é selecionado
-    select.addEventListener('change', (e) => {
+    select.addEventListener('change', async (e) => {
         const sectorInput = document.getElementById('sol-sector');
+        const requesterInput = document.getElementById('sol-requester'); // Assumindo que agora é um input
         const selectedOption = e.target.options[e.target.selectedIndex];
-        if (sectorInput && selectedOption) {
-            // Preenche o campo de setor com o valor do atributo data-setor da opção selecionada
-            sectorInput.value = selectedOption.dataset.setor || '';
+
+        if (!sectorInput || !requesterInput || !selectedOption || !selectedOption.value) {
+            if(sectorInput) sectorInput.value = '';
+            if(requesterInput) {
+                requesterInput.value = '';
+                requesterInput.dataset.requesterId = '';
+            }
+            return;
+        }
+        
+        const setor = selectedOption.dataset.setor || '';
+        const empresaId = selectedOption.dataset.empresaId || '';
+        sectorInput.value = setor;
+        requesterInput.value = 'Buscando gerente...';
+        requesterInput.dataset.requesterId = '';
+
+        if (setor && empresaId) {
+            try {
+                const setorQuery = await db.collection('setores')
+                    .where('empresaId', '==', empresaId)
+                    .where('descricao', '==', setor)
+                    .limit(1).get();
+
+                if (!setorQuery.empty) {
+                    const setorData = setorQuery.docs[0].data();
+                    const gerenteId = setorData.gerenteId;
+
+                    if (gerenteId) {
+                        const gerenteDoc = await db.collection('funcionarios').doc(gerenteId).get();
+                        if (gerenteDoc.exists) {
+                            requesterInput.value = gerenteDoc.data().nome;
+                            requesterInput.dataset.requesterId = gerenteId;
+                        } else {
+                            requesterInput.value = 'Gerente não encontrado';
+                        }
+                    } else {
+                        requesterInput.value = 'Setor sem gerente definido';
+                    }
+                } else {
+                    requesterInput.value = 'Definição do setor não encontrada';
+                }
+            } catch (error) {
+                console.error("Erro ao buscar gerente do setor:", error);
+                requesterInput.value = 'Erro ao buscar gerente';
+            }
+        } else {
+            requesterInput.value = 'Funcionário sem setor/empresa';
         }
     });
 
@@ -447,9 +488,9 @@ async function salvarNovaSolicitacao() {
     const reason = document.getElementById('sol-reason').value;
     const formaPagamento = document.getElementById('sol-forma-pagamento').value;
 
-    const requesterSelect = document.getElementById('sol-requester');
-    const requesterId = requesterSelect && requesterSelect.value ? requesterSelect.value : user.uid;
-    const requesterName = requesterSelect ? requesterSelect.options[requesterSelect.selectedIndex].text : (user.displayName || user.email);
+    const requesterInput = document.getElementById('sol-requester');
+    const requesterId = requesterInput.dataset.requesterId || user.uid;
+    const requesterName = requesterInput.value || (user.displayName || user.email);
 
     if (!employeeId || !startDate || !startTime || !endTime) {
         mostrarMensagem('Preencha todos os campos obrigatórios.', 'warning');

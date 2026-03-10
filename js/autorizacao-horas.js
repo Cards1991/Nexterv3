@@ -838,14 +838,58 @@ function imprimirTabelaAutorizacao() {
 }
 
 function exportarTabelaAutorizacao() {
-    const tabela = document.getElementById('tabela-autorizacao');
-    if (!tabela) return;
+    if (!cacheSolicitacoes || cacheSolicitacoes.length === 0) {
+        mostrarMensagem("Não há dados para exportar. Por favor, filtre as solicitações primeiro.", "warning");
+        return;
+    }
 
-    const tabelaClone = tabela.cloneNode(true);
-    Array.from(tabelaClone.querySelectorAll('tr')).forEach(row => row.deleteCell(-1));
+    // 1. Preparar os dados para a planilha, incluindo a forma de pagamento
+    const dadosExportacao = cacheSolicitacoes.map(s => {
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
 
-    const wb = XLSX.utils.table_to_book(tabelaClone, { sheet: "Autorizacoes" });
-    XLSX.writeFile(wb, "Relatorio_Autorizacoes.xlsx");
+        return {
+            "Data Solicitação": createdAt.toLocaleDateString('pt-BR'),
+            "Funcionário": s.employeeName || 'N/A',
+            "Setor": s.setor || 'N/A',
+            "Período": `${start.toLocaleDateString('pt-BR')} ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
+            "Motivo": s.reason || 'Não especificado',
+            "Valor Estimado": s.valorEstimado || 0,
+            "Status": s.status,
+            "Forma de Pagamento": s.formaPagamento === 'folha' ? 'Folha' : 'Por Fora'
+        };
+    });
+
+    // 2. Calcular o total geral
+    const totalGeral = cacheSolicitacoes.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+
+    // 3. Criar a planilha a partir do JSON
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+
+    // 4. Adicionar a linha de total
+    XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); // Linha em branco
+    XLSX.utils.sheet_add_aoa(ws, [["", "", "", "", "TOTAL GERAL:", totalGeral]], { origin: -1 });
+
+    // 5. Formatar a coluna de valor como moeda
+    const range = XLSX.utils.decode_range(ws['!ref']);
+    const valorColIndex = 5; // Coluna F
+    for (let R = 1; R <= range.e.r; ++R) {
+        const cell_address = { c: valorColIndex, r: R };
+        const cell_ref = XLSX.utils.encode_cell(cell_address);
+        if (ws[cell_ref] && typeof ws[cell_ref].v === 'number') {
+            ws[cell_ref].t = 'n';
+            ws[cell_ref].z = 'R$ #,##0.00';
+        }
+    }
+
+    // 6. Ajustar a largura das colunas
+    ws['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 20 } ];
+
+    // 7. Criar o workbook e salvar o arquivo
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Autorizacoes");
+    XLSX.writeFile(wb, "Relatorio_Autorizacoes_HE.xlsx");
     mostrarMensagem("Exportado para Excel com sucesso!", "success");
 }
 
