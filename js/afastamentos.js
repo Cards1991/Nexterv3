@@ -393,7 +393,9 @@ function abrirModalNovoAfastamento() {
                                         <option value="">Selecione</option>
                                         <option value="Doença">Doença</option>
                                         <option value="Acidente">Acidente</option>
+                                        <option value="Acidente de Trajeto">Acidente de Trajeto</option>
                                         <option value="Maternidade">Maternidade</option>
+                                        <option value="Serviço Militar">Serviço Militar</option>
                                         <option value="Outros">Outros</option>
                                     </select>
                                 </div>
