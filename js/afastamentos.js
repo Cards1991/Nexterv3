@@ -73,6 +73,7 @@ async function carregarAfastamentos() {
 /**
  * Carrega e exibe alertas para afastamentos que terminam nos próximos 5 dias.
  * Cria dinamicamente o card de alertas se ele não existir.
+ * Usa filtro client-side para evitar necessidade de índice composto no Firestore.
  */
 async function carregarAlertasRetorno() {
     const tableCard = document.getElementById('afastamentos-container')?.closest('.card');
@@ -106,20 +107,34 @@ async function carregarAlertasRetorno() {
         const dataLimite = new Date();
         dataLimite.setDate(hoje.getDate() + 5);
 
+        // Usa filtro client-side para evitar necessidade de índice composto
         const snap = await db.collection('afastamentos')
             .where('status', '==', 'Ativo')
-            .where('data_termino_prevista', '>=', hoje)
-            .where('data_termino_prevista', '<=', dataLimite)
-            .orderBy('data_termino_prevista', 'asc')
             .get();
 
-        const alertas = snap.docs.map(doc => {
+        // Filtra os resultados no lado do cliente
+        const alertas = [];
+        snap.forEach(doc => {
             const afastamento = doc.data();
-            const dataRetorno = afastamento.data_termino_prevista.toDate();
-            const diffTime = dataRetorno.getTime() - hoje.getTime();
-            const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-            return { nome: afastamento.colaborador_nome, dataRetorno, diasRestantes, tipo: afastamento.tipo_afastamento };
+            if (!afastamento.data_termino_prevista) return;
+            
+            const dataRetorno = afastamento.data_termino_prevista.toDate ? afastamento.data_termino_prevista.toDate() : new Date(afastamento.data_termino_prevista);
+            
+            // Verifica se está no range de 5 dias
+            if (dataRetorno >= hoje && dataRetorno <= dataLimite) {
+                const diffTime = dataRetorno.getTime() - hoje.getTime();
+                const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                alertas.push({ 
+                    nome: afastamento.colaborador_nome, 
+                    dataRetorno, 
+                    diasRestantes, 
+                    tipo: afastamento.tipo_afastamento 
+                });
+            }
         });
+
+        // Ordena por data
+        alertas.sort((a, b) => a.dataRetorno - b.dataRetorno);
 
         if (alertas.length === 0) {
             container.innerHTML = '<p class="text-muted m-2">Nenhum alerta de retorno nos próximos 5 dias.</p>';
@@ -135,9 +150,6 @@ async function carregarAlertasRetorno() {
     } catch (error) {
         console.error("Erro ao carregar alertas de retorno:", error);
         container.innerHTML = '<p class="text-danger m-2">Erro ao carregar alertas de retorno.</p>';
-        if (error.message.includes('index')) {
-            mostrarMensagem('Índice do Firestore ausente para alertas de retorno. Verifique o console.', 'warning');
-        }
     }
 }
 
@@ -234,25 +246,30 @@ async function carregarAlertasPericia() {
         const dataLimite = new Date();
         dataLimite.setDate(dataLimite.getDate() + 10); // Busca em uma janela maior para contar dias úteis
 
+        // Usa filtro client-side para evitar necessidade de índice composto
         const snap = await db.collection('afastamentos')
             .where('requerINSS', '==', true)
-            .where('inssDataPericia', '>=', hoje)
-            .where('inssDataPericia', '<=', dataLimite)
             .get();
 
         const alertas = [];
 
         snap.forEach(doc => {
             const afastamento = doc.data();
-            const dataPericia = afastamento.inssDataPericia.toDate();
-            const diasUteis = calcularDiasUteis(hoje, dataPericia);
+            if (!afastamento.inssDataPericia) return;
+            
+            const dataPericia = afastamento.inssDataPericia.toDate ? afastamento.inssDataPericia.toDate() : new Date(afastamento.inssDataPericia);
+            
+            // Filtra no client-side: apenas pericias dentro do limite e com até 5 dias úteis
+            if (dataPericia >= hoje && dataPericia <= dataLimite) {
+                const diasUteis = calcularDiasUteis(hoje, dataPericia);
 
-            if (diasUteis <= 5) {
-                alertas.push({
-                    nome: afastamento.colaborador_nome,
-                    dataPericia: dataPericia,
-                    diasUteis: diasUteis
-                });
+                if (diasUteis <= 5) {
+                    alertas.push({
+                        nome: afastamento.colaborador_nome,
+                        dataPericia: dataPericia,
+                        diasUteis: diasUteis
+                    });
+                }
             }
         });
 
