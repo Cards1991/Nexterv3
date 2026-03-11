@@ -271,14 +271,26 @@ async function renderMinhasSolicitacoes() {
  */
 async function carregarFuncionariosParaCache() {
     try {
-        const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
-        const funcionarios = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Carrega funcionários E empresas para ter o empresaId
+        const [funcionariosSnap, empresasSnap] = await Promise.all([
+            db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get(),
+            db.collection('empresas').get()
+        ]);
+        
+        const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
+        const funcionarios = funcionariosSnap.docs.map(doc => ({ 
+            id: doc.id, 
+            ...doc.data(),
+            empresaNome: empresasMap.get(doc.data().empresaId) || ''
+        }));
+        
         __funcionarios_ativos_solicitacao_cache = funcionarios;
 
         if (funcionarios.length > 0) {
             let optionsHtml = '<option value="">Selecione um funcionário</option>';
             funcionarios.forEach(f => {
-                optionsHtml += `<option value="${f.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}">${f.nome} - ${f.cargo || ''}</option>`;
+                // Inclui empresaId nos data attributes para poder buscar o gerente posteriormente
+                optionsHtml += `<option value="${f.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}" data-empresaId="${f.empresaId || ''}" data-empresaNome="${f.empresaNome || ''}">${f.nome} - ${f.cargo || ''} (${f.setor || 'Sem setor'})</option>`;
             });
             __funcionarios_select_html_cache = optionsHtml;
         }

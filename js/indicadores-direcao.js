@@ -174,10 +174,15 @@ async function carregarDadosIndicadores() {
         const elExpReprov = document.getElementById('ind-kpi-exp-reprovadas');
         if (elExpReprov) elExpReprov.textContent = expReprovadas;
 
-        // NOVO: Total de Horas Extras (Período 26 a 25)
-        const totalHorasExtras = overtimeDocs.reduce((acc, d) => acc + (parseFloat(d.hours) || 0), 0);
+        // NOVO: Total de Horas Extras (Período 26 a 25) - EM VALOR
+        // Soma overtimePay + DSR para obter o valor total
+        const totalValorHorasExtras = overtimeDocs.reduce((acc, d) => {
+            const overtimePay = parseFloat(d.overtimePay) || 0;
+            const dsr = parseFloat(d.dsr) || 0;
+            return acc + overtimePay + dsr;
+        }, 0);
         const elHorasExtras = document.getElementById('ind-kpi-horas-extras');
-        if (elHorasExtras) elHorasExtras.textContent = totalHorasExtras.toFixed(2);
+        if (elHorasExtras) elHorasExtras.textContent = `R$ ${totalValorHorasExtras.toFixed(2).replace('.', ',')}`;
 
         // 4. Custo de Rescisão com filtro
         await calcularCustoRescisao(demissoes);

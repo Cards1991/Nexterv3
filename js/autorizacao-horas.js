@@ -9,6 +9,83 @@ let __auth_funcionarios_cache = null;
 let __auth_funcionarios_cache_timestamp = null;
 const CACHE_TIMEOUT = 5 * 60 * 1000; // 5 minutos
 
+// Cache para dados de setores, gerentes e macros
+let __auth_setores_cache = null;
+let __auth_macro_setores_cache = null;
+let __auth_funcionarios_map = null;
+
+/**
+ * Carrega dados auxiliares (setores, gerentes, macros) para o módulo de autorização
+ */
+async function carregarDadosAuxiliaresAuth() {
+    if (__auth_setores_cache && __auth_macro_setores_cache && __auth_funcionarios_map) {
+        return; // Dados já em cache
+    }
+    
+    try {
+        // Carrega setores
+        const setoresSnap = await db.collection('setores').get();
+        __auth_setores_cache = new Map();
+        setoresSnap.forEach(doc => {
+            const data = doc.data();
+            __auth_setores_cache.set(data.descricao, {
+                id: doc.id,
+                descricao: data.descricao,
+                gerenteId: data.gerenteId || null,
+                empresaId: data.empresaId
+            });
+        });
+        
+        // Carrega macro setores
+        const macroSetoresSnap = await db.collection('macro_setores').get();
+        __auth_macro_setores_cache = new Map();
+        // Mapeia cada setorId ao nome do macro setor
+        macroSetoresSnap.forEach(doc => {
+            const macroData = doc.data();
+            const setoresIds = macroData.setoresIds || [];
+            setoresIds.forEach(setorId => {
+                __auth_macro_setores_cache.set(setorId, macroData.nome);
+            });
+        });
+        
+        // Carrega funcionários para obter nomes de gerentes
+        const funcionariosSnap = await db.collection('funcionarios').get();
+        __auth_funcionarios_map = new Map();
+        funcionariosSnap.forEach(doc => {
+            __auth_funcionarios_map.set(doc.id, doc.data().nome);
+        });
+        
+        console.log("Dados auxiliares carregados para autorização de HE");
+    } catch (error) {
+        console.error("Erro ao carregar dados auxiliares:", error);
+    }
+}
+
+/**
+ * Obtém o nome do gerente responsável por um setor
+ */
+function obterNomeGerenteSetor(setorNome) {
+    if (!setorNome || !__auth_setores_cache) return 'N/A';
+    
+    const setor = __auth_setores_cache.get(setorNome);
+    if (!setor || !setor.gerenteId) return 'N/A';
+    
+    return __auth_funcionarios_map?.get(setor.gerenteId) || 'N/A';
+}
+
+/**
+ * Obtém o nome do setor macro para um setor
+ */
+function obterNomeMacroSetor(setorNome) {
+    if (!setorNome || !__auth_setores_cache) return 'Sem Macro';
+    
+    const setor = __auth_setores_cache.get(setorNome);
+    if (!setor) return 'Sem Macro';
+    
+    const macroNome = __auth_macro_setores_cache?.get(setor.id);
+    return macroNome || 'Sem Macro';
+}
+
 /**
  * Inicializa a tela de autorização, configurando listeners e carregando dados.
  */
@@ -124,6 +201,9 @@ async function carregarSolicitacoes() {
     // Cancela o listener anterior para evitar duplicações
     if (listenerAutorizacao) listenerAutorizacao();
 
+    // Carrega dados auxiliares (setores, gerentes, macros)
+    await carregarDadosAuxiliaresAuth();
+
     // Verificação de segurança do DB
     if (!window.db || typeof db.collection !== 'function') {
         console.error("❌ Erro: 'db' não está inicializado corretamente.");
@@ -185,6 +265,12 @@ async function carregarSolicitacoes() {
 
                 // Adiciona o setor do funcionário ao objeto da solicitação
                 data.setor = setoresMap.get(data.employeeId) || 'N/A';
+
+                // Adiciona o nome do gerente responsável (solicitante)
+                data.gerenteResponsavel = obterNomeGerenteSetor(data.setor);
+                
+                // Adiciona o setor macro
+                data.setorMacro = obterNomeMacroSetor(data.setor);
 
                 const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
                 
@@ -440,6 +526,9 @@ async function abrirModalAjuste(id, readOnly = false) {
     const start = data.start.toDate();
     const end = data.end.toDate();
 
+    // Carrega dados auxiliares para obter o setor
+    await carregarDadosAuxiliaresAuth();
+
     // Helper function for safely getting an element
     const getElement = (elementId) => {
         const el = document.getElementById(elementId);
@@ -452,6 +541,7 @@ async function abrirModalAjuste(id, readOnly = false) {
 
     const solicitacaoIdInput = getElement('ajuste-solicitacao-id');
     const funcionarioSelect = getElement('ajuste-funcionario-select');
+    const setorInput = getElement('ajuste-setor');
     const startDateInput = getElement('ajuste-start-date');
     const startTimeInput = getElement('ajuste-start-time');
     const endDateInput = getElement('ajuste-end-date');
@@ -460,15 +550,36 @@ async function abrirModalAjuste(id, readOnly = false) {
     const modalElement = getElement('ajusteSolicitacaoModal');
 
     // Se qualquer elemento essencial do formulário estiver faltando, interrompe a execução.
-    if (!solicitacaoIdInput || !funcionarioSelect || !startDateInput || !startTimeInput || !endDateInput || !endTimeInput || !reasonTextarea || !modalElement) {
+    if (!solicitacaoIdInput || !funcionarioSelect || !setorInput || !startDateInput || !startTimeInput || !endDateInput || !endTimeInput || !reasonTextarea || !modalElement) {
         return; // Interrompe a função para evitar erros subsequentes.
     }
 
-    // Popula o select de funcionários
+    // Carrega funcionários para o select
     const funcionarios = await carregarFuncionariosAuth();
+    
+    // Popula o select de funcionários incluindo dados do setor
+    const funcionariosComSetor = await Promise.all(funcionarios.map(async (f) => {
+        // Tenta obter o setor do funcionário a partir do cache de setores
+        let setorNome = '';
+        if (__auth_setores_cache) {
+            for (const [descricao, setorData] of __auth_setores_cache) {
+                // O setor pode estar em diferentes campos, tentamos buscar pelo ID
+            }
+        }
+        return { ...f };
+    }));
+    
+    // Precisamos buscar o setor do funcionário selecionado
+    const funcDoc = await db.collection('funcionarios').doc(data.employeeId).get();
+    const setorFuncionario = funcDoc.exists ? (funcDoc.data().setor || '') : '';
+    
+    // Preenche o select
     funcionarioSelect.innerHTML = funcionarios.map(f => 
-        `<option value="${f.id}" ${f.id === data.employeeId ? 'selected' : ''}>${f.nome}</option>`
+        `<option value="${f.id}" data-setor="${f.setor || ''}" ${f.id === data.employeeId ? 'selected' : ''}>${f.nome}</option>`
     ).join('');
+
+    // Preenche o campo Setor (lendo do funcionário diretamente)
+    setorInput.value = setorFuncionario;
 
     solicitacaoIdInput.value = id;
     startDateInput.value = start.toISOString().split('T')[0];
@@ -477,10 +588,29 @@ async function abrirModalAjuste(id, readOnly = false) {
     endTimeInput.value = end.toTimeString().slice(0, 5);
     reasonTextarea.value = data.reason || '';
 
+    // Adiciona listener para atualizar setor quando mudar o funcionário
+    if (!readOnly) {
+        const previousHandler = funcionarioSelect._changeHandler;
+        if (previousHandler) {
+            funcionarioSelect.removeEventListener('change', previousHandler);
+        }
+        
+        const changeHandler = async (e) => {
+            const selectedOption = e.target.options[e.target.selectedIndex];
+            const novoSetor = selectedOption.dataset.setor || '';
+            setorInput.value = novoSetor;
+        };
+        
+        changeHandler._isCustomHandler = true;
+        funcionarioSelect.addEventListener('change', changeHandler);
+        funcionarioSelect._changeHandler = changeHandler;
+    }
+
     // Lógica para modo somente leitura
     const fields = document.querySelectorAll('#form-ajuste-solicitacao input, #form-ajuste-solicitacao textarea');
     const saveButton = document.querySelector('#ajusteSolicitacaoModal .btn-primary');
     fields.forEach(field => field.readOnly = readOnly);
+    if (setorInput) setorInput.readOnly = true; // Setor é sempre somente leitura
     funcionarioSelect.disabled = readOnly;
     if (saveButton) {
         saveButton.style.display = readOnly ? 'none' : 'block';
@@ -598,6 +728,11 @@ function imprimirTabelaAutorizacao() {
     // Obter dados do cache para incluir informações extras
     const dados = cacheSolicitacoes || [];
     
+    if (dados.length === 0) {
+        mostrarMensagem("Não há dados para imprimir.", "warning");
+        return;
+    }
+    
     // Data atual formatada
     const dataAtual = new Date().toLocaleDateString('pt-BR', { 
         day: '2-digit', 
@@ -615,19 +750,45 @@ function imprimirTabelaAutorizacao() {
         ? `${filtroDataInicio} a ${filtroDataFim}` 
         : 'Período não especificado';
 
+    // Ordenar dados por setor macro
+    dados.sort((a, b) => {
+        const macroA = a.setorMacro || 'Sem Macro';
+        const macroB = b.setorMacro || 'Sem Macro';
+        if (macroA !== macroB) return macroA.localeCompare(macroB);
+        return (a.setor || '').localeCompare(b.setor || '');
+    });
+
     // Calcular totais
     const totalGeral = dados.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
     const totalAprovadas = dados.filter(s => s.status === 'aprovado').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
     const totalPendentes = dados.filter(s => s.status === 'pendente').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
     const totalRejeitadas = dados.filter(s => s.status === 'rejeitado').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
 
-    // Gerar HTML da tabela com motivo
-    let htmlTabela = `
+    // Agrupar por setor macro
+    const dadosPorMacro = {};
+    dados.forEach(s => {
+        const macro = s.setorMacro || 'Sem Macro';
+        if (!dadosPorMacro[macro]) {
+            dadosPorMacro[macro] = {
+                total: 0,
+                solicitacoes: []
+            };
+        }
+        dadosPorMacro[macro].solicitacoes.push(s);
+        dadosPorMacro[macro].total += (s.valorEstimado || 0);
+    });
+
+    // Gerar HTML da tabela com solicitante e separação por macro setor
+    let htmlTabela = '';
+    
+    // Cabeçalho da tabela
+    htmlTabela += `
         <thead style="background-color: #2c3e50; color: white;">
             <tr>
                 <th style="padding: 12px; text-align: left;">Data</th>
                 <th style="padding: 12px; text-align: left;">Funcionário</th>
                 <th style="padding: 12px; text-align: left;">Setor</th>
+                <th style="padding: 12px; text-align: left;">Solicitante</th>
                 <th style="padding: 12px; text-align: left;">Período</th>
                 <th style="padding: 12px; text-align: left;">Motivo</th>
                 <th style="padding: 12px; text-align: center;">Status</th>
@@ -636,43 +797,62 @@ function imprimirTabelaAutorizacao() {
         </thead>
         <tbody>`;
 
-    dados.forEach(s => {
-        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
-        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
-        const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
+    // Gerar linhas por setor macro
+    Object.keys(dadosPorMacro).sort().forEach(macroNome => {
+        const macroData = dadosPorMacro[macroNome];
         
-        const statusConfig = {
-            'pendente': { class: '#ffc107', text: 'Pendente', color: '#856404' },
-            'aprovado': { class: '#28a745', text: 'Aprovado', color: '#155724' },
-            'rejeitado': { class: '#dc3545', text: 'Rejeitado', color: '#721c24' },
-            'cancelado': { class: '#6c757d', text: 'Cancelado', color: '#383d41' }
-        }[s.status] || { class: '#6c757d', text: s.status, color: '#383d41' };
-
-        const motivo = s.reason || 'Não especificado';
-        
+        // Linha de cabeçalho do setor macro
         htmlTabela += `
-            <tr style="border-bottom: 1px solid #dee2e6;">
-                <td style="padding: 10px;">${createdAt.toLocaleDateString('pt-BR')}</td>
-                <td style="padding: 10px;"><strong>${s.employeeName || 'N/A'}</strong></td>
-                <td style="padding: 10px;">${s.setor || 'N/A'}</td>
-                <td style="padding: 10px;">
-                    ${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+            <tr style="background-color: #e9ecef; font-weight: bold;">
+                <td colspan="7" style="padding: 12px; border-top: 2px solid #2c3e50;">
+                    <i class="fas fa-layer-group me-2"></i>${macroNome}
                 </td>
-                <td style="padding: 10px; max-width: 200px;">${motivo}</td>
-                <td style="padding: 10px; text-align: center;">
-                    <span style="background-color: ${statusConfig.class}; color: ${statusConfig.color}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
-                        ${statusConfig.text}
-                    </span>
+                <td style="padding: 12px; text-align: right; border-top: 2px solid #2c3e50; font-weight: bold;">
+                    R$ ${macroData.total.toFixed(2).replace('.', ',')}
                 </td>
-                <td style="padding: 10px; text-align: right; font-weight: bold;">R$ ${(s.valorEstimado || 0).toFixed(2).replace('.', ',')}</td>
             </tr>`;
+        
+        // Linhas de solicitações
+        macroData.solicitacoes.forEach(s => {
+            const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+            const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+            const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
+            
+            const statusConfig = {
+                'pendente': { class: '#ffc107', text: 'Pendente', color: '#856404' },
+                'aprovado': { class: '#28a745', text: 'Aprovado', color: '#155724' },
+                'rejeitado': { class: '#dc3545', text: 'Rejeitado', color: '#721c24' },
+                'cancelado': { class: '#6c757d', text: 'Cancelado', color: '#383d41' }
+            }[s.status] || { class: '#6c757d', text: s.status, color: '#383d41' };
+
+            const motivo = s.reason || 'Não especificado';
+            const solicitante = s.gerenteResponsavel || 'N/A';
+            
+            htmlTabela += `
+                <tr style="border-bottom: 1px solid #dee2e6;">
+                    <td style="padding: 10px;">${createdAt.toLocaleDateString('pt-BR')}</td>
+                    <td style="padding: 10px;"><strong>${s.employeeName || 'N/A'}</strong></td>
+                    <td style="padding: 10px;">${s.setor || 'N/A'}</td>
+                    <td style="padding: 10px;">${solicitante}</td>
+                    <td style="padding: 10px;">
+                        ${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
+                    </td>
+                    <td style="padding: 10px; max-width: 200px;">${motivo}</td>
+                    <td style="padding: 10px; text-align: center;">
+                        <span style="background-color: ${statusConfig.class}; color: ${statusConfig.color}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
+                            ${statusConfig.text}
+                        </span>
+                    </td>
+                    <td style="padding: 10px; text-align: right; font-weight: bold;">R$ ${(s.valorEstimado || 0).toFixed(2).replace('.', ',')}</td>
+                </tr>`;
+        });
     });
 
     htmlTabela += `
         </tbody>
         <tfoot style="background-color: #f8f9fa; font-weight: bold;">
             <tr>
-                <td colspan="6" style="padding: 12px; text-align: right;">Total Geral:</td>
+                <td colspan="7" style="padding: 12px; text-align: right;">Total Geral:</td>
                 <td style="padding: 12px; text-align: right; font-size: 14px;">R$ ${totalGeral.toFixed(2).replace('.', ',')}</td>
             </tr>
         </tfoot>`;
@@ -1038,3 +1218,8 @@ function limparListenerAutorizacao() {
     }
 }
 window.limparListenerAutorizacao = limparListenerAutorizacao;
+
+// Exporta funções auxiliares
+window.carregarDadosAuxiliaresAuth = carregarDadosAuxiliaresAuth;
+window.obterNomeGerenteSetor = obterNomeGerenteSetor;
+window.obterNomeMacroSetor = obterNomeMacroSetor;

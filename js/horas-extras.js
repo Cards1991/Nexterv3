@@ -6,6 +6,7 @@ let __he_filtered_data = []; // Cache dos dados filtrados para impressão
 let __he_funcionarios_map = {}; // Mapa para vincular funcionário à empresa
 let __he_macro_setores_map = {}; // Mapa para armazenar os macro setores
 let __he_todos_setores_map = new Map(); // Mapa global de setores (ID -> Descrição)
+let __he_setor_to_macro_map = {}; // Mapa para buscar nome do macro setor pelo nome do setor
 
 async function inicializarHorasExtras() {
     console.log('Inicializando Dashboard de Horas Extras...');
@@ -71,35 +72,50 @@ async function preencherFiltrosHorasExtras() {
         [...todosSetores.values()].sort().forEach(setor => {
             sectorFilter.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
-        
+
         // Processar Macro Setores
         macroSectorFilter.innerHTML = '<option value="">Nenhum</option>';
         __he_macro_setores_map = {};
+        __he_setor_to_macro_map = {}; // Resetar o mapa
+        
         macroSetoresSnap.forEach(doc => {
             const data = doc.data();
-            __he_macro_setores_map[doc.id] = data.setoresIds;
+            const macroNome = data.nome || 'Sem nome';
+            const setoresIds = data.setoresIds || [];
+            
+            __he_macro_setores_map[doc.id] = setoresIds;
             macroSectorFilter.innerHTML += `<option value="${doc.id}">${data.nome}</option>`;
+            
+            // Criar mapeamento inverso: setor (nome) -> nome do macro setor
+            setoresIds.forEach(setorId => {
+                const setorNome = __he_todos_setores_map.get(setorId);
+                if (setorNome) {
+                    __he_setor_to_macro_map[setorNome.trim().toLowerCase()] = macroNome;
+                }
+            });
         });
+        
+        console.log('Mapeamento Setor -> Macro Setor:', __he_setor_to_macro_map);
 
         // Event listener para o filtro de macro setor
         macroSectorFilter.addEventListener('change', (e) => {
             const macroSetorId = e.target.value;
             const setoresDoMacroIds = __he_macro_setores_map[macroSetorId] || [];
-            
+
             // Resetar filtro de setor para "Todos"
             sectorFilter.value = 'Todos';
-            
+
             // Filtrar opções do select de setores
             Array.from(sectorFilter.options).forEach(option => {
                 if (option.value === 'Todos') {
                     option.style.display = '';
                     return;
                 }
-                
+
                 // Encontrar ID do setor pelo nome (descrição)
                 const entry = [...__he_todos_setores_map.entries()].find(([id, desc]) => desc === option.value);
                 const sectorId = entry ? entry[0] : null;
-                
+
                 if (macroSetorId) {
                     option.style.display = (sectorId && setoresDoMacroIds.includes(sectorId)) ? '' : 'none';
                 } else {
@@ -147,7 +163,7 @@ async function listarHorasExtras() {
     const companyId = document.getElementById('he-companyFilter').value;
     const employeeId = document.getElementById('he-employeeFilter').value;
     const macroSectorFilter = document.getElementById('he-macroSectorFilter');
-    
+
     // Obter os setores selecionados (pode ser um ou vários)
     const selectedSectors = Array.from(sectorFilter.selectedOptions).map(opt => opt.value);
 
@@ -179,8 +195,12 @@ async function listarHorasExtras() {
             // Filtro de Setor Macro
             if (macroSectorId) {
                 const setoresDoMacroIds = __he_macro_setores_map[macroSectorId] || [];
-                const setoresDoMacroDescs = setoresDoMacroIds.map(id => __he_todos_setores_map.get(id)).filter(Boolean);
-                if (!setoresDoMacroDescs.includes(data.sector)) return false;
+                const setoresDoMacroDescs = setoresDoMacroIds
+                    .map(id => (__he_todos_setores_map.get(id) || '').trim().toLowerCase())
+                    .filter(Boolean);
+                const dataSectorFormatted = (data.sector || '').trim().toLowerCase();
+
+                if (!setoresDoMacroDescs.includes(dataSectorFormatted)) return false;
             }
 
             if (employeeId && data.employeeId !== employeeId) return false;
@@ -188,7 +208,7 @@ async function listarHorasExtras() {
 
             return true;
         });
-        
+
         __he_filtered_data = docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         if (docs.length === 0) {
@@ -213,21 +233,22 @@ async function listarHorasExtras() {
             totalDSRValue += dsrValue;
             totalValue += overtimePay + dsrValue;
 
-            let assinaturaHtml = '';
             let deleteButton = '';
 
             if (overtime.signed) {
-                const dataAssinatura = overtime.signedAt ? new Date(overtime.signedAt.toDate()).toLocaleString('pt-BR') : 'Data desc.';
-                assinaturaHtml = `<span class="badge bg-success" title="Assinado em ${dataAssinatura}"><i class="fas fa-file-signature"></i> Assinado</span>`;
                 deleteButton = `<button class="btn btn-sm btn-outline-secondary" disabled title="Registro assinado não pode ser excluído"><i class="fas fa-trash"></i></button>`;
             } else {
-                assinaturaHtml = `<button class="btn btn-sm btn-outline-primary" onclick="abrirModalAssinatura('${doc.id}')" title="Assinar"><i class="fas fa-pen-nib"></i> Assinar</button>`;
                 deleteButton = `<button class="btn btn-sm btn-outline-danger" onclick="excluirHoraExtra('${doc.id}')"><i class="fas fa-trash"></i></button>`;
             }
+
+            // Buscar o nome do setor macro baseado no setor
+            const setorNome = (overtime.sector || '').trim().toLowerCase();
+            const macroSetorNome = __he_setor_to_macro_map[setorNome] || '-';
 
             const row = `
                 <tr>
                     <td>${overtime.sector}</td>
+                    <td>${macroSetorNome}</td>
                     <td>${overtime.employeeName}</td>
                     <td>${formatarData(date)}</td>
                     <td>${overtime.reason}</td>
@@ -235,7 +256,6 @@ async function listarHorasExtras() {
                     <td>R$ ${overtimePay.toFixed(2)}</td>
                     <td>R$ ${dsrValue.toFixed(2)}</td>
                     <td>R$ ${(overtimePay + dsrValue).toFixed(2)}</td>
-                    <td class="text-center">${assinaturaHtml}</td>
                     <td>${deleteButton}</td>
                 </tr>
             `;
@@ -272,6 +292,9 @@ async function reprocessarHorasExtras() {
     reprocessButton.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Reprocessando...`;
 
     try {
+        // Atualizar o mapeamento de macro setores antes de reprocessar
+        await atualizarMapeamentoMacroSetores();
+        
         const batch = db.batch();
         const funcionariosCache = {};
 
@@ -303,11 +326,17 @@ async function reprocessarHorasExtras() {
             const domingosEFeriados = 5; // Valor exemplo, deveria ser calculado
             const diasUteis = diasNoMes - domingosEFeriados;
             const valorDSR = (totalHorasExtras / diasUteis) * domingosEFeriados;
-            
+
+            // Obter o setor atual do funcionário no cadastro de funcionários
+            const setorFuncionario = funcionarioData.setor || '';
+
             const docRef = db.collection('overtime').doc(item.id);
+            
+            // Atualiza tanto os valores quanto o setor baseado no cadastro atual do funcionário
             batch.update(docRef, {
                 overtimePay: parseFloat(totalHorasExtras.toFixed(2)),
                 dsr: parseFloat(valorDSR.toFixed(2)),
+                sector: setorFuncionario, // Atualiza com o setor atual do funcionário
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
@@ -322,6 +351,47 @@ async function reprocessarHorasExtras() {
         reprocessButton.disabled = false;
         reprocessButton.innerHTML = `<i class="fas fa-sync-alt"></i> Reprocessar`;
         await listarHorasExtras(); // Atualiza a visualização
+    }
+}
+
+/**
+ * Atualiza o mapeamento de macro setores a partir do banco de dados
+ */
+async function atualizarMapeamentoMacroSetores() {
+    try {
+        const setoresSnap = await db.collection('setores').get();
+        const macroSetoresSnap = await db.collection('macro_setores').get();
+
+        // Atualiza o mapa de setores
+        const todosSetores = new Map();
+        setoresSnap.forEach(doc => {
+            todosSetores.set(doc.id, doc.data().descricao);
+        });
+        __he_todos_setores_map = todosSetores;
+
+        // Atualiza o mapa de macro setores e o mapeamento inverso
+        __he_macro_setores_map = {};
+        __he_setor_to_macro_map = {};
+
+        macroSetoresSnap.forEach(doc => {
+            const data = doc.data();
+            const macroNome = data.nome || 'Sem nome';
+            const setoresIds = data.setoresIds || [];
+
+            __he_macro_setores_map[doc.id] = setoresIds;
+
+            // Criar mapeamento inverso: setor (nome) -> nome do macro setor
+            setoresIds.forEach(setorId => {
+                const setorNome = __he_todos_setores_map.get(setorId);
+                if (setorNome) {
+                    __he_setor_to_macro_map[setorNome.trim().toLowerCase()] = macroNome;
+                }
+            });
+        });
+
+        console.log('Mapeamento de Macro Setores atualizado:', __he_setor_to_macro_map);
+    } catch (error) {
+        console.error("Erro ao atualizar mapeamento de macro setores:", error);
     }
 }
 

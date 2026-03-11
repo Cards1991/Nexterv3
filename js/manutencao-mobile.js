@@ -4,7 +4,7 @@
 document.addEventListener('firebaseMobileReady', () => {
     // Verifica se é a página mobile pelo ID ou parâmetro
     const isMobilePage = document.getElementById('chamado-maquina-id') !== null;
-    
+
     if (!isMobilePage) {
         return;
     }
@@ -21,7 +21,7 @@ document.addEventListener('firebaseMobileReady', () => {
     // Adicionado .trim() para remover espaços em branco acidentais do QR Code.
     const maquinaIdRaw = urlParams.get('maquinaId') || urlParams.get('maquina');
     const maquinaId = maquinaIdRaw ? maquinaIdRaw.trim() : null;
-    
+
     // Se não tiver maquinaId, redireciona ou mostra erro
     if (!maquinaId || maquinaId.length === 0) {
         mostrarMensagemMobile("QR Code inválido. Máquina não identificada.", "danger");
@@ -94,19 +94,35 @@ function adicionarBotaoSair(user) {
 
 async function fetchMachineInfo(maquinaId) {
     // Adicionado log para depuração
-    console.log(`[DEBUG] Buscando no Firestore: collection='maquinas', doc='${maquinaId}'`);
+    console.log(`[DEBUG] Buscando no Firestore: collection='maquinas', id_ou_codigo='${maquinaId}'`);
     try {
+        let machineData = null;
+        let finalMaquinaId = maquinaId;
+
+        // Primeiro tenta buscar por ID do documento
         const maquinaDoc = await db.collection('maquinas').doc(maquinaId).get();
         if (maquinaDoc.exists) {
-            console.log("[DEBUG] Máquina encontrada:", maquinaDoc.data());
-            document.getElementById('chamado-maquina-nome').value = maquinaDoc.data().nome || 'Nome não encontrado';
+            machineData = maquinaDoc.data();
         } else {
-            console.warn(`[DEBUG] Documento com ID '${maquinaId}' não foi encontrado na coleção 'maquinas'. Verifique se o ID no QR Code corresponde exatamente ao ID do documento no Firebase.`);
+            // Se não encontrou por ID, tenta buscar pelo código (para suportar QR Codes antigos e comportamento atual)
+            const maquinaPorCodigoSnap = await db.collection('maquinas').where('codigo', '==', maquinaId).limit(1).get();
+            if (!maquinaPorCodigoSnap.empty) {
+                machineData = maquinaPorCodigoSnap.docs[0].data();
+                finalMaquinaId = maquinaPorCodigoSnap.docs[0].id;
+            }
+        }
+
+        if (machineData) {
+            console.log("[DEBUG] Máquina encontrada:", machineData);
+            document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
+            // Atualiza o hidden input caso ele tenha vindo como código, para gravar com o Doc ID correto no chamado
+            document.getElementById('chamado-maquina-id').value = finalMaquinaId;
+        } else {
+            console.warn(`[DEBUG] Doc com ID/Código '${maquinaId}' não encontrado.`);
             document.getElementById('chamado-maquina-nome').value = 'Máquina não encontrada';
             mostrarMensagemMobile("Máquina não encontrada no sistema.", "danger");
         }
     } catch (error) {
-        // Este erro agora é mais provável de ser um problema de rede ou configuração do Firebase, não de permissões de regra.
         console.error("Erro ao buscar informação da máquina:", error);
         mostrarMensagemMobile("Erro ao carregar dados da máquina.", "danger");
     }

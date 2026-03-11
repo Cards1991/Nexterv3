@@ -10,6 +10,9 @@
                         <label for="macro-setor-nome" class="form-label">Nome do Setor Macro</label>
                         <input type="text" class="form-control" id="macro-setor-nome" placeholder="Ex: Macro Administrativo">
                     </div>
+                    <button type="button" class="btn btn-success btn-sm" id="btn-novo-macro-setor">
+                        <i class="fas fa-plus"></i> Novo Setor Macro
+                    </button>
                 </div>
                 <div class="col-md-8">
                     <div class="mb-3">
@@ -26,14 +29,11 @@
                             <div class="text-center text-muted py-3">
                                 <i class="fas fa-spinner fa-spin"></i> Carregando setores...
                             </div>
-                        </div>
                         <small class="text-muted">Selecione um ou mais setores usando as checkboxes acima</small>
                     </div>
-                </div>
             </div>
             <button id="btn-salvar-macro-setor" class="btn btn-primary">Salvar Setor Macro</button>
         </div>
-    </div>
 
     <div class="card mt-4">
         <div class="card-header">
@@ -43,9 +43,7 @@
             <div id="lista-macro-setores" class="table-responsive">
                 <!-- A lista de setores macro será exibida aqui -->
             </div>
-        </div>
     </div>
-</div>
 
 <!-- Adicionar o script específico para esta página -->
 <script src="js/setor-macro.js"></script>
