@@ -1,6 +1,11 @@
 // Afastamentos - listagem e criação básica
 let __afastamentos_cache = [];
 
+// Helper function for Firestore timestamp - provides compatibility if not defined elsewhere
+window.timestamp = function() {
+    return firebase.firestore.Timestamp.now();
+};
+
 async function carregarAfastamentos() {
     try {
         const tbody = document.getElementById('afastamentos-container');
@@ -354,10 +359,11 @@ async function editarAfastamento(afastamentoId) {
     }
 
     // Abre o modal (que será criado se não existir) e popula os campos
-    abrirModalNovoAfastamento();
+    await abrirModalNovoAfastamento();
 
-    // Aguarda um instante para o modal ser renderizado
-    setTimeout(async () => {
+    // Aguarda um pequeno tempo para garantir que os selects estão populados
+    setTimeout(() => {
+        // O modal já está aberto e os dados populados, agora preenche os campos
         document.querySelector('#afastamentoModal .modal-title').textContent = 'Editar Afastamento';
 
         // Preenche os campos com os dados do afastamento
@@ -368,15 +374,39 @@ async function editarAfastamento(afastamentoId) {
 
         // Seleciona o funcionário e desabilita a troca
         const funcSelect = document.getElementById('af_func');
-        funcSelect.value = afastamento.funcionarioId;
-        funcSelect.disabled = true; // Impede a troca de funcionário na edição
-        funcSelect.dispatchEvent(new Event('change')); // Dispara o evento para carregar CPF, empresa e setor
+        const funcId = afastamento.funcionarioId;
+        
+        // Primeiro, popula o CPF manualmente do cache
+        document.getElementById('af_cpf').value = afastamento.cpf || '';
+        
+        // Seleciona a empresa
+        const empSelect = document.getElementById('af_empresa');
+        if (empSelect && afastamento.empresaId) {
+            empSelect.value = afastamento.empresaId;
+            // Dispara evento para carregar setores
+            empSelect.dispatchEvent(new Event('change'));
+        }
+        
+        // Agora seleciona o funcionário (depois de empresa estar definida)
+        setTimeout(() => {
+            funcSelect.value = funcId;
+            funcSelect.disabled = true; // Impede a troca de funcionário na edição
+            
+            // Seleciona o setor após setores serem carregados
+            const setorSelect = document.getElementById('af_setor');
+            if (setorSelect && afastamento.setor) {
+                // Aguarda um pouco para o setor ser carregado
+                setTimeout(() => {
+                    setorSelect.value = afastamento.setor;
+                }, 100);
+            }
+        }, 150);
 
         // Altera o botão para "Atualizar"
         const btnSalvar = document.querySelector('#afastamentoModal .btn-primary');
         btnSalvar.textContent = 'Atualizar Afastamento';
         btnSalvar.onclick = () => atualizarAfastamento(afastamentoId);
-    }, 500); // Um pequeno delay para garantir que os selects foram populados
+    }, 100);
 }
 
 async function atualizarAfastamento(afastamentoId) {
@@ -435,92 +465,92 @@ document.addEventListener('viewsLoaded', function () {
 
 // Abrir modal de novo afastamento
 function abrirModalNovoAfastamento() {
-    const modalId = 'afastamentoModal';
-    let modalEl = document.getElementById(modalId);
+    return new Promise(async (resolve) => {
+        const modalId = 'afastamentoModal';
+        let modalEl = document.getElementById(modalId);
 
-    if (!modalEl) {
-        modalEl = document.createElement('div');
-        modalEl.className = 'modal fade';
-        modalEl.id = modalId;
-        modalEl.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Novo Afastamento</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        <form id="form-afastamento">
-                            <div class="row g-3">
-                                <div class="col-md-6">
-                                    <label class="form-label">Colaborador</label>
-                                    <select class="form-select" id="af_func" required></select>
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.className = 'modal fade';
+            modalEl.id = modalId;
+            modalEl.innerHTML = `
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Novo Afastamento</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <form id="form-afastamento">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <label class="form-label">Colaborador</label>
+                                        <select class="form-select" id="af_func" required></select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">CPF</label>
+                                        <input type="text" class="form-control" id="af_cpf" readonly />
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Empresa</label>
+                                        <select class="form-select" id="af_empresa"></select>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-label">Setor</label>
+                                        <select class="form-select" id="af_setor"></select>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Início</label>
+                                        <input type="date" class="form-control" id="af_inicio" required />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Término Previsto</label>
+                                        <input type="date" class="form-control" id="af_fim" required />
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label">Tipo</label>
+                                        <select class="form-select" id="af_tipo" required>
+                                            <option value="">Selecione</option>
+                                            <option value="Doença">Doença</option>
+                                            <option value="Acidente">Acidente</option>
+                                            <option value="Maternidade">Maternidade</option>
+                                            <option value="Outros">Outros</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12">
+                                        <label class="form-label">Motivo</label>
+                                        <textarea class="form-control" id="af_motivo" rows="2"></textarea>
+                                    </div>
                                 </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">CPF</label>
-                                    <input type="text" class="form-control" id="af_cpf" readonly />
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Empresa</label>
-                                    <select class="form-select" id="af_empresa"></select>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Setor</label>
-                                    <select class="form-select" id="af_setor"></select>
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Início</label>
-                                    <input type="date" class="form-control" id="af_inicio" required />
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Término Previsto</label>
-                                    <input type="date" class="form-control" id="af_fim" required />
-                                </div>
-                                <div class="col-md-4">
-                                    <label class="form-label">Tipo</label>
-                                    <select class="form-select" id="af_tipo" required>
-                                        <option value="">Selecione</option>
-                                        <option value="Doença">Doença</option>
-                                        <option value="Acidente">Acidente</option>
-                                        <option value="Maternidade">Maternidade</option>
-                                        <option value="Outros">Outros</option>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">Motivo</label>
-                                    <textarea class="form-control" id="af_motivo" rows="2"></textarea>
-                                </div>
-                            </div>
-                        </form>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="salvarNovoAfastamento()">Salvar</button>
+                            </form>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="button" class="btn btn-primary" onclick="salvarNovoAfastamento()">Salvar</button>
+                        </div>
                     </div>
                 </div>
-            </div>
-        `;
-        document.body.appendChild(modalEl);
-    }
+            `;
+            document.body.appendChild(modalEl);
+        }
 
-    // Reseta o estado do modal para "Novo Afastamento" toda vez que é aberto
-    const form = document.getElementById('form-afastamento');
-    if (form) {
-        form.reset();
-    }
-    const modalTitle = document.querySelector('#afastamentoModal .modal-title');
-    if (modalTitle) {
-        modalTitle.textContent = 'Novo Afastamento';
-    }
-    document.getElementById('af_func').disabled = false;
-    const btnSalvar = document.querySelector('#afastamentoModal .btn-primary');
-    if (btnSalvar) {
-        btnSalvar.textContent = 'Salvar';
-        btnSalvar.onclick = salvarNovoAfastamento;
-    }
+        // Reseta o estado do modal para "Novo Afastamento" toda vez que é aberto
+        const form = document.getElementById('form-afastamento');
+        if (form) {
+            form.reset();
+        }
+        const modalTitle = document.querySelector('#afastamentoModal .modal-title');
+        if (modalTitle) {
+            modalTitle.textContent = 'Novo Afastamento';
+        }
+        document.getElementById('af_func').disabled = false;
+        const btnSalvar = document.querySelector('#afastamentoModal .btn-primary');
+        if (btnSalvar) {
+            btnSalvar.textContent = 'Salvar';
+            btnSalvar.onclick = salvarNovoAfastamento;
+        }
 
-    // Popular empresas e setores
-    (async () => {
+        // Popular empresas e setores
         const selEmp = document.getElementById('af_empresa');
         const selSet = document.getElementById('af_setor');
         const selFunc = document.getElementById('af_func');
@@ -605,9 +635,11 @@ function abrirModalNovoAfastamento() {
         if (inicioInput) inicioInput.valueAsDate = new Date();
         if (fimInput) fimInput.valueAsDate = new Date();
 
-    })();
-
-    new bootstrap.Modal(modalEl).show();
+        new bootstrap.Modal(modalEl).show();
+        
+        // Resolve após o modal ser mostrado
+        resolve();
+    });
 }
 
 // Salvar novo afastamento
