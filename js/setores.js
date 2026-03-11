@@ -91,6 +91,8 @@ async function abrirModalSetor(setorId = null) {
             document.getElementById('setor-descricao').value = data.descricao;
             document.getElementById('setor-gerente').value = data.gerenteId || '';
             document.getElementById('setor-qtd-ideal').value = data.qtdIdeal || '';
+            document.getElementById('setor-horario-entrada').value = data.horarioEntrada || '';
+            document.getElementById('setor-horario-saida').value = data.horarioSaida || '';
             document.getElementById('setor-observacao').value = data.observacao || '';
         }
     }
@@ -105,6 +107,8 @@ async function salvarSetor() {
         descricao: document.getElementById('setor-descricao').value.trim(),
         gerenteId: document.getElementById('setor-gerente').value || null,
         qtdIdeal: parseInt(document.getElementById('setor-qtd-ideal').value) || 0,
+        horarioEntrada: document.getElementById('setor-horario-entrada').value || '',
+        horarioSaida: document.getElementById('setor-horario-saida').value || '',
         observacao: document.getElementById('setor-observacao').value.trim(),
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };

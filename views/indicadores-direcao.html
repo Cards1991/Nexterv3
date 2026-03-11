@@ -107,9 +107,25 @@
         </div>
     </div>
     <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-bottom border-warning border-3">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Não Avaliadas</div>
+                <div class="number h4 mb-0 fw-bold text-warning" id="ind-kpi-exp-nao-avaliadas">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card h-100 border-0 shadow-sm border-bottom border-info border-3">
+            <div class="card-body py-3">
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Prorrogadas</div>
+                <div class="number h4 mb-0 fw-bold text-info" id="ind-kpi-exp-prorrogadas">0</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-3">
         <div class="card stat-card h-100 border-0 shadow-sm border-bottom border-success border-3">
             <div class="card-body py-3">
-                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Aprovadas</div>
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Experiências Efetivadas</div>
                 <div class="number h4 mb-0 fw-bold text-success" id="ind-kpi-exp-aprovadas">0</div>
             </div>
         </div>
@@ -122,14 +138,23 @@
             </div>
         </div>
     </div>
-    <div class="col-md-3 mb-3">
+</div>
+
+<!-- KPIs Rescisões - Linha 3 -->
+<div class="row mb-4">
+    <div class="col-md-12 mb-3">
         <div class="card stat-card h-100 border-0 shadow-sm">
             <div class="card-body py-3">
-                <div class="label text-muted small text-uppercase fw-bold mb-1">Pedidos Demissão</div>
-                <div class="number h4 mb-0 fw-bold text-warning" id="ind-kpi-demissoes-pedidos">0</div>
-                <div class="d-flex gap-2 mt-1">
-                    <small class="text-muted">Dispensas: <span id="ind-kpi-demissoes-dispensas">0</span></small>
-                    <small class="text-muted">Acordos: <span id="ind-kpi-demissoes-acordos">0</span></small>
+                <div class="label text-muted small text-uppercase fw-bold mb-1">Rescisões no Período</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="number h4 mb-0 fw-bold text-warning" id="ind-kpi-demissoes-pedidos">0</div>
+                        <small class="text-muted">Pedido (Pedido demissão, T.A.C, Acordo)</small>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="number h4 mb-0 fw-bold text-danger" id="ind-kpi-demissoes-dispensas">0</div>
+                        <small class="text-muted">Dispensa (Justa causa, sem justa causa, outros)</small>
+                    </div>
                 </div>
             </div>
         </div>

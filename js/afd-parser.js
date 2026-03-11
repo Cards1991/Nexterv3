@@ -14,9 +14,10 @@ let dadosClassificacao = {
 // Tolerância padrão de 10 minutos.
 
 // Função para inicializar os listeners do Ponto Eletrônico quando a view for injetada
-function inicializarPontoEletronico() {
-    const btnImportar = document.getElementById('btn-importar-afd');
-    const fileInput = document.getElementById('input-afd-file');
+async function inicializarPontoEletronico() {
+    let btnImportar = document.getElementById('btn-importar-afd');
+    let fileInput = document.getElementById('input-afd-file');
+    const selectSetor = document.getElementById('select-setor-afd');
 
     if (btnImportar && fileInput) {
         // Redefinir para evitar listeners duplicados
@@ -26,20 +27,63 @@ function inicializarPontoEletronico() {
         const newFile = fileInput.cloneNode(true);
         fileInput.parentNode.replaceChild(newFile, fileInput);
 
-        // Limpar o valor do input para permitir selecionar o mesmo arquivo novamente
-        newFile.value = '';
+        btnImportar = newBtn;
+        fileInput = newFile;
 
-        newBtn.addEventListener('click', () => {
-            newFile.click();
+        // Limpar o valor do input para permitir selecionar o mesmo arquivo novamente
+        fileInput.value = '';
+
+        btnImportar.addEventListener('click', () => {
+            fileInput.click();
         });
 
-        newFile.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                processarArquivoAFD(file);
+        fileInput.addEventListener('change', async (event) => {
+            const files = event.target.files;
+            if (files && files.length > 0) {
+                await processarMultiplosArquivosAFD(files);
             }
             // Limpa o valor para permitir selecionar o mesmo arquivo novamente
             event.target.value = '';
+        });
+
+        // Configuração do select de setor para carregar os horários de entrada
+        if (selectSetor) {
+            try {
+                const setoresSnap = await db.collection('setores').orderBy('descricao').get();
+                selectSetor.innerHTML = '<option value="">Todos os Setores</option>';
+                // Usamos a descrição do setor como valor, pois o cadastro de funcionário vincula o nome do setor
+                setoresSnap.forEach(doc => {
+                    const option = document.createElement('option');
+                    option.value = doc.data().descricao;
+                    option.textContent = doc.data().descricao;
+                    selectSetor.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Erro ao carregar setores:', error);
+            }
+        }
+
+        // Correção das tabelas se sobrepondo (Tabs)
+        const triggers = document.querySelectorAll('#pontoClassificadoTabs button[data-bs-toggle="tab"]');
+        triggers.forEach(t => {
+            const clone = t.cloneNode(true);
+            t.parentNode.replaceChild(clone, t);
+            clone.addEventListener('click', (e) => {
+                e.preventDefault();
+                // Ocultar todas as tabs
+                document.querySelectorAll('#pontoClassificadoTabContent .tab-pane').forEach(p => {
+                    p.classList.remove('show', 'active');
+                });
+                document.querySelectorAll('#pontoClassificadoTabs button').forEach(b => {
+                    b.classList.remove('active');
+                });
+                
+                // Exibir a selecionada
+                const targetId = clone.getAttribute('data-bs-target');
+                const targetPane = document.querySelector(targetId);
+                if(targetPane) targetPane.classList.add('show', 'active');
+                clone.classList.add('active');
+            });
         });
     }
 }
@@ -48,6 +92,101 @@ function inicializarPontoEletronico() {
 document.addEventListener('DOMContentLoaded', () => {
     inicializarPontoEletronico();
 });
+
+/**
+ * Processa múltiplos arquivos AFD em sequência e combina os resultados.
+ * @param {FileList} files A lista de arquivos selecionados pelo usuário.
+ */
+async function processarMultiplosArquivosAFD(files) {
+    const statusDiv = document.getElementById('afd-status');
+    const totalFiles = files.length;
+    
+    if (statusDiv) {
+        statusDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Processando ${totalFiles} arquivo(s)...</div>`;
+    }
+
+    const todasMarcacoes = [];
+
+    try {
+        // Processar cada arquivo sequencialmente
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            if (statusDiv) {
+                statusDiv.innerHTML = `<div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> Processando arquivo ${i + 1} de ${totalFiles}: ${file.name}...</div>`;
+            }
+
+            // Ler o conteúdo do arquivo
+            const conteudo = await lerArquivo(file);
+            
+            // Parse do arquivo AFD
+            const marcacoes = parseAFD(conteudo);
+            console.log(`Marcações extraídas do arquivo ${file.name}:`, marcacoes);
+            
+            // Adicionar as marcações ao array combinado
+            todasMarcacoes.push(...marcacoes);
+        }
+
+        if (todasMarcacoes.length === 0) {
+            if (statusDiv) {
+                statusDiv.innerHTML = '<div class="alert alert-warning">Nenhuma marcação de ponto encontrada nos arquivos.</div>';
+            }
+            return;
+        }
+
+        // Remover duplicatas baseadas em PIS + Data + Hora
+        const marcacoesUnicas = [];
+        const seen = new Set();
+        
+        for (const marcacao of todasMarcacoes) {
+            const key = `${marcacao.pis}-${marcacao.data}-${marcacao.hora}`;
+            if (!seen.has(key)) {
+                seen.add(key);
+                marcacoesUnicas.push(marcacao);
+            }
+        }
+
+        // Buscar nomes dos colaboradores pelo PIS
+        await processarMarcacoes(marcacoesUnicas);
+
+        if (statusDiv) {
+            const totalDuplicatas = todasMarcacoes.length - marcacoesUnicas.length;
+            let msg = `<div class="alert alert-success"><i class="fas fa-check-circle"></i> ${marcacoesUnicas.length} marcações de ponto foram importadas com sucesso de ${totalFiles} arquivo(s)!`;
+            if (totalDuplicatas > 0) {
+                msg += ` <br><small>(${totalDuplicatas} registro(s) duplicado(s) foram removidos)</small>`;
+            }
+            msg += '</div>';
+            statusDiv.innerHTML = msg;
+        }
+
+    } catch (error) {
+        console.error("Erro ao processar os arquivos AFD:", error);
+        if (statusDiv) {
+            statusDiv.innerHTML = `<div class="alert alert-danger">Erro ao processar arquivos: ${error.message}</div>`;
+        }
+    }
+}
+
+/**
+ * Lê o conteúdo de um arquivo como texto.
+ * @param {File} file O arquivo a ser lido.
+ * @returns {Promise<string>} O conteúdo do arquivo.
+ */
+function lerArquivo(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        
+        reader.onload = (e) => {
+            resolve(e.target.result);
+        };
+        
+        reader.onerror = () => {
+            reject(new Error('Erro ao ler o arquivo.'));
+        };
+        
+        reader.readAsText(file, 'UTF-8');
+    });
+}
 
 /**
  * Lê o arquivo AFD e inicia o processamento.
@@ -171,9 +310,9 @@ function parseAFD(conteudo) {
 
 /**
  * Classifica o tipo de ponto baseado no horário de entrada.
- * - Antes das 06:50 = Entrada Antecipada
- * - 07:10 ou após = Atraso
- * - Entre 06:50 e 07:10 = Normal
+ * - Antes do limite = Entrada Antecipada
+ * - 07:10 (exemplo) ou após = Atraso
+ * - Entre os limtes = Normal
  * 
  * @param {string} hora - Hora no formato HH:mm
  * @returns {string} - Tipo de classificação: 'antecipada', 'atraso' ou 'normal'
@@ -186,7 +325,7 @@ function classificarPonto(hora, horarioBase = "07:00") {
     const [hBase, mBase] = horarioBase.split(':').map(Number);
     const minutosBase = hBase * 60 + mBase;
 
-    const minutosAntecipada = minutosBase - 10; // Tolerância de 10 min antes
+    const minutosAntecipada = minutosBase - 5; // Tolerância de 5 min antes
     const minutosAtraso = minutosBase + 10; // Tolerância de 10 min depois
 
     if (minutos < minutosAntecipada) {
@@ -202,14 +341,37 @@ function classificarPonto(hora, horarioBase = "07:00") {
  * Processa as marcações e classifica cada entrada.
  * @param {Array<Object>} marcacoes - Lista de marcações processadas
  */
-function processarClassificacao(marcacoes) {
+function processarClassificacao(marcacoes, inconsistenciasRaw = []) {
     // Reinicia os dados de classificação
     dadosClassificacao = {
         antecipadas: [],
         atrasos: [],
         normal: [],
-        faltas: []
+        faltas: [],
+        inconsistencias: []
     };
+
+    // ----------------------------------------------------
+    // INCONSISTÊNCIAS (OUTROS SETORES)
+    // ----------------------------------------------------
+    const primInconsistencias = {};
+    inconsistenciasRaw.forEach(marcacao => {
+        const chave = `${marcacao.pis}-${marcacao.data}`;
+        if (!primInconsistencias[chave]) {
+            primInconsistencias[chave] = marcacao;
+        } else if (marcacao.dataObj < primInconsistencias[chave].dataObj) {
+            primInconsistencias[chave] = marcacao;
+        }
+    });
+
+    Object.values(primInconsistencias).forEach(marcacao => {
+        dadosClassificacao.inconsistencias.push({
+            ...marcacao,
+            tipoClassificacao: 'inconsistencia',
+            observacao: `Dedo duro: Funcionário é do setor "${marcacao.setor}"`
+        });
+    });
+    // ----------------------------------------------------
 
     // Primeiro, identificar a primeira marcação de cada dia para cada funcionário
     const primeiroRegistroPorDia = {};
@@ -229,7 +391,7 @@ function processarClassificacao(marcacoes) {
 
     // Classificar cada primeiro registro do dia
     Object.values(primeiroRegistroPorDia).forEach(marcacao => {
-        const tipo = classificarPonto(marcacao.hora, marcacao.horarioEntradaSetor);
+        const tipo = classificarPonto(marcacao.hora, marcacao.horarioEntradaSetor || "07:00");
 
         // Recalcula os horários de limite para a observação
         const [hBase, mBase] = (marcacao.horarioEntradaSetor || "07:00").split(':').map(Number);
@@ -260,16 +422,25 @@ function processarClassificacao(marcacoes) {
  */
 async function detectarFaltantes(marcacoes) {
     try {
-        // Obter todas as datas únicas presentes no arquivo
+        // Obter todas as datas únicas presentes no arquivo (usando todas as marcações originais ou as filtradas)
         const datasUnicas = [...new Set(marcacoes.map(m => m.data))].sort();
 
         if (datasUnicas.length === 0) return;
 
         // Buscar funcionários ativos com controle de ponto eletrônico
-        const snapshot = await db.collection('funcionarios')
+        let query = db.collection('funcionarios')
             .where('status', '==', 'Ativo')
-            .where('controlePontoEletronico', '==', true)
-            .get();
+            .where('controlePontoEletronico', '==', true);
+
+        const selectSetor = document.getElementById('select-setor-afd');
+        const setorFiltroNome = selectSetor ? selectSetor.value : '';
+
+        // Só filtra por setor se um setor específico foi selecionado
+        if (setorFiltroNome) {
+            query = query.where('setor', '==', setorFiltroNome);
+        }
+
+        const snapshot = await query.get();
 
         const empresasSnap = await db.collection('empresas').get();
         const empresasMap = {};
@@ -347,6 +518,7 @@ async function processarMarcacoes(marcacoes) {
 
     // Passo 2: Buscar funcionários pelo PIS no Firestore
     const funcionariosMap = {};
+    let setoresHorarios = {};
 
     try {
         // Busca todos os funcionários que têm PIS cadastrado
@@ -360,7 +532,6 @@ async function processarMarcacoes(marcacoes) {
 
         // Busca setores para obter horários de entrada
         const setoresSnap = await db.collection('setores').get();
-        const setoresHorarios = {};
         setoresSnap.forEach(doc => {
             const s = doc.data();
             if (s.descricao) setoresHorarios[s.descricao] = s.horarioEntrada || "07:00";
@@ -376,6 +547,7 @@ async function processarMarcacoes(marcacoes) {
                     id: doc.id,
                     pis: func.pis,
                     setor: func.setor || '-',
+                    empresaId: func.empresaId || null,
                     empresaNome: func.empresaId ? (empresasMap[func.empresaId] || '-') : '-'
                 };
             }
@@ -386,26 +558,43 @@ async function processarMarcacoes(marcacoes) {
         console.error('Erro ao buscar funcionários:', error);
     }
 
-    // Passo 3: Associar cada marcação ao funcionário correspondente
-    dadosAFDProcessados = marcacoes.map(marcacao => {
-        const pisNormalizado = parseInt(marcacao.pis, 10).toString();
-        const funcionario = funcionariosMap[pisNormalizado];
+        // Passo 3: Associar cada marcação ao funcionário correspondente
+        let processados = marcacoes.map(marcacao => {
+            const pisNormalizado = parseInt(marcacao.pis, 10).toString();
+            const funcionario = funcionariosMap[pisNormalizado];
+            const setorFunc = funcionario ? funcionario.setor : '-';
 
-        return {
-            ...marcacao,
-            nomeFuncionario: funcionario ? funcionario.nome : 'Não encontrado',
-            funcionariosId: funcionario ? funcionario.id : null,
-            status: funcionario ? 'Encontrado' : 'PIS não cadastrado',
-            setor: funcionario ? funcionario.setor : '-',
-            empresaNome: funcionario ? funcionario.empresaNome : '-'
-        };
-    });
+            return {
+                ...marcacao,
+                nomeFuncionario: funcionario ? funcionario.nome : 'Não encontrado',
+                funcionariosId: funcionario ? funcionario.id : null,
+                status: funcionario ? 'Encontrado' : 'PIS não cadastrado',
+                setor: setorFunc,
+                empresaId: funcionario ? funcionario.empresaId : null,
+                empresaNome: funcionario ? funcionario.empresaNome : '-',
+                horarioEntradaSetor: setoresHorarios[setorFunc] || "07:00"
+            };
+        });
+
+        const selectSetor = document.getElementById('select-setor-afd');
+        const setorFiltroNome = selectSetor ? selectSetor.value : '';
+
+        // Só filtra por setor se um setor específico foi selecionado
+        let inconsistenciasDaImportacao = [];
+
+        if (setorFiltroNome) {
+            inconsistenciasDaImportacao = processados.filter(item => item.setor !== setorFiltroNome && item.status === 'Encontrado');
+            processados = processados.filter(item => item.setor === setorFiltroNome);
+        }
+        // Se não houver setor selecionado, processa todos os registros sem filtrar
+        
+        dadosAFDProcessados = processados;
 
     // Passo 4: Processar classificação dos pontos
-    processarClassificacao(dadosAFDProcessados);
+    processarClassificacao(dadosAFDProcessados, inconsistenciasDaImportacao);
 
-    // Passo 5: Detectar faltantes
-    await detectarFaltantes(dadosAFDProcessados);
+    // Passo 5: Detectar faltantes (usa marcacoes originais para pegar todas as datas possíveis do arquivo)
+    await detectarFaltantes(marcacoes);
 
     // Passo 6: Ocultar a tabela de registros importados (Solicitado: Eliminar Tabela)
     const tbodyImportados = document.getElementById('tabela-ponto-eletronico-body');
@@ -529,11 +718,13 @@ function exibirRelatorioClassificado() {
     document.getElementById('count-antecipadas').textContent = dadosClassificacao.antecipadas.length;
     document.getElementById('count-atrasos').textContent = dadosClassificacao.atrasos.length;
     document.getElementById('count-faltas').textContent = dadosClassificacao.faltas.length;
+    document.getElementById('count-inconsistencias').textContent = dadosClassificacao.inconsistencias ? dadosClassificacao.inconsistencias.length : 0;
 
     // Renderizar tabelas
     renderizarTabelaAntecipadas();
     renderizarTabelaAtrasos();
     renderizarTabelaFaltas();
+    renderizarTabelaInconsistencias();
 }
 
 /**
@@ -598,7 +789,7 @@ function renderizarTabelaFaltas() {
     if (!tbody) return;
 
     if (dadosClassificacao.faltas.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhuma falta registrada</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhuma falta registrada</td></tr>';
         return;
     }
 
@@ -609,13 +800,64 @@ function renderizarTabelaFaltas() {
         return a.data.localeCompare(b.data);
     });
 
-    tbody.innerHTML = sorted.map(item => `
+    tbody.innerHTML = sorted.map((item, index) => {
+        // Encontrar o índice real no array original caso ele tenha sido ordenado aqui
+        const originalIndex = dadosClassificacao.faltas.indexOf(item);
+        
+        return `
         <tr>
             <td>${item.nomeFuncionario || '-'}</td>
             <td>${item.empresaNome || '-'}</td>
             <td>${item.setor || '-'}</td>
             <td>${item.dataFormatada}</td>
             <td><span class="badge bg-dark">-</span></td>
+            <td>${item.observacao}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="justificarFalta(${originalIndex})" title="Justificar Falta">
+                    <i class="fas fa-edit"></i> Justificar
+                </button>
+            </td>
+        </tr>
+    `}).join('');
+}
+
+function justificarFalta(index) {
+    const falta = dadosClassificacao.faltas[index];
+    if (!falta) return;
+
+    const justificativa = prompt(`Informe a justificativa de falta para ${falta.nomeFuncionario} no dia ${falta.dataFormatada}:`, falta.observacao === 'Sem registro de ponto' ? '' : falta.observacao);
+    
+    if (justificativa !== null) {
+        falta.observacao = justificativa.trim() || 'Sem registro de ponto';
+        renderizarTabelaFaltas();
+        mostrarMensagem('Justificativa salva (Será gravada ao salvar os registros).', 'info');
+    }
+}
+
+/**
+ * Renderiza a tabela de inconsistências (Dedo duro).
+ */
+function renderizarTabelaInconsistencias() {
+    const tbody = document.getElementById('tabela-inconsistencias-body');
+    if (!tbody) return;
+
+    const inconsistencias = dadosClassificacao.inconsistencias || [];
+
+    if (inconsistencias.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma inconsistência registrada</td></tr>';
+        return;
+    }
+
+    // Ordenar por data e hora
+    const sorted = [...inconsistencias].sort((a, b) => a.dataObj - b.dataObj);
+
+    tbody.innerHTML = sorted.map(item => `
+        <tr>
+            <td>${item.nomeFuncionario || '-'}</td>
+            <td>${item.empresaNome || '-'}</td>
+            <td><span class="badge bg-danger">${item.setor || '-'}</span></td>
+            <td>${item.dataFormatada}</td>
+            <td><span class="badge bg-info text-dark">${item.horaFormatada}</span></td>
             <td>${item.observacao}</td>
         </tr>
     `).join('');
@@ -672,6 +914,20 @@ function exportarRelatorioClassificadoExcel() {
         }));
         const wsFal = XLSX.utils.json_to_sheet(dadosFal);
         XLSX.utils.book_append_sheet(wb, wsFal, "Faltas");
+    }
+
+    // Sheet 4: Inconsistências
+    if (dadosClassificacao.inconsistencias && dadosClassificacao.inconsistencias.length > 0) {
+        const dadosInc = dadosClassificacao.inconsistencias.map(item => ({
+            'Colaborador': item.nomeFuncionario,
+            'Empresa': item.empresaNome || '-',
+            'Setor': item.setor || '-',
+            'Data': item.dataFormatada,
+            'Hora': item.horaFormatada,
+            'Observação': item.observacao
+        }));
+        const wsInc = XLSX.utils.json_to_sheet(dadosInc);
+        XLSX.utils.book_append_sheet(wb, wsInc, "Inconsistências");
     }
 
     if (wb.SheetNames.length === 0) {
@@ -755,5 +1011,81 @@ function exportarRelatorioAFDExcel() {
 
 // Exportar funções para o escopo global
 window.processarArquivoAFD = processarArquivoAFD;
+window.processarMultiplosArquivosAFD = processarMultiplosArquivosAFD;
+window.lerArquivo = lerArquivo;
 window.exportarRelatorioAFDExcel = exportarRelatorioAFDExcel;
 window.exportarRelatorioClassificadoExcel = exportarRelatorioClassificadoExcel;
+window.justificarFalta = justificarFalta;
+
+/**
+ * Salva os registros processados no banco de dados (Firestore)
+ */
+async function salvarRegistrosPonto() {
+    if (!dadosAFDProcessados || dadosAFDProcessados.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum dado processado para salvar.', 'warning');
+        return;
+    }
+
+    const btnSalvar = event ? event.currentTarget : document.querySelector('button[onclick="salvarRegistrosPonto()"]');
+    const originalContent = btnSalvar ? btnSalvar.innerHTML : '';
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Salvando...';
+    }
+
+    try {
+        let batch = db.batch();
+        let counter = 0;
+        let totalSalvos = 0;
+        
+        for (const item of dadosAFDProcessados) {
+            // Cria um novo doc ID no firestore
+            const docRef = db.collection('ponto_eletronico').doc();
+            batch.set(docRef, {
+                pis: item.pis,
+                pisFormatado: item.pisFormatado,
+                data: item.data, // YYYY-MM-DD
+                hora: item.hora,
+                horaCompleta: item.horaCompleta,
+                dataObj: item.dataObj ? firebase.firestore.Timestamp.fromDate(item.dataObj) : null,
+                funcionarioId: item.funcionariosId || null,
+                nomeFuncionario: item.nomeFuncionario || 'Desconhecido',
+                setor: item.setor || '-',
+                empresaNome: item.empresaNome || '-',
+                dataRegistro: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            counter++;
+            totalSalvos++;
+
+            if (counter === 490) { // O limite de batch do Firestore é 500
+                await batch.commit();
+                batch = db.batch();
+                counter = 0;
+            }
+        }
+
+        if (counter > 0) {
+            await batch.commit();
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`${totalSalvos} registros salvos com sucesso!`, 'success');
+        } else {
+            alert(`${totalSalvos} registros salvos com sucesso!`);
+        }
+    } catch (error) {
+        console.error('Erro ao salvar ponto:', error);
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Erro ao salvar registros no banco.', 'danger');
+        } else {
+            alert('Erro ao salvar registros.');
+        }
+    } finally {
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = originalContent || '<i class="fas fa-save me-1"></i>Salvar Registros';
+        }
+    }
+}
+window.salvarRegistrosPonto = salvarRegistrosPonto;

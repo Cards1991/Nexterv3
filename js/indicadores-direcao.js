@@ -46,7 +46,7 @@ async function carregarDadosIndicadores() {
     const dataFim = new Date(ano, mes, 0, 23, 59, 59);
 
     // Exibe estado de carregamento
-    const kpiIds = ['ind-kpi-admissoes', 'ind-kpi-demissoes-pedidos', 'ind-kpi-demissoes-dispensas', 'ind-kpi-demissoes-acordos', 'ind-kpi-experiencia', 'ind-custo-rescisao', 'ind-kpi-total-funcionarios', 'ind-kpi-exp-aprovadas', 'ind-kpi-exp-reprovadas', 'ind-kpi-horas-extras'];
+    const kpiIds = ['ind-kpi-admissoes', 'ind-kpi-demissoes-pedidos', 'ind-kpi-demissoes-dispensas', 'ind-kpi-experiencia', 'ind-custo-rescisao', 'ind-kpi-total-funcionarios', 'ind-kpi-exp-aprovadas', 'ind-kpi-exp-reprovadas', 'ind-kpi-exp-prorrogadas', 'ind-kpi-exp-nao-avaliadas', 'ind-kpi-horas-extras'];
     kpiIds.forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
@@ -97,26 +97,38 @@ async function carregarDadosIndicadores() {
         const elAdmissoes = document.getElementById('ind-kpi-admissoes');
         if (elAdmissoes) elAdmissoes.textContent = admissoes;
 
-        // 2. Demissões no mês (Separadas por tipo)
+        // 2. Rescisões no mês (Separadas por tipo)
+        // Pedido = Pedido demissão, T.A.C - Empregado, Acordo Legal, Acordo P.F.
+        // Dispensa = Qualquer outro tipo (Justa causa, sem justa causa, outros)
         const demissoes = movimentacoes.filter(m => m.tipo === 'demissao');
 
         let pedidos = 0;
         let dispensas = 0;
-        let acordos = 0;
+
+        // Lista de tipos que são considerados PEDIDO
+        const tiposPedido = [
+            'Pedido de demissão',
+            'T.A.C - Empregado',
+            'Acordo Legal',
+            'Acordo P.F.'
+        ];
 
         demissoes.forEach(d => {
             const tipo = d.tipoDemissao || d.tipo_demissao || '';
-            if (tipo.includes('Pedido')) {
+            const tipoLower = tipo.toLowerCase();
+            
+            // Verifica se é algum dos tipos de pedido
+            const isPedido = tiposPedido.some(tp => tipoLower.includes(tp.toLowerCase()));
+            
+            if (isPedido) {
                 pedidos++;
-            } else if (tipo.includes('Acordo') || tipo.includes('T.A.C') || tipo.includes('T.a.C')) {
-                acordos++;
             } else {
+                // Qualquer outro tipo é considerado dispensa
                 dispensas++;
             }
         });
         if (document.getElementById('ind-kpi-demissoes-pedidos')) document.getElementById('ind-kpi-demissoes-pedidos').textContent = pedidos;
         if (document.getElementById('ind-kpi-demissoes-dispensas')) document.getElementById('ind-kpi-demissoes-dispensas').textContent = dispensas;
-        if (document.getElementById('ind-kpi-demissoes-acordos')) document.getElementById('ind-kpi-demissoes-acordos').textContent = acordos;
 
         // Lógica de Reconstrução Histórica: Quem estava ativo no final do mês do filtro?
         const funcionariosAtivos = todosFuncionarios.filter(f => {
@@ -164,13 +176,41 @@ async function carregarDadosIndicadores() {
         const elTotalFunc = document.getElementById('ind-kpi-total-funcionarios');
         if (elTotalFunc) elTotalFunc.textContent = totalFuncionarios;
 
-        // NOVO: Experiências Aprovadas no mês
+        // NOVO: Experiências Não Avaliadas = Total em experiência - Avaliações já realizadas no período
+        // Total em experiência (admitidos há menos de 90 dias)
+        const totalEmExperiencia = funcionariosAtivos.filter(f => {
+            const dataAdmissao = f.dataAdmissao?.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao);
+            return dataAdmissao >= dataCorteExp;
+        }).length;
+
+        // Avaliações já realizadas no período (tem resultado definido)
+        const avaliacoesRealizadas = avaliacoesExp.filter(a => {
+            const resultado = (a.resultado || '').trim();
+            return resultado !== '' && resultado.toLowerCase() !== 'pendente';
+        }).length;
+
+        const expNaoAvaliadas = Math.max(0, totalEmExperiencia - avaliacoesRealizadas);
+        const elExpNaoAval = document.getElementById('ind-kpi-exp-nao-avaliadas');
+        if (elExpNaoAval) elExpNaoAval.textContent = expNaoAvaliadas;
+
+        // NOVO: Experiências Prorrogadas no mês (resultado contém "prorrog" ou é exatamente "Pendente")
+        const expProrrogadas = avaliacoesExp.filter(a => {
+            const resultado = (a.resultado || '').toLowerCase();
+            return resultado.includes('prorrog') || resultado === 'pendente';
+        }).length;
+        const elExpProrrog = document.getElementById('ind-kpi-exp-prorrogadas');
+        if (elExpProrrog) elExpProrrog.textContent = expProrrogadas;
+
+        // NOVO: Experiências Aprovadas no mês (efetivadas)
         const expAprovadas = avaliacoesExp.filter(a => a.resultado === 'Aprovado').length;
         const elExpAprov = document.getElementById('ind-kpi-exp-aprovadas');
         if (elExpAprov) elExpAprov.textContent = expAprovadas;
 
         // NOVO: Experiências Não Aprovadas no mês
-        const expReprovadas = avaliacoesExp.filter(a => a.resultado === 'Reprovado' || a.resultado === 'Desligamento').length;
+        const expReprovadas = avaliacoesExp.filter(a => {
+            const resultado = (a.resultado || '').toLowerCase();
+            return resultado === 'reprovado' || resultado === 'desligamento';
+        }).length;
         const elExpReprov = document.getElementById('ind-kpi-exp-reprovadas');
         if (elExpReprov) elExpReprov.textContent = expReprovadas;
 

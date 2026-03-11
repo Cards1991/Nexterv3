@@ -5,6 +5,25 @@
 async function inicializarPainelDemitidos() {
     console.log("Inicializando Painel de Demitidos...");
     
+    // Configurar filtros de data e botões
+    const btnFiltrar = document.getElementById('btn-filtrar-demitidos');
+    const btnLimpar = document.getElementById('btn-limpar-filtros-demitidos');
+
+    if (btnFiltrar && !btnFiltrar.dataset.listener) {
+        btnFiltrar.addEventListener('click', carregarPainelDemitidos);
+        btnFiltrar.dataset.listener = 'true';
+    }
+
+    if (btnLimpar && !btnLimpar.dataset.listener) {
+        btnLimpar.addEventListener('click', () => {
+            document.getElementById('filtro-demitidos-data-inicio').value = '';
+            document.getElementById('filtro-demitidos-data-fim').value = '';
+            document.getElementById('busca-demitidos').value = '';
+            carregarPainelDemitidos();
+        });
+        btnLimpar.dataset.listener = 'true';
+    }
+
     // Configurar busca
     const btnBusca = document.getElementById('btn-busca-demitidos');
     const inputBusca = document.getElementById('busca-demitidos');
@@ -31,6 +50,8 @@ async function carregarPainelDemitidos() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     const termoBusca = document.getElementById('busca-demitidos')?.value.toLowerCase().trim();
+    const dataInicioFiltro = document.getElementById('filtro-demitidos-data-inicio')?.value;
+    const dataFimFiltro = document.getElementById('filtro-demitidos-data-fim')?.value;
 
     try {
         // Carregamento paralelo de dados necessários para preencher as lacunas
@@ -111,11 +132,20 @@ async function carregarPainelDemitidos() {
                 if (motivo === '-') motivo = demissoesMap[doc.id].motivo || '-';
             }
 
+            // Aplica filtro de data em memória
+            if (dataInicioFiltro && (!dataDemissaoISO || dataDemissaoISO < dataInicioFiltro)) {
+                return;
+            }
+            if (dataFimFiltro && (!dataDemissaoISO || dataDemissaoISO > dataFimFiltro)) {
+                return;
+            }
+
             // Verifica se já tem custo lançado
             const custoLancado = custosMap[doc.id];
             console.log(`[DEBUG] Funcionário: ${f.nome}, Custo Lançado: ${custoLancado}`);
             let btnAcao = '';
             let btnCancelar = '';
+            let btnEditar = '';
 
             if (custoLancado !== undefined) {
                 btnAcao = `
@@ -141,6 +171,11 @@ async function carregarPainelDemitidos() {
                     </button>
                 `;
             }
+            btnEditar = `
+                <button class="btn btn-sm btn-outline-primary me-2" onclick="abrirModalEditarDemissao('${doc.id}', '${f.nome}')" title="Editar Demissão">
+                    <i class="fas fa-edit"></i>
+                </button>
+            `;
             console.log(`[DEBUG] Botão Cancelar HTML para ${f.nome}: ${btnCancelar}`);
 
             html += `
@@ -154,6 +189,7 @@ async function carregarPainelDemitidos() {
                     <td>${dataDemissao}</td>
                     <td>${motivo}</td>
                     <td class="text-end">
+                        ${btnEditar}
                         ${btnCancelar}
                         ${btnAcao}
                     </td>
@@ -274,6 +310,99 @@ function visualizarCustoRescisao(nome, valor) {
         `);
     } else {
         alert(`Custo Rescisório - ${nome}\nValor: R$ ${valor.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`);
+    }
+}
+
+async function abrirModalEditarDemissao(funcId, nome) {
+    try {
+        // Busca a movimentação de demissão do funcionário
+        const movSnap = await db.collection('movimentacoes')
+            .where('funcionarioId', '==', funcId)
+            .where('tipo', '==', 'demissao')
+            .orderBy('data', 'desc')
+            .limit(1)
+            .get();
+
+        if (movSnap.empty) {
+            alert('Registro de demissão não encontrado na tabela de movimentações. Verifique se o registro existe.');
+            return;
+        }
+
+        const movDoc = movSnap.docs[0];
+        const mov = movDoc.data();
+
+        // Preenche o modal
+        document.getElementById('edit-demissao-func-id').value = funcId;
+        document.getElementById('edit-demissao-mov-id').value = movDoc.id;
+        document.getElementById('edit-demissao-nome').value = nome;
+        
+        if (mov.data) {
+            const dataObj = mov.data.toDate ? mov.data.toDate() : new Date(mov.data);
+            document.getElementById('edit-demissao-data').value = dataObj.toISOString().split('T')[0];
+        }
+
+        document.getElementById('edit-demissao-tipo').value = mov.motivo || ''; // O campo 'motivo' armazena o TIPO da demissão
+        document.getElementById('edit-demissao-motivo').value = mov.motivoDetalhado || ''; // O campo 'motivoDetalhado' armazena o MOTIVO real
+        document.getElementById('edit-demissao-aviso').value = mov.avisoPrevio || '';
+        document.getElementById('edit-demissao-obs').value = mov.detalhes || '';
+
+        new bootstrap.Modal(document.getElementById('modalEditarDemissao')).show();
+
+    } catch (error) {
+        console.error("Erro ao carregar demissão para edição:", error);
+        alert("Erro ao carregar dados.");
+    }
+}
+
+async function salvarEdicaoDemissao() {
+    const movId = document.getElementById('edit-demissao-mov-id').value;
+    const funcId = document.getElementById('edit-demissao-func-id').value;
+    const data = document.getElementById('edit-demissao-data').value;
+    const tipo = document.getElementById('edit-demissao-tipo').value;
+    const motivo = document.getElementById('edit-demissao-motivo').value;
+    const aviso = document.getElementById('edit-demissao-aviso').value;
+    const obs = document.getElementById('edit-demissao-obs').value;
+
+    if (!movId || !funcId || !data || !tipo) {
+        alert("Preencha os campos obrigatórios (Data e Tipo).");
+        return;
+    }
+
+    try {
+        const dataObj = new Date(data + 'T00:00:00');
+        const timestamp = firebase.firestore.Timestamp.fromDate(dataObj);
+
+        const batch = db.batch();
+
+        // 1. Atualizar Movimentação
+        const movRef = db.collection('movimentacoes').doc(movId);
+        batch.update(movRef, {
+            data: timestamp,
+            motivo: tipo, // Armazena o tipo de demissão
+            motivoDetalhado: motivo,
+            avisoPrevio: aviso,
+            detalhes: obs
+        });
+
+        // 2. Atualizar Funcionário (para manter consistência nos dados redundantes)
+        const funcRef = db.collection('funcionarios').doc(funcId);
+        batch.update(funcRef, {
+            dataDesligamento: timestamp,
+            dataDemissao: timestamp,
+            motivoDesligamento: motivo,
+            tipoDemissao: tipo,
+            ultimaMovimentacao: timestamp
+        });
+
+        await batch.commit();
+
+        alert("Demissão atualizada com sucesso!");
+        bootstrap.Modal.getInstance(document.getElementById('modalEditarDemissao')).hide();
+        carregarPainelDemitidos();
+
+    } catch (error) {
+        console.error("Erro ao salvar edição:", error);
+        alert("Erro ao salvar alterações: " + error.message);
     }
 }
 
@@ -427,3 +556,5 @@ window.abrirModalImportacaoCustos = abrirModalImportacaoCustos;
 window.processarImportacaoCustos = processarImportacaoCustos;
 window.visualizarCustoRescisao = visualizarCustoRescisao;
 window.cancelarDemissao = cancelarDemissao;
+window.abrirModalEditarDemissao = abrirModalEditarDemissao;
+window.salvarEdicaoDemissao = salvarEdicaoDemissao;

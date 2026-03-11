@@ -1,4 +1,31 @@
 <h2 class="page-title">Painel de Demitidos</h2>
+
+<!-- Filtros -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Data Início</label>
+                <input type="date" class="form-control" id="filtro-demitidos-data-inicio">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Data Fim</label>
+                <input type="date" class="form-control" id="filtro-demitidos-data-fim">
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary w-100" id="btn-filtrar-demitidos">
+                    <i class="fas fa-filter me-1"></i> Filtrar
+                </button>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-outline-secondary w-100" id="btn-limpar-filtros-demitidos">
+                    <i class="fas fa-times me-1"></i> Limpar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
         <span class="fw-bold">Funcionários Desligados</span>
@@ -73,6 +100,76 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary" onclick="salvarCustoRescisao()">Salvar Lançamento</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Editar Demissão -->
+<div class="modal fade" id="modalEditarDemissao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Editar Demissão</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-editar-demissao">
+                    <input type="hidden" id="edit-demissao-func-id">
+                    <input type="hidden" id="edit-demissao-mov-id">
+                    <div class="mb-3">
+                        <label class="form-label">Funcionário</label>
+                        <input type="text" class="form-control" id="edit-demissao-nome" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Data da Demissão</label>
+                        <input type="date" class="form-control" id="edit-demissao-data" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Demissão</label>
+                        <select class="form-select" id="edit-demissao-tipo" required>
+                            <option value="">Selecione...</option>
+                            <option>Pedido de Demissão</option>
+                            <option>Demissão sem Justa Causa</option>
+                            <option>Demissão por Justa Causa</option>
+                            <option>Término de Contrato</option>
+                            <option>T.A.C - empregado</option>
+                            <option>T.a.C - empresa</option>
+                            <option>Acordo Legal</option>
+                            <option>Acordo P.F.</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo</label>
+                         <select class="form-select" id="edit-demissao-motivo" required>
+                            <option value="">Selecione...</option>
+                            <option value="Mudança de carreira">Mudança de carreira</option>
+                            <option value="Problema de relacionamento">Problema de relacionamento</option>
+                            <option value="Insatisfação com o Trabalho">Insatisfação com o Trabalho</option>
+                            <option value="Questões Salariais">Questões Salariais</option>
+                            <option value="Problemas Pessoais">Problemas Pessoais</option>
+                            <option value="Não Informado">Não Informado</option>
+                            <option value="Mudança de Cidade">Mudança de Cidade</option>
+                            <option value="Não se adaptou">Não se adaptou</option>
+                        </select>
+                    </div>
+                     <div class="mb-3">
+                        <label class="form-label">Aviso Prévio</label>
+                        <select class="form-select" id="edit-demissao-aviso">
+                            <option>Trabalhado</option>
+                            <option>Indenizado</option>
+                            <option>Dispensado</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observações</label>
+                        <textarea class="form-control" id="edit-demissao-obs" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarEdicaoDemissao()">Salvar Alterações</button>
             </div>
         </div>
     </div>
