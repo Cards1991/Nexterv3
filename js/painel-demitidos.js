@@ -114,7 +114,7 @@ async function carregarPainelDemitidos() {
             
             let dataDemissao = '-';
             let dataDemissaoISO = '';
-            let motivo = f.motivoDesligamento || f.tipoDemissao || '-';
+            let tipoDemissao = f.tipoDemissao || f.motivoDesligamento || '-';
 
             // Tenta obter data de desligamento de vários campos possíveis
             let dataObj = null;
@@ -187,7 +187,7 @@ async function carregarPainelDemitidos() {
                     <td>${empresaNome}</td>
                     <td>${f.setor || '-'}</td>
                     <td>${dataDemissao}</td>
-                    <td>${motivo}</td>
+                    <td>${tipoDemissao}</td>
                     <td class="text-end">
                         ${btnEditar}
                         ${btnCancelar}

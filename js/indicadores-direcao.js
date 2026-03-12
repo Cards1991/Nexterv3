@@ -105,25 +105,24 @@ async function carregarDadosIndicadores() {
         let pedidos = 0;
         let dispensas = 0;
 
-        // Lista de tipos que são considerados PEDIDO
-        const tiposPedido = [
-            'Pedido de demissão',
-            'T.A.C - Empregado',
-            'Acordo Legal',
-            'Acordo P.F.'
+        // Lista de tipos que são considerados "Demissão" (user rule)
+        const tiposDemissao = [
+            'Demissão sem justa Causa',
+            'Demissão por justa Causa',
+            'Término de contrato',
+            'T.A.C - empresa'
         ];
 
         demissoes.forEach(d => {
-            const tipo = d.tipoDemissao || d.tipo_demissao || '';
+            const tipo = d.tipoDemissao || d.motivo || '';
             const tipoLower = tipo.toLowerCase();
             
-            // Verifica se é algum dos tipos de pedido
-            const isPedido = tiposPedido.some(tp => tipoLower.includes(tp.toLowerCase()));
+            // Se matches tiposDemissao → "Demissão", else "Pedido de Demissão"
+            const isDemissao = tiposDemissao.some(tp => tipoLower.includes(tp.toLowerCase()));
             
-            if (isPedido) {
+            if (!isDemissao) {
                 pedidos++;
             } else {
-                // Qualquer outro tipo é considerado dispensa
                 dispensas++;
             }
         });
