@@ -703,12 +703,12 @@ function renderizarMetricasManutencao(chamados) {
     const classParadas = paradas > 0 ? 'card-alert-blink' : '';
 
     container.innerHTML = `
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-warning text-dark">
-                <div class="card-body text-center">
-                    <i class="fas fa-exclamation-circle fa-2x mb-2"></i>
-                    <div class="number display-6 fw-bold">${abertos}</div>
-                    <div class="label text-uppercase small">Chamados em Aberto</div>
+        <div class="col-lg-3 col-md-6 mb-4">
+            <div class="card stat-card bg-warning text-dark h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <i class="fas fa-exclamation-circle fa-2x mb-3 opacity-75"></i>
+                    <div class="number display-5 fw-bold mb-2">${abertos}</div>
+                    <div class="label text-uppercase small fw-semibold">Chamados em Aberto</div>
                 </div>
             </div>
         </div>
