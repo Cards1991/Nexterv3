@@ -84,9 +84,18 @@ async function carregarAfastamentos() {
  * Usa filtro client-side para evitar necessidade de índice composto no Firestore.
  */
 async function carregarAlertasRetorno() {
-    const tableCard = document.getElementById('afastamentos-container')?.closest('.card');
-    if (!tableCard) {
-        console.warn("Card da tabela de afastamentos não encontrado. Não é possível adicionar alertas de retorno.");
+    const tbody = document.getElementById('afastamentos-container');
+    if (!tbody) {
+        console.warn("Tabela de afastamentos não encontrada. Não é possível adicionar alertas de retorno.");
+        return;
+    }
+
+    // Tenta encontrar o card da tabela, se não encontrar, usa o container da tabela como referência.
+    const tableCard = tbody.closest('.card');
+    const insertionReference = tableCard || tbody.closest('.table-responsive') || tbody.parentElement;
+
+    if (!insertionReference || !insertionReference.parentNode) {
+        console.warn("Ponto de inserção para alertas de retorno não encontrado.");
         return;
     }
 
@@ -103,7 +112,7 @@ async function carregarAlertasRetorno() {
                 <p class="text-muted m-2">Nenhum alerta de retorno nos próximos 5 dias.</p>
             </div>
         `;
-        tableCard.parentNode.insertBefore(alertCard, tableCard);
+        insertionReference.parentNode.insertBefore(alertCard, insertionReference);
     }
 
     const container = document.getElementById('retornos-proximos-container');

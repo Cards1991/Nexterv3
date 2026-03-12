@@ -1,0 +1,94 @@
+<!-- views/controle-reunioes.html -->
+<div class="container-fluid">
+    <!-- Cabeçalho da Página -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="page-title mb-0">Controle de Reuniões</h2>
+        <button class="btn btn-primary" onclick="abrirModalReuniao()">
+            <i class="fas fa-plus me-2"></i> Nova Reunião
+        </button>
+    </div>
+
+    <!-- Dashboard de KPIs -->
+    <div class="row mb-4" id="reunioes-dashboard-kpis">
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><h3 id="reunioes-kpi-mes">0</h3><p class="mb-0">Reuniões no Mês</p></div></div></div>
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><h3 id="reunioes-kpi-tarefas-abertas">0</h3><p class="mb-0">Tarefas Abertas</p></div></div></div>
+        <div class="col-md-4"><div class="card text-center"><div class="card-body"><h3 id="reunioes-kpi-tarefas-atrasadas">0</h3><p class="mb-0">Tarefas Atrasadas</p></div></div></div>
+    </div>
+
+    <!-- Gráficos -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">Análise de Reuniões</div>
+                <div class="card-body">
+                    <canvas id="reunioes-chart-tipo" style="height: 300px;"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Histórico de Reuniões -->
+    <div class="card">
+        <div class="card-header">
+            Histórico de Reuniões
+        </div>
+        <div class="card-body">
+            <!-- Filtros -->
+            <div class="row g-2 mb-3">
+                <div class="col-md-3"><input type="date" id="reunioes-filtro-data" class="form-control form-control-sm"></div>
+                <div class="col-md-3"><select id="reunioes-filtro-responsavel" class="form-select form-select-sm"><option value="">Todos Responsáveis</option></select></div>
+                <div class="col-md-3"><select id="reunioes-filtro-tipo" class="form-select form-select-sm"><option value="">Todos os Tipos</option></select></div>
+                <div class="col-md-3"><button id="reunioes-btn-filtrar" class="btn btn-sm btn-primary w-100">Filtrar</button></div>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Data</th>
+                            <th>Título</th>
+                            <th>Responsável</th>
+                            <th>Status</th>
+                            <th class="text-end">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-historico-reunioes">
+                        <!-- Conteúdo dinâmico -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Nova/Editar Reunião -->
+<div class="modal fade" id="reuniaoModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Nova Reunião</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-reuniao">
+                    <input type="hidden" id="reuniao-id">
+                    <div class="row">
+                        <div class="col-md-8 mb-3"><label class="form-label">Título*</label><input type="text" id="reuniao-titulo" class="form-control" required></div>
+                        <div class="col-md-4 mb-3"><label class="form-label">Data*</label><input type="date" id="reuniao-data" class="form-control" required></div>
+                        <div class="col-md-3 mb-3"><label class="form-label">Início</label><input type="time" id="reuniao-hora-inicio" class="form-control"></div>
+                        <div class="col-md-3 mb-3"><label class="form-label">Fim</label><input type="time" id="reuniao-hora-fim" class="form-control"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Local/Link</label><input type="text" id="reuniao-local" class="form-control"></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Tipo</label><select id="reuniao-tipo" class="form-select"></select></div>
+                        <div class="col-md-6 mb-3"><label class="form-label">Responsável*</label><select id="reuniao-responsavel" class="form-select" required></select></div>
+                        <div class="col-12 mb-3"><label class="form-label">Pauta/Descrição</label><textarea id="reuniao-pauta" class="form-control" rows="3"></textarea></div>
+                        <div class="col-12 mb-3"><label class="form-label">Ata da Reunião</label><textarea id="reuniao-ata" class="form-control" rows="5"></textarea></div>
+                        <div class="col-12"><div class="form-check"><input type="checkbox" id="reuniao-finalizada" class="form-check-input"><label class="form-check-label" for="reuniao-finalizada">Marcar como Finalizada</label></div></div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarReuniao()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
