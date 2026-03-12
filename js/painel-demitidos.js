@@ -346,7 +346,20 @@ async function abrirModalEditarDemissao(funcId, nome) {
         document.getElementById('edit-demissao-aviso').value = mov.avisoPrevio || '';
         document.getElementById('edit-demissao-obs').value = mov.detalhes || '';
 
+        // Carregar valor rescisão atual (soma de lancamentos_financeiros)
+        const financeirosSnap = await db.collection('lancamentos_financeiros')
+            .where('funcionarioId', '==', funcId)
+            .where('subdivisao', '==', 'Rescisões')
+            .get();
+        
+        let totalRescisao = 0;
+        financeirosSnap.forEach(doc => {
+            totalRescisao += parseFloat(doc.data().valor) || 0;
+        });
+        document.getElementById('edit-demissao-valor-rescisao').value = totalRescisao.toFixed(2);
+
         new bootstrap.Modal(document.getElementById('modalEditarDemissao')).show();
+
 
     } catch (error) {
         console.error("Erro ao carregar demissão para edição:", error);
@@ -394,7 +407,38 @@ async function salvarEdicaoDemissao() {
             ultimaMovimentacao: timestamp
         });
 
+        // 3. Atualizar/criar lançamento financeiro de rescisão
+        const valorRescisao = parseFloat(document.getElementById('edit-demissao-valor-rescisao').value) || 0;
+
+        // Deletar lançamentos existentes
+        const rescisoesQuery = await db.collection('lancamentos_financeiros')
+            .where('funcionarioId', '==', funcId)
+            .where('subdivisao', '==', 'Rescisões').get();
+        
+        rescisoesQuery.docs.forEach(doc => batch.delete(doc.ref));
+
+        // Criar novo lançamento se valor > 0
+        if (valorRescisao > 0) {
+            const nomeFunc = document.getElementById('edit-demissao-nome').value;
+            const financRef = db.collection('lancamentos_financeiros').doc();
+            batch.set(financRef, {
+                funcionarioId: funcId,
+                funcionarioNome: nomeFunc,
+                valor: valorRescisao,
+                dataVencimento: timestamp,
+                origem: 'FOPAG',
+                contaOrigem: 'FOPAG',
+                subdivisao: 'Rescisões',
+                processo: 'Rescisão',
+                descricao: `Rescisão - ${nomeFunc}`,
+                tipo: 'Despesa',
+                status: 'Realizado',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
         await batch.commit();
+
 
         alert("Demissão atualizada com sucesso!");
         bootstrap.Modal.getInstance(document.getElementById('modalEditarDemissao')).hide();

@@ -1086,19 +1086,29 @@ async function salvarAtestado() {
         let inssTriggered = false;
         let motivoINSS = `Atestado de ${dias} dias.`;
 
-        if (dias > 15) {
-            inssTriggered = true;
-            motivoINSS += ` (Direto > 15 dias)`;
-        } else if (diasAcumuladosTotal > 15) {
-            inssTriggered = true;
-            motivoINSS += ` (Total acumulado: ${diasAcumuladosTotal} dias em 60 dias)`;
-        } else if (cid && diasAcumuladosMesmoCID > 15) {
-            inssTriggered = true;
-            motivoINSS += ` (Acumulado para CID ${cid}: ${diasAcumuladosMesmoCID} dias em 60 dias)`;
+        // Não gera encaminhamento ao INSS para Licença Maternidade
+        const isMaternidade = tipo === 'Licensa Maternidade' || tipo.includes('Maternidade');
+
+        if (!isMaternidade) {
+            if (dias > 15) {
+                inssTriggered = true;
+                motivoINSS += ` (Direto > 15 dias)`;
+            } else if (diasAcumuladosTotal > 15) {
+                inssTriggered = true;
+                motivoINSS += ` (Total acumulado: ${diasAcumuladosTotal} dias em 60 dias)`;
+            } else if (cid && diasAcumuladosMesmoCID > 15) {
+                inssTriggered = true;
+                motivoINSS += ` (Acumulado para CID ${cid}: ${diasAcumuladosMesmoCID} dias em 60 dias)`;
+            }
+        } else {
+            motivoINSS = `Licença Maternidade - Não gera encaminhamento ao INSS`;
         }
 
         if (inssTriggered) {
             // Se a regra for atendida, cria um AFASTAMENTO em vez de um atestado
+            // Para maternidade, usa tipo específico, não "Doença"
+            const tipoAfastamento = isMaternidade ? 'Licença Maternidade' : 'Doença (Enc. INSS)';
+            
             const afastamentoRef = await db.collection('afastamentos').add({
                 colaborador_nome: colabNome,
                 funcionarioId: colabSelect.value,                
@@ -1107,14 +1117,19 @@ async function salvarAtestado() {
                 data_inicio: dataAtestadoObj,
                 data_termino_prevista: null, // Fica em aberto até a perícia
                 dias_atestado_inicial: dias,
-                tipo_afastamento: 'Doença (Enc. INSS)',
+                tipo_afastamento: tipoAfastamento,
                 motivo: motivoINSS,
                 status: 'Ativo',
-                requerINSS: true, // Flag para indicar que requer encaminhamento ao INSS
-                inssStatus: 'Pendente' // Status do encaminhamento ao INSS
+                requerINSS: !isMaternidade, // Maternidade não requer encaminhamento ao INSS
+                inssStatus: isMaternidade ? 'Não aplicável' : 'Pendente' // Status do encaminhamento ao INSS
             });
             afastamentoId = afastamentoRef.id; // Guarda o ID do afastamento criado
-            mostrarMensagem('Atestado identificado para afastamento e encaminhamento ao INSS!', 'warning');
+            
+            if (isMaternidade) {
+                mostrarMensagem('Afastamento por Licença Maternidade cadastrado!', 'success');
+            } else {
+                mostrarMensagem('Atestado identificado para afastamento e encaminhamento ao INSS!', 'warning');
+            }
         }
 
         await db.collection('atestados').add({

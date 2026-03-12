@@ -3,7 +3,10 @@ let __afastamentos_cache = [];
 
 // Helper function for Firestore timestamp - provides compatibility if not defined elsewhere
 window.timestamp = function() {
-    return firebase.firestore.Timestamp.now();
+    if (typeof firebase !== 'undefined' && firebase.firestore) {
+        return firebase.firestore.Timestamp ? firebase.firestore.Timestamp.now() : new Date();
+    }
+    return new Date();
 };
 
 async function carregarAfastamentos() {

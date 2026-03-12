@@ -1399,48 +1399,8 @@ async function carregarDashboardConsumoEPI() {
             rankingColaboradores[nome].custo += custo;
         });
 
-        // --- Lógica de Tempo de Reposição (Lead Time) ---
-        // Busca compras concluídas no período
-        // CORREÇÃO: Filtro de data em memória para evitar erro de índice composto
-        const comprasSnap = await db.collection('epi_compras')
-            .where('status', '==', 'Concluido')
-            .get();
+        const tempoMedio = '-';
 
-        let somaDias = 0;
-        let totalCompras = 0;
-        const demoraPorItem = {};
-
-        const dataInicioObj = new Date(inicio + 'T00:00:00');
-        const dataFimObj = new Date(fim + 'T23:59:59');
-
-        comprasSnap.forEach(doc => {
-            const c = doc.data();
-            
-            // Filtro de data em memória
-            if (!c.updatedAt) return;
-            const dataUpdate = c.updatedAt.toDate();
-            if (dataUpdate < dataInicioObj || dataUpdate > dataFimObj) return;
-
-            if (c.dataSolicitacao && c.updatedAt) {
-                const dtSol = c.dataSolicitacao.toDate();
-                const dtConc = c.updatedAt.toDate();
-                const diffTime = Math.abs(dtConc - dtSol);
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-                
-                somaDias += diffDays;
-                totalCompras++;
-
-                // Atribuir demora aos itens da compra
-                c.itens.forEach(item => {
-                    const key = item.descricao;
-                    if (!demoraPorItem[key]) demoraPorItem[key] = { totalDias: 0, count: 0 };
-                    demoraPorItem[key].totalDias += diffDays;
-                    demoraPorItem[key].count++;
-                });
-            }
-        });
-
-        const tempoMedio = totalCompras > 0 ? (somaDias / totalCompras).toFixed(1) : '-';
 
         // Atualizar KPIs
         document.getElementById('kpi-epi-total-itens').textContent = totalItens;
@@ -1478,27 +1438,31 @@ async function carregarDashboardConsumoEPI() {
             `).join('') || '<tr><td colspan="3" class="text-center text-muted">Sem dados</td></tr>';
         }
 
-        // Renderizar Ranking Demora
-        const rankingDemoraSorted = Object.entries(demoraPorItem)
-            .map(([item, dados]) => ({ item, media: dados.totalDias / dados.count }))
-            .sort((a, b) => b.media - a.media)
+        // Renderizar Ranking Itens Maior Custo
+        const rankingMaiorCusto = {};
+        snapshot.forEach(doc => {
+            const d = doc.data();
+            const item = d.epiDescricao || 'Não Identificado';
+            const custoItem = (d.custoUnitario || 0) * (d.quantidade || 0);
+            rankingMaiorCusto[item] = (rankingMaiorCusto[item] || 0) + custoItem;
+        });
+        const rankingCustoSorted = Object.entries(rankingMaiorCusto)
+            .sort(([,a], [,b]) => b - a)
             .slice(0, 5);
 
-        document.getElementById('ranking-epi-demora').innerHTML = rankingDemoraSorted.map(r => `
-            <tr>
-                <td>${r.item}</td>
-                <td class="text-center"><span class="badge bg-warning text-dark">${r.media.toFixed(1)} dias</span></td>
-            </tr>
-        `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados de compras concluídas</td></tr>';
-        const elRankingDemora = document.getElementById('ranking-epi-demora');
-        if (elRankingDemora) {
-            elRankingDemora.innerHTML = rankingDemoraSorted.map(r => `
+        const elRankingCusto = document.getElementById('ranking-epi-maior-custo');
+        if (elRankingCusto) {
+            elRankingCusto.innerHTML = rankingCustoSorted.map(([item, custo]) => `
                 <tr>
-                    <td>${r.item}</td>
-                    <td class="text-center"><span class="badge bg-warning text-dark">${r.media.toFixed(1)} dias</span></td>
+                    <td>${item}</td>
+                    <td class="text-end">R$ ${custo.toFixed(2).replace('.', ',')}</td>
                 </tr>
-            `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados de compras concluídas</td></tr>';
+            `).join('') || '<tr><td colspan="2" class="text-center text-muted">Sem dados</td></tr>';
         }
+
+
+
+
 
         // Gráfico Setor (por Custo)
         const canvasSetor = document.getElementById('chart-epi-setor');
