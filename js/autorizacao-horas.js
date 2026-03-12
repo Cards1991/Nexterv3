@@ -309,6 +309,12 @@ async function carregarSolicitacoes() {
                 solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.status === status);
             }
 
+            // Aplica filtro de pagamento no lado do cliente
+            const pagamento = document.getElementById('auth-filtro-pagamento').value;
+            if (pagamento) {
+                solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.formaPagamento === pagamento);
+            }
+
             cacheSolicitacoes = solicitacoesProcessadas;
 
             console.log(`✅ Processadas ${cacheSolicitacoes.length} solicitações para tabela`);
@@ -588,6 +594,12 @@ async function abrirModalAjuste(id, readOnly = false) {
     endTimeInput.value = end.toTimeString().slice(0, 5);
     reasonTextarea.value = data.reason || '';
 
+    // Preenche forma de pagamento
+    const formaPagamentoSelect = getElement('ajuste-forma-pagamento');
+    if (formaPagamentoSelect) {
+        formaPagamentoSelect.value = data.formaPagamento || 'por-fora';
+    }
+
     // Adiciona listener para atualizar setor quando mudar o funcionário
     if (!readOnly) {
         const previousHandler = funcionarioSelect._changeHandler;
@@ -656,6 +668,7 @@ async function salvarAjusteSolicitacao() {
             start: firebase.firestore.Timestamp.fromDate(start),
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason,
+            formaPagamento: document.getElementById('ajuste-forma-pagamento').value || 'por-fora',
             valorEstimado: valorEstimado, // O valor atualizado/aprovado
             employeeId: employeeId,
             employeeName: employeeName,
