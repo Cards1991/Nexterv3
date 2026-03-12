@@ -124,13 +124,14 @@ async function carregarDashboardFaltas(db) {
         // Atualizar cache para exportação
         __dados_dashboard_faltas_cache = { faltas, funcionariosMap };
 
-        // 3. Processar os dados para o ranking e KPIs
-        const contagemFaltas = {};
+        // 3. Processar os dados para o ranking e KPIs, com deduplicação de faltas no mesmo dia.
+        const contagemFaltas = {}; // Objeto para armazenar Sets de datas de falta por funcionário
         let totalFaltasFiltradas = 0;
         const funcionariosComFalta = new Set();
         const funcionariosPorSexo = {}; // Contará funcionários únicos por sexo
-        const faltasPorSetor = {}; // Contará o total de faltas por setor
-        const faltasFiltradas = []; // Array para armazenar faltas após filtros
+        const faltasPorSetor = {}; // Contará dias de falta únicos por setor
+        const faltasFiltradas = []; // Array para armazenar faltas brutas após filtros, para o gráfico de evolução
+        const diasFaltas = new Map(); // Mapa para garantir que cada dia de falta por funcionário seja contado apenas uma vez
 
         faltas.forEach(falta => {
             const idFuncionario = falta.funcionarioId;
@@ -142,26 +143,38 @@ async function carregarDashboardFaltas(db) {
                 if (sexoFiltro && funcionario.sexo !== sexoFiltro) return;
                 if (periodoFiltro && falta.periodo !== periodoFiltro) return;
 
-                // Adiciona à lista de faltas filtradas para o gráfico de evolução
+                // Adiciona à lista de faltas filtradas para o gráfico de evolução (mantém dados brutos para o gráfico)
                 faltasFiltradas.push(falta);
 
-                // Contagem para o ranking
-                contagemFaltas[idFuncionario] = (contagemFaltas[idFuncionario] || 0) + 1;
-                
-                // Contagem para KPIs
-                totalFaltasFiltradas++;
-                funcionariosComFalta.add(idFuncionario);
+                const dataFaltaStr = falta.data?.toDate().toDateString();
+                if (!dataFaltaStr) return; // Ignora faltas com data inválida
 
-                // Contagem por Sexo
-                const sexo = funcionario.sexo || 'Não Informado'; // Agrupa como 'Não Informado' se não houver sexo
+                // Chave única para funcionário + dia
+                const faltaKey = `${idFuncionario}_${dataFaltaStr}`;
+
+                // Contagem para o ranking (deduplicada por dia)
+                if (!contagemFaltas[idFuncionario]) {
+                    contagemFaltas[idFuncionario] = new Set();
+                }
+                contagemFaltas[idFuncionario].add(dataFaltaStr);
+
+                // Contagem para KPIs e gráfico de setor, garantindo que contamos apenas uma vez por dia por funcionário
+                if (!diasFaltas.has(faltaKey)) {
+                    diasFaltas.set(faltaKey, true);
+                    totalFaltasFiltradas++;
+                    funcionariosComFalta.add(idFuncionario);
+
+                    // Contagem por Setor (agora deduplicada por dia)
+                    const setor = funcionario.setor || 'Não Definido';
+                    faltasPorSetor[setor] = (faltasPorSetor[setor] || 0) + 1;
+                }
+
+                // Contagem por Sexo (conta funcionários únicos com falta)
+                const sexo = funcionario.sexo || 'Não Informado';
                 if (!funcionariosPorSexo[sexo]) {
                     funcionariosPorSexo[sexo] = new Set();
                 }
                 funcionariosPorSexo[sexo].add(idFuncionario);
-
-                // Contagem por Setor
-                const setor = funcionario.setor || 'Não Definido';
-                faltasPorSetor[setor] = (faltasPorSetor[setor] || 0) + 1;
             }
         });
         
@@ -171,9 +184,9 @@ async function carregarDashboardFaltas(db) {
             contagemFuncionariosPorSexo[sexo] = funcionariosPorSexo[sexo].size;
         }
         
-        // 4. Montar e ordenar o ranking
+        // 4. Montar e ordenar o ranking a partir dos dias únicos de falta
         const rankingArray = Object.entries(contagemFaltas)
-            .map(([funcionarioId, totalFaltas]) => {
+            .map(([funcionarioId, datas]) => {
                 const funcionario = funcionariosMap.get(funcionarioId) || {
                     nome: 'Funcionário Desconhecido',
                     empresa: 'Não definida',
@@ -184,7 +197,7 @@ async function carregarDashboardFaltas(db) {
                     nome: funcionario.nome,
                     empresa: funcionario.empresa,
                     setor: funcionario.setor,
-                    totalFaltas
+                    totalFaltas: datas.size // O total de faltas é o número de dias únicos
                 };
             })
             .sort((a, b) => b.totalFaltas - a.totalFaltas);

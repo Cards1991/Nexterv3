@@ -640,7 +640,7 @@ async function carregarChamadosManutencao() {
                 const row = `
                     <tr class="${rowClass}">
                         <td>
-                            ${chamado.maquinaId}
+                            ${chamado.maquinaNome || chamado.maquinaId}
                             ${isCritica ? '<span class="badge bg-dark ms-1" title="Máquina Crítica">Crítica</span>' : ''}
                         </td>
                         <td>
@@ -1441,11 +1441,11 @@ async function imprimirChamado(chamadoId) {
 
     // Buscar o número do patrimônio da máquina
     let patrimonio = 'N/A';
-    let maquinaNome = chamado.maquinaId;
+    let maquinaNome = chamado.maquinaNome || chamado.maquinaId || 'N/A';
     try {
-        const maquinaSnap = await db.collection('maquinas').where('codigo', '==', chamado.maquinaId).limit(1).get();
-        if (!maquinaSnap.empty) {
-            const maquinaData = maquinaSnap.docs[0].data();
+        const maquinaSnap = await db.collection('maquinas').doc(chamado.maquinaId).get();
+        if (maquinaSnap.exists) {
+            const maquinaData = maquinaSnap.data();
             patrimonio = maquinaData.patrimonio || 'N/A';
             maquinaNome = maquinaData.nome || chamado.maquinaId;
         }

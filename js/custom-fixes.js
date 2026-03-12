@@ -318,11 +318,13 @@ async function carregarFaltasExperiencia() {
             if (funcId && mapFuncExperiencia.has(funcId)) {
                 const dados = mapFuncExperiencia.get(funcId);
                 
-                // Identificar o dia da falta para evitar duplicidade (manhã/tarde)
+                // Contagem deduplicada por funcionário + dia
                 if (falta.data) {
                     const d = falta.data.toDate ? falta.data.toDate() : new Date(falta.data);
-                    const dataStr = d.toLocaleDateString('pt-BR'); // Usa data local para agrupar
-                    dados.diasFaltas.add(dataStr);
+                    const dataKey = `${funcId}_${d.toDateString()}`;
+                    if (!dados.diasFaltas.has(dataKey)) {
+                        dados.diasFaltas.add(dataKey);
+                    }
                 }
             }
         });

@@ -272,7 +272,6 @@ async function salvarNovoChamado() {
 
     const chamadoId = document.getElementById('chamado-id').value;
     const maquinaId = document.getElementById('chamados-maquina').value;
-    const maquinaNome = document.getElementById('chamados-maquina').options[document.getElementById('chamados-maquina').selectedIndex]?.text;
     const motivo = document.getElementById('chamados-motivo').value;
     const observacoes = document.getElementById('chamados-observacoes').value;
     const maquinaParada = document.getElementById('chamados-maquina-parada')?.checked || false;
@@ -283,9 +282,22 @@ async function salvarNovoChamado() {
     }
 
     try {
+        // Garante que o nome da máquina seja buscado do banco de dados para evitar salvar o ID no lugar do nome.
+        let maquinaNomeFinal = maquinaId; // Fallback para o ID
+        if (maquinaId) {
+            try {
+                const maquinaDoc = await db.collection('maquinas').doc(maquinaId).get();
+                if (maquinaDoc.exists && maquinaDoc.data().nome) {
+                    maquinaNomeFinal = maquinaDoc.data().nome;
+                }
+            } catch (dbError) {
+                console.error("Erro ao buscar nome da máquina, usando ID como fallback:", dbError);
+            }
+        }
+
         const data = {
             maquinaId,
-            maquinaNome: maquinaNome || maquinaId,
+            maquinaNome: maquinaNomeFinal,
             motivo,
             observacoes: observacoes || '',
             maquinaParada,
