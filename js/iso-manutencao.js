@@ -234,7 +234,7 @@ async function enviarParaTodosMecanicos(chamadoData) {
         // Cria link específico
         const telFormatado = mecanico.telefoneFormatado;
         const mensagemCodificada = encodeURIComponent(mensagemPersonalizada);
-        const whatsappLink = `https://wa.me/${telFormatado}?text=${mensagemCodificada}`;
+        const whatsappLink = `whatsapp://send?phone=${telFormatado}&text=${mensagemCodificada}`;
 
         const enviado = window.open(whatsappLink, '_blank');
         if (enviado) enviados++;
@@ -277,8 +277,8 @@ function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
         // Codificar mensagem para URL
         const mensagemCodificada = encodeURIComponent(mensagem);
 
-        // Criar link do WhatsApp
-        const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
+        // ✅ Native WhatsApp App
+        const whatsappLink = `whatsapp://send?phone=${telefone}&text=${mensagemCodificada}`;
 
         // Abrir em nova janela
         const novaJanela = window.open(whatsappLink, '_blank');
@@ -362,7 +362,7 @@ function enviarAlertaCriticoWhatsApp(chamadoData) {
             `🔗 ${window.location.origin}`;
 
         const mensagemCodificada = encodeURIComponent(mensagemAlerta);
-        const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
+        const whatsappLink = `whatsapp://send?phone=${telefone}&text=${mensagemCodificada}`;
 
         // Abre em nova janela
         const janelaAlerta = window.open(whatsappLink, '_blank', 'width=600,height=700');
@@ -648,7 +648,7 @@ function testarWhatsApp() {
 
     const mensagemTeste = "🔔 *TESTE DE NOTIFICAÇÃO*\n\nEsta é uma mensagem de teste do sistema de manutenção.\n\n✅ Sistema funcionando corretamente!\n\nHora: " + new Date().toLocaleTimeString('pt-BR');
     const mensagemCodificada = encodeURIComponent(mensagemTeste);
-    const whatsappLink = `https://wa.me/${telefoneFormatado}?text=${mensagemCodificada}`;
+    const whatsappLink = `whatsapp://send?phone=${telefoneFormatado}&text=${mensagemCodificada}`;
 
     const janelaTeste = window.open(whatsappLink, '_blank');
     if (!janelaTeste) {
@@ -866,11 +866,8 @@ async function carregarChamadosManutencao() {
                                 onclick="reenviarNotificacao('${chamado.id}')">
                             <i class="fab fa-whatsapp"></i>G
                         </button>
-                        <button class="btn btn-outline-primary" 
-                                title="TODOS Mecânicos" 
-                                onclick="reenviarParaTodosMecanicos('${chamado.id}')">
-                            <i class="fas fa-users"></i>T
-                        </button>
+                        <!-- REMOVED per request: No more "TODOS Mecânicos" option -->
+                        <!-- <button ... reenviarParaTodosMecanicos ...>T</button> -->
                         ${chamado.mecanicoResponsavelId ? 
                             `<button class="btn btn-outline-info" 
                                     title="Mecânico Designado: ${chamado.mecanicoResponsavelNome || '??'}" 
@@ -1491,8 +1488,8 @@ async function confirmarInicioAtendimento() {
 
                     const telefone = formatarTelefoneWhatsApp(WHATSAPP_CONFIG.gerenteTelefone);
                     if (telefone) {
-                        const mensagemCodificada = encodeURIComponent(mensagem);
-                        const whatsappLink = `https://wa.me/${telefone}?text=${mensagemCodificada}`;
+                    const mensagemCodificada = encodeURIComponent(mensagem);
+                    const whatsappLink = `whatsapp://send?phone=${telefone}&text=${mensagemCodificada}`;
                         window.open(whatsappLink, '_blank');
                     }
                 }, 500);

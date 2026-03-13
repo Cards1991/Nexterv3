@@ -1,0 +1,45 @@
+<h2 class="page-title">Meus Chamados de Manutenção</h2>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <button class="btn btn-outline-secondary" onclick="showSection('iso-manutencao')">
+        <i class="fas fa-arrow-left"></i> Voltar ao Painel
+    </button>
+    <button class="btn btn-info" onclick="atualizarMeusChamados()">
+        <i class="fas fa-sync-alt"></i> Atualizar
+    </button>
+</div>
+
+<div class="row mb-4" id="metricas-mecanico">
+    <!-- Métricas pessoais -->
+</div>
+
+<div class="card">
+    <div class="card-header">
+        Chamados Atribuídos a Mim
+        <span class="badge bg-secondary float-end" id="total-meus-chamados">0</span>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Máquina</th>
+                        <th>Motivo</th>
+                        <th>Prioridade</th>
+                        <th>Data Abertura</th>
+                        <th>Status</th>
+                        <th>Tempo Parada</th>
+                        <th>Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-meus-chamados">
+                    <tr>
+                        <td colspan="7" class="text-center">Carregando seus chamados...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script src="js/manutencao-mecanico.js"></script>

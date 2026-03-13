@@ -16,7 +16,7 @@ const TODAS_SECOES = [
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico'];
 
-let currentUserPermissions = {};
+let currentUserPermissions = {}; // ✅ Added isMecanico
 
 // Variável para rastrear a seção atual
 let secaoAtual = null;
@@ -1263,10 +1263,11 @@ document.addEventListener('viewsLoaded', function () {
                 }, { merge: true });
             }
 
+            // FIXED: Removed force-add of 'ponto-pf' permission to respect admin permission management.
             // Garante que a seção 'ponto-pf' esteja sempre disponível se o usuário tiver permissões
-            if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('ponto-pf')) {
-                currentUserPermissions.secoesPermitidas.push('ponto-pf');
-            }
+            // if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('ponto-pf')) {
+            //     currentUserPermissions.secoesPermitidas.push('ponto-pf');
+            // }
 
             if (currentUserPermissions.isAdmin) { // Se o usuário é admin
                 const todasAsSecoesAdmin = [...new Set(TODAS_SECOES.concat(['admin-usuarios']))];
