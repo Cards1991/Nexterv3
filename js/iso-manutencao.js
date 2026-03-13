@@ -55,8 +55,10 @@ async function inicializarManutencao() {
         // Carregar chamados
         await carregarChamadosManutencao();
 
-        // Adicionar botão de configurações WhatsApp
-        setTimeout(adicionarBotaoConfigWhatsApp, 1000);
+        // Adicionar botão de configurações WhatsApp (IMEDIATO + retry)
+        adicionarBotaoConfigWhatsApp();
+        setTimeout(adicionarBotaoConfigWhatsApp, 500);
+        setTimeout(adicionarBotaoConfigWhatsApp, 1500);
     } catch (e) {
         console.error("Erro ao inicializar módulo de manutenção:", e);
         mostrarMensagem("Erro ao carregar módulo de manutenção", "error");
@@ -119,6 +121,132 @@ async function carregarConfigGerente() {
 }
 
 // ============ WHATSAPP FUNCTIONS ============
+
+// ✅ PASSO 2: Carrega lista de mecânicos com telefones válidos (FIX DEBUG)
+async function carregarListaMecanicosComTelefone() {
+    console.log('🔍 DEBUG: Iniciando busca por mecânicos...');
+    
+    try {
+        // 🔧 DEBUG 1: Check user permissions
+        const user = firebase.auth().currentUser;
+        if (user) {
+            console.log('👤 User logged:', user.uid);
+            // Test permission access
+            const userDoc = await db.collection('usuarios').doc(user.uid).get();
+            if (userDoc.exists) {
+                const perms = userDoc.data().permissoes || {};
+                console.log('🔑 Permissions:', perms);
+                console.log('📋 Has funcionarios section?', perms.secoesPermitidas?.includes('funcionarios'));
+            } else {
+                console.warn('⚠️ User doc not found:', user.uid);
+            }
+        } else {
+            console.warn('⚠️ No user logged in');
+        }
+
+        console.log('🚀 ULTIMATE FIX: Apenas isMecanico (no index needed!)...');
+        const snap = await db.collection('funcionarios')
+            .where('isMecanico', '==', true)
+            // ✅ NO telefone/status server-side → Zero index!
+            .get();
+
+        console.log('📊 SIMPLE query result: docs=', snap.docs.length, 'empty=', snap.empty);
+
+        let mecanicos = [];
+        snap.forEach(doc => {
+            const data = doc.data();
+            console.log('📄 Mechanic raw:', data.nome, 'phone:', data.telefone || 'NULL', 'status:', data.status || 'NULL', 'isMecanico:', data.isMecanico);
+            
+            // ✅ FULL CLIENT FILTER + VALIDATE
+            if (data.status === 'Ativo' && 
+                data.telefone && 
+                data.telefone.trim() !== '' && 
+                data.isMecanico === true) {
+                
+                const telFormatado = formatarTelefoneWhatsApp(data.telefone);
+                if (telFormatado) {
+                    mecanicos.push({
+                        id: doc.id,
+                        nome: data.nome,
+                        telefone: data.telefone,
+                        telefoneFormatado: telFormatado
+                    });
+                    console.log('✅ Mechanic ADDED:', data.nome, telFormatado);
+                } else {
+                    console.log('❌ Invalid WhatsApp format:', data.telefone);
+                }
+            } else {
+                console.log('⏭️ Client skip:', {status: data.status, phoneLen: data.telefone?.length, isMecanico: data.isMecanico});
+            }
+        });
+
+        // ✅ CLIENT SORT
+        mecanicos.sort((a, b) => a.nome.localeCompare(b.nome));
+        console.log('🎉 FINAL: ' + mecanicos.length + ' mecânicos válidos!');
+
+
+
+        // 🔧 DEBUG 2: Fallback - query apenas isMecanico (ignora telefone/status)
+        if (mecanicos.length === 0) {
+            console.log('🔄 FALLBACK: Query apenas isMecanico==true...');
+            const fallbackSnap = await db.collection('funcionarios')
+                .where('isMecanico', '==', true)
+                .limit(10)
+                .get();
+            
+            console.log('📊 Fallback result: docs=', fallbackSnap.docs.length);
+            fallbackSnap.forEach(doc => {
+                const data = doc.data();
+                console.log('📄 FALLBACK:', data.nome, 'phone:', data.telefone||'NULL', 'status:', data.status||'NULL', 'isMecanico:', data.isMecanico);
+            });
+        }
+
+        console.log(`📱 ${mecanicos.length} mecânicos com telefone válidos encontrados`);
+        return mecanicos;
+    } catch (error) {
+        console.error('💥 ERRO ao carregar mecânicos:', error);
+        console.error('💥 Stack:', error.stack);
+        return [];
+    }
+}
+
+
+// ✅ NOVO: Envia para TODOS os mecânicos individualmente
+async function enviarParaTodosMecanicos(chamadoData) {
+    const mecanicos = await carregarListaMecanicosComTelefone();
+    if (mecanicos.length === 0) {
+        mostrarMensagem('Nenhum mecânico com telefone cadastrado encontrado.', 'warning');
+        return false;
+    }
+
+    let enviados = 0;
+    for (const mecanico of mecanicos) {
+        // Personaliza mensagem por mecânico
+        const mensagemPersonalizada = WHATSAPP_CONFIG.mensagemPadrao
+            .replace('{maquina}', chamadoData.maquinaNome || chamadoData.maquinaId || 'N/A')
+            .replace('{motivo}', chamadoData.motivo || 'N/A')
+            .replace('{prioridade}', chamadoData.prioridade || 'Normal')
+            .replace('{status}', chamadoData.status || 'Aberto')
+            .replace('{link}', window.location.origin)
+            .replace('{id}', chamadoData.id ? chamadoData.id.substring(0, 8).toUpperCase() : 'NOVO')
+            + `\n\n👤 *Para: ${mecanico.nome}*`;
+
+        // Cria link específico
+        const telFormatado = mecanico.telefoneFormatado;
+        const mensagemCodificada = encodeURIComponent(mensagemPersonalizada);
+        const whatsappLink = `https://wa.me/${telFormatado}?text=${mensagemCodificada}`;
+
+        const enviado = window.open(whatsappLink, '_blank');
+        if (enviado) enviados++;
+        
+        // Delay entre envios para evitar pop-up blocker
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    mostrarMensagem(`📱 Notificação enviada para ${enviados}/${mecanicos.length} mecânicos!`, 'success');
+    return enviados > 0;
+}
+
 function enviarNotificacaoWhatsApp(chamadoData, telefoneDestino = null) {
     const telefoneParaEnvio = telefoneDestino || WHATSAPP_CONFIG.gerenteTelefone;
 
@@ -265,20 +393,90 @@ async function reenviarNotificacao(chamadoId) {
     }
 
     const enviado = enviarNotificacaoWhatsApp(chamado);
-
     if (enviado) {
-        // Marca como enviado no banco de dados
-        try {
-            await db.collection('manutencao_chamados').doc(chamadoId).update({
-                notificacaoEnviada: true,
-                notificacaoData: firebase.firestore.FieldValue.serverTimestamp(),
-                notificacaoReenviada: true
-            });
-            mostrarMensagem("Notificação reenviada com sucesso!", "success");
-        } catch (error) {
-            console.error("Erro ao atualizar status da notificação:", error);
-            mostrarMensagem("Notificação enviada, mas erro ao atualizar status", "warning");
+        await db.collection('manutencao_chamados').doc(chamadoId).update({
+            notificacaoEnviada: true,
+            notificacaoData: firebase.firestore.FieldValue.serverTimestamp(),
+            notificacaoReenviada: true
+        });
+        mostrarMensagem("✅ Notificação gerente reenviada!", "success");
+    }
+}
+
+// ✅ PASSO 6: Reenviar para TODOS mecânicos (tabela)
+async function reenviarParaTodosMecanicos(chamadoId) {
+    if (!confirm(`Enviar para TODOS os mecânicos?\\n\\n${await carregarListaMecanicosComTelefone().then(m => m.length)} mecânicos receberão.`) ) return;
+    
+    const chamado = __chamados_cache.find(c => c.id === chamadoId);
+    if (!chamado) {
+        mostrarMensagem("Chamado não encontrado", "error");
+        return;
+    }
+
+    const enviado = await enviarParaTodosMecanicos(chamado);
+    if (enviado) {
+        await db.collection('manutencao_chamados').doc(chamadoId).update({
+            notificacaoMecanicosEnviada: true,
+            notificacaoDataMecanicos: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        mostrarMensagem("📱 Reenviado para TODOS mecânicos!", "success");
+    }
+}
+
+// ✅ Reenviar para mecânico específico (futuro - select no modal)
+async function reenviarParaMecanicoEspecifico(chamadoId, mecanicoId) {
+    const chamado = __chamados_cache.find(c => c.id === chamadoId);
+    if (!chamado) return mostrarMensagem("Chamado não encontrado", "error");
+
+    const mecanicoDoc = await db.collection('funcionarios').doc(mecanicoId).get();
+    if (!mecanicoDoc.exists) return mostrarMensagem("Mecânico não encontrado", "error");
+
+    const tel = mecanicoDoc.data().telefone;
+    if (!tel) return mostrarMensagem("Sem telefone cadastrado", "warning");
+
+    const enviado = enviarNotificacaoWhatsApp(chamado, tel);
+    if (enviado) {
+        mostrarMensagem(`📱 Reenviado para ${mecanicoDoc.data().nome}!`, "success");
+    }
+}
+
+// ✅ NEW: Send to ASSIGNED mechanic only
+async function enviarParaMecanicoDesignado(chamadoId) {
+    const chamado = __chamados_cache.find(c => c.id === chamadoId);
+    if (!chamado || !chamado.mecanicoResponsavelId) {
+        return mostrarMensagem("Sem mecânico designado neste chamado", "warning");
+    }
+
+    try {
+        const mecanicoDoc = await db.collection('funcionarios').doc(chamado.mecanicoResponsavelId).get();
+        if (!mecanicoDoc.exists) {
+            return mostrarMensagem("Mecânico não encontrado", "error");
         }
+
+        const data = mecanicoDoc.data();
+        const tel = data.telefone;
+        if (!tel || !formatarTelefoneWhatsApp(tel)) {
+            return mostrarMensagem("Mecânico sem telefone válido", "warning");
+        }
+
+        // Personal message for assigned mechanic
+        const mensagem = WHATSAPP_CONFIG.mensagemPadrao
+            .replace('{maquina}', chamado.maquinaNome || chamado.maquinaId)
+            .replace('{motivo}', chamado.motivo)
+            .replace('{prioridade}', chamado.prioridade || 'Normal')
+            .replace('{status}', chamado.status)
+            .replace('{link}', window.location.origin)
+            .replace('{id}', chamado.id.substring(0,8).toUpperCase())
+            + `\n\n👷‍♂️ *VOCÊ foi designado para este chamado!*`
+            + (chamado.status === 'Concluído' ? `\n✅ *CHAMADO CONCLUÍDO* - Para registro.` : '');
+
+        const enviado = enviarNotificacaoWhatsApp(chamado, tel);
+        if (enviado) {
+            mostrarMensagem(`📱 Enviado para ${data.nome} (designado)!`, "success");
+        }
+    } catch (error) {
+        console.error('Erro ao enviar para mecânico designado:', error);
+        mostrarMensagem("Erro ao enviar notificação", "error");
     }
 }
 
@@ -459,21 +657,48 @@ function testarWhatsApp() {
 }
 
 function adicionarBotaoConfigWhatsApp() {
-    // Seleciona o container dos botões de ação na seção de manutenção
-    const actionContainer = document.querySelector('#iso-manutencao .d-flex.gap-2');
-
-    if (actionContainer && !document.getElementById('btn-config-whatsapp')) {
-        const btnConfig = document.createElement('button');
-        btnConfig.id = 'btn-config-whatsapp';
-        btnConfig.className = 'btn btn-success';
-        btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar WhatsApp';
-        btnConfig.title = 'Configurar notificações por WhatsApp';
-        btnConfig.onclick = abrirConfigWhatsApp;
-
-        // Adiciona o botão junto aos outros botões de gerenciamento
-        actionContainer.appendChild(btnConfig);
+    console.log('🔧 Criando botão WhatsApp...');
+    
+    // Múltiplos seletores para robustez
+    const selectors = [
+        '#iso-manutencao .d-flex.gap-2',
+        '[id*="iso-manutencao"] .d-flex.gap-2',
+        '.page-title ~ .d-flex.gap-2',
+        '.d-flex.justify-content-between'
+    ];
+    
+    let actionContainer = null;
+    for (const selector of selectors) {
+        actionContainer = document.querySelector(selector);
+        if (actionContainer) {
+            console.log(`✅ Container encontrado: ${selector}`);
+            break;
+        }
     }
+    
+    if (!actionContainer) {
+        console.error('❌ Nenhum container encontrado para botão WhatsApp');
+        return;
+    }
+    
+    // Remove botão antigo se existir (evita duplicatas)
+    const oldBtn = document.getElementById('btn-config-whatsapp');
+    if (oldBtn) oldBtn.remove();
+    
+    const btnConfig = document.createElement('button');
+    btnConfig.id = 'btn-config-whatsapp';
+    btnConfig.className = 'btn btn-success';
+    btnConfig.innerHTML = '<i class="fab fa-whatsapp me-2"></i> Configurar WhatsApp';
+    btnConfig.title = 'Telefone Supervisor → Mecânicos WhatsApp';
+    btnConfig.onclick = abrirConfigWhatsApp;
+
+    actionContainer.appendChild(btnConfig);
+    console.log('✅ Botão WhatsApp criado e adicionado!');
+    
+    // Retry mechanism - tenta novamente em 500ms se algo falhar
+    setTimeout(adicionarBotaoConfigWhatsApp, 500);
 }
+
 
 // ============ FUNÇÕES PRINCIPAIS DE MANUTENÇÃO ============
 async function carregarChamadosManutencao() {
@@ -629,13 +854,26 @@ async function carregarChamadosManutencao() {
                     tempoParadaConteudo = chamado.tempoParada || '-';
                 }
 
-                // Botão para reenviar notificação WhatsApp
-                const botaoWhatsApp = WHATSAPP_CONFIG.enabled ?
-                    `<button class="btn btn-sm ${chamado.notificacaoEnviada ? 'btn-success' : 'btn-outline-success'}" 
-                            title="${chamado.notificacaoEnviada ? 'Notificação enviada' : 'Enviar notificação WhatsApp'}" 
-                            onclick="reenviarNotificacao('${chamado.id}')">
-                        <i class="fab fa-whatsapp"></i>
-                    </button>` : '';
+                // ✅ Botões WhatsApp expandidos
+                const botaoWhatsApp = WHATSAPP_CONFIG.enabled ? 
+                    `<div class="btn-group btn-group-sm" role="group">
+                        <button class="btn ${chamado.notificacaoEnviada ? 'btn-success' : 'btn-outline-success'}" 
+                                title="${chamado.notificacaoEnviada ? 'Gerente ✓' : 'Gerente'}" 
+                                onclick="reenviarNotificacao('${chamado.id}')">
+                            <i class="fab fa-whatsapp"></i>G
+                        </button>
+                        <button class="btn btn-outline-primary" 
+                                title="TODOS Mecânicos" 
+                                onclick="reenviarParaTodosMecanicos('${chamado.id}')">
+                            <i class="fas fa-users"></i>T
+                        </button>
+                        ${chamado.mecanicoResponsavelId ? 
+                            `<button class="btn btn-outline-info" 
+                                    title="Mecânico Designado: ${chamado.mecanicoResponsavelNome || '??'}" 
+                                    onclick="enviarParaMecanicoDesignado('${chamado.id}')">
+                                <i class="fas fa-user-hard-hat"></i>M
+                            </button>` : ''}
+                    </div>` : '';
 
                 const row = `
                     <tr class="${rowClass}">
@@ -788,11 +1026,36 @@ async function abrirModalChamado(chamadoId = null) {
                                 </div>
                                 <div class="col-md-6">
                                     <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" id="chamado-enviar-whatsapp" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''} ${WHATSAPP_CONFIG.enabled ? '' : 'disabled'}>
-                                        <label class="form-check-label" for="chamado-enviar-whatsapp">
-                                            <i class="fab fa-whatsapp ${WHATSAPP_CONFIG.enabled ? 'text-success' : 'text-muted'}"></i> 
-                                            ${WHATSAPP_CONFIG.enabled ? 'Enviar notificação WhatsApp' : 'WhatsApp desativado'}
+                                        <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
+                                        <label class="form-check-label" for="chamado-maquina-parada">
+                                            <strong><i class="fas fa-exclamation-triangle text-danger"></i> A máquina está parada?</strong>
                                         </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <!-- ✅ NOVO: Opções WhatsApp Expandidas -->
+                                    <div class="mb-3">
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox" id="chamado-enviar-whatsapp" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''}>
+                                            <label class="form-check-label" for="chamado-enviar-whatsapp">
+                                                <i class="fab fa-whatsapp ${WHATSAPP_CONFIG.enabled ? 'text-success' : 'text-muted'}"></i>
+                                                ${WHATSAPP_CONFIG.enabled ? 'Notificar via WhatsApp' : 'WhatsApp desativado'}
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div id="whatsapp-opcoes-container" style="display:none; margin-top:10px;">
+                                        <div class="form-check mb-2">
+                                            <input class="form-check-input" type="radio" name="whatsapp-destino" id="whatsapp-todos-mecanicos" value="todos">
+                                            <label class="form-check-label small" for="whatsapp-todos-mecanicos">
+                                                📱 <strong>TODOS os Mecânicos</strong> (${await carregarListaMecanicosComTelefone().then(m => m.length) || 0})
+                                            </label>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label small fw-bold">OU Mecânico Individual:</label>
+                                            <select class="form-select form-select-sm" id="select-mecanico-individual">
+                                                <option value="">-- Selecione um mecânico --</option>
+                                            </select>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -864,6 +1127,42 @@ async function abrirModalChamado(chamadoId = null) {
             });
     }
 
+    // ✅ Configurar listeners para WhatsApp options
+    const whatsappCheckbox = document.getElementById('chamado-enviar-whatsapp');
+    const opcoesContainer = document.getElementById('whatsapp-opcoes-container');
+    const todosRadio = document.getElementById('whatsapp-todos-mecanicos');
+    const individualSelect = document.getElementById('select-mecanico-individual');
+    
+    if (whatsappCheckbox) {
+        whatsappCheckbox.addEventListener('change', async function() {
+            if (opcoesContainer) {
+                opcoesContainer.style.display = this.checked && WHATSAPP_CONFIG.enabled ? 'block' : 'none';
+                
+                if (this.checked && WHATSAPP_CONFIG.enabled) {
+                    // ✅ Popular select mecânicos
+                    individualSelect.innerHTML = '<option value="">Carregando...</option>';
+                    const mecanicos = await carregarListaMecanicosComTelefone();
+                    individualSelect.innerHTML = '<option value="">-- Nenhum selecionado --</option>';
+                    
+                    if (mecanicos.length === 0) {
+                        individualSelect.innerHTML = '<option value="">Nenhum mecânico com telefone</option>';
+                    } else {
+                        mecanicos.forEach(m => {
+                            individualSelect.innerHTML += `<option value="${m.id}">${m.nome} (${m.telefone})</option>`;
+                        });
+                    }
+                    
+                    // ✅ Mostrar count no radio todos
+                    const countEl = todosRadio?.parentElement?.querySelector('label strong');
+                    if (countEl) countEl.textContent = `TODOS os Mecânicos (${mecanicos.length})`;
+                }
+            }
+        });
+        
+        // Trigger inicial
+        whatsappCheckbox.dispatchEvent(new Event('change'));
+    }
+
     // Se for edição, carrega os dados existentes
     if (chamadoId) {
         try {
@@ -894,7 +1193,10 @@ async function salvarChamado() {
     // Prioridade e Tipo de Manutenção serão preenchidos pelo gerente de manutenção
     const prioridade = 'Normal'; // Padrão - será alterado pelo gerente
     const tipoManutencao = null; // Será preenchido pelo gerente na finalização
+    // ✅ WhatsApp options
     const enviarWhatsapp = document.getElementById('chamado-enviar-whatsapp')?.checked && WHATSAPP_CONFIG.enabled;
+    const todosMecanicos = document.getElementById('whatsapp-todos-mecanicos')?.checked;
+    const mecanicoIndividual = document.getElementById('select-mecanico-individual')?.value;
     const chamadoId = document.getElementById('chamado-id')?.value;
 
     if (!maquinaId || !motivo) {
@@ -950,21 +1252,36 @@ async function salvarChamado() {
             // ENVIA NOTIFICAÇÃO WHATSAPP
             let notificacaoEnviada = false;
             if (enviarWhatsapp && WHATSAPP_CONFIG.enabled) {
-                let telefoneDestino = null;
-                // Envia notificação principal
-                notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto, telefoneDestino);
+                try {
+                    if (todosMecanicos) {
+                        // ✅ Enviar para TODOS mecânicos
+                        notificacaoEnviada = await enviarParaTodosMecanicos(chamadoCompleto);
+                    } else if (mecanicoIndividual) {
+                        // ✅ Mecânico individual selecionado - buscar telefone
+                        const mecanicoDoc = await db.collection('funcionarios').doc(mecanicoIndividual).get();
+                        if (mecanicoDoc.exists) {
+                            const tel = mecanicoDoc.data().telefone;
+                            notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto, tel);
+                        }
+                    } else {
+                        // Fallback gerente
+                        notificacaoEnviada = enviarNotificacaoWhatsApp(chamadoCompleto);
+                    }
 
-                // Se for máquina parada, envia alerta crítico
-                if (maquinaParada) {
-                    setTimeout(() => enviarAlertaCriticoWhatsApp(chamadoCompleto), 1000);
-                }
+                    // Se máquina parada, alerta crítico adicional para gerente
+                    if (maquinaParada) {
+                        setTimeout(() => enviarAlertaCriticoWhatsApp(chamadoCompleto), 1000);
+                    }
 
-                // Atualiza status da notificação
-                if (notificacaoEnviada) {
-                    await docRef.update({
-                        notificacaoEnviada: true,
-                        notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
-                    });
+                    // Atualiza status
+                    if (notificacaoEnviada) {
+                        await docRef.update({
+                            notificacaoEnviada: true,
+                            notificacaoData: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro no envio WhatsApp:', error);
                 }
             }
 
@@ -1181,7 +1498,12 @@ async function confirmarInicioAtendimento() {
         const chamadoRef = db.collection('manutencao_chamados').doc(chamadoId);
         await chamadoRef.update(updateData);
 
-        mostrarMensagem("Atendimento iniciado com sucesso!", "info");
+        // ✅ AUTO WhatsApp to assigned mechanic
+        if (WHATSAPP_CONFIG.enabled) {
+            setTimeout(() => enviarParaMecanicoDesignado(chamadoId), 500);
+        }
+
+        mostrarMensagem("Atendimento iniciado! 📱 Notificação enviada ao mecânico.", "success");
         bootstrap.Modal.getInstance(document.getElementById('iniciarAtendimentoModal')).hide();
     } catch (error) {
         console.error("Erro ao iniciar atendimento:", error);

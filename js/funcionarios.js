@@ -220,8 +220,9 @@ async function salvarFuncionario() {
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
-        const pis = document.getElementById('pis-funcionario').value; // Novo campo PIS
-        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario').checked; // Novo campo Controle de Ponto Eletrônico
+        const pis = document.getElementById('pis-funcionario')?.value || ''; 
+        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario')?.checked || false;
+        const isMecanico = document.getElementById('is-mecanico-funcionario')?.checked || false; // ✅ WHATSAPP FIX
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
 
         const empresaId = document.getElementById('empresa-funcionario').value;
@@ -316,9 +317,10 @@ async function salvarFuncionario() {
             email: email,
             telefone: telefone,
             sexo: sexo,
-            pis: pis, // Adiciona PIS
-            controlePontoEletronico: controlePontoEletronico, // Adiciona Controle de Ponto Eletrônico
-            dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
+        pis: pis,
+        controlePontoEletronico: controlePontoEletronico,
+        isMecanico: isMecanico, // ✅ Mecânico para WhatsApp
+        dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
 
             empresaId: empresaId,
             setor: setor,
@@ -485,8 +487,9 @@ async function editarFuncionario(funcionarioId) {
             }
         }
 
-        document.getElementById('pis-funcionario').value = funcionario.pis || ''; // Preenche PIS
-        document.getElementById('controle-ponto-eletronico-funcionario').checked = funcionario.controlePontoEletronico || false; // Preenche Controle de Ponto Eletrônico
+        document.getElementById('pis-funcionario')?.value = funcionario.pis || '';
+        document.getElementById('controle-ponto-eletronico-funcionario')?.checked = funcionario.controlePontoEletronico || false;
+        document.getElementById('is-mecanico-funcionario')?.checked = funcionario.isMecanico || false; // ✅ WHATSAPP
         document.getElementById('sexo-funcionario').value = funcionario.sexo || '';
         document.getElementById('nascimento-funcionario').value = funcionario.dataNascimento ? formatarDataParaInput(funcionario.dataNascimento) : '';
 
@@ -626,8 +629,9 @@ async function atualizarFuncionario(funcionarioId) {
         const email = document.getElementById('email-funcionario').value;
         const telefone = document.getElementById('telefone-funcionario').value;
         const sexo = document.getElementById('sexo-funcionario').value;
-        const pis = document.getElementById('pis-funcionario').value; // Novo campo PIS
-        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario').checked; // Novo campo Controle de Ponto Eletrônico
+        const pis = document.getElementById('pis-funcionario')?.value || '';
+        const controlePontoEletronico = document.getElementById('controle-ponto-eletronico-funcionario')?.checked || false;
+        const isMecanico = document.getElementById('is-mecanico-funcionario')?.checked || false; // ✅ WHATSAPP
         const dataNascimento = document.getElementById('nascimento-funcionario').value;
 
         const empresaId = document.getElementById('empresa-funcionario').value;
@@ -709,8 +713,9 @@ async function atualizarFuncionario(funcionarioId) {
             email: email,
             telefone: telefone,
             sexo: sexo,
-            pis: pis, // Adiciona PIS
-            controlePontoEletronico: controlePontoEletronico, // Adiciona Controle de Ponto Eletrônico
+            pis: pis,
+            controlePontoEletronico: controlePontoEletronico,
+            isMecanico: isMecanico, // ✅ Mecânico para WhatsApp
             dataNascimento: new Date(dataNascimento.replace(/-/g, '\/')),
 
             empresaId: empresaId,

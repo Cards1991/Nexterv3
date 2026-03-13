@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Controle de Cestas Básicas</title>
+</head>
+<body>
+    <div class="container-fluid">
+        <h2 class="page-title mb-4">Controle de Cestas Básicas</h2>
+        
+        <!-- Controls Card -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <div class="row align-items-end g-3">
+                    <div class="col-md-3">
+                        <label class="form-label">Logo da Empresa (para vales)</label>
+                        <input type="file" class="form-control" id="cestas-logo-input" accept="image/*">
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label">Valor da Cesta (R$)</label>
+                        <input type="number" class="form-control" id="cestas-valor-input" placeholder="Ex: 150.00" step="0.01" min="0">
+                    </div>
+                    <div class="col-md-6 text-end">
+                        <div class="btn-group" role="group">
+                            <button class="btn btn-success" onclick="gravarCustoCestas()">
+                                <i class="fas fa-dollar-sign me-1"></i> Gravar Custos Financeiros
+                            </button>
+                            <button class="btn btn-warning" onclick="desfazerUltimoLancamentoCestas()">
+                                <i class="fas fa-undo me-1"></i> Desfazer Último
+                            </button>
+                            <button class="btn btn-primary" onclick="gerarRelatorioCestas()">
+                                <i class="fas fa-print me-1"></i> Gerar Vales para Impressão
+                            </button>
+                            <button class="btn btn-info" onclick="toggleAllCestas(this)">
+                                <i class="fas fa-check-double me-1"></i> Selecionar Todos
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-filter me-2"></i>Filtros de Busca</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <label class="form-label">Nome</label>
+                        <input type="text" class="form-control" id="cestas-filtro-nome" placeholder="Digite o nome...">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Empresa</label>
+                        <select class="form-select" id="cestas-filtro-empresa">
+                            <option value="">Todas as Empresas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Setor</label>
+                        <input type="text" class="form-control" id="cestas-filtro-setor" placeholder="Digite o setor...">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Table -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="fas fa-list me-2"></i>Funcionários Ativos (Selecione para incluir nas cestas)</h6>
+                <span class="badge bg-secondary" id="contador-selecionados">0 selecionados</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 500px;">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light sticky-top">
+                            <tr>
+                                <th><input type="checkbox" id="select-all-cestas" onchange="toggleAllCestas(this)"></th>
+                                <th>Nome</th>
+                                <th>Empresa</th>
+                                <th>Setor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-controle-cestas">
+                            <tr>
+                                <td colspan="4" class="text-center p-4">
+                                    <i class="fas fa-spinner fa-spin fa-2x text-primary mb-2 d-block"></i>
+                                    <span>Carregando funcionários...</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Info Card -->
+        <div class="card mt-4">
+            <div class="card-body text-center text-muted small">
+                <i class="fas fa-info-circle me-1"></i>
+                <strong>Prazo de Retirada Automático:</strong> Calculado como 20º dia do mês + 3 dias úteis.
+                <br>
+                <i class="fas fa-exclamation-triangle me-1 text-warning"></i>
+                O sistema verifica automaticamente faltas/atestados no período de apuração antes de gravar custos.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Auto-initialize when view loads
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof inicializarControleCestas === 'function') {
+                inicializarControleCestas();
+            }
+        });
+    </script>
+</body>
+</html>
+
