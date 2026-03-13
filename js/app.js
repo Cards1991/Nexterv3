@@ -1452,6 +1452,11 @@ function inicializarModais() {
                 document.getElementById('setor-funcionario').innerHTML = '<option value="">Selecione a empresa primeiro</option>';
                 document.getElementById('cargo-funcionario').innerHTML = '<option value="">Selecione a empresa primeiro</option>';
 
+                // Garante que os listeners de change para empresa/setor estejam ativos
+                if (typeof inicializarModalFuncionario === 'function') {
+                    inicializarModalFuncionario();
+                }
+
                 // Adicionar os novos campos PIS e Controle de Ponto Eletrônico
                 const identificacaoTabContent = document.getElementById('identificacao'); // Assumindo que existe uma tab com id 'identificacao'
                 if (identificacaoTabContent && !document.getElementById('pis-funcionario')) { // Verifica se os campos já não foram adicionados

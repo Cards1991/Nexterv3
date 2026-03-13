@@ -1213,6 +1213,51 @@ function formatarAtestadoQuantidade(atestado) {
     }
 }
 
+// Carregar funções baseado na empresa selecionada
+async function carregarFuncoesPorEmpresa(empresaId, selectId, funcaoSelecionada = null) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    if (!empresaId) {
+        select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Carregando...</option>';
+    select.disabled = true;
+
+    try {
+        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
+        if (!empresaDoc.exists) {
+            select.innerHTML = '<option value="">Empresa não encontrada</option>';
+            return;
+        }
+
+        const funcoes = empresaDoc.data().funcoes || [];
+
+        if (funcoes.length === 0) {
+            select.innerHTML = '<option value="">Nenhum cargo cadastrado para esta empresa</option>';
+            return;
+        }
+
+        select.innerHTML = '<option value="">Selecione...</option>';
+        funcoes.sort().forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao;
+            option.textContent = funcao;
+            if (funcaoSelecionada && funcaoSelecionada === funcao) {
+                option.selected = true;
+            }
+            select.appendChild(option);
+        });
+        select.disabled = false;
+
+    } catch (error) {
+        console.error("Erro ao carregar funções:", error);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
 // Inicializar eventos do modal de funcionário
 function inicializarModalFuncionario() {
     const empresaSelect = document.getElementById('empresa-funcionario');
