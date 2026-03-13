@@ -152,7 +152,11 @@ async function carregarFuncionarios() {
             const idade = funcionario.dataNascimento ? calcularIdade(funcionario.dataNascimento.toDate()) : 'N/A';
 
             const row = document.createElement('tr');
-            row.innerHTML = `
+            // ✅ SAFE ESCAPING for onclick strings
+            const docIdEscaped = docId.replace(/'/g, "\\'");
+            const nomeEscaped = funcionario.nome.replace(/'/g, "\\'").replace(/"/g, '\\"');
+
+            row.innerHTML = `  
                 <td>${funcionario.nome}</td>
                 <td>${funcionario.cpf}</td>
                 <td>${nomeEmpresa}</td>
@@ -162,13 +166,13 @@ async function carregarFuncionarios() {
                 <td><small>${tempoDeEmpresa}</small></td>
                 <td><span class="badge ${statusClass}">${status}</span></td>
                 <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editarFuncionario('${docId}')">
+                    <button class="btn btn-sm btn-outline-primary" onclick="editarFuncionario('${docIdEscaped}')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-info" onclick="verDetalhesFuncionario('${docId}')">
+                    <button class="btn btn-sm btn-outline-info" onclick="verDetalhesFuncionario('${docIdEscaped}')">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario('${docId}', '${funcionario.nome}')">
+                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario('${docIdEscaped}', '${nomeEscaped}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -464,32 +468,42 @@ async function editarFuncionario(funcionarioId) {
         document.getElementById('telefone-funcionario').value = funcionario.telefone || '';
 
         // Garantir que os campos PIS e Controle de Ponto existam antes de preencher
-        if (!document.getElementById('pis-funcionario')) {
-            const cpfInput = document.getElementById('cpf-funcionario');
-            if (cpfInput) {
-                const pisHtml = `
-                    <div class="col-md-6 mb-3">
-                        <label for="pis-funcionario" class="form-label">PIS</label>
-                        <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
-                    </div>
-                `;
-                const controlePontoHtml = `
-                    <div class="col-md-6 mb-3 form-check form-switch d-flex align-items-center">
-                        <input class="form-check-input" type="checkbox" id="controle-ponto-eletronico-funcionario">
-                        <label class="form-check-label ms-2" for="controle-ponto-eletronico-funcionario">Controle de Ponto Eletrônico</label>
-                    </div>
-                `;
-                const cpfParent = cpfInput.closest('.row');
-                if (cpfParent) {
-                    cpfParent.insertAdjacentHTML('beforeend', pisHtml);
-                    cpfParent.insertAdjacentHTML('beforeend', controlePontoHtml);
+        try {
+            if (!document.getElementById('pis-funcionario')) {
+                const cpfInput = document.getElementById('cpf-funcionario');
+                if (cpfInput) {
+                    const pisHtml = `
+                        <div class="col-md-6 mb-3">
+                            <label for="pis-funcionario" class="form-label">PIS</label>
+                            <input type="text" class="form-control" id="pis-funcionario" placeholder="Número do PIS">
+                        </div>
+                    `;
+                    const controlePontoHtml = `
+                        <div class="col-md-6 mb-3 form-check form-switch d-flex align-items-center">
+                            <input class="form-check-input" type="checkbox" id="controle-ponto-eletronico-funcionario">
+                            <label class="form-check-label ms-2" for="controle-ponto-eletronico-funcionario">Controle de Ponto Eletrônico</label>
+                        </div>
+                    `;
+                    const cpfParent = cpfInput.closest('.row');
+                    if (cpfParent) {
+                        cpfParent.insertAdjacentHTML('beforeend', pisHtml);
+                        cpfParent.insertAdjacentHTML('beforeend', controlePontoHtml);
+                    }
                 }
             }
-        }
 
-        document.getElementById('pis-funcionario')?.value = funcionario.pis || '';
-        document.getElementById('controle-ponto-eletronico-funcionario')?.checked = funcionario.controlePontoEletronico || false;
-        document.getElementById('is-mecanico-funcionario')?.checked = funcionario.isMecanico || false; // ✅ WHATSAPP
+            const pisEl = document.getElementById('pis-funcionario');
+            if (pisEl) pisEl.value = funcionario.pis || '';
+
+            const pontoEl = document.getElementById('controle-ponto-eletronico-funcionario');
+            if (pontoEl) pontoEl.checked = funcionario.controlePontoEletronico || false;
+
+            const mecanicoEl = document.getElementById('is-mecanico-funcionario');
+            if (mecanicoEl) mecanicoEl.checked = funcionario.isMecanico || false; // ✅ WHATSAPP
+            
+        } catch (dynamicError) {
+            console.warn('Erro ao criar elementos dinâmicos:', dynamicError);
+        }
         document.getElementById('sexo-funcionario').value = funcionario.sexo || '';
         document.getElementById('nascimento-funcionario').value = funcionario.dataNascimento ? formatarDataParaInput(funcionario.dataNascimento) : '';
 

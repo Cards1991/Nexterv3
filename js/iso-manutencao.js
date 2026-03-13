@@ -657,27 +657,33 @@ function testarWhatsApp() {
 }
 
 function adicionarBotaoConfigWhatsApp() {
-    console.log('🔧 Criando botão WhatsApp...');
+    // ✅ RESTRICTION: ONLY in ISO Maintenance section
+    if (typeof window.secaoAtual === 'undefined' || window.secaoAtual !== 'iso-manutencao') {
+        console.log('🚫 WhatsApp button blocked - not in iso-manutencao section');
+        return;
+    }
+
+    console.log('🔧 Criando botão WhatsApp (ISO Manutenção)...');
     
-    // Múltiplos seletores para robustez
+    // Múltiplos seletores para robustez (ISO context)
     const selectors = [
+        '[data-target="iso-manutencao"] .d-flex.gap-2',
         '#iso-manutencao .d-flex.gap-2',
         '[id*="iso-manutencao"] .d-flex.gap-2',
-        '.page-title ~ .d-flex.gap-2',
-        '.d-flex.justify-content-between'
+        '.page-title ~ .d-flex.gap-2'
     ];
     
     let actionContainer = null;
     for (const selector of selectors) {
         actionContainer = document.querySelector(selector);
         if (actionContainer) {
-            console.log(`✅ Container encontrado: ${selector}`);
+            console.log(`✅ Container ISO encontrado: ${selector}`);
             break;
         }
     }
     
     if (!actionContainer) {
-        console.error('❌ Nenhum container encontrado para botão WhatsApp');
+        console.error('❌ Nenhum container ISO encontrado para botão WhatsApp');
         return;
     }
     
@@ -693,11 +699,9 @@ function adicionarBotaoConfigWhatsApp() {
     btnConfig.onclick = abrirConfigWhatsApp;
 
     actionContainer.appendChild(btnConfig);
-    console.log('✅ Botão WhatsApp criado e adicionado!');
-    
-    // Retry mechanism - tenta novamente em 500ms se algo falhar
-    setTimeout(adicionarBotaoConfigWhatsApp, 500);
+    console.log('✅ Botão WhatsApp criado → ISO Manutenção ONLY!');
 }
+
 
 
 // ============ FUNÇÕES PRINCIPAIS DE MANUTENÇÃO ============
