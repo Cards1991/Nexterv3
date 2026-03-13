@@ -153,7 +153,8 @@ async function salvarEmpresa() {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
-// Captura jornada
+        await ensureJornadaFields();
+        // Captura jornada
         const jornadaTrabalho = await obterDadosJornada();
 
         if (!nome) {
@@ -249,7 +250,7 @@ async function editarEmpresa(empresaId) {
             const salvarBtn = document.querySelector('#empresaModal .btn-primary');
             if (salvarBtn) {
                 salvarBtn.textContent = 'Atualizar Empresa';
-                salvarBtn.onclick = atualizarEmpresa.bind(null, empresaId);
+                salvarBtn.onclick = function() { atualizarEmpresa('${empresaId}'); };
             }
         }, 300); // Increased delay for render + async
     }
@@ -269,7 +270,8 @@ async function atualizarEmpresa(empresaId) {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
-// Captura jornada
+        await ensureJornadaFields();
+        // Captura jornada
         const jornadaTrabalho = await obterDadosJornada();
 
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
