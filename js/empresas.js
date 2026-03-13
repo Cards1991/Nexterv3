@@ -153,8 +153,8 @@ async function salvarEmpresa() {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
-        // Captura jornada
-        const jornadaTrabalho = obterDadosJornada();
+// Captura jornada
+        const jornadaTrabalho = await obterDadosJornada();
 
         if (!nome) {
             mostrarMensagem('Preencha o nome da empresa', 'warning');
@@ -202,7 +202,8 @@ async function editarEmpresa(empresaId) {
         modal.show();
 
         // Usar setTimeout para garantir que o modal esteja totalmente renderizado
-        setTimeout(() => {
+        setTimeout(async () => {
+            await ensureJornadaFields();
             // Preencher modal com dados da empresa
             const nomeInput = document.getElementById('nome-empresa');
             if (nomeInput) nomeInput.value = empresa.nome;
@@ -238,7 +239,7 @@ async function editarEmpresa(empresaId) {
             }
 
             // Preencher Jornada
-            preencherDadosJornada(empresa.jornadaTrabalho);
+            await preencherDadosJornada(empresa.jornadaTrabalho);
 
             // Garante que o título do modal esteja correto para edição
             const modalTitle = document.querySelector('#empresaModal .modal-title');
@@ -248,9 +249,9 @@ async function editarEmpresa(empresaId) {
             const salvarBtn = document.querySelector('#empresaModal .btn-primary');
             if (salvarBtn) {
                 salvarBtn.textContent = 'Atualizar Empresa';
-                salvarBtn.onclick = function() { atualizarEmpresa(empresaId); };
+                salvarBtn.onclick = atualizarEmpresa.bind(null, empresaId);
             }
-        }, 100); // Pequeno delay para garantir renderização
+        }, 300); // Increased delay for render + async
     }
 }
 
@@ -268,8 +269,8 @@ async function atualizarEmpresa(empresaId) {
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
         const percPatronal = temPatronal ? (parseFloat(document.getElementById('empresa-input-patronal').value) || 0) : 0;
 
-        // Captura jornada
-        const jornadaTrabalho = obterDadosJornada();
+// Captura jornada
+        const jornadaTrabalho = await obterDadosJornada();
 
         const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
         const user = firebase.auth().currentUser;
@@ -552,38 +553,94 @@ function injetarCamposJornada() {
     form.appendChild(container);
 }
 
-function resetarCamposJornada() {
-    document.getElementById('jornada-seg').value = 8.8;
-    document.getElementById('jornada-ter').value = 8.8;
-    document.getElementById('jornada-qua').value = 8.8;
-    document.getElementById('jornada-qui').value = 8.8;
-    document.getElementById('jornada-sex').value = 8.8;
-    document.getElementById('jornada-sab').value = 0;
-    document.getElementById('jornada-dom').value = 0;
+function ensureJornadaFields() {
+    // Ensure fields injected and DOM ready
+    injetarCamposJornada();
+    
+    // Short wait for render
+    return new Promise(resolve => {
+        const checkFields = () => {
+            const seg = document.getElementById('jornada-seg');
+            if (seg) {
+                resolve();
+            } else {
+                setTimeout(checkFields, 50);
+            }
+        };
+        checkFields();
+    });
 }
 
-function obterDadosJornada() {
+async function resetarCamposJornada() {
+    await ensureJornadaFields();
+    const segEl = document.getElementById('jornada-seg');
+    if (segEl) segEl.value = 8.8;
+    const terEl = document.getElementById('jornada-ter');
+    if (terEl) terEl.value = 8.8;
+    const quaEl = document.getElementById('jornada-qua');
+    if (quaEl) quaEl.value = 8.8;
+    const quiEl = document.getElementById('jornada-qui');
+    if (quiEl) quiEl.value = 8.8;
+    const sexEl = document.getElementById('jornada-sex');
+    if (sexEl) sexEl.value = 8.8;
+    const sabEl = document.getElementById('jornada-sab');
+    if (sabEl) sabEl.value = 0;
+    const domEl = document.getElementById('jornada-dom');
+    if (domEl) domEl.value = 0;
+}
+
+async function obterDadosJornada() {
+    await ensureJornadaFields();
     return {
-        segunda: parseFloat(document.getElementById('jornada-seg').value) || 0,
-        terca: parseFloat(document.getElementById('jornada-ter').value) || 0,
-        quarta: parseFloat(document.getElementById('jornada-qua').value) || 0,
-        quinta: parseFloat(document.getElementById('jornada-qui').value) || 0,
-        sexta: parseFloat(document.getElementById('jornada-sex').value) || 0,
-        sabado: parseFloat(document.getElementById('jornada-sab').value) || 0,
-        domingo: parseFloat(document.getElementById('jornada-dom').value) || 0
+        segunda: (() => {
+            const el = document.getElementById('jornada-seg');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        terca: (() => {
+            const el = document.getElementById('jornada-ter');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        quarta: (() => {
+            const el = document.getElementById('jornada-qua');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        quinta: (() => {
+            const el = document.getElementById('jornada-qui');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        sexta: (() => {
+            const el = document.getElementById('jornada-sex');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        sabado: (() => {
+            const el = document.getElementById('jornada-sab');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })(),
+        domingo: (() => {
+            const el = document.getElementById('jornada-dom');
+            return el ? parseFloat(el.value) || 0 : 0;
+        })()
     };
 }
 
-function preencherDadosJornada(jornada) {
+async function preencherDadosJornada(jornada) {
+    await ensureJornadaFields();
     if (!jornada) {
         resetarCamposJornada();
         return;
     }
-    document.getElementById('jornada-seg').value = jornada.segunda || 0;
-    document.getElementById('jornada-ter').value = jornada.terca || 0;
-    document.getElementById('jornada-qua').value = jornada.quarta || 0;
-    document.getElementById('jornada-qui').value = jornada.quinta || 0;
-    document.getElementById('jornada-sex').value = jornada.sexta || 0;
-    document.getElementById('jornada-sab').value = jornada.sabado || 0;
-    document.getElementById('jornada-dom').value = jornada.domingo || 0;
+    const segEl = document.getElementById('jornada-seg');
+    if (segEl) segEl.value = jornada.segunda || 0;
+    const terEl = document.getElementById('jornada-ter');
+    if (terEl) terEl.value = jornada.terca || 0;
+    const quaEl = document.getElementById('jornada-qua');
+    if (quaEl) quaEl.value = jornada.quarta || 0;
+    const quiEl = document.getElementById('jornada-qui');
+    if (quiEl) quiEl.value = jornada.quinta || 0;
+    const sexEl = document.getElementById('jornada-sex');
+    if (sexEl) sexEl.value = jornada.sexta || 0;
+    const sabEl = document.getElementById('jornada-sab');
+    if (sabEl) sabEl.value = jornada.sabado || 0;
+    const domEl = document.getElementById('jornada-dom');
+    if (domEl) domEl.value = jornada.domingo || 0;
 }
