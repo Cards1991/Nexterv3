@@ -698,44 +698,42 @@ function renderizarMetricasManutencao(chamados) {
     const paradas = chamados.filter(c => c.maquinaParada).length;
     const urgentes = chamados.filter(c => c.prioridade === 'Urgente' && (c.status === 'Aberto' || c.status === 'Em Andamento')).length;
 
-    // Define classes de alerta se houver itens críticos
-    const classUrgentes = urgentes > 0 ? 'card-alert-blink' : '';
-    const classParadas = paradas > 0 ? 'card-alert-blink' : '';
+    const getBlinkClass = (count) => count > 0 ? 'card-alert-blink' : '';
 
     container.innerHTML = `
-        <div class="col-lg-3 col-md-6 mb-4">
-            <div class="card stat-card bg-warning text-dark h-100">
-                <div class="card-body text-center d-flex flex-column justify-content-center">
+        <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
+            <div class="card stat-card bg-warning text-dark h-100 ${getBlinkClass(abertos)}">
+                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
                     <i class="fas fa-exclamation-circle fa-2x mb-3 opacity-75"></i>
-                    <div class="number display-5 fw-bold mb-2">${abertos}</div>
+                    <div class="number display-6 fw-bold mb-2">${abertos}</div>
                     <div class="label text-uppercase small fw-semibold">Chamados em Aberto</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-info text-white">
-                <div class="card-body text-center">
-                    <i class="fas fa-tools fa-2x mb-2"></i>
-                    <div class="number display-6 fw-bold">${normais}</div>
-                    <div class="label text-uppercase small">Chamados Normais</div>
+        <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
+            <div class="card stat-card bg-info text-white h-100">
+                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
+                    <i class="fas fa-tools fa-2x mb-3 opacity-75"></i>
+                    <div class="number display-6 fw-bold mb-2">${normais}</div>
+                    <div class="label text-uppercase small fw-semibold">Chamados Normais</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-danger text-white ${classUrgentes}">
-                <div class="card-body text-center">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-2"></i>
-                    <div class="number display-6 fw-bold">${urgentes}</div>
-                    <div class="label text-uppercase small">Urgentes</div>
+        <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
+            <div class="card stat-card bg-danger text-white h-100 ${getBlinkClass(urgentes)}">
+                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
+                    <i class="fas fa-exclamation-triangle fa-2x mb-3 opacity-75"></i>
+                    <div class="number display-6 fw-bold mb-2">${urgentes}</div>
+                    <div class="label text-uppercase small fw-semibold">Urgentes</div>
                 </div>
             </div>
         </div>
-        <div class="col-md-3 mb-4">
-            <div class="card stat-card bg-dark text-white ${classParadas}">
-                <div class="card-body text-center">
-                    <i class="fas fa-industry fa-2x mb-2"></i>
-                    <div class="number display-6 fw-bold">${paradas}</div>
-                    <div class="label text-uppercase small">Máquinas Paradas</div>
+        <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
+            <div class="card stat-card bg-dark text-white h-100 ${getBlinkClass(paradas)}">
+                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
+                    <i class="fas fa-industry fa-2x mb-3 opacity-75"></i>
+                    <div class="number display-6 fw-bold mb-2">${paradas}</div>
+                    <div class="label text-uppercase small fw-semibold">Máquinas Paradas</div>
                 </div>
             </div>
         </div>

@@ -420,6 +420,20 @@ body {
     font-weight: 500;
 }
 
+.stat-card.h-100 {
+    min-height: 160px;
+}
+
+@keyframes pulse {
+    0% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(255, 0, 0, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(255, 0, 0, 0); }
+}
+
+.card-alert-blink {
+    animation: pulse 2s infinite;
+}
+
 /* Cards Coloridos */
 .card.bg-primary { background: var(--gradient-primary) !important; }
 .card.bg-success { background: var(--gradient-success) !important; }
