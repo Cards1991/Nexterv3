@@ -1475,14 +1475,6 @@ function inicializarModais() {
                 }
             }
         });
-
-        // Listener para carregar setores quando a empresa é selecionada no modal de funcionário
-        const empresaSelect = document.getElementById('empresa-funcionario');
-        if (empresaSelect) {
-            empresaSelect.addEventListener('change', function () {
-                carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
-            });
-        }
     }
 
 

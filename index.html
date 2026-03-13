@@ -280,6 +280,11 @@
             <div id="header-container"></div>
 
             <main class="content-wrapper">
+                <!-- Botão para correção de dados, visível apenas com #data-fix na URL -->
+                <div id="data-fix-wrapper" style="display: none; text-align: center; margin-bottom: 1rem;">
+                    <button class="btn btn-warning" onclick="fixMissingFuncoes()">Corrigir Funções Faltantes nas Empresas</button>
+                </div>
+
                 <!-- Seções são carregadas dinamicamente aqui pelo showSection() do app.js -->
                 <div id="dynamic-content"></div>
             </main>
@@ -308,31 +313,10 @@
         </div>
     </div>
 
-    <!-- Chat Inteligente (AI Assistant) -->
-    <div class="chat-fab" id="ai-chat-fab">
-        <i class="fas fa-robot"></i>
-    </div>
-    <div class="chat-window" id="ai-chat-window">
-        <div class="chat-header">
-            <h5>Assistente Inteligente</h5>
-            <button type="button" class="btn-close btn-close-white" id="ai-chat-close"></button>
-        </div>
-        <div class="chat-body" id="ai-chat-body">
-            <div class="chat-message assistant">
-                <div class="message-bubble">
-                    Olá! Sou seu assistente de gestão. Como posso ajudar hoje?
-                </div>
-            </div>
-        </div>
-        <div class="chat-footer">
-            <input type="text" class="form-control" id="ai-chat-input" placeholder="Digite sua pergunta...">
-            <button class="btn btn-primary" id="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
-        </div>
-    </div>
-
     <!-- Modals e Scripts (Carregados dinamicamente ou via inclusão) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
     <script src="js/utils.js"></script>
+    <script src="js/data-fix.js"></script> <!-- SCRIPT DE CORREÇÃO -->
     <script src="js/afd-parser.js"></script>
     <script src="js/empresas.js"></script>
     <script src="js/setores.js"></script>
@@ -398,6 +382,18 @@
     <script src="js/manutencao-qr.js"></script>
     <script src="js/experiencia-export.js"></script>
     <script src="js/chamados-manutencao.js"></script>
+
+    <!-- Módulos de Segurança do Trabalho (Adicionados para corrigir erro) -->
+    <script src="js/gestao-cipa.js"></script>
+    <script src="js/brigada-incendio.js"></script>
+    <script src="js/controle-extintores.js"></script>
+    
+    <script>
+        // Mostra o botão de correção de dados se a URL tiver o hash #data-fix
+        if (window.location.hash === '#data-fix') {
+            document.getElementById('data-fix-wrapper').style.display = 'block';
+        }
+    </script>
 
 </body>
 

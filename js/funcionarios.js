@@ -1036,36 +1036,49 @@ async function verDetalhesFuncionario(funcionarioId) {
 }
 
 // Carregar setores baseado na empresa selecionada
-async function carregarSetoresPorEmpresa(empresaId, selectId) {
+async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado = null) {
     const select = document.getElementById(selectId);
     if (!select) return;
 
-    select.innerHTML = '<option value="">Selecione um setor</option>';
+    if (!empresaId) {
+        select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+        return;
+    }
 
-    select.disabled = true;
     select.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        const setoresSnap = await db.collection('setores').orderBy('descricao').get();
+        // CORREÇÃO: Removido orderBy('descricao') para evitar erro de índice composto. Ordenação feita em memória.
+        const setoresSnapshot = await db.collection('setores')
+            .where('empresaId', '==', empresaId)
+            .get();
 
-        if (setoresSnap.empty) {
+        if (setoresSnapshot.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
             return;
         }
 
-        const setoresDocs = setoresSnap.docs.sort((a, b) => (a.data().descricao || '').localeCompare(b.data().descricao || ''));
+        select.innerHTML = '<option value="">Selecione...</option>';
 
-        select.innerHTML = '<option value="">Selecione um setor</option>';
+        const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
+            const descA = a.data().descricao || '';
+            const descB = b.data().descricao || '';
+            return descA.localeCompare(descB);
+        });
+
         setoresDocs.forEach(doc => {
-            const setor = doc.data();
+            const setor = doc.data().descricao;
             const option = document.createElement('option');
-            option.value = setor.descricao;
-            option.textContent = setor.descricao;
+            option.value = setor;
+            option.textContent = setor;
+            if (setorSelecionado && setorSelecionado === setor) {
+                option.selected = true;
+            }
             select.appendChild(option);
         });
-        select.disabled = false;
+
     } catch (error) {
-        console.error('Erro ao carregar setores:', error);
+        console.error("Erro ao carregar setores:", error);
         select.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 }
@@ -1205,14 +1218,15 @@ function inicializarModalFuncionario() {
     const empresaSelect = document.getElementById('empresa-funcionario');
     const setorSelect = document.getElementById('setor-funcionario');
 
-    if (empresaSelect) {
+    if (empresaSelect && !empresaSelect.dataset.listenerAttached) {
         empresaSelect.addEventListener('change', function () {
             carregarSetoresPorEmpresa(this.value, 'setor-funcionario');
             carregarFuncoesPorEmpresa(this.value, 'cargo-funcionario');
         });
+        empresaSelect.dataset.listenerAttached = 'true';
     }
 
-    if (setorSelect) {
+    if (setorSelect && !setorSelect.dataset.listenerAttached) {
         setorSelect.addEventListener('change', async function () {
             const setorDesc = this.value;
             const empresaId = document.getElementById('empresa-funcionario').value;
@@ -1234,6 +1248,7 @@ function inicializarModalFuncionario() {
                 console.error("Erro ao buscar líder do setor:", error);
             }
         });
+        setorSelect.dataset.listenerAttached = 'true';
     }
 
     // Formatar CPF e telefone enquanto digita

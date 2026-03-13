@@ -463,11 +463,6 @@ function inicializarAfastamentos() {
     carregarAfastamentos();
 }
 
-// Inicializar eventos
-document.addEventListener('viewsLoaded', function () {
-    inicializarAfastamentos(); // Carrega os afastamentos ao inicializar
-});
-
 // Adiciona uma função utilitária para formatar datas para inputs do tipo 'date'
 document.addEventListener('viewsLoaded', function () {
     if (typeof formatarDataParaInput === 'undefined') {
