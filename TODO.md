@@ -1,26 +1,13 @@
-# TODO List - Nexter v3
+# FIX ISO 9001 Menu Disappeared
+Status: 🔄 In Progress
 
-## 🚀 High Priority (Blockers)
-- [ ] TODO_FIX_ISO_MANUTENCAO.md
-- [ ] TODO_FIX_MECANICOS_WHATSAPP.md  
-- [ ] TODO_WHATSAPP_BUTTON_FIX.md
-- [ ] TODO_FUNCIONARIOS_SYNTAX.md ← **IN PROGRESS**
-- [ ] TODO_PAINEL_DEMITIDOS_FIX.md
+## Plan Steps:
+- ✅ **Step 3**: Edit `js/utils.js` - Add `.iso-access` role toggle logic (uses `hasIsoAccess`)\n- ✅ **Step 4**: Edit `js/admin.js` - Add ISO permission checkbox (`hasIsoAccess`)
+- [ ] **Step 5**: Update TODO files (mark ISO menu resolved)
+- [ ] **Step 6**: Test - Verify menu visible + ISO sections load
+- [ ] ✅ Complete: Use `attempt_completion`
 
-## 📱 Features
-- [ ] TODO_CONTROLE_CESTAS.md
-- [ ] TODO_WHATSAPP_SUPERVISOR.md
-- [ ] TODO_AUTO_WHATSAPP_ASSIGNED.md
+**Root Cause**: Menu hidden by `.mecanico-any` class + `toggleRoleElements()` unless `isMecanico: true`.
 
-## 🔧 Polish
-- [ ] TODO_FIX_MAQUINA_NOME.md
-- [ ] TODO_EPI_ANALISE.md
-- [ ] TODO_INDICADORES_RESCISOES.md
-- [ ] TODO_PAINEL_DEMITIDOS.md
-
-## ✅ Completed
-**2026-** Fix `js/funcionarios.js` syntax (line 490+ onclicks)
-
----
-*Last updated: Auto-generated*
+**Next**: Complete Step 1.
 

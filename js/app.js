@@ -11,18 +11,22 @@ const TODAS_SECOES = [
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
-    'controle-disciplinar', 'iso-avaliacao-colaboradores', 'iso-mecanicos', 'iso-manutencao', 'iso-temperatura-injetoras', 'estoque-epi', 'consumo-epi', 'epi-compras', 'analise-epi', 'analise-custos',
+'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico'];
 
-let currentUserPermissions = {}; // ✅ Added isMecanico
+let currentUserPermissions = {}; // ✅ Added isMecanico, funcionarioId, isMecanicoAdmin
 
 // Variável para rastrear a seção atual
 let secaoAtual = null;
 
 // Função showSection
 async function showSection(sectionName) {
+    // Apply role-based visibility on section change
+    if (typeof window.toggleRoleElements === 'function') {
+        window.toggleRoleElements();
+    }
 
     // Cleanup da seção anterior (Gerenciamento de Memória)
     if (secaoAtual && secaoAtual !== sectionName) {
@@ -293,11 +297,15 @@ async function carregarDadosSecao(sectionName) {
                     inicializarPontoEletronico();
                 }
                 break;
-            case 'iso-mecanicos':
-                if (typeof inicializarMecanicos === 'function') {
+case 'iso-mecanicos':
+case 'cadastro-mecanicos':
+                if (typeof inicializarCadastroMecanicos === 'function') {
+                    await inicializarCadastroMecanicos();
+                } else if (typeof inicializarMecanicos === 'function') {
                     await inicializarMecanicos();
                 }
                 break;
+
             case 'iso-organograma':
                 if (typeof inicializarOrganograma === 'function') {
                     await inicializarOrganograma();
@@ -1252,10 +1260,12 @@ document.addEventListener('viewsLoaded', function () {
 
             if (userDoc.exists) {
                 currentUserPermissions = userDoc.data().permissoes || {};
-                currentUserPermissions.nome = userDoc.data().nome; // Adiciona o nome ao objeto de permissões
+                currentUserPermissions.nome = userDoc.data().nome;
+                currentUserPermissions.funcionarioId = userDoc.data().funcionarioId; // For mechanic filter
+                console.log('User permissions:', currentUserPermissions);
             } else {
                 // Por padrão, novos usuários terão acesso a agenda, saúde psicossocial, atestados e afastamentos.
-                currentUserPermissions = { isAdmin: false, secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos'], restricaoSetor: null };
+                currentUserPermissions = { isAdmin: false, isMecanico: false, isMecanicoAdmin: false, hasIsoAccess: true, secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot'], restricaoSetor: null };
                 await userDocRef.set({
                     email: user.email,
                     nome: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
@@ -1295,6 +1305,11 @@ document.addEventListener('viewsLoaded', function () {
 
             // Configurar navegação
             inicializarNavegacao();
+            
+            // Apply role-based visibility
+            if (typeof window.toggleRoleElements === 'function') {
+                window.toggleRoleElements();
+            }
 
             // Configurar botões do menu de usuário
             const btnSair = document.getElementById('btn-sair');

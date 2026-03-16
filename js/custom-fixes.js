@@ -3,8 +3,8 @@
 // ==========================================
 
 // 1. Relatório Estilizado e Correção de Data (Avaliação de Experiência)
-window.imprimirAvaliacaoExperiencia = function(dados) {
-    console.log("Gerando relatório estilizado...", dados);
+window.imprimirAvaliacaoExperiencia = function(dados, nome, setor) {
+    console.log("Gerando relatório estilizado...", { dados, nome, setor });
 
     // Correção do erro de data (trata Timestamp do Firestore ou String)
     let dataAval = dados.dataAvaliacao;
@@ -24,74 +24,82 @@ window.imprimirAvaliacaoExperiencia = function(dados) {
         <html lang="pt-BR">
         <head>
             <meta charset="UTF-8">
-            <title>Avaliação de Experiência - ${dados.nome || 'Colaborador'}</title>
+            <title>Avaliação de Experiência - ${nome || 'Colaborador'}</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
-                @media print { body { -webkit-print-color-adjust: exact; } }
-                body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; padding: 40px; }
-                .report-card { background: white; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); overflow: hidden; max-width: 850px; margin: 0 auto; }
-                .report-header { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; padding: 30px; text-align: center; }
-                .report-body { padding: 40px; }
-                .info-box { background: #f8f9fa; border-radius: 10px; padding: 20px; margin-bottom: 30px; border-left: 5px solid #0d6efd; }
+                @media print {
+                    @page {
+                        size: A4;
+                        margin: 15mm;
+                    }
+                    body {
+                        -webkit-print-color-adjust: exact;
+                    }
+                }
+                body { background-color: #f3f4f6; font-family: 'Segoe UI', sans-serif; padding: 10px; }
+                .report-card { background: white; border-radius: 10px; box-shadow: none; overflow: hidden; margin: 0 auto; border: 1px solid #dee2e6;}
+                .report-header { background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; padding: 20px; text-align: center; }
+                .report-body { padding: 20px; }
+                .info-box { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 20px; border-left: 5px solid #0d6efd; }
                 .score-table th { background-color: #e9ecef; color: #495057; }
-                .score-badge { width: 35px; height: 35px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; color: white; }
+                .score-badge { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; font-weight: bold; color: white; }
                 .score-1, .score-2 { background-color: #dc3545; }
                 .score-3 { background-color: #ffc107; color: #333; }
                 .score-4, .score-5 { background-color: #198754; }
-                .result-box { text-align: center; padding: 20px; border-radius: 10px; margin-top: 30px; }
+                .result-box { text-align: center; padding: 10px; border-radius: 8px; margin-top: 20px; }
                 .result-approved { background-color: #d1e7dd; color: #0f5132; border: 1px solid #badbcc; }
                 .result-reprooved { background-color: #f8d7da; color: #842029; border: 1px solid #f5c2c7; }
-                .signature-area { margin-top: 60px; border-top: 1px solid #dee2e6; padding-top: 10px; display: flex; justify-content: space-between; }
-                .sig-line { width: 45%; text-align: center; border-top: 1px solid #000; padding-top: 10px; margin-top: 40px; }
+                .signature-area { margin-top: 40px; border-top: 1px solid #dee2e6; padding-top: 10px; display: flex; justify-content: space-between; }
+                .sig-line { width: 45%; text-align: center; border-top: 1px solid #000; padding-top: 8px; margin-top: 30px; }
             </style>
         </head>
         <body>
             <div class="report-card">
                 <div class="report-header">
-                    <h2 class="mb-0">Avaliação de Experiência</h2>
-                    <p class="mb-0 opacity-75">Relatório de Desempenho Individual</p>
+                    <h2 class="mb-0 fs-4">Avaliação de Experiência</h2>
+                    <p class="mb-0 opacity-75 fs-6">Relatório de Desempenho Individual</p>
                 </div>
                 <div class="report-body">
                     <div class="info-box">
                         <div class="row">
-                            <div class="col-md-6 mb-2"><strong>Colaborador:</strong> ${dados.nome || '-'}</div>
-                            <div class="col-md-6 mb-2"><strong>Data:</strong> ${dataFormatada}</div>
-                            <div class="col-md-6"><strong>Período:</strong> ${dados.periodo || '-'} dias</div>
-                            <div class="col-md-6"><strong>Avaliador:</strong> ${dados.avaliador || 'Gestão'}</div>
+                            <div class="col-7 mb-2"><strong>Colaborador:</strong> ${nome || 'Não informado'}</div>
+                            <div class="col-5 mb-2"><strong>Data:</strong> ${dataFormatada}</div>
+                            <div class="col-7"><strong>Setor:</strong> ${setor || 'Não informado'}</div>
+                            <div class="col-5"><strong>Período:</strong> ${dados.periodo || '-'} dias</div>
                         </div>
                     </div>
 
-                    <h5 class="mb-3 text-primary">Critérios Avaliados</h5>
-                    <table class="table table-hover score-table">
+                    <h5 class="mb-2 text-primary">Critérios Avaliados</h5>
+                    <table class="table table-sm table-hover score-table">
                         <thead>
                             <tr>
                                 <th>Critério</th>
-                                <th class="text-center" width="100">Nota</th>
+                                <th class="text-center" width="80">Nota</th>
                             </tr>
                         </thead>
                         <tbody>
                             ${Object.entries(dados.notas || {}).map(([k, v]) => `
                                 <tr>
-                                    <td style="text-transform: capitalize;">${k}</td>
-                                    <td class="text-center"><span class="score-badge score-${v}">${v}</span></td>
+                                    <td class="py-2" style="text-transform: capitalize;">${k.replace(/_/g, ' ')}</td>
+                                    <td class="text-center py-2"><span class="score-badge score-${v}">${v}</span></td>
                                 </tr>
                             `).join('')}
                         </tbody>
                     </table>
 
-                    <div class="mt-4">
+                    <div class="mt-3">
                         <h6 class="text-muted">Observações</h6>
-                        <p class="p-3 bg-light rounded border">${dados.observacoes || 'Sem observações.'}</p>
+                        <p class="p-2 bg-light rounded border" style="min-height: 60px; font-size: 0.9rem;">${dados.observacoes || 'Sem observações.'}</p>
                     </div>
 
                     <div class="result-box ${dados.resultado === 'Aprovado' ? 'result-approved' : 'result-reprooved'}">
-                        <h3 class="mb-0">${dados.resultado || 'Pendente'}</h3>
+                        <h4 class="mb-0 fs-5">${dados.resultado || 'Pendente'}</h4>
                         <small>Média Final: <strong>${dados.media ? dados.media.toFixed(1) : '-'}</strong></small>
                     </div>
 
                     <div class="signature-area">
-                        <div class="sig-line">Colaborador</div>
-                        <div class="sig-line">Gestor Responsável</div>
+                        <div class="sig-line"><small>${nome || 'Colaborador'}</small></div>
+                        <div class="sig-line"><small>Gestor Responsável</small></div>
                     </div>
                 </div>
             </div>

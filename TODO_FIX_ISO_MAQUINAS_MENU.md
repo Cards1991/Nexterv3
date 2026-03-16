@@ -64,4 +64,4 @@ async function renderizarDashboardMaquinas() {
 - Update `carregarMaquinas()` to refresh dashboard.
 - Test: navigate `iso-maquinas` → see cards above table.
 
-**Approve plan?** I'll create detailed TODO.md + breakdown steps.
+✅ **RESOLVED**: ISO menu fixed globally + admin toggle added.

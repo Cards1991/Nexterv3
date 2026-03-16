@@ -41,6 +41,11 @@ function debounce(func, wait) {
 
 async function carregarOrganograma() {
     const container = document.getElementById('organograma-container');
+    if (!container) {
+        console.error("Container organograma-container não encontrado");
+        return;
+    }
+    
     container.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando estrutura...</div>';
 
     try {

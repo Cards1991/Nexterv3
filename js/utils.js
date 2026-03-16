@@ -8,10 +8,28 @@ function toggleRoleElements() {
         el.style.display = currentUserPermissions.isAdmin ? 'block' : 'none';
     });
 
-    // Mecânico-only (Versão Mobile)
-    const mecanicoOnly = document.querySelectorAll('.mecanico-only');
-    mecanicoOnly.forEach(el => {
+    // Mecânico Admin-only (Full ISO)
+    const mecanicoAdminOnly = document.querySelectorAll('.mecanico-admin-only');
+    mecanicoAdminOnly.forEach(el => {
+        el.style.display = currentUserPermissions.isMecanicoAdmin ? 'block' : 'none';
+    });
+
+    // Mecânico normal-only (read-only)
+    const mecanicoNormalOnly = document.querySelectorAll('.mecanico-normal-only');
+    mecanicoNormalOnly.forEach(el => {
+        el.style.display = currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin ? 'block' : 'none';
+    });
+
+    // Mecânico-any
+    const mecanicoAny = document.querySelectorAll('.mecanico-any');
+    mecanicoAny.forEach(el => {
         el.style.display = currentUserPermissions.isMecanico ? 'block' : 'none';
+    });
+
+    // ISO-access (all authenticated users + admins)
+    const isoAccess = document.querySelectorAll('.iso-access');
+    isoAccess.forEach(el => {
+        el.style.display = (currentUserPermissions.isAdmin || currentUserPermissions.isMecanico || currentUserPermissions.hasIsoAccess !== false) ? 'block' : 'none';
     });
 }
 

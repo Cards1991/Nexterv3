@@ -22,6 +22,15 @@ if (typeof db === 'undefined') {
 
 // ============ INICIALIZAÇÃO ============
 async function inicializarManutencao() {
+    const currentUserPermissions = window.currentUserPermissions || {};
+    
+    // 🔒 LOCK: Normal mechanics get read-only view
+    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+        mostrarMensagem("👷 Modo Mecânico: Visualização read-only dos chamados", "info");
+        document.body.classList.add('mecanico-readonly');
+        // Mechanics can still filter/view but NO create/edit
+    }
+
     try {
         // Verificar se Firebase está disponível
         if (typeof firebase === 'undefined' || !firebase.apps.length) {
@@ -34,11 +43,11 @@ async function inicializarManutencao() {
             return;
         }
 
-        // Configurar botões
+        // Configurar botões → Already classed .mecanico-admin-only
         const btnNovo = document.getElementById('btn-novo-chamado-manutencao');
         const btnFiltrar = document.getElementById('btn-filtrar-manutencao');
 
-        if (btnNovo && !btnNovo.hasAttribute('data-listener-bound')) {
+        if (btnNovo && !btnNovo.hasAttribute('data-listener-bound') && currentUserPermissions.isMecanicoAdmin) {
             btnNovo.addEventListener('click', () => abrirModalChamado(null));
             btnNovo.setAttribute('data-listener-bound', 'true');
         }
@@ -55,10 +64,12 @@ async function inicializarManutencao() {
         // Carregar chamados
         await carregarChamadosManutencao();
 
-        // Adicionar botão de configurações WhatsApp (IMEDIATO + retry)
-        adicionarBotaoConfigWhatsApp();
-        setTimeout(adicionarBotaoConfigWhatsApp, 500);
-        setTimeout(adicionarBotaoConfigWhatsApp, 1500);
+        // Adicionar botão de configurações WhatsApp (IMEDIATO + retry) → Manager only
+        if (currentUserPermissions.isMecanicoAdmin) {
+            adicionarBotaoConfigWhatsApp();
+            setTimeout(adicionarBotaoConfigWhatsApp, 500);
+            setTimeout(adicionarBotaoConfigWhatsApp, 1500);
+        }
     } catch (e) {
         console.error("Erro ao inicializar módulo de manutenção:", e);
         mostrarMensagem("Erro ao carregar módulo de manutenção", "error");
@@ -815,14 +826,19 @@ async function carregarChamadosManutencao() {
                     case 'Normal': prioridadeBadgeClass = 'bg-success'; break;
                 }
 
-                let prioridadeConteudo;
+let prioridadeConteudo;
+                const currentUserPermissions = window.currentUserPermissions || {};
                 if (chamado.status === 'Aberto' || chamado.status === 'Em Andamento') {
-                    prioridadeConteudo = `
-                        <select class="form-select form-select-sm w-auto d-inline-block ${prioridadeBadgeClass}" onchange="atualizarPrioridade('${chamado.id}', this.value)">
-                            <option value="Normal" ${chamado.prioridade === 'Normal' ? 'selected' : ''}>Normal</option>
-                            <option value="Prioritário" ${chamado.prioridade === 'Prioritário' ? 'selected' : ''}>Prioritário</option>
-                            <option value="Urgente" ${chamado.prioridade === 'Urgente' ? 'selected' : ''}>Urgente</option>
-                        </select>`;
+                    if (currentUserPermissions.isMecanicoAdmin) {
+                        prioridadeConteudo = `
+                            <select class="form-select form-select-sm w-auto d-inline-block priority-admin-only ${prioridadeBadgeClass}" onchange="atualizarPrioridade('${chamado.id}', this.value)">
+                                <option value="Normal" ${chamado.prioridade === 'Normal' ? 'selected' : ''}>Normal</option>
+                                <option value="Prioritário" ${chamado.prioridade === 'Prioritário' ? 'selected' : ''}>Prioritário</option>
+                                <option value="Urgente" ${chamado.prioridade === 'Urgente' ? 'selected' : ''}>Urgente</option>
+                            </select>`;
+                    } else {
+                        prioridadeConteudo = `<span class="badge ${prioridadeBadgeClass} priority-admin-only">${chamado.prioridade || 'Normal'}</span>`;
+                    }
                 } else {
                     prioridadeConteudo = `<span class="badge ${prioridadeBadgeClass}">${chamado.prioridade || 'Normal'}</span>`;
                 }
@@ -981,6 +997,12 @@ function renderizarMetricasManutencao(chamados) {
 
 // ============ MODAL NOVO CHAMADO ============
 async function abrirModalChamado(chamadoId = null) {
+    const currentUserPermissions = window.currentUserPermissions || {};
+    if (!currentUserPermissions.isMecanicoAdmin) {
+        mostrarMensagem("❌ Mecânicos não podem criar novos chamados. Contate o gerente.", "warning");
+        return;
+    }
+    
     const modalId = 'manutencaoChamadoModal';
     let modalEl = document.getElementById(modalId);
 
@@ -1441,6 +1463,12 @@ async function iniciarAtendimento(chamadoId) {
 }
 
 async function confirmarInicioAtendimento() {
+    const currentUserPermissions = window.currentUserPermissions || {};
+    if (!currentUserPermissions.isMecanicoAdmin) {
+        mostrarMensagem("❌ Mecânicos não podem atribuir chamados. Contate o gerente.", "warning");
+        return;
+    }
+    
     const chamadoId = document.getElementById('iniciar-atendimento-id').value;
     const mecanicoSelect = document.getElementById('iniciar-atendimento-mecanico');
     const mecanicoId = mecanicoSelect.value;
@@ -1513,6 +1541,17 @@ async function confirmarInicioAtendimento() {
 }
 
 async function abrirModalFinalizar(chamadoId) {
+    const currentUserPermissions = window.currentUserPermissions || {};
+    const chamado = __chamados_cache.find(c => c.id === chamadoId);
+    
+    // 🔒 Mechanics can ONLY finalize OWN assigned chamados
+    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+        if (!chamado || chamado.mecanicoResponsavelId !== firebase.auth().currentUser.uid) {
+            mostrarMensagem("❌ Você só pode finalizar chamados atribuídos a você.", "warning");
+            return;
+        }
+    }
+    
     const modalId = 'finalizarChamadoModal';
     let modalEl = document.getElementById(modalId);
 

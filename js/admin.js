@@ -59,6 +59,8 @@ async function abrirModalPermissoes(uid) {
     document.getElementById('perm-user-nome').value = userData.nome || '';
     document.getElementById('perm-is-admin').checked = permissoes.isAdmin || false;
     document.getElementById('perm-is-mecanico').checked = permissoes.isMecanico || false;
+    document.getElementById('perm-is-mecanico-admin').checked = permissoes.isMecanicoAdmin || false;
+    document.getElementById('perm-has-iso-access').checked = permissoes.hasIsoAccess !== false;
 
     // Popular seções
     const secoesContainer = document.getElementById('perm-secoes-container');
@@ -171,6 +173,8 @@ async function salvarPermissoes() {
     const nome = document.getElementById('perm-user-nome').value;
     const isAdmin = document.getElementById('perm-is-admin').checked;
     const isMecanico = document.getElementById('perm-is-mecanico').checked;
+    const isMecanicoAdmin = document.getElementById('perm-is-mecanico-admin').checked;
+    const hasIsoAccess = document.getElementById('perm-has-iso-access').checked;
     const restricaoSetor = document.getElementById('perm-user-setor').value;
     const funcionarioId = document.getElementById('perm-user-funcionario')?.value || null;
 
@@ -187,6 +191,8 @@ async function salvarPermissoes() {
             permissoes: {
                 isAdmin: isAdmin,
                 isMecanico: isMecanico,
+                isMecanicoAdmin: isMecanicoAdmin,
+                hasIsoAccess: hasIsoAccess,
                 secoesPermitidas: secoesPermitidas,
                 restricaoSetor: restricaoSetor || null
             }
@@ -259,6 +265,7 @@ async function salvarNovoUsuario() {
             permissoes: {
                 isAdmin: false,
                 isMecanico: false,
+                isMecanicoAdmin: false,
                 secoesPermitidas: ['dashboard'], // Acesso inicial apenas ao dashboard
                 restricaoSetor: null
             }

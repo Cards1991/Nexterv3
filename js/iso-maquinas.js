@@ -17,6 +17,13 @@ function inicializarModuloMaquinas(dbInstance) {
 }
 
 async function inicializarMaquinas() {
+    const currentUserPermissions = window.currentUserPermissions || {};
+    if (!currentUserPermissions.isMecanicoAdmin) {
+        mostrarMensagem("❌ Acesso restrito a gerentes de manutenção.", "warning");
+        document.getElementById('btn-nova-maquina')?.remove();
+        return;
+    }
+    
     try {
         // Neste ponto, __db já deve estar inicializado por inicializarModuloMaquinas
         if (!__db) throw new Error("Firestore não disponível");
