@@ -296,9 +296,6 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
             db.collection('atestados').where('funcionarioId', '==', id).get({source: 'server'}),
             db.collection('faltas').where('funcionarioId', '==', id).get({source: 'server'}),
             db.collection('registros_disciplinares').where('funcionarioId', '==', id).get({source: 'server'})
-            db.collection('atestados').where('funcionarioId', '==', id).get(),
-            db.collection('faltas').where('funcionarioId', '==', id).get(),
-            db.collection('registros_disciplinares').where('funcionarioId', '==', id).get()
         ]);
 
         // Processa Atestados
@@ -357,6 +354,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
         console.log(`[AvalExp Debug] Query failed at ${Date.now()}`);
         if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrências.</div>';
     }
+    }
 
     // Obs período anterior
     if (parseInt(periodo) === 90) {
@@ -370,7 +368,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     }
 
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
-}
+
 
 async function salvarAvaliacaoExperiencia() {
     const funcionarioId = document.getElementById('aval-exp-funcionario-id').value;
