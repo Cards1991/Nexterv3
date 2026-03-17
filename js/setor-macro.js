@@ -108,15 +108,15 @@ async function carregarEmpresasParaModalNovoSetor() {
 async function salvarNovoSetor() {
     const nomeInput = document.getElementById('novo-setor-nome');
     const btnSalvar = document.getElementById('btn-salvar-novo-setor');
-    const filtroEmpresaSelect = document.getElementById('filtro-empresa-setores');
+    const empresaSelect = document.getElementById('novo-setor-empresa');
 
-    if (!nomeInput || !btnSalvar) {
+    if (!nomeInput || !btnSalvar || !empresaSelect) {
         console.error("Elementos do modal não encontrados");
         return;
     }
 
-    // Usa a empresa do filtro se estiver selecionada, caso contrário seránull
-    const empresaId = filtroEmpresaSelect ? filtroEmpresaSelect.value : null;
+    // Usa a empresa selecionada no modal. Se nenhuma for selecionada, o valor será null.
+    const empresaId = empresaSelect.value || null;
     const nome = nomeInput.value.trim();
 
     if (!nome) {

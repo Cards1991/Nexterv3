@@ -354,7 +354,6 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
         console.log(`[AvalExp Debug] Query failed at ${Date.now()}`);
         if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrências.</div>';
     }
-    }
 
     // Obs período anterior
     if (parseInt(periodo) === 90) {
@@ -368,6 +367,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     }
 
     bootstrap.Modal.getOrCreateInstance(modalEl).show();
+}
 
 
 async function salvarAvaliacaoExperiencia() {
