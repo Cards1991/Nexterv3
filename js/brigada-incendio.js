@@ -149,6 +149,20 @@ function renderizarListaBrigadistas() {
 
 async function salvarBrigadista(dados) {
     try {
+        // Se dados não foi passado (chamada via onclick), coleta do formulário
+        if (!dados || typeof dados !== 'object') {
+            dados = {
+                id: document.getElementById('brigada-brigadista-id')?.value || null,
+                nome: document.getElementById('brigada-brigadista-nome')?.value,
+                setor: document.getElementById('brigada-brigadista-setor')?.value,
+                turno: document.getElementById('brigada-brigadista-turno')?.value,
+                funcao: document.getElementById('brigada-brigadista-funcao')?.value,
+                dataCurso: document.getElementById('brigada-brigadista-curso-data')?.value ? new Date(document.getElementById('brigada-brigadista-curso-data').value) : null,
+                validadeCurso: document.getElementById('brigada-brigadista-curso-validade')?.value ? new Date(document.getElementById('brigada-brigadista-curso-validade').value) : null,
+                status: document.getElementById('brigada-brigadista-status')?.value
+            };
+        }
+
         if (dados.id) {
             await db.collection('brigada_brigadistas').doc(dados.id).update(dados);
             mostrarMensagem('Brigadista atualizado!', 'success');
@@ -226,6 +240,18 @@ function renderizarListaSimulados() {
 
 async function salvarSimulado(dados) {
     try {
+        // Coleta dados do formulário se não forem passados
+        if (!dados || typeof dados !== 'object') {
+            const dataStr = document.getElementById('brigada-simulado-data')?.value;
+            dados = {
+                data: dataStr ? new Date(dataStr + 'T00:00:00') : new Date(),
+                tipo: document.getElementById('brigada-simulado-tipo')?.value,
+                tempoEvacuacao: document.getElementById('brigada-simulado-tempo')?.value,
+                avaliacao: document.getElementById('brigada-simulado-avaliacao')?.value,
+                observacoes: document.getElementById('brigada-simulado-obs')?.value || ''
+            };
+        }
+
         await db.collection('brigada_simulados').add(dados);
         mostrarMensagem('Simulado registrado!', 'success');
         await carregarDadosBrigada();
@@ -288,11 +314,27 @@ function renderizarListaOcorrencias() {
 
 async function salvarOcorrencia(dados) {
     try {
+        // CORREÇÃO: Coleta dados do formulário se a função for chamada sem argumentos (pelo botão Salvar)
+        if (!dados || typeof dados !== 'object') {
+            const dataStr = document.getElementById('brigada-ocorrencia-data')?.value;
+            dados = {
+                data: dataStr ? new Date(dataStr + 'T00:00:00') : new Date(),
+                tipo: document.getElementById('brigada-ocorrencia-tipo')?.value || 'Outro',
+                local: document.getElementById('brigada-ocorrencia-local')?.value || '',
+                responsavel: document.getElementById('brigada-ocorrencia-responsavel')?.value || '',
+                status: document.getElementById('brigada-ocorrencia-status')?.value || 'Em Andamento',
+                descricao: document.getElementById('brigada-ocorrencia-descricao')?.value || ''
+            };
+        }
+
         await db.collection('brigada_ocorrencias').add(dados);
         mostrarMensagem('Ocorrência registrada!', 'success');
         await carregarDadosBrigada();
-        const modal = document.getElementById('brigada-ocorrencia-modal');
-        if (modal) modal.querySelector('.btn-close').click();
+        
+        // Fecha o modal corretamente
+        const modalEl = document.getElementById('brigada-ocorrencia-modal');
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.hide();
     } catch (error) {
         mostrarMensagem('Erro: ' + error.message, 'error');
     }
@@ -364,7 +406,7 @@ window.excluirSimulado = async (id) => {
 window.abrirModalOcorrencia = () => {
     document.getElementById('brigada-ocorrencia-form').reset();
     document.getElementById('brigada-ocorrencia-id').value = '';
-    new bootstrap.Modal(document.getElementById('brigada-ocorrencia-modal')).show();
+    bootstrap.Modal.getOrCreateInstance(document.getElementById('brigada-ocorrencia-modal')).show();
 };
 
 window.excluirOcorrencia = async (id) => {

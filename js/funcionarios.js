@@ -1151,13 +1151,14 @@ async function carregarSelectFuncionariosAtivos(selectId, incluirInativos = fals
             option.value = doc.id;
             option.textContent = func.nome;
 
-            if (incluirInativos) {
+            // CORREÇÃO: Lógica de filtro ajustada para ser mais genérica e funcional
+            if (incluirInativos) { // Se for para incluir inativos, adiciona todos
                 select.appendChild(option);
-            } else {
-                // Lógica específica para admissão/demissão
+            } else { // Lógica padrão
                 if (selectId === 'funcionario-admissao' && func.status === 'Inativo') {
                     select.appendChild(option);
-                } else if (selectId === 'funcionario-demissao' && func.status !== 'Inativo') {
+                } else if (selectId !== 'funcionario-admissao' && func.status === 'Ativo') {
+                    // Para todos os outros casos (demissão, epi, sumidos, etc.), adiciona apenas os ativos.
                     select.appendChild(option);
                 }
             }

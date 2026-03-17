@@ -23,8 +23,14 @@ async function carregarConfiguracaoWhatsApp() {
 async function inicializarGestaoSumidos() {
     console.log("Inicializando Gestão de Sumidos...");
     await carregarConfiguracaoWhatsApp();
-    const container = document.getElementById('gestao-sumidos');
-    if (!container) return;
+    // CORREÇÃO: Busca o contêiner de forma dinâmica.
+    // Ele pode ser a seção estática ('gestao-sumidos') ou o contêiner dinâmico ('dynamic-content').
+    const container = document.getElementById('gestao-sumidos') || document.getElementById('dynamic-content');
+    
+    if (!container) {
+        console.error("Container para 'gestão de sumidos' não encontrado.");
+        return;
+    }
 
     container.innerHTML = `
         <div class="d-flex justify-content-between align-items-center mb-4">

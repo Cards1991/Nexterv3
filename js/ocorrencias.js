@@ -86,7 +86,7 @@ window.abrirModalNovaOcorrencia = async function() {
             return;
         }
 
-        modalOcorrencia = new bootstrap.Modal(modalEl);
+        modalOcorrencia = bootstrap.Modal.getOrCreateInstance(modalEl);
         modalOcorrencia.show();
     } catch (error) {
         console.error('Erro ao abrir modal de ocorrência:', error);
@@ -382,10 +382,13 @@ async function salvarOcorrencia() {
             await db.collection('ocorrencias_saude').add(dados);
             mostrarMensagem('Ocorrência registrada com sucesso!', 'success');
         }
+
+        await carregarOcorrencias();
+        await carregarKPIsOcorrencias();
         
-        modalOcorrencia.hide();
-        carregarOcorrencias();
-        carregarKPIsOcorrencias();
+        const modalEl = document.getElementById('modalNovaOcorrencia');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl) || modalOcorrencia;
+        if (modalInstance) modalInstance.hide();
 
     } catch (error) {
         console.error("Erro ao salvar ocorrência:", error);
