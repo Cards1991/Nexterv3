@@ -59,3 +59,69 @@
                 style="max-height: 500px; overflow-y: auto;">Carregando...</div>
         </div>
     </div>
+
+    <!-- Modal de Nova Solicitação -->
+    <div class="modal fade" id="solicitacaoHorasModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title"><i class="fas fa-clock me-2"></i>Nova Solicitação de Horas Extras</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <!-- Adicionado onsubmit="return false" para prevenir recarregamento -->
+                    <form id="form-solicitacao-horas" onsubmit="return false;">
+                        <input type="hidden" id="sol-id">
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label">Funcionário *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                                    <input type="text" class="form-control" id="sol-employee-search" placeholder="Filtrar funcionário...">
+                                </div>
+                                <select class="form-select mt-1" id="sol-employee" required size="5">
+                                    <option value="">Carregando...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Data *</label>
+                                <input type="date" class="form-control" id="sol-start-date" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Início *</label>
+                                <input type="time" class="form-control" id="sol-start-time" required>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Fim *</label>
+                                <input type="time" class="form-control" id="sol-end-time" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Setor</label>
+                                <input type="text" class="form-control" id="sol-sector" readonly tabindex="-1" placeholder="Automático">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Gerente Responsável</label>
+                                <input type="text" class="form-control" id="sol-requester" readonly tabindex="-1" placeholder="Automático">
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Forma de Pagamento *</label>
+                                <select class="form-select" id="sol-forma-pagamento" required>
+                                    <option value="por-fora">Por Fora (Padrão)</option>
+                                    <option value="folha">Folha de Pagamento</option>
+                                    <option value="banco-horas">Banco de Horas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-12">
+                                <label class="form-label">Motivo *</label>
+                                <textarea class="form-control" id="sol-reason" rows="2" required placeholder="Descreva o motivo da hora extra..."></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer px-0 pb-0 mt-3 border-top-0">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                            <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i> Enviar Solicitação</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>

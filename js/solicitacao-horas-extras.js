@@ -42,8 +42,8 @@ async function inicializarTelaSolicitacao() {
     const formSolicitacao = document.getElementById('form-solicitacao-horas');
     if (formSolicitacao && !formSolicitacao.bound) {
         formSolicitacao.addEventListener('submit', async function(e) {
-            e.preventDefault(); // Evita o comportamento padrão de submissão
-            e.stopPropagation();
+            e.preventDefault(); // Reforça prevenção
+            e.stopImmediatePropagation();
             
             // Evita dupla submissão
             if (__salvando_solicitacao) {
