@@ -14,7 +14,7 @@ const TODAS_SECOES = [
 'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
-    'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi'];
+    'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar'];
 
 let currentUserPermissions = {}; // ✅ Added isMecanico, funcionarioId, isMecanicoAdmin
 
@@ -389,11 +389,7 @@ case 'cadastro-mecanicos':
                     await inicializarAnaliseCustos();
                 }
                 break;
-            case 'controle-disciplinar':
-                if (typeof carregarDadosDisciplinares === 'function') {
-                    await carregarDadosDisciplinares();
-                }
-                break;
+
             case 'iso-temperatura-injetoras':
                 // Lógica para carregar dados da seção de Temperatura de Injetoras (se houver)
                 break;

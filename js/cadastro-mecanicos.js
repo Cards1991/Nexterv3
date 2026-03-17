@@ -93,6 +93,10 @@ function renderMecanicoRow(m, tbody) {
 
 async function carregarSelectFuncionariosAtivosModal() {
     const select = document.getElementById('selectFuncionarioExistente');
+    if (!select) {
+        console.error('selectFuncionarioExistente not found');
+        return;
+    }
     select.innerHTML = '<option value="">Novo Mecânico</option><option value="">Carregando...</option>';
     
     try {
@@ -118,10 +122,14 @@ async function carregarSelectFuncionariosAtivosModal() {
                 loadFuncionarioData(funcId);
             } else {
                 // Clear form for new
-                document.getElementById('nomeMecanico').value = '';
-                document.getElementById('matriculaMecanico').value = '';
-                document.getElementById('setorMecanico').value = '';
-                document.getElementById('telefoneMecanico').value = '';
+                const nomeEl = document.getElementById('nomeMecanico');
+                const matEl = document.getElementById('matriculaMecanico');
+                const setorEl = document.getElementById('setorMecanico');
+                const telEl = document.getElementById('telefoneMecanico');
+                if (nomeEl) nomeEl.value = '';
+                if (matEl) matEl.value = '';
+                if (setorEl) setorEl.value = '';
+                if (telEl) telEl.value = '';
             }
         };
     } catch (error) {
@@ -135,10 +143,16 @@ async function loadFuncionarioData(funcId) {
         const doc = await db.collection('funcionarios').doc(funcId).get();
         if (doc.exists) {
             const data = doc.data();
-            document.getElementById('nomeMecanico').value = data.nome;
-            document.getElementById('matriculaMecanico').value = data.matricula || '';
-            document.getElementById('telefoneMecanico').value = data.telefone || '';
-            document.getElementById('setorMecanico').value = data.setor || '';
+            // Safe set - only if element exists
+            const nomeEl = document.getElementById('nomeMecanico');
+            const matEl = document.getElementById('matriculaMecanico');
+            const telEl = document.getElementById('telefoneMecanico');
+            const setorEl = document.getElementById('setorMecanico');
+            
+            if (nomeEl) nomeEl.value = data.nome || '';
+            if (matEl) matEl.value = data.matricula || '';
+            if (telEl) telEl.value = data.telefone || '';
+            if (setorEl) setorEl.value = data.setor || '';
         }
     } catch (error) {
         console.error('Erro ao carregar funcionário:', error);

@@ -63,56 +63,70 @@
 
 <!-- Modal de Mecânico -->
 <div class="modal fade" id="modalMecanico" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalMecanicoTitle">Novo Mecânico</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+<div class="modal-dialog modal-lg">
+        <div class="modal-content shadow-lg border-0">
+            <div class="modal-header bg-gradient-primary text-white border-0 rounded-top">
+                <h5 class="modal-title mb-0 fw-bold" id="modalMecanicoTitle">
+                    <i class="fas fa-user-hard-hat me-2"></i>Novo Mecânico
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <form id="formMecanico">
                     <input type="hidden" id="mecanicoId">
-                    <div class="mb-3">
-                        <label class="form-label">Nome Completo *</label>
-                        <input type="text" class="form-control" id="nomeMecanico" required>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label class="form-label">Matrícula</label>
-                            <input type="text" class="form-control" id="matriculaMecanico">
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Telefone/WhatsApp *</label>
-                            <input type="tel" class="form-control" id="telefoneMecanico" required>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Setor</label>
-                        <select class="form-select" id="setorMecanico">
-                            <option value="">Selecione...</option>
-                        </select>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6">
-                            <label class="form-label">Nível</label>
-                            <select class="form-select" id="nivelMecanico">
-                                <option value="mecanico">Mecânico Normal</option>
-                                <option value="gerente">Gerente de Mecânicos</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Status</label>
-                            <select class="form-select" id="statusMecanico">
-                                <option value="Ativo">Ativo</option>
-                                <option value="Inativo">Inativo</option>
-                            </select>
-                        </div>
-                    </div>
+                    <!-- Nome Completo removed - auto-filled from employee select -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-6">
+            <label class="form-label fw-bold">👤 Funcionário Existente *</label>
+            <select class="form-select form-select-lg shadow-sm" id="selectFuncionarioExistente">
+                <option value="">-- Selecione ou crie novo --</option>
+            </select>
+        </div>
+        <div class="col-md-6 d-flex align-items-end">
+            <button type="button" class="btn btn-outline-info btn-lg w-100" onclick="loadAllEmployees()">
+                <i class="fas fa-search me-2"></i>🔍 Buscar Todos
+            </button>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold">📄 Matrícula</label>
+            <input type="text" class="form-control form-control-lg shadow-sm" id="matriculaMecanico" placeholder="Opcional - auto-preenchida">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label fw-bold text-success">📱 Telefone/WhatsApp *</label>
+            <input type="tel" class="form-control form-control-lg shadow-sm border-success" id="telefoneMecanico" required placeholder="(42) 99999-9999">
+        </div>
+    </div>
+        <div class="col-12 mb-4">
+            <label class="form-label fw-bold">🏭 Setor *</label>
+            <select class="form-select form-select-lg shadow-sm" id="setorMecanico" required>
+                <option value="">Selecione o setor...</option>
+            </select>
+        </div>
+        <div class="row g-3 mb-4">
+            <div class="col-md-6">
+                <label class="form-label fw-bold text-primary">⭐ Nível *</label>
+                <select class="form-select form-select-lg shadow-sm" id="nivelMecanico" required>
+                    <option value="mecanico">🔧 Mecânico Normal</option>
+                    <option value="gerente">👨‍💼 Gerente de Mecânicos</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label fw-bold">📊 Status *</label>
+                <select class="form-select form-select-lg shadow-sm" id="statusMecanico" required>
+                    <option value="Ativo">✅ Ativo</option>
+                    <option value="Inativo">⏸️ Inativo</option>
+                </select>
+            </div>
+        </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="window.salvarMecanico()">Salvar Mecânico</button>
+            <div class="modal-footer bg-light border-top rounded-bottom">
+                <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">
+                    <i class="fas fa-times me-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-success btn-lg px-5 shadow-sm" onclick="window.salvarMecanico()">
+                    <i class="fas fa-save me-2"></i>Salvar Mecânico
+                </button>
             </div>
         </div>
     </div>
