@@ -1,18 +1,15 @@
-# 🚀 NEXTER v3 - Task Tracker
+# Task: Fix Cadastro de Máquinas listener + Add employee selector to Gerenciar Mecânicos
 
-## ✅ **Current Task: Fix EPI Menus + Admin Permissions** 
-```
-1. ✅ Create TODO.md 
-2. [ ] Fix sidebar.html: Remove style="display:none" from .admin-only + Add EPI menus
-3. [ ] Update js/app.js: Add cases for cadastro-epis, entrega-epis
-4. ✅ Create views/cadastro-epis.html 
-5. ✅ Create views/entrega-epis.html
-6. [ ] Test menus visibility
-7. [ ] Test EPI functionality
-8. [ ] attempt_completion()
-```
+## Plan Approved ✅
+- Fix Firestore listener lifecycle (iso-maquinas/iso-manutencao menu error)
+- Add dropdown select from existing funcionarios (Ativo) in mecânicos modal + update flag (no new record)
 
-**Status**: Views created ✅. Fixing sidebar/app next.
+## Steps [1/6] ⏳
+- [x] 1. Create TODO.md  
+- [ ] 2. Fix js/iso-manutencao.js listener + add proper cleanup
+- [ ] 3. Update js/app.js section navigation + init sequence
+- [ ] 4. Add employee select dropdown to views/cadastro-mecanicos.html modal
+- [ ] 5. Update js/cadastro-mecanicos.js: load Ativo funcs + UPDATE existing (set isMecanico flag)
+- [ ] 6. Test: Navigate iso-maquinas (no 400), mecânicos modal shows employees + saves flag
 
-**Next**: sidebar.html edits (admin fix + EPI menus).
-
+**Next:** Edit js/iso-manutencao.js

@@ -20,8 +20,20 @@ async function inicializarMaquinas() {
     const currentUserPermissions = window.currentUserPermissions || {};
     if (!currentUserPermissions.isMecanicoAdmin) {
         mostrarMensagem("❌ Acesso restrito a gerentes de manutenção.", "warning");
-        document.getElementById('btn-nova-maquina')?.remove();
+        // Show button but disabled instead of remove
+        const btnNova = document.getElementById('btn-nova-maquina');
+        if (btnNova) {
+            btnNova.style.display = 'block';
+            btnNova.disabled = true;
+            btnNova.title = 'Apenas gerentes podem adicionar máquinas';
+        }
         return;
+    }
+    
+    // ✅ Show button for admin
+    const btnNova = document.getElementById('btn-nova-maquina');
+    if (btnNova) {
+        btnNova.style.display = 'block';
     }
     
     try {
@@ -32,18 +44,18 @@ async function inicializarMaquinas() {
         await renderizarDashboardMaquinasInline();
 
         await carregarMaquinas();
-        const btnNova = document.getElementById('btn-nova-maquina');
-        if (btnNova && !btnNova.__bound) {
-            btnNova.addEventListener('click', () => abrirModalMaquina(null));
-            btnNova.__bound = true;
+        const btnNovaCheck = document.getElementById('btn-nova-maquina');
+        if (btnNovaCheck && !btnNovaCheck.__bound) {
+            btnNovaCheck.addEventListener('click', () => abrirModalMaquina(null));
+            btnNovaCheck.__bound = true;
         }
     } catch (e) {
         console.error("Erro ao inicializar cadastro de máquinas:", e);
         mostrarMensagem("Erro ao carregar o módulo de máquinas. Recarregue a página.", "error");
         
         // Desativar controles se não houver conexão
-        const btnNova = document.getElementById('btn-nova-maquina');
-        if (btnNova) btnNova.disabled = true;
+        const btnNovaCheck = document.getElementById('btn-nova-maquina');
+        if (btnNovaCheck) btnNovaCheck.disabled = true;
     }
 }
 

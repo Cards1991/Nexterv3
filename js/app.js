@@ -29,15 +29,25 @@ async function showSection(sectionName) {
     }
 
     // Cleanup da seção anterior (Gerenciamento de Memória)
+    // Cleanup anterior com try-catch para evitar erros
     if (secaoAtual && secaoAtual !== sectionName) {
-        if (secaoAtual === 'controle-usuario-master' && typeof limparControleUsuarioMaster === 'function') {
-            limparControleUsuarioMaster();
-        }
-        if (secaoAtual === 'iso-manutencao' && typeof limparListenerManutencao === 'function') {
-            limparListenerManutencao();
-        }
-        if (secaoAtual === 'control-horas-autorizacao' && typeof limparListenerAutorizacao === 'function') {
-            limparListenerAutorizacao();
+        try {
+            switch(secaoAtual) {
+                case 'controle-usuario-master':
+                    if (typeof limparControleUsuarioMaster === 'function') limparControleUsuarioMaster();
+                    break;
+                case 'iso-manutencao':
+                    if (typeof limparListenerManutencao === 'function') limparListenerManutencao();
+                    break;
+                case 'control-horas-autorizacao':
+                    if (typeof limparListenerAutorizacao === 'function') limparListenerAutorizacao();
+                    break;
+                case 'iso-maquinas':
+                    // Cleanup específico se necessário futuramente
+                    break;
+            }
+        } catch (cleanupError) {
+            console.warn(`Erro no cleanup da seção ${secaoAtual}:`, cleanupError);
         }
     }
 
@@ -289,7 +299,10 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'iso-maquinas':
                 if (typeof inicializarModuloMaquinas === 'function') {
+                    // Passa db explicitamente para garantir inicialização
                     await inicializarModuloMaquinas(db);
+                } else {
+                    console.warn('inicializarModuloMaquinas não encontrada');
                 }
                 break;
             case 'ponto-eletronico':
@@ -301,8 +314,8 @@ case 'iso-mecanicos':
 case 'cadastro-mecanicos':
                 if (typeof inicializarCadastroMecanicos === 'function') {
                     await inicializarCadastroMecanicos();
-                } else if (typeof inicializarMecanicos === 'function') {
-                    await inicializarMecanicos();
+                } else {
+                    console.warn('inicializarCadastroMecanicos não encontrada');
                 }
                 break;
 

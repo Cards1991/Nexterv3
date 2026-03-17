@@ -17,9 +17,9 @@ async function carregarListaMecanicos() {
         
         let query = db.collection('funcionarios').where('isMecanico', '==', true);
         
-        const tipo = document.getElementById('filtro-tipo-mecanico').value;
-        const status = document.getElementById('filtro-status-mecanico').value;
-        const setor = document.getElementById('filtro-setor-mecanico').value;
+        const tipo = document.getElementById('filtro-tipo-mecanico')?.value;
+        const status = document.getElementById('filtro-status-mecanico')?.value;
+        const setor = document.getElementById('filtro-setor-mecanico')?.value;
 
         if (tipo === 'gerente') {
             query = query.where('isMecanicoAdmin', '==', true);
@@ -91,6 +91,60 @@ function renderMecanicoRow(m, tbody) {
     tbody.appendChild(row);
 }
 
+async function carregarSelectFuncionariosAtivosModal() {
+    const select = document.getElementById('selectFuncionarioExistente');
+    select.innerHTML = '<option value="">Novo Mecânico</option><option value="">Carregando...</option>';
+    
+    try {
+        const snap = await db.collection('funcionarios')
+            .where('status', '==', 'Ativo')
+            .where('isMecanico', '==', false)
+            .orderBy('nome')
+            .limit(100)
+            .get();
+        
+        snap.forEach(doc => {
+            const data = doc.data();
+            const option = document.createElement('option');
+            option.value = doc.id;
+            option.textContent = `${data.nome} (${data.matricula || 'Sem matrícula'}) - ${data.setor || 'Sem setor'}`;
+            select.appendChild(option);
+        });
+        
+        // Auto-fill when employee selected
+        select.onchange = function() {
+            const funcId = this.value;
+            if (funcId) {
+                loadFuncionarioData(funcId);
+            } else {
+                // Clear form for new
+                document.getElementById('nomeMecanico').value = '';
+                document.getElementById('matriculaMecanico').value = '';
+                document.getElementById('setorMecanico').value = '';
+                document.getElementById('telefoneMecanico').value = '';
+            }
+        };
+    } catch (error) {
+        console.error('Erro ao carregar funcionários:', error);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+async function loadFuncionarioData(funcId) {
+    try {
+        const doc = await db.collection('funcionarios').doc(funcId).get();
+        if (doc.exists) {
+            const data = doc.data();
+            document.getElementById('nomeMecanico').value = data.nome;
+            document.getElementById('matriculaMecanico').value = data.matricula || '';
+            document.getElementById('telefoneMecanico').value = data.telefone || '';
+            document.getElementById('setorMecanico').value = data.setor || '';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar funcionário:', error);
+    }
+}
+
 async function abrirModalNovoMecanico(mecanicoId = null) {
     const modal = new bootstrap.Modal(document.getElementById('modalMecanico'));
     const title = document.getElementById('modalMecanicoTitle');
@@ -100,6 +154,9 @@ async function abrirModalNovoMecanico(mecanicoId = null) {
     document.getElementById('mecanicoId').value = mecanicoId || '';
     title.textContent = mecanicoId ? 'Editar Mecânico' : 'Novo Mecânico';
     
+    // Load Ativo funcionarios for dropdown
+    await carregarSelectFuncionariosAtivosModal();
+    
     if (mecanicoId) {
         const doc = await db.collection('funcionarios').doc(mecanicoId).get();
         if (doc.exists) {
@@ -108,9 +165,12 @@ async function abrirModalNovoMecanico(mecanicoId = null) {
             document.getElementById('matriculaMecanico').value = data.matricula || '';
             document.getElementById('telefoneMecanico').value = data.telefone || '';
             document.getElementById('setorMecanico').value = data.setor || '';
+            document.getElementById('selectFuncionarioExistente').value = data.id || '';
             document.getElementById('nivelMecanico').value = data.isMecanicoAdmin ? 'gerente' : 'mecanico';
             document.getElementById('statusMecanico').value = data.status || 'Ativo';
         }
+    } else {
+        document.getElementById('selectFuncionarioExistente').value = '';
     }
     
     modal.show();
@@ -119,6 +179,30 @@ async function abrirModalNovoMecanico(mecanicoId = null) {
 async function salvarMecanico() {
     const form = document.getElementById('formMecanico');
     const mecanicoId = document.getElementById('mecanicoId').value;
+    const funcionarioExistenteId = document.getElementById('selectFuncionarioExistente').value;
+    
+    if (funcionarioExistenteId) {
+        // UPDATE existing funcionario - set mechanic flags
+        const updateData = {
+            isMecanico: true,
+            isMecanicoAdmin: document.getElementById('nivelMecanico').value === 'gerente',
+            telefone: document.getElementById('telefoneMecanico').value, // Update phone if provided
+            status: document.getElementById('statusMecanico').value
+        };
+        
+        try {
+            await db.collection('funcionarios').doc(funcionarioExistenteId).update(updateData);
+            mostrarMensagem('Mecânico ativado/atualizado!');
+            bootstrap.Modal.getInstance(document.getElementById('modalMecanico')).hide();
+            carregarListaMecanicos();
+        } catch (error) {
+            console.error(error);
+            mostrarMensagem('Erro ao atualizar: ' + error.message, 'error');
+        }
+        return;
+    }
+    
+    // CREATE new if no existing selected
     const data = {
         nome: document.getElementById('nomeMecanico').value,
         matricula: document.getElementById('matriculaMecanico').value,
@@ -135,13 +219,8 @@ async function salvarMecanico() {
     }
 
     try {
-        if (mecanicoId) {
-            await db.collection('funcionarios').doc(mecanicoId).update(data);
-            mostrarMensagem('Mecânico atualizado!');
-        } else {
-            await db.collection('funcionarios').add(data);
-            mostrarMensagem('Mecânico cadastrado!');
-        }
+        await db.collection('funcionarios').add(data);
+        mostrarMensagem('Novo mecânico cadastrado!');
         bootstrap.Modal.getInstance(document.getElementById('modalMecanico')).hide();
         carregarListaMecanicos();
     } catch (error) {
@@ -217,8 +296,6 @@ async function exportarListaMecanicos() {
     link.click();
 }
 
-// Auto-init (Removido - a inicialização agora é controlada pelo app.js)
-// document.addEventListener('DOMContentLoaded', inicializarCadastroMecanicos);
 // ✅ Global Functions - Load LAST so local functions defined first
 // Exposto globalmente via window - Fixed order issue
 window.abrirModalNovoMecanico = abrirModalNovoMecanico;
@@ -228,7 +305,4 @@ window.salvarMecanico = salvarMecanico;
 window.editarMecanico = editarMecanico;
 window.alternarStatusMecanico = alternarStatusMecanico;
 window.alternarNivelMecanico = alternarNivelMecanico;
-window.inicializarCadastroMecanicos = inicializarCadastroMecanicos;
-
-window.carregarListaMecanicos = carregarListaMecanicos;
 window.inicializarCadastroMecanicos = inicializarCadastroMecanicos;

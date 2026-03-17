@@ -755,7 +755,7 @@ async function carregarChamadosManutencao() {
 
         const filtroSetor = document.getElementById('filtro-manut-setor')?.value;
 
-        __unsubscribe_manutencao = query.orderBy('dataAbertura', 'desc').onSnapshot(snap => {
+__unsubscribe_manutencao = query.orderBy('dataAbertura', 'desc').onSnapshot((snap) => {
             let chamados = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             const prioridadeValor = { 'Urgente': 1, 'Prioritário': 2, 'Normal': 3 };
@@ -2083,10 +2083,14 @@ function formatarTelefoneWhatsApp(telefone) {
 
 // Função para limpar listener quando sair da página
 function limparListenerManutencao() {
-    if (__unsubscribe_manutencao) {
-        __unsubscribe_manutencao();
+    try {
+        if (__unsubscribe_manutencao && typeof __unsubscribe_manutencao === 'function') {
+            __unsubscribe_manutencao();
+            console.log('✅ Listener de manutenção removido com sucesso');
+        }
         __unsubscribe_manutencao = null;
-        console.log('Listener de manutenção removido');
+    } catch (error) {
+        console.warn('⚠️ Erro ao limpar listener de manutenção:', error);
     }
 }
 
