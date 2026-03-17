@@ -357,7 +357,12 @@ async function abrirModalNovaSolicitacao() {
     }
     
     // 1. Reseta o formulário e preenche os campos de data/hora
-    document.getElementById('form-solicitacao-horas').reset();
+    const form = document.getElementById('form-solicitacao-horas');
+    form.reset();
+    
+    const searchInput = document.getElementById('sol-employee-search');
+    if (searchInput) searchInput.value = ''; // Limpa a pesquisa anterior
+
     document.getElementById('sol-id').value = ''; // Limpa o ID para garantir que é uma nova criação
     const now = new Date();
     document.getElementById('sol-start-date').value = now.toISOString().split('T')[0];
@@ -378,6 +383,33 @@ async function abrirModalNovaSolicitacao() {
     select.innerHTML = '<option value="">Selecione um funcionário</option>'; // Default option
     select.innerHTML = __funcionarios_select_html_cache;
     select.disabled = __funcionarios_ativos_solicitacao_cache.length === 0;
+
+    // 4. Funcionalidade de Pesquisa (Filtro)
+    if (searchInput) {
+        // Remove listener anterior se existir (embora o modal novo usualmente recrie elementos, aqui garantimos)
+        const newSearchInput = searchInput.cloneNode(true);
+        searchInput.parentNode.replaceChild(newSearchInput, searchInput);
+        
+        newSearchInput.addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtered = __funcionarios_ativos_solicitacao_cache.filter(f => 
+                f.nome.toLowerCase().includes(term) || 
+                (f.cargo && f.cargo.toLowerCase().includes(term)) ||
+                (f.setor && f.setor.toLowerCase().includes(term))
+            );
+            
+            let html = '<option value="">Selecione um funcionário</option>';
+            if (filtered.length === 0) {
+                html = '<option value="">Nenhum funcionário encontrado</option>';
+            } else {
+                filtered.forEach(f => {
+                    html += `<option value="${f.id}" data-nome="${f.nome}" data-setor="${f.setor || ''}" data-empresaId="${f.empresaId || ''}" data-empresaNome="${f.empresaNome || ''}">${f.nome} - ${f.cargo || ''} (${f.setor || 'Sem setor'})</option>`;
+                });
+            }
+            select.innerHTML = html;
+        });
+    }
+
 
     // Adiciona um listener para preencher o setor quando um funcionário é selecionado
     select.addEventListener('change', async (e) => {
