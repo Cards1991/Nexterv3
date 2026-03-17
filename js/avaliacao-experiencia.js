@@ -291,7 +291,11 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
         const dtAdmissao = normalize(funcData.dataAdmissao);
         console.log(`[AvalExp] Admissão: ${dtAdmissao?.toLocaleDateString('pt-BR') || 'Não informada'}`);
 
+        console.log(`[AvalExp Query] Timestamp: ${Date.now()} - Fetching faltas/alerts for ${id}`);
         const [ateSnap, falSnap, disSnap] = await Promise.all([
+            db.collection('atestados').where('funcionarioId', '==', id).get({source: 'server'}),
+            db.collection('faltas').where('funcionarioId', '==', id).get({source: 'server'}),
+            db.collection('registros_disciplinares').where('funcionarioId', '==', id).get({source: 'server'})
             db.collection('atestados').where('funcionarioId', '==', id).get(),
             db.collection('faltas').where('funcionarioId', '==', id).get(),
             db.collection('registros_disciplinares').where('funcionarioId', '==', id).get()
@@ -350,6 +354,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
 
     } catch (e) {
         console.error("[AvalExp] Erro ao carregar alertas:", e);
+        console.log(`[AvalExp Debug] Query failed at ${Date.now()}`);
         if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrências.</div>';
     }
 

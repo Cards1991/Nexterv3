@@ -80,9 +80,10 @@ async function carregarDashboardFaltas(db) {
 
     try {
         // 1. Buscar todos os funcionários para mapear IDs para nomes
+        console.log(`[DashFaltas Func] Query ts: ${Date.now()}`);
         const funcionariosSnapshot = await db.collection('funcionarios')
-            .where('status', '==', 'Ativo') // Filtra apenas funcionários ativos
-            .get();
+            .where('status', '==', 'Ativo')
+            .get({source: 'server'});
         
         const funcionariosMap = new Map();
         funcionariosSnapshot.forEach(doc => {
@@ -115,7 +116,8 @@ async function carregarDashboardFaltas(db) {
             query = query.where('data', '<=', df);
         }
 
-        const faltasSnapshot = await query.get();
+        console.log(`[DashFaltas] Query ts: ${Date.now()} - Filters: ${dataInicio} to ${dataFim}, setor: ${setorFiltro}`);
+        const faltasSnapshot = await query.get({source: 'server'});
         const faltas = faltasSnapshot.docs.map(doc => ({ 
             id: doc.id, 
             ...doc.data() 

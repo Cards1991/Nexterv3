@@ -313,10 +313,11 @@ async function carregarFaltasExperiencia() {
         dataInicioFiltro.setHours(0,0,0,0);
         dataFimFiltro.setHours(23,59,59,999);
 
+        console.log(`[CustomFixes FaltasExp] Query ts: ${Date.now()} - Faltas from ${dataInicioFiltro.toISOString().split('T')[0]} to ${dataFimFiltro.toISOString().split('T')[0]}`);
         const faltasSnap = await db.collection('faltas')
             .where('data', '>=', firebase.firestore.Timestamp.fromDate(dataInicioFiltro))
             .where('data', '<=', firebase.firestore.Timestamp.fromDate(dataFimFiltro))
-            .get();
+            .get({source: 'server'});
 
         // 4. Contabilizar faltas apenas para quem está em experiência
         faltasSnap.forEach(doc => {
@@ -381,8 +382,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnFiltrar = document.getElementById('btn-filtrar-dashboard-faltas');
     if (btnFiltrar) {
         btnFiltrar.addEventListener('click', () => {
-            setTimeout(carregarFaltasExperiencia, 500);
+            setTimeout(carregarFaltasExperiencia, 100);
         });
+    }
+});
+
+// Force refresh on page visibility change (Vercel tab switch)
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) {
+        setTimeout(carregarFaltasExperiencia, 200);
     }
 });
 
