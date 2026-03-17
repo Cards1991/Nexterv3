@@ -1,0 +1,97 @@
+<div class="content-section fade-in" id="cadastro-epis">
+    <h2 class="page-title">
+        <i class="fas fa-hard-hat text-primary me-2"></i>Cadastro de EPIs
+    </h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <button class="btn btn-primary btn-lg w-100" onclick="abrirModalEPI()">
+                <i class="fas fa-plus-circle me-2"></i>Novo EPI
+            </button>
+        </div>
+        <div class="col-md-6">
+            <button class="btn btn-outline-success w-100" onclick="abrirModalEntradaEstoque()">
+                <i class="fas fa-box me-2"></i>Entrada de Estoque
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list text-primary me-2"></i>Estoque de EPIs Cadastrados</h5>
+            <div class="input-group" style="max-width: 300px;">
+                <input type="text" class="form-control" id="busca-epi-cadastro" placeholder="Buscar EPI...">
+                <button class="btn btn-outline-secondary" onclick="carregarEstoqueEPI()">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+        </div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Descrição</th>
+                            <th>CA</th>
+                            <th>Validade</th>
+                            <th>Fornecedor</th>
+                            <th class="text-center">Estoque</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-estoque-epi-cadastro">
+                        <tr><td colspan="7" class="text-center text-muted py-4">
+                            <i class="fas fa-box-open fa-2x mb-2 opacity-50 d-block"></i>
+                            Carregando estoque...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <select class="form-select" id="filtro-epi-empresa-cadastro" onchange="carregarEstoqueEPI()">
+                        <option value="">Todas Empresas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="filtro-epi-sem-custo-cadastro" onchange="carregarEstoqueEPI()">
+                        <label class="form-check-label" for="filtro-epi-sem-custo-cadastro">Mostrar sem custo</label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Reaproveita as funções globais do epi-controle.js
+    if (typeof carregarSelectEmpresas === 'function') {
+        carregarSelectEmpresas('filtro-epi-empresa-cadastro');
+    }
+    
+    // Listener para busca em tempo real
+    document.getElementById('busca-epi-cadastro').addEventListener('input', debounce(carregarEstoqueEPI, 300));
+    
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+});
+</script>
+

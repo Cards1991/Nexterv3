@@ -1,13 +1,18 @@
-# FIX ISO 9001 Menu Disappeared
-Status: 🔄 In Progress
+# 🚀 NEXTER v3 - Task Tracker
 
-## Plan Steps:
-- ✅ **Step 3**: Edit `js/utils.js` - Add `.iso-access` role toggle logic (uses `hasIsoAccess`)\n- ✅ **Step 4**: Edit `js/admin.js` - Add ISO permission checkbox (`hasIsoAccess`)
-- [ ] **Step 5**: Update TODO files (mark ISO menu resolved)
-- [ ] **Step 6**: Test - Verify menu visible + ISO sections load
-- [ ] ✅ Complete: Use `attempt_completion`
+## ✅ **Current Task: Fix EPI Menus + Admin Permissions** 
+```
+1. ✅ Create TODO.md 
+2. [ ] Fix sidebar.html: Remove style="display:none" from .admin-only + Add EPI menus
+3. [ ] Update js/app.js: Add cases for cadastro-epis, entrega-epis
+4. ✅ Create views/cadastro-epis.html 
+5. ✅ Create views/entrega-epis.html
+6. [ ] Test menus visibility
+7. [ ] Test EPI functionality
+8. [ ] attempt_completion()
+```
 
-**Root Cause**: Menu hidden by `.mecanico-any` class + `toggleRoleElements()` unless `isMecanico: true`.
+**Status**: Views created ✅. Fixing sidebar/app next.
 
-**Next**: Complete Step 1.
+**Next**: sidebar.html edits (admin fix + EPI menus).
 

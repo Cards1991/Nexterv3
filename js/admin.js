@@ -59,8 +59,10 @@ async function abrirModalPermissoes(uid) {
     document.getElementById('perm-user-nome').value = userData.nome || '';
     document.getElementById('perm-is-admin').checked = permissoes.isAdmin || false;
     document.getElementById('perm-is-mecanico').checked = permissoes.isMecanico || false;
-    document.getElementById('perm-is-mecanico-admin').checked = permissoes.isMecanicoAdmin || false;
-    document.getElementById('perm-has-iso-access').checked = permissoes.hasIsoAccess !== false;
+    const permIsMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
+    if (permIsMecanicoAdminEl) permIsMecanicoAdminEl.checked = permissoes.isMecanicoAdmin || false;
+    const permHasIsoAccessEl = document.getElementById('perm-has-iso-access');
+    if (permHasIsoAccessEl) permHasIsoAccessEl.checked = permissoes.hasIsoAccess !== false;
 
     // Popular seções
     const secoesContainer = document.getElementById('perm-secoes-container');
@@ -173,8 +175,10 @@ async function salvarPermissoes() {
     const nome = document.getElementById('perm-user-nome').value;
     const isAdmin = document.getElementById('perm-is-admin').checked;
     const isMecanico = document.getElementById('perm-is-mecanico').checked;
-    const isMecanicoAdmin = document.getElementById('perm-is-mecanico-admin').checked;
-    const hasIsoAccess = document.getElementById('perm-has-iso-access').checked;
+    const isMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
+    const isMecanicoAdmin = isMecanicoAdminEl ? isMecanicoAdminEl.checked : false;
+    const hasIsoAccessEl = document.getElementById('perm-has-iso-access');
+    const hasIsoAccess = hasIsoAccessEl ? hasIsoAccessEl.checked : false;
     const restricaoSetor = document.getElementById('perm-user-setor').value;
     const funcionarioId = document.getElementById('perm-user-funcionario')?.value || null;
 

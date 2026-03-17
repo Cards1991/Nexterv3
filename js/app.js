@@ -14,7 +14,7 @@ const TODAS_SECOES = [
 'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
-    'ponto-eletronico'];
+    'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi'];
 
 let currentUserPermissions = {}; // ✅ Added isMecanico, funcionarioId, isMecanicoAdmin
 
@@ -349,6 +349,22 @@ case 'cadastro-mecanicos':
                 break;
             case 'epi-compras':
                 if (typeof inicializarComprasEPI === 'function') await inicializarComprasEPI();
+                break;
+            case 'cadastro-epis':
+                if (typeof inicializarEstoqueEPI === 'function') inicializarEstoqueEPI();
+                break;
+            case 'entrega-epis':
+                if (typeof carregarSelectFuncionariosAtivos === 'function') {
+                    carregarSelectFuncionariosAtivos('entrega-funcionario-select');
+                }
+                break;
+            case 'cadastro-epis':
+                if (typeof inicializarEstoqueEPI === 'function') inicializarEstoqueEPI();
+                break;
+            case 'entrega-epis':
+                if (typeof carregarSelectFuncionariosAtivos === 'function') {
+                    carregarSelectFuncionariosAtivos('entrega-funcionario-select');
+                }
                 break;
             case 'analise-epi':
                 if (typeof carregarDashboardConsumoEPI === 'function') {
@@ -1262,10 +1278,12 @@ document.addEventListener('viewsLoaded', function () {
                 currentUserPermissions = userDoc.data().permissoes || {};
                 currentUserPermissions.nome = userDoc.data().nome;
                 currentUserPermissions.funcionarioId = userDoc.data().funcionarioId; // For mechanic filter
+                window.currentUserPermissions = currentUserPermissions;
                 console.log('User permissions:', currentUserPermissions);
             } else {
                 // Por padrão, novos usuários terão acesso a agenda, saúde psicossocial, atestados e afastamentos.
                 currentUserPermissions = { isAdmin: false, isMecanico: false, isMecanicoAdmin: false, hasIsoAccess: true, secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot'], restricaoSetor: null };
+                window.currentUserPermissions = currentUserPermissions;
                 await userDocRef.set({
                     email: user.email,
                     nome: user.displayName || (user.email ? user.email.split('@')[0] : 'Usuário'),
