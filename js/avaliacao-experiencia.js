@@ -82,11 +82,12 @@ function aplicarRegrasDePermissao() {
 }
 
 function configurarFiltrosExperiencia() {
-    const filtros = ['filtro-exp-inicio', 'filtro-exp-fim', 'filtro-exp-periodo', 'filtro-exp-setor'];
+    const filtros = ['filtro-exp-inicio', 'filtro-exp-fim', 'filtro-exp-periodo', 'filtro-exp-setor', 'filtro-exp-nome'];
     filtros.forEach(id => {
         const el = document.getElementById(id);
         if (el && !el.expListener) {
-             el.addEventListener('change', carregarPainelExperiencia);
+             const event = (id === 'filtro-exp-nome') ? 'input' : 'change';
+             el.addEventListener(event, carregarPainelExperiencia);
              el.expListener = true;
         }
     });
@@ -103,6 +104,7 @@ async function carregarPainelExperiencia() {
         const filtroFim = document.getElementById('filtro-exp-fim')?.value;
         const filtroPeriodo = document.getElementById('filtro-exp-periodo')?.value;
         const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
+        const filtroNome = document.getElementById('filtro-exp-nome')?.value?.toLowerCase();
 
         const hoje = new Date();
         hoje.setHours(0, 0, 0, 0);
@@ -145,6 +147,7 @@ async function carregarPainelExperiencia() {
 
             // Função auxiliar para verificar filtros
             const atendeFiltros = (periodo, vencimento) => {
+                if (filtroNome && !func.nome.toLowerCase().includes(filtroNome)) return false;
                 if (filtroInicio && vencimento < new Date(filtroInicio.replace(/-/g, '\/'))) return false;
                 if (filtroFim && vencimento > new Date(filtroFim.replace(/-/g, '\/'))) return false;
                 if (filtroPeriodo && filtroPeriodo != periodo) return false;
@@ -243,127 +246,125 @@ function atualizarKPIsExperiencia(total, pendentes) {
 }
 
 async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
+    console.log(`[AvalExp] Abrindo modal para ${nome} (${periodo} dias)`);
     const modalEl = document.getElementById('modalAvaliacaoExperiencia');
     const form = document.getElementById('form-avaliacao-experiencia');
-    form.reset();
+    const alertContainer = document.getElementById('aval-exp-alerts');
+    
+    if (!modalEl || !form) {
+        console.error("[AvalExp] Elementos do modal não encontrados!");
+        return;
+    }
 
+    form.reset();
     document.getElementById('aval-exp-funcionario-id').value = id;
     document.getElementById('aval-exp-periodo').value = periodo;
     document.getElementById('aval-exp-titulo').textContent = `Avaliação de Experiência - ${periodo} Dias`;
     document.getElementById('aval-exp-nome').value = nome;
-    document.getElementById('aval-exp-data').valueAsDate = new Date();
+    document.getElementById('aval-exp-data').value = new Date().toISOString().split('T')[0];
 
-    // Fetch absences and certificates
-    const alertContainer = document.getElementById('aval-exp-alerts');
     if (alertContainer) {
-        alertContainer.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin"></i> Verificando ocorrências...</div>';
-        
-        try {
-            const funcDoc = await db.collection('funcionarios').doc(id).get();
-            const funcData = funcDoc.data();
-            const dataAdmissao = funcData.dataAdmissao.toDate ? funcData.dataAdmissao.toDate() : new Date(funcData.dataAdmissao);
-
-            const [atestadosSnap, faltasSnap, disciplinaresSnap] = await Promise.all([
-                db.collection('atestados').where('funcionarioId', '==', id).get(),
-                db.collection('faltas').where('funcionarioId', '==', id).get(),
-                db.collection('registros_disciplinares').where('funcionarioId', '==', id).get()
-            ]);
-
-            const numAtestados = atestadosSnap.docs.filter(doc => {
-                const d = doc.data();
-                const data = d.data_atestado?.toDate ? d.data_atestado.toDate() : new Date(d.data_atestado);
-                return data >= dataAdmissao;
-            }).length;
-
-            const numFaltas = faltasSnap.docs.filter(doc => {
-                const d = doc.data();
-                const data = d.data?.toDate ? d.data.toDate() : new Date(d.data);
-                return data >= dataAdmissao;
-            }).length;
-
-            const disciplinares = disciplinaresSnap.docs.map(doc => {
-                const data = doc.data();
-                return {
-                    ...data,
-                    dataOcorrencia: data.dataOcorrencia?.toDate ? data.dataOcorrencia.toDate() : new Date(data.dataOcorrencia)
-                };
-            }).filter(d => d.dataOcorrencia >= dataAdmissao);
-            const numDisciplinares = disciplinares.length;
-
-
-            let msg = '';
-            if (numAtestados > 0) msg += `<div><i class="fas fa-notes-medical me-2 text-warning"></i> <strong>${numAtestados} atestado(s)</strong> registrados desde a admissão.</div>`;
-            if (numFaltas > 0) msg += `<div><i class="fas fa-user-times me-2 text-danger"></i> <strong>${numFaltas} falta(s)</strong> registradas desde a admissão.</div>`;
-            
-            if (numDisciplinares > 0) {
-                msg += `<div class="mt-2"><i class="fas fa-gavel me-2 text-secondary"></i> <strong>${numDisciplinares} medida(s) disciplinar(es)</strong> registradas:</div>`;
-                msg += '<ul class="list-group list-group-flush small">';
-                disciplinares.forEach(d => {
-                    msg += `<li class="list-group-item py-1 px-2"><strong>${d.medidaAplicada}</strong> em ${d.dataOcorrencia.toLocaleDateString('pt-BR')}: <em>${d.descricao}</em></li>`;
-                });
-                msg += '</ul>';
-            }
-
-
-            if (msg) {
-                alertContainer.innerHTML = `<div class="alert alert-warning border-warning">${msg}</div>`;
-            } else {
-                alertContainer.innerHTML = '<div class="alert alert-success border-success"><i class="fas fa-check-circle me-2"></i> Sem ocorrências (faltas/atestados/disciplinares) no período.</div>';
-            }
-
-            // Lógica para desabilitar notas de assiduidade
-            const assiduidadeRadios = {
-                r4: document.querySelector('input[name="aval-assiduidade"][value="4"]'),
-                r5: document.querySelector('input[name="aval-assiduidade"][value="5"]')
-            };
-
-            const radiosToUpdate = Object.values(assiduidadeRadios).filter(r => r);
-
-            if (numAtestados > 0 || numFaltas > 0 || numDisciplinares > 0) {
-                radiosToUpdate.forEach(radio => {
-                    radio.disabled = true;
-                    if (radio.parentElement) {
-                        radio.parentElement.classList.add('text-muted');
-                        radio.parentElement.title = 'Desabilitado devido a ocorrências (faltas, atestados ou disciplinares).';
-                    }
-                });
-            } else {
-                radiosToUpdate.forEach(radio => {
-                    radio.disabled = false;
-                    if (radio.parentElement) {
-                        radio.parentElement.classList.remove('text-muted');
-                        radio.parentElement.title = '';
-                    }
-                });
-            }
-
-        } catch (error) {
-            console.error("Erro ao buscar ocorrências:", error);
-            alertContainer.innerHTML = '';
-        }
+        alertContainer.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-2"></i> Buscando histórico...</div>';
     }
 
-    // Se for avaliação de 90 dias, buscar observações da avaliação de 45 dias para referência
+    try {
+        const funcDoc = await db.collection('funcionarios').doc(id).get();
+        const funcData = funcDoc.data() || {};
+        
+        const normalize = (val) => {
+            if (!val) return null;
+            let d;
+            if (val.toDate) d = val.toDate();
+            else if (typeof val === 'string') {
+                const parts = val.split(/[-/]/).map(Number);
+                if (parts.length === 3) {
+                    if (parts[0] > 1900) d = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0);
+                    else d = new Date(parts[2], parts[1]-1, parts[0], 12, 0, 0);
+                } else d = new Date(val);
+            } else d = new Date(val);
+            
+            if (isNaN(d.getTime())) return null;
+            d.setHours(0, 0, 0, 0);
+            return d;
+        };
+
+        const dtAdmissao = normalize(funcData.dataAdmissao);
+        console.log(`[AvalExp] Admissão: ${dtAdmissao?.toLocaleDateString('pt-BR') || 'Não informada'}`);
+
+        const [ateSnap, falSnap, disSnap] = await Promise.all([
+            db.collection('atestados').where('funcionarioId', '==', id).get(),
+            db.collection('faltas').where('funcionarioId', '==', id).get(),
+            db.collection('registros_disciplinares').where('funcionarioId', '==', id).get()
+        ]);
+
+        // Processa Atestados
+        const nAtestados = ateSnap.docs.filter(doc => {
+            const d = normalize(doc.data().data_atestado || doc.data().data);
+            return d && (!dtAdmissao || d >= dtAdmissao);
+        }).length;
+
+        // Processa Faltas
+        const falDias = new Set();
+        falSnap.forEach(doc => {
+            const d = normalize(doc.data().data || doc.data().data_falta);
+            if (d && (!dtAdmissao || d >= dtAdmissao)) falDias.add(d.toDateString());
+        });
+        const nFaltas = falDias.size;
+
+        // Processa Disciplinares
+        const discipList = disSnap.docs.map(doc => {
+            const d = doc.data();
+            return { ...d, _dt: normalize(d.dataOcorrencia || d.data) };
+        }).filter(d => d._dt && (!dtAdmissao || d._dt >= dtAdmissao))
+          .sort((a, b) => b._dt - a._dt);
+
+        const nDiscip = discipList.length;
+
+        if (alertContainer) {
+            let html = '';
+            if (nAtestados > 0 || nFaltas > 0 || nDiscip > 0) {
+                html = '<div class="alert alert-warning border-warning shadow-sm mb-3">';
+                html += '<h6 class="fw-bold mb-2"><i class="fas fa-exclamation-triangle me-2"></i> Ocorrências Registradas</h6>';
+                if (nAtestados > 0) html += `<div><i class="fas fa-file-medical me-2"></i> <strong>${nAtestados}</strong> Atestado(s)</div>`;
+                if (nFaltas > 0) html += `<div><i class="fas fa-user-times me-2"></i> <strong>${nFaltas}</strong> dia(s) com falta</div>`;
+                if (nDiscip > 0) {
+                    html += '<div class="mt-2 small"><strong>Advertências/Suspensões:</strong></div><ul class="mb-0 ps-3 small">';
+                    discipList.forEach(d => {
+                        html += `<li>${d._dt.toLocaleDateString('pt-BR')} - ${d.medidaAplicada}: ${d.descricao || ''}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                html += '</div>';
+            } else {
+                html = '<div class="alert alert-success border-success py-2 mb-3"><i class="fas fa-check-circle me-2"></i> Sem ocorrências no histórico.</div>';
+            }
+            alertContainer.innerHTML = html;
+        }
+
+        // Bloqueio de notas
+        const temOc = (nAtestados > 0 || nFaltas > 0 || nDiscip > 0);
+        const r4 = document.querySelector('input[name="aval-assiduidade"][value="4"]');
+        const r5 = document.querySelector('input[name="aval-assiduidade"][value="5"]');
+        if (r4) { r4.disabled = temOc; r4.parentElement?.classList.toggle('text-muted', temOc); }
+        if (r5) { r5.disabled = temOc; r5.parentElement?.classList.toggle('text-muted', temOc); }
+
+    } catch (e) {
+        console.error("[AvalExp] Erro ao carregar alertas:", e);
+        if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrências.</div>';
+    }
+
+    // Obs período anterior
     if (parseInt(periodo) === 90) {
         try {
-            const aval45Snap = await db.collection('avaliacoes_experiencia')
-                .where('funcionarioId', '==', id)
-                .where('periodo', '==', 45)
-                .limit(1)
-                .get();
-
-            if (!aval45Snap.empty) {
-                const aval45 = aval45Snap.docs[0].data();
-                if (aval45.observacoes) {
-                    document.getElementById('aval-exp-obs').value = `[Obs. 45 Dias]: ${aval45.observacoes}\n\n`;
-                }
+            const s45 = await db.collection('avaliacoes_experiencia').where('funcionarioId', '==', id).where('periodo', '==', 45).limit(1).get();
+            if (!s45.empty && s45.docs[0].data().observacoes) {
+                const elObs = document.getElementById('aval-exp-obs');
+                if (elObs) elObs.value = `[OBS 45 DIAS]: ${s45.docs[0].data().observacoes}\n\n`;
             }
-        } catch (e) {
-            console.error("Erro ao buscar observações de 45 dias:", e);
-        }
+        } catch (e) {}
     }
 
-    new bootstrap.Modal(modalEl).show();
+    bootstrap.Modal.getOrCreateInstance(modalEl).show();
 }
 
 async function salvarAvaliacaoExperiencia() {
@@ -634,15 +635,21 @@ async function carregarAvaliacoesConcluidas() {
         const funcSnap = await db.collection('funcionarios').get();
         const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data()]));
 
-        // Filtrar avaliações se houver restrição de setor
+        // Filtrar avaliações se houver restrição de setor ou filtro de nome
         const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
+        const filtroNome = document.getElementById('filtro-exp-nome')?.value?.toLowerCase();
         let avaliacoesFiltradas = snap.docs;
 
-        if (filtroSetor) {
+        if (filtroSetor || filtroNome) {
             avaliacoesFiltradas = snap.docs.filter(doc => {
                 const avaliacao = doc.data();
                 const funcionario = funcMap.get(avaliacao.funcionarioId);
-                return funcionario && funcionario.setor === filtroSetor;
+                if (!funcionario) return false;
+                
+                const matchesSetor = !filtroSetor || funcionario.setor === filtroSetor;
+                const matchesNome = !filtroNome || funcionario.nome.toLowerCase().includes(filtroNome);
+                
+                return matchesSetor && matchesNome;
             });
         }
 

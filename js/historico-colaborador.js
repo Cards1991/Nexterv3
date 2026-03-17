@@ -186,15 +186,31 @@ async function showCollaboratorHistory(funcionarioId) {
             });
         });
 
-        // Processa Faltas
+        // Processa Faltas (Agrupando por data para evitar duplicidade de manhã/tarde)
+        const faltasPorDia = new Map();
         faltasSnap.forEach(doc => {
             const data = doc.data();
+            const dateObj = data.data?.toDate();
+            if (!dateObj) return;
+            
+            const dateStr = dateObj.toLocaleDateString('pt-BR');
+            if (!faltasPorDia.has(dateStr)) {
+                faltasPorDia.set(dateStr, {
+                    date: dateObj,
+                    type: 'Falta',
+                    icon: 'fa-calendar-times',
+                    color: 'danger',
+                    justificativas: new Set([data.justificativa || 'Não informado'])
+                });
+            } else {
+                if (data.justificativa) faltasPorDia.get(dateStr).justificativas.add(data.justificativa);
+            }
+        });
+
+        faltasPorDia.forEach(falta => {
             combinedHistory.push({
-                date: (data.data)?.toDate(),
-                type: 'Falta',
-                icon: 'fa-calendar-times',
-                color: 'danger',
-                description: `Justificativa: ${data.justificativa || 'Não informado'}`
+                ...falta,
+                description: `Justificativa: ${Array.from(falta.justificativas).join(', ')}`
             });
         });
 
