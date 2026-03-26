@@ -1,7 +1,5 @@
-// js/controle-extintores.js - COMPLETE & ERROR-FREE VERSION
-
 // =================================================================
-// Sistema de Controle de Extintores (NR-23) - All functions exposed
+// Sistema de Controle de Extintores
 // =================================================================
 
 let extintores = [];
@@ -9,14 +7,18 @@ let inspecoes = [];
 let recargas = [];
 let chartExtintoresStatus = null;
 let chartExtintoresTipo = null;
+let mapExtintores = null;
 
-// Inicializar (app.js calls this)
+// Inicializar sistema
 async function inicializarControleExtintores() {
-    console.log("✅ Controle de Extintores FULLY loaded");
+    console.log("Inicializando Controle de Extintores...");
     
+    // Configurar abas
     const tabs = document.querySelectorAll('#extintores-tabs .nav-link');
     tabs.forEach(tab => {
-        tab.addEventListener('click', () => setTimeout(() => carregarDadosExtintoresPorAba(tab.dataset.tab), 100));
+        tab.addEventListener('click', () => {
+            setTimeout(() => carregarDadosExtintoresPorAba(tab.dataset.tab), 100);
+        });
     });
     
     await carregarDadosExtintores();
@@ -26,18 +28,26 @@ async function inicializarControleExtintores() {
 
 async function carregarDadosExtintores() {
     try {
-        extintores = (await db.collection('extintores').get()).docs.map(d => ({ id: d.id, ...d.data() }));
-        inspecoes = (await db.collection('extintores_inspecoes').orderBy('data', 'desc').get()).docs.map(d => ({ id: d.id, ...d.data() }));
-        recargas = (await db.collection('extintores_recargas').orderBy('data', 'desc').get()).docs.map(d => ({ id: d.id, ...d.data() }));
+        // Carregar extintores
+        const extintoresSnap = await db.collection('extintores').get();
+        extintores = extintoresSnap.docs.map(d => ({ ...d.data(), id: d.id }));
         
+        // Carregar inspeções
+        const inspecoesSnap = await db.collection('extintores_inspecoes').orderBy('data', 'desc').get();
+        inspecoes = inspecoesSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+        
+        // Carregar recargas
+        const recargasSnap = await db.collection('extintores_recargas').orderBy('data', 'desc').get();
+        recargas = recargasSnap.docs.map(d => ({ ...d.data(), id: d.id }));
+        
+        // Renderizar
         renderizarDashboardExtintores();
         renderizarListaExtintores();
         renderizarListaInspecoes();
         renderizarListaRecargas();
         
     } catch (error) {
-        console.error("Extintores load error:", error);
-        mostrarMensagem('Erro dados: ' + error.message, 'error');
+        console.error("Erro ao carregar dados de extintores:", error);
     }
 }
 
@@ -46,11 +56,61 @@ async function carregarDadosExtintoresPorAba(aba) {
 }
 
 // ========== DASHBOARD ==========
+
 function renderizarDashboardExtintores() {
     const total = extintores.length;
     const hoje = new Date();
+    const dias30 = 30 * 24 * 60 * 60 * 1000;
     
+    // Contagem por status
+    let validos = 0;
+    let proximoVencimento = 0;
+    let vencidos = 0;
+    
+    extintores.forEach(ext => {
+        if (!ext.validade) {
+            validos++;
+        } else {
+            const validade = ext.validade.toDate ? ext.validade.toDate() : new Date(ext.validade);
+            const diffMs = validade - hoje;
+            const diffDias = diffMs / (1000 * 60 * 60 * 24);
+            
+            if (diffDias < 0) {
+                vencidos++;
+            } else if (diffDias <= 30) {
+                proximoVencimento++;
+            } else {
+                validos++;
+            }
+        }
+    });
+    
+    const conformidade = total > 0 ? ((validos / total) * 100).toFixed(1) : 0;
+    
+    // KPIs
+    atualizarElementoExtintor('kpi-extintores-total', total);
+    atualizarElementoExtintor('kpi-extintores-validos', validos);
+    atualizarElementoExtintor('kpi-extintores-proximo', proximoVencimento);
+    atualizarElementoExtintor('kpi-extintores-vencidos', vencidos);
+    atualizarElementoExtintor('kpi-extintores-conformidade', conformidade + '%');
+    
+    // Gráficos
+    renderizarGraficoStatusExtintores();
+    renderizarGraficoTipoExtintores();
+}
+
+function atualizarElementoExtintor(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = valor;
+}
+
+function renderizarGraficoStatusExtintores() {
+    const ctx = document.getElementById('chart-extintores-status')?.getContext('2d');
+    if (!ctx) return;
+    
+    const hoje = new Date();
     let validos = 0, proximo = 0, vencidos = 0;
+    
     extintores.forEach(ext => {
         if (!ext.validade) {
             validos++;
@@ -64,281 +124,398 @@ function renderizarDashboardExtintores() {
         }
     });
     
-    const conformidade = total > 0 ? ((validos / total) * 100).toFixed(1) : 0;
-    
-    atualizarElemento('kpi-extintores-total', total);
-    atualizarElemento('kpi-extintores-validos', validos);
-    atualizarElemento('kpi-extintores-proximo', proximo);
-    atualizarElemento('kpi-extintores-vencidos', vencidos);
-    atualizarElemento('kpi-extintores-conformidade', conformidade + '%');
-    
-    renderizarGraficoStatusExtintores();
-    renderizarGraficoTipoExtintores();
-}
-
-function atualizarElemento(id, valor) {
-    const el = document.getElementById(id);
-    if (el) el.textContent = valor;
-}
-
-// Charts
-function renderizarGraficoStatusExtintores() {
-    const ctx = document.getElementById('chart-extintores-status');
-    if (!ctx) return;
-    
     if (chartExtintoresStatus) chartExtintoresStatus.destroy();
     
     chartExtintoresStatus = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Válidos', 'Próximo', 'Vencidos'],
-            datasets: [{ data: [extintores.length - inspecoes.length, inspecoes.length, 0], backgroundColor: ['#28a745', '#ffc107', '#dc3545'] }]
+            labels: ['Válidos', 'Próximo Vencimento', 'Vencidos'],
+            datasets: [{
+                data: [validos, proximo, vencidos],
+                backgroundColor: ['#198754', '#ffc107', '#dc3545']
+            }]
         },
-        options: { responsive: true }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
 function renderizarGraficoTipoExtintores() {
-    const ctx = document.getElementById('chart-extintores-tipo');
+    const ctx = document.getElementById('chart-extintores-tipo')?.getContext('2d');
     if (!ctx) return;
     
-    if (chartExtintoresTipo) chartExtintoresTipo.destroy();
-    
     const porTipo = {};
-    extintores.forEach(ext => porTipo[ext.tipo || 'Outros'] = (porTipo[ext.tipo || 'Outros'] || 0) + 1);
+    extintores.forEach(ext => {
+        const tipo = ext.tipo || 'Outros';
+        porTipo[tipo] = (porTipo[tipo] || 0) + 1;
+    });
+    
+    if (chartExtintoresTipo) chartExtintoresTipo.destroy();
     
     chartExtintoresTipo = new Chart(ctx, {
         type: 'bar',
         data: {
             labels: Object.keys(porTipo),
-            datasets: [{ label: 'Qtd', data: Object.values(porTipo), backgroundColor: '#007bff' }]
+            datasets: [{
+                label: 'Quantidade',
+                data: Object.values(porTipo),
+                backgroundColor: ['#0d6efd', '#dc3545', '#ffc107', '#198754']
+            }]
         },
-        options: { responsive: true }
+        options: { responsive: true, maintainAspectRatio: false }
     });
 }
 
-// Alerts
+// Alertas
 function verificarAlertasExtintores() {
+    const hoje = new Date();
+    const diasAlerta = 30;
     const container = document.getElementById('extintores-alertas');
+    
     if (!container) return;
     
-    const hoje = new Date();
-    const vencidos = extintores.filter(e => e.validade && new Date(e.validade.toDate()) < hoje).length;
+    const alertas = [];
     
-    if (vencidos > 0) {
+    // Extintores vencidos
+    const vencidos = extintores.filter(e => {
+        if (!e.validade) return false;
+        const validade = e.validade.toDate ? e.validade.toDate() : new Date(e.validade);
+        return validade < hoje;
+    });
+    
+    if (vencidos.length > 0) {
+        alertas.push(`<strong>Extintores vencidos:</strong> ${vencidos.length} extintor(es) com validade expirada!`);
+    }
+    
+    // Próximos do vencimento
+    const proximo = extintores.filter(e => {
+        if (!e.validade) return false;
+        const validade = e.validade.toDate ? e.validade.toDate() : new Date(e.validade);
+        const diffDias = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+        return diffDias > 0 && diffDias <= diasAlerta;
+    });
+    
+    if (proximo.length > 0) {
+        alertas.push(`<strong>Extintores próximos do vencimento:</strong> ${proximo.length} extintor(es) vencem em menos de 30 dias.`);
+    }
+    
+    if (alertas.length > 0) {
         container.classList.remove('d-none');
-        container.innerHTML = `<div class="alert alert-danger">⚠️ ${vencidos} extintor(es) vencido(s)!</div>`;
+        container.innerHTML = `
+            <div class="alert alert-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                ${alertas.join('<br>')}
+            </div>
+        `;
     } else {
         container.classList.add('d-none');
     }
 }
 
-// ========== CRUD EXTINTORES ==========
+// ========== MÓDULO 1: EXTINTORES ==========
+
 function renderizarListaExtintores() {
     const tbody = document.getElementById('extintores-tabela');
     if (!tbody) return;
     
     tbody.innerHTML = '';
+    
     const hoje = new Date();
     
     extintores.forEach(ext => {
-        const validade = ext.validade ? new Date(ext.validade.toDate()) : null;
-        const diffDias = validade ? Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24)) : 0;
-        let status = diffDias > 30 ? 'OK' : diffDias > 0 ? 'Próximo' : 'Vencido';
-        const statusClass = status === 'OK' ? 'bg-success' : status === 'Próximo' ? 'bg-warning' : 'bg-danger';
+        let statusBadge = '<span class="badge bg-secondary">Sem validade</span>';
         
-        const row = tbody.insertRow();
+        if (ext.validade) {
+            const validade = ext.validade.toDate ? ext.validade.toDate() : new Date(ext.validade);
+            const diffDias = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+            
+            if (diffDias < 0) {
+                statusBadge = '<span class="badge bg-danger">Vencido</span>';
+            } else if (diffDias <= 30) {
+                statusBadge = '<span class="badge bg-warning">Próximo</span>';
+            } else {
+                statusBadge = '<span class="badge bg-success">OK</span>';
+            }
+        }
+        
+        const tipoBadge = getTipoExtintorBadge(ext.tipo);
+        
+        const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${ext.codigo || ''}</td>
-            <td>${ext.patrimonio || ''}</td>
-            <td><span class="badge bg-info">${ext.tipo || ''}</span></td>
-            <td>${ext.capacidade || ''}</td>
-            <td>${ext.localizacao}</td>
-            <td>${ext.seloINMETRO || ''}</td>
-            <td>${ext.validade ? formatarData(ext.validade) : ''}</td>
-            <td>${ext.proximaInspecao ? formatarData(ext.proximaInspecao) : ''}</td>
-            <td><span class="badge ${statusClass}">${status}</span></td>
+            <td>${ext.codigo || '-'}</td>
+            <td>${ext.patrimonio || '-'}</td>
+            <td>${tipoBadge}</td>
+            <td>${ext.capacidade || '-'}</td>
+            <td>${ext.localizacao || '-'}</td>
+            <td>${ext.seloINMETRO || '-'}</td>
+            <td>${ext.validade ? formatarData(ext.validade) : '-'}</td>
+            <td>${ext.proximaInspecao ? formatarData(ext.proximaInspecao) : '-'}</td>
+            <td>${statusBadge}</td>
             <td>
-                <button class="btn btn-sm btn-primary me-1" onclick="editarExtintor('${ext.id}')">Editar</button>
-                <button class="btn btn-sm btn-danger" onclick="excluirExtintor('${ext.id}')">Excluir</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="editarExtintor('${ext.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirExtintor('${ext.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
             </td>
         `;
+        tbody.appendChild(row);
     });
+}
+
+function getTipoExtintorBadge(tipo) {
+    const cores = {
+        'Água': 'bg-primary',
+        'Pó Químico': 'bg-danger',
+        'CO₂': 'bg-dark',
+        'Espuma': 'bg-info'
+    };
+    return `<span class="badge ${cores[tipo] || 'bg-secondary'}">${tipo || 'Não especificado'}</span>`;
 }
 
 async function salvarExtintor(dados) {
     try {
+        const payload = { ...dados };
+        delete payload.id;
+
         if (dados.id) {
-            await db.collection('extintores').doc(dados.id).update(dados);
+            await db.collection('extintores').doc(dados.id).update(payload);
+            mostrarMensagem('Extintor atualizado com sucesso!', 'success');
         } else {
-            await db.collection('extintores').add(dados);
+            await db.collection('extintores').add(payload);
+            mostrarMensagem('Extintor cadastrado com sucesso!', 'success');
         }
-        mostrarMensagem('Extintor salvo!', 'success');
+        
         await carregarDadosExtintores();
         fecharModalExtintor();
     } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
+        console.error("Erro ao salvar extintor:", error);
+        mostrarMensagem('Erro ao salvar extintor: ' + error.message, 'error');
     }
 }
 
-function editarExtintor(id) {
-    const ext = extintores.find(e => e.id === id);
-    if (!ext) return;
+async function editarExtintor(id) {
+    const extintor = extintores.find(e => e.id === id);
+    if (!extintor) return;
     
-    document.getElementById('extintor-id').value = ext.id;
-    document.getElementById('extintor-codigo').value = ext.codigo || '';
-    document.getElementById('extintor-patrimonio').value = ext.patrimonio || '';
-    document.getElementById('extintor-tipo').value = ext.tipo || '';
-    document.getElementById('extintor-capacidade').value = ext.capacidade || '';
-    document.getElementById('extintor-localizacao').value = ext.localizacao || '';
-    document.getElementById('extintor-selo').value = ext.seloINMETRO || '';
-    document.getElementById('extintor-validade').value = ext.validade ? new Date(ext.validade.toDate()).toISOString().split('T')[0] : '';
-    document.getElementById('extintor-inspecao').value = ext.proximaInspecao ? new Date(ext.proximaInspecao.toDate()).toISOString().split('T')[0] : '';
+    document.getElementById('extintor-id').value = extintor.id;
+    document.getElementById('extintor-codigo').value = extintor.codigo || '';
+    document.getElementById('extintor-patrimonio').value = extintor.patrimonio || '';
+    document.getElementById('extintor-tipo').value = extintor.tipo || 'Água';
+    document.getElementById('extintor-capacidade').value = extintor.capacidade || '';
+    document.getElementById('extintor-localizacao').value = extintor.localizacao || '';
+    document.getElementById('extintor-selo').value = extintor.seloINMETRO || '';
+    
+    function formataDataHelper(d) {
+        if (!d) return '';
+        if (typeof d === 'string') return d.length > 10 ? d.split('T')[0] : d;
+        try {
+            const dateObj = d.toDate ? d.toDate() : new Date(d);
+            if (isNaN(dateObj.getTime())) return '';
+            const tzoffset = dateObj.getTimezoneOffset() * 60000;
+            return new Date(dateObj.getTime() - tzoffset).toISOString().split('T')[0];
+        } catch(e) { return ''; }
+    }
+
+    document.getElementById('extintor-validade').value = formataDataHelper(extintor.validade);
+    document.getElementById('extintor-inspecao').value = formataDataHelper(extintor.proximaInspecao);
     
     abrirModalExtintor();
 }
 
 async function excluirExtintor(id) {
-    if (!confirm('Excluir?')) return;
+    if (!confirm('Tem certeza que deseja excluir este extintor?')) return;
+    
     try {
         await db.collection('extintores').doc(id).delete();
-        mostrarMensagem('Excluído!', 'success');
+        mostrarMensagem('Extintor excluído com sucesso!', 'success');
         await carregarDadosExtintores();
     } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
+        console.error("Erro ao excluir extintor:", error);
+        mostrarMensagem('Erro ao excluir extintor!', 'error');
     }
 }
 
-// ========== INSPEÇÕES ==========
+function abrirModalExtintor() {
+    const modalElement = document.getElementById('extintor-modal');
+    if (!modalElement) return;
+    
+    const modal = new bootstrap.Modal(modalElement);
+    modal.show();
+    
+    // Attach event listener to the save button inside the modal
+    const saveButton = modalElement.querySelector('#btn-salvar-extintor'); // Assuming the save button has this ID
+    if (saveButton) {
+        // Remove any existing listener to prevent duplicates if modal is opened multiple times
+        saveButton.removeEventListener('click', salvarExtintor);
+        saveButton.addEventListener('click', salvarExtintor);
+    }
+}
+
+function fecharModalExtintor() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('extintor-modal'));
+    if (modal) modal.hide();
+    document.getElementById('extintor-form').reset();
+    document.getElementById('extintor-id').value = '';
+}
+
+// ========== MÓDULO 2: INSPEÇÕES ==========
+
 function renderizarListaInspecoes() {
     const tbody = document.getElementById('extintores-inspecoes-tabela');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    inspecoes.forEach(i => {
-        const row = tbody.insertRow();
+    inspecoes.forEach(inspecao => {
+        const data = inspecao.data?.toDate ? inspecao.data.toDate() : new Date(inspecao.data);
+        
+        const statusBadge = inspecao.status === 'OK'
+            ? '<span class="badge bg-success">OK</span>'
+            : '<span class="badge bg-danger">Necessita Manutenção</span>';
+        
+        const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${formatarData(i.data)}</td>
-            <td>${i.extintorCodigo}</td>
-            <td>${i.lacre ? '✅' : '❌'}</td>
-            <td>${i.manometro ? '✅' : '❌'}</td>
-            <td>${i.semDanos ? '✅' : '❌'}</td>
-            <td>${i.localDesobstruido ? '✅' : '❌'}</td>
-            <td><span class="badge ${i.status === 'OK' ? 'bg-success' : 'bg-danger'}">${i.status}</span></td>
-            <td><button class="btn btn-sm btn-danger" onclick="excluirInspecao('${i.id}')">X</button></td>
+            <td>${formatarData(data)}</td>
+            <td>${inspecao.extintorCodigo || '-'}</td>
+            <td>${inspecao.lacre ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td>
+            <td>${inspecao.manometro ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td>
+            <td>${inspecao.semDanos ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td>
+            <td>${inspecao.localDesobstruido ? '<i class="fas fa-check text-success"></i>' : '<i class="fas fa-times text-danger"></i>'}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirInspecao('${inspecao.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
         `;
+        tbody.appendChild(row);
     });
 }
 
 async function salvarInspecao(dados) {
     try {
         await db.collection('extintores_inspecoes').add(dados);
-        mostrarMensagem('Inspeção salva!', 'success');
+        mostrarMensagem('Inspeção registrada com sucesso!', 'success');
+        
         await carregarDadosExtintores();
         fecharModalInspecao();
     } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
+        console.error("Erro ao salvar inspeção:", error);
+        mostrarMensagem('Erro ao salvar inspeção: ' + error.message, 'error');
     }
 }
 
 async function excluirInspecao(id) {
-    if (!confirm('Excluir?')) return;
+    if (!confirm('Tem certeza que deseja excluir esta inspeção?')) return;
+    
     try {
         await db.collection('extintores_inspecoes').doc(id).delete();
-        mostrarMensagem('Excluída!', 'success');
+        mostrarMensagem('Inspeção excluída com sucesso!', 'success');
         await carregarDadosExtintores();
     } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
+        console.error("Erro ao excluir inspeção:", error);
+        mostrarMensagem('Erro ao excluir inspeção!', 'error');
     }
 }
 
-// ========== RECARGAS ==========
+function abrirModalInspecao() {
+    const modal = new bootstrap.Modal(document.getElementById('extintor-inspecao-modal'));
+    modal.show();
+    
+    // Preencher select de extintores
+    const select = document.getElementById('inspecao-extintor');
+    if (select) {
+        select.innerHTML = '<option value="">Selecione...</option>';
+        extintores.forEach(ext => {
+            const opt = document.createElement('option');
+            opt.value = ext.codigo;
+            opt.textContent = `${ext.codigo} - ${ext.localizacao}`;
+            select.appendChild(opt);
+        });
+    }
+}
+
+function fecharModalInspecao() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('extintor-inspecao-modal'));
+    if (modal) modal.hide();
+    document.getElementById('extintor-inspecao-form').reset();
+}
+
+// ========== MÓDULO 3: RECARGAS ==========
+
 function renderizarListaRecargas() {
     const tbody = document.getElementById('extintores-recargas-tabela');
     if (!tbody) return;
     
     tbody.innerHTML = '';
     
-    recargas.forEach(r => {
-        const row = tbody.insertRow();
+    recargas.forEach(recarga => {
+        const data = recarga.data?.toDate ? recarga.data.toDate() : new Date(recarga.data);
+        
+        const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${formatarData(r.data)}</td>
-            <td>${r.extintorCodigo}</td>
-            <td>${r.empresa}</td>
-            <td>${r.notaFiscal}</td>
-            <td>${formatarData(r.proximaValidade)}</td>
-            <td><button class="btn btn-sm btn-danger" onclick="excluirRecarga('${r.id}')">X</button></td>
+            <td>${formatarData(data)}</td>
+            <td>${recarga.extintorCodigo || '-'}</td>
+            <td>${recarga.empresa || '-'}</td>
+            <td>${recarga.notaFiscal || '-'}</td>
+            <td>${recarga.proximaValidade ? formatarData(recarga.proximaValidade) : '-'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirRecarga('${recarga.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
         `;
+        tbody.appendChild(row);
     });
 }
 
 async function salvarRecarga(dados) {
     try {
         await db.collection('extintores_recargas').add(dados);
-        mostrarMensagem('Recarga salva!', 'success');
+        mostrarMensagem('Recarga registrada com sucesso!', 'success');
+        
         await carregarDadosExtintores();
         fecharModalRecarga();
     } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
+        console.error("Erro ao salvar recarga:", error);
+        mostrarMensagem('Erro ao salvar recarga: ' + error.message, 'error');
     }
 }
 
-async function excluirRecarga(id) {
-    if (!confirm('Excluir?')) return;
-    try {
-        await db.collection('extintores_recargas').doc(id).delete();
-        mostrarMensagem('Excluída!', 'success');
-        await carregarDadosExtintores();
-    } catch (error) {
-        mostrarMensagem('Erro: ' + error.message, 'error');
-    }
-}
-
-// ========== MODALS ==========
-function abrirModalExtintor() { new bootstrap.Modal(document.getElementById('extintor-modal')).show(); }
-function fecharModalExtintor() { 
-    const modal = bootstrap.Modal.getInstance(document.getElementById('extintor-modal'));
-    if (modal) modal.hide();
-    document.getElementById('extintor-form').reset();
-    document.getElementById('extintor-id').value = '';
-}
-function abrirModalInspecao() { 
-    new bootstrap.Modal(document.getElementById('extintor-inspecao-modal')).show();
-    const select = document.getElementById('inspecao-extintor');
-    if (select) {
-        select.innerHTML = '<option value="">Selecione...</option>' + 
-            extintores.map(e => `<option value="${e.codigo}">${e.codigo} - ${e.localizacao}</option>`).join('');
-    }
-}
-function fecharModalInspecao() {
-    const modal = bootstrap.Modal.getInstance(document.getElementById('extintor-inspecao-modal'));
-    if (modal) modal.hide();
-    document.getElementById('extintor-inspecao-form').reset();
-}
 function abrirModalRecarga() {
-    new bootstrap.Modal(document.getElementById('extintor-recarga-modal')).show();
+    const modal = new bootstrap.Modal(document.getElementById('extintor-recarga-modal'));
+    modal.show();
+    
+    // Preencher select de extintores
     const select = document.getElementById('recarga-extintor');
     if (select) {
-        select.innerHTML = '<option value="">Selecione...</option>' + 
-            extintores.map(e => `<option value="${e.codigo}">${e.codigo} - ${e.localizacao}</option>`).join('');
+        select.innerHTML = '<option value="">Selecione...</option>';
+        extintores.forEach(ext => {
+            const opt = document.createElement('option');
+            opt.value = ext.codigo;
+            opt.textContent = `${ext.codigo} - ${ext.localizacao}`;
+            select.appendChild(opt);
+        });
     }
 }
+
 function fecharModalRecarga() {
     const modal = bootstrap.Modal.getInstance(document.getElementById('extintor-recarga-modal'));
     if (modal) modal.hide();
     document.getElementById('extintor-recarga-form').reset();
 }
 
-// Filters
+// ========== CONFIGURAR FILTROS ==========
+
 function configurarFiltrosExtintores() {
-    const filtro = document.getElementById('extintores-filtro-tipo');
-    if (filtro) {
-        filtro.onchange = () => {
-            const tipo = filtro.value;
+    const filtroTipo = document.getElementById('extintores-filtro-tipo');
+    if (filtroTipo) {
+        filtroTipo.addEventListener('change', () => {
+            const tipo = filtroTipo.value;
             const filtrados = tipo ? extintores.filter(e => e.tipo === tipo) : extintores;
             renderizarListaExtintoresFiltrada(filtrados);
-        };
+        });
     }
 }
 
@@ -350,35 +527,54 @@ function renderizarListaExtintoresFiltrada(lista) {
     const hoje = new Date();
     
     lista.forEach(ext => {
-        const validade = ext.validade ? new Date(ext.validade.toDate()) : null;
-        const diffDias = validade ? Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24)) : 0;
-        let status = diffDias > 30 ? 'OK' : diffDias > 0 ? 'Próximo' : 'Vencido';
-        const statusClass = status === 'OK' ? 'bg-success' : status === 'Próximo' ? 'bg-warning' : 'bg-danger';
+        let statusBadge = '<span class="badge bg-secondary">Sem validade</span>';
         
-        const row = tbody.insertRow();
+        if (ext.validade) {
+            const validade = ext.validade.toDate ? ext.validade.toDate() : new Date(ext.validade);
+            const diffDias = Math.ceil((validade - hoje) / (1000 * 60 * 60 * 24));
+            
+            if (diffDias < 0) statusBadge = '<span class="badge bg-danger">Vencido</span>';
+            else if (diffDias <= 30) statusBadge = '<span class="badge bg-warning">Próximo</span>';
+            else statusBadge = '<span class="badge bg-success">OK</span>';
+        }
+        
+        const tipoBadge = getTipoExtintorBadge(ext.tipo);
+        
+        const row = document.createElement('tr');
         row.innerHTML = `
-            <td>${ext.codigo || ''}</td><td>${ext.patrimonio || ''}</td>
-            <td><span class="badge bg-info">${ext.tipo || ''}</span></td>
-            <td>${ext.capacidade || ''}</td><td>${ext.localizacao}</td><td>${ext.seloINMETRO || ''}</td>
-            <td>${ext.validade ? formatarData(ext.validade) : ''}</td><td>${statusBadge}</td>
-            <td><button class="btn btn-sm btn-primary me-1" onclick="editarExtintor('${ext.id}')">Editar</button>
-                <button class="btn btn-sm btn-danger" onclick="excluirExtintor('${ext.id}')">X</button></td>
+            <td>${ext.codigo || '-'}</td>
+            <td>${ext.patrimonio || '-'}</td>
+            <td>${tipoBadge}</td>
+            <td>${ext.capacidade || '-'}</td>
+            <td>${ext.localizacao || '-'}</td>
+            <td>${ext.seloINMETRO || '-'}</td>
+            <td>${ext.validade ? formatarData(ext.validade) : '-'}</td>
+            <td>${statusBadge}</td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="editarExtintor('${ext.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirExtintor('${ext.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
         `;
+        tbody.appendChild(row);
     });
 }
 
-// ========== GLOBAL EXPOSE (All onclick handlers) ==========
+// ========== EXPORTAR ==========
+
 window.inicializarControleExtintores = inicializarControleExtintores;
-window.abrirModalExtintor = abrirModalExtintor;
-window.fecharModalExtintor = fecharModalExtintor;
+window.carregarDadosExtintores = carregarDadosExtintores;
 window.salvarExtintor = salvarExtintor;
 window.editarExtintor = editarExtintor;
 window.excluirExtintor = excluirExtintor;
+window.salvarInspecao = salvarInspecao;
+window.salvarRecarga = salvarRecarga;
+window.abrirModalExtintor = abrirModalExtintor;
+window.fecharModalExtintor = fecharModalExtintor;
 window.abrirModalInspecao = abrirModalInspecao;
 window.fecharModalInspecao = fecharModalInspecao;
-window.salvarInspecao = salvarInspecao;
-window.excluirInspecao = excluirInspecao;
 window.abrirModalRecarga = abrirModalRecarga;
 window.fecharModalRecarga = fecharModalRecarga;
-window.salvarRecarga = salvarRecarga;
-window.excluirRecarga = excluirRecarga;

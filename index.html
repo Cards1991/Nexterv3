@@ -4,13 +4,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description"
-        content="Como transformamos suas fotos · ✓ Correção de cores e iluminação · ✓ Remoção de ruídos e imperfeições · ✓ Ajuste de contraste e saturação · ✓ Melhoria de foco e ...">
-    <title>WebPro Studio: Edição de Fotos Profissionais para Delivery</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="description" content="Sistema Integrado de Gestão Empresarial - WebPro Studio">
+    <title>WebPro Studio - Sistema de Gestão Empresarial</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/modals.css">
+
+    <!-- Bootstrap Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Firebase -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -72,18 +74,12 @@
         .app-container {
             display: none;
         }
-    </style>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-    <style>
         /* Estilos para a barra de rolagem da agenda */
         .agenda-cards {
             max-height: 500px;
-            /* Altura máxima para as colunas da agenda */
             overflow-y: auto;
-            /* Adiciona rolagem vertical quando o conteúdo transborda */
             padding-right: 8px;
-            /* Espaço para a barra de rolagem não sobrepor o conteúdo */
         }
 
         /* Scrollbar personalizada para tabelas */
@@ -282,7 +278,8 @@
             <main class="content-wrapper">
                 <!-- Botão para correção de dados, visível apenas com #data-fix na URL -->
                 <div id="data-fix-wrapper" style="display: none; text-align: center; margin-bottom: 1rem;">
-                    <button class="btn btn-warning" onclick="fixMissingFuncoes()">Corrigir Funções Faltantes nas Empresas</button>
+                    <button class="btn btn-warning" onclick="fixMissingFuncoes()">Corrigir Funções Faltantes nas
+                        Empresas</button>
                 </div>
 
                 <!-- Seções são carregadas dinamicamente aqui pelo showSection() do app.js -->
@@ -313,10 +310,12 @@
         </div>
     </div>
 
-    <!-- Modals e Scripts (Carregados dinamicamente ou via inclusão) -->
+
+
+    <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/data-fix.js"></script> <!-- SCRIPT DE CORREÇÃO -->
+    <script src="js/utils-v4.js"></script>
+    <script src="js/data-fix.js"></script>
     <script src="js/afd-parser.js"></script>
     <script src="js/empresas.js"></script>
     <script src="js/setores.js"></script>
@@ -379,24 +378,41 @@
     <script src="js/ponto-pf.js" defer></script>
     <script src="js/custom-fixes.js" defer></script>
     <script src="js/setor-macro.js"></script>
-    <!-- OCORRÊNCIAS POR ÚLTIMO OgitU COM DEFER -->
-    <script src="js/ocorrencias.js"></script>
+    <script src="js/ocorrencias.js?v=5"></script>
     <script src="js/manutencao-qr.js"></script>
     <script src="js/experiencia-export.js"></script>
     <script src="js/chamados-manutencao.js"></script>
 
-    <!-- Módulos de Segurança do Trabalho (Adicionados para corrigir erro) -->
+    <!-- Módulos de Segurança do Trabalho -->
     <script src="js/gestao-cipa.js"></script>
     <script src="js/brigada-incendio.js"></script>
     <script src="js/controle-extintores.js"></script>
-    
+
     <script>
         // Mostra o botão de correção de dados se a URL tiver o hash #data-fix
         if (window.location.hash === '#data-fix') {
-            document.getElementById('data-fix-wrapper').style.display = 'block';
+            const fixWrapper = document.getElementById('data-fix-wrapper');
+            if (fixWrapper) fixWrapper.style.display = 'block';
         }
-    </script>
 
+        // Garantir que a função toggleCampoVeiculo esteja disponível globalmente
+        window.toggleCampoVeiculo = window.toggleCampoVeiculo || function () {
+            const isPA = document.getElementById('ocorrencia-encaminhado-pa')?.checked;
+            const containerVeiculo = document.getElementById('container-veiculo-pa');
+            const campoVeiculo = document.getElementById('ocorrencia-veiculo');
+
+            if (!containerVeiculo || !campoVeiculo) return;
+
+            if (isPA) {
+                containerVeiculo.style.display = 'block';
+                campoVeiculo.setAttribute('required', 'required');
+            } else {
+                containerVeiculo.style.display = 'none';
+                campoVeiculo.removeAttribute('required');
+                campoVeiculo.value = '';
+            }
+        };
+    </script>
 </body>
 
 </html>

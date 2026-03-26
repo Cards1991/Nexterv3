@@ -14,15 +14,20 @@ async function inicializarAvaliacaoExperiencia(permissoes) {
     
     const elInicio = document.getElementById('filtro-exp-inicio');
     const elFim = document.getElementById('filtro-exp-fim');
+    const elConcInicio = document.getElementById('filtro-exp-conc-inicio');
+    const elConcFim = document.getElementById('filtro-exp-conc-fim');
     
     if (elInicio && !elInicio.value) elInicio.value = inicioMes;
     if (elFim && !elFim.value) elFim.value = fimMes;
+    if (elConcInicio && !elConcInicio.value) elConcInicio.value = inicioMes;
+    if (elConcFim && !elConcFim.value) elConcFim.value = fimMes;
     
     await carregarSetoresFiltro();
     aplicarRegrasDePermissao();
 
     await carregarPainelExperiencia();
     configurarFiltrosExperiencia();
+    configurarFiltrosConcluidas();
     
     // Configurar listeners
     const btnSalvar = document.getElementById('btn-salvar-avaliacao-exp');
@@ -89,6 +94,18 @@ function configurarFiltrosExperiencia() {
              const event = (id === 'filtro-exp-nome') ? 'input' : 'change';
              el.addEventListener(event, carregarPainelExperiencia);
              el.expListener = true;
+        }
+    });
+}
+
+function configurarFiltrosConcluidas() {
+    const filtros = ['filtro-exp-conc-nome', 'filtro-exp-conc-inicio', 'filtro-exp-conc-fim'];
+    filtros.forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.concListener) {
+            const event = (id === 'filtro-exp-conc-nome') ? 'input' : 'change';
+            el.addEventListener(event, carregarAvaliacoesConcluidas);
+            el.concListener = true;
         }
     });
 }
@@ -624,37 +641,61 @@ function imprimirCartaParabenizacao(nome, periodo) {
 // --- HISTÓRICO DE AVALIAÇÕES ---
 
 async function carregarAvaliacoesConcluidas() {
-    const tbody = document.getElementById('tabela-avaliacoes-concluidas');
+    let tbody = document.getElementById('tabela-avaliacoes-concluidas');
     if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
-        const snap = await db.collection('avaliacoes_experiencia').orderBy('dataAvaliacao', 'desc').get();
+        // Ler filtros de data específicos para concluídas
+        const filtroConcInicio = document.getElementById('filtro-exp-conc-inicio')?.value;
+        const filtroConcFim = document.getElementById('filtro-exp-conc-fim')?.value;
+        const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
+        const filtroConcNome = document.getElementById('filtro-exp-conc-nome')?.value?.toLowerCase();
+
+        let query = db.collection('avaliacoes_experiencia').orderBy('dataAvaliacao', 'desc');
+
+        // Aplicar filtros de data no Firestore se fornecidos
+        if (filtroConcInicio) {
+            const startDate = new Date(filtroConcInicio + 'T00:00:00');
+            query = query.where('dataAvaliacao', '>=', startDate);
+        }
+        if (filtroConcFim) {
+            const endDate = new Date(filtroConcFim + 'T23:59:59.999');
+            query = query.where('dataAvaliacao', '<=', endDate);
+        }
+
+        const snap = await query.get();
         if (snap.empty) {
             tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliação concluída encontrada.</td></tr>';
             return;
         }
 
-        const funcSnap = await db.collection('funcionarios').get();
-        const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data()]));
-
-        // Filtrar avaliações se houver restrição de setor ou filtro de nome
-        const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
-        const filtroNome = document.getElementById('filtro-exp-nome')?.value?.toLowerCase();
-        let avaliacoesFiltradas = snap.docs;
-
-        if (filtroSetor || filtroNome) {
-            avaliacoesFiltradas = snap.docs.filter(doc => {
-                const avaliacao = doc.data();
-                const funcionario = funcMap.get(avaliacao.funcionarioId);
-                if (!funcionario) return false;
-                
-                const matchesSetor = !filtroSetor || funcionario.setor === filtroSetor;
-                const matchesNome = !filtroNome || funcionario.nome.toLowerCase().includes(filtroNome);
-                
-                return matchesSetor && matchesNome;
-            });
+        // Carregar apenas funcionários necessários (otimização: só se filtroSetor ou restrição)
+        let funcMap = new Map();
+        let funcQuery = db.collection('funcionarios');
+        const setorEfetivoConc = filtroSetor;
+        if (!permissoesUsuario.isAdmin && permissoesUsuario.restricaoSetor) {
+            const setorEfetivo = permissoesUsuario.restricaoSetor;
+            funcQuery = funcQuery.where('setor', '==', setorEfetivo);
+        } else if (setorEfetivoConc) {
+            funcQuery = funcQuery.where('setor', '==', setorEfetivoConc);
         }
+        const funcSnap = await funcQuery.get();
+        funcSnap.docs.forEach(doc => {
+            funcMap.set(doc.id, doc.data());
+        });
+
+        // Filtrar client-side por nome e setor
+        let avaliacoesFiltradas = snap.docs.filter(doc => {
+            const avaliacao = doc.data();
+            const funcionario = funcMap.get(avaliacao.funcionarioId);
+            if (!funcionario) return false;
+
+            const matchesSetor = !filtroSetor || funcionario.setor === filtroSetor;
+            const matchesNome = !filtroConcNome || funcionario.nome.toLowerCase().includes(filtroConcNome);
+            
+            return matchesSetor && matchesNome;
+        });
 
         tbody.innerHTML = '';
         avaliacoesFiltradas.forEach(doc => {
@@ -690,7 +731,9 @@ async function carregarAvaliacoesConcluidas() {
 
         if (avaliacoesFiltradas.length === 0) {
             let mensagem = 'Nenhuma avaliação concluída encontrada.';
-            if (filtroSetor) {
+            if (filtroConcInicio || filtroConcFim) {
+                mensagem = `Nenhuma avaliação encontrada no período selecionado.`;
+            } else if (filtroSetor) {
                 mensagem = `Nenhuma avaliação concluída encontrada para o setor ${filtroSetor}.`;
             }
             tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">${mensagem}</td></tr>`;
@@ -869,6 +912,46 @@ async function salvarAtribuicaoExperiencia() {
     }
 }
 
+function exportarAvaliacoesConcluidasExcel() {
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarAvaliacoesConcluidasExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    const tbody = document.getElementById('tabela-avaliacoes-concluidas');
+    if (!tbody) return mostrarMensagem("Tabela não encontrada.", "error");
+
+    const avaliacoesFiltradas = [];
+    const rows = tbody.querySelectorAll('tr');
+    
+    rows.forEach(row => {
+        const cells = row.querySelectorAll('td');
+        if (cells.length >= 5) {
+            avaliacoesFiltradas.push({
+                Colaborador: cells[0].textContent.trim(),
+                'Período': cells[1].textContent.trim(),
+                'Data Avaliação': cells[2].textContent.trim(),
+                Resultado: cells[3].textContent.trim(),
+                'Média': cells[4].textContent.trim()
+            });
+        }
+    });
+
+    if (avaliacoesFiltradas.length === 0) {
+        mostrarMensagem("Nenhum dado para exportar.", "warning");
+        return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(avaliacoesFiltradas);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Avaliações Concluídas");
+    XLSX.writeFile(wb, `Avaliacoes_Concluidas_${new Date().toISOString().split('T')[0]}.xlsx`);
+    mostrarMensagem("Exportado com sucesso!", "success");
+}
+
 // Exportar funções
 window.inicializarAvaliacaoExperiencia = inicializarAvaliacaoExperiencia;
 window.abrirModalAvaliacaoExperiencia = abrirModalAvaliacaoExperiencia;
@@ -879,3 +962,4 @@ window.visualizarAvaliacao = visualizarAvaliacao;
 window.editarAvaliacao = editarAvaliacao;
 window.excluirAvaliacao = excluirAvaliacao;
 window.reimprimirCarta = reimprimirCarta;
+window.exportarAvaliacoesConcluidasExcel = exportarAvaliacoesConcluidasExcel;

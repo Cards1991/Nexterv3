@@ -129,7 +129,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Brigadistas</h5>
-                <button class="btn btn-primary btn-sm" onclick="abrirModalBrigadista()">
+                <button class="btn btn-primary btn-sm" onclick="abrirModalBrigadaBrigadista()">
                     <i class="fas fa-plus me-1"></i> Novo Brigadista
                 </button>
             </div>
@@ -172,7 +172,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Simulados Realizados</h5>
-                <button class="btn btn-primary btn-sm" onclick="abrirModalSimulado()">
+                <button class="btn btn-primary btn-sm" onclick="abrirModalBrigadaSimulado()">
                     <i class="fas fa-plus me-1"></i> Registrar Simulado
                 </button>
             </div>
@@ -248,7 +248,7 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">Registro de Ocorrências</h5>
-                <button class="btn btn-primary btn-sm" onclick="abrirModalOcorrencia()">
+                <button class="btn btn-primary btn-sm" onclick="abrirModalBrigadaOcorrencia()">
                     <i class="fas fa-plus me-1"></i> Nova Ocorrência
                 </button>
             </div>
@@ -336,16 +336,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarBrigadista({
-                    id: document.getElementById('brigada-brigadista-id').value,
-                    nome: document.getElementById('brigada-brigadista-nome').value,
-                    setor: document.getElementById('brigada-brigadista-setor').value,
-                    turno: document.getElementById('brigada-brigadista-turno').value,
-                    funcao: document.getElementById('brigada-brigadista-funcao').value,
-                    dataCurso: document.getElementById('brigada-brigadista-curso-data').value ? new Date(document.getElementById('brigada-brigadista-curso-data').value) : null,
-                    validadeCurso: document.getElementById('brigada-brigadista-curso-validade').value ? new Date(document.getElementById('brigada-brigadista-curso-validade').value) : null,
-                    status: document.getElementById('brigada-brigadista-status').value
-                })">Salvar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarBrigadaBrigadista()">Salvar</button>
             </div>
         </div>
     </div>
@@ -397,7 +388,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarSimulado({
+                <button type="button" class="btn btn-primary" onclick="salvarBrigadaSimulado({
                     id: document.getElementById('brigada-simulado-id').value,
                     data: document.getElementById('brigada-simulado-data').value ? new Date(document.getElementById('brigada-simulado-data').value) : null,
                     tipo: document.getElementById('brigada-simulado-tipo').value,
@@ -459,7 +450,7 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarOcorrencia({
+                <button type="button" class="btn btn-primary" onclick="salvarBrigadaOcorrencia({
                     id: document.getElementById('brigada-ocorrencia-id').value,
                     data: document.getElementById('brigada-ocorrencia-data').value ? new Date(document.getElementById('brigada-ocorrencia-data').value) : null,
                     tipo: document.getElementById('brigada-ocorrencia-tipo').value,

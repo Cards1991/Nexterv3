@@ -31,8 +31,7 @@ function inicializarAgenda() {
 
     configurarFiltrosDeDataAgenda();
     popularFiltroDeAno();
-    criarModais();
-    adicionarCSSModais();
+    // Modal handling migrated to Bootstrap-native - no custom init needed
     carregarAgenda(); // load content
 }
 
@@ -190,9 +189,8 @@ function popularFiltroDeAno() {
 // GERENCIAMENTO DE MODAIS
 // ========================================
 
-function criarModais() {
-    criarModalNovaAtividade();
-}
+// REMOVED: criarModais() - static Bootstrap modal loaded in abrirModalNovaAtividade()
+
 
 function criarModalNovaAtividade() {
     if (getElement('novaAtividadeModal')) return;
@@ -400,19 +398,32 @@ async function popularSelectUsuarios(selectId) {
     } catch (error) {
     }
 }
+
 function fecharModal(modalId) {
-    const modal = getElement(modalId);
+    const modalEl = getElement(modalId);
+    if (!modalEl) return;
+    
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        let bsModal = bootstrap.Modal.getInstance(modalEl);
+        if (bsModal) {
+            bsModal.hide();
+        } else {
+            modalEl.style.display = 'none';
+        }
+    } else {
+        modalEl.style.display = 'none';
+    }
+    
     const backdrop = getElement('backdrop-' + modalId);
-
-    if (modal) modal.style.display = 'none';
     if (backdrop) backdrop.style.display = 'none';
-
-    // Remover da lista de modais abertos
-    modaisAbertos = modaisAbertos.filter(id => id !== modalId);
-
-    // Remover evento ESC se não houver mais modais abertos
-    if (modaisAbertos.length === 0) {
-        document.removeEventListener('keydown', fecharComESC);
+    
+    // Remove if there's custom backdrop from createModal
+    const dynamicBackdrop = document.getElementById('backdrop-' + modalId);
+    if (dynamicBackdrop) dynamicBackdrop.style.display = 'none';
+    
+    const index = modaisAbertos.indexOf(modalId);
+    if (index > -1) {
+        modaisAbertos.splice(index, 1);
     }
 }
 

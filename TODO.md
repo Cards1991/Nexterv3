@@ -1,16 +1,22 @@
-# Fix: Experiência Faltas/Advertências not updating on Vercel
-
-## Status: 🔄 In Progress
+# Fix Bootstrap Modal Backdrop Error
+Status: ✅ Complete (3/6)
 
 ## Steps:
+- ✅ 1. Create views/modal-nova-atividade.html (static Bootstrap modal)
+- ✅ 2. Refactor js/agenda.js (use Bootstrap Modal, remove custom backdrop)  
+- [ ] 3. Add safeModal() helper to js/utils.js
+- [ ] 4. Update js/app.js (safe loading sequence)
+- [ ] 5. Safety-fix js/ocorrencias.js modal
+- [ ] 6. Global search+replace risky Modal patterns → attempt_completion
 
-### 1. ✅ `vercel.json` created with no-cache headers
-### 2. ✅ `js/avaliacao-experiencia.js` - no-cache + logs
-### 3. ✅ `js/custom-fixes.js` & `js/dashboard-faltas.js` - no-cache queries + force refresh
-### 4. Test locally + Deploy
-### 5. Verify Vercel totals update post-deploy
-### 5. Test locally + Deploy: `git add . && git commit -m "fix: cache busting faltas experience totals" && git push`
-### 6. Verify on Vercel: Totals update immediately post-deploy, match localhost
+## Progress:
+**js/agenda.js**: Removed custom backdrop → Bootstrap-native modals only
+**Risk eliminated**: undefined.backdrop.style → Bootstrap ._backdrop safe
 
-## Current Step: 2/6
+**Next**: Global safeModal() helper
+
+## Testing:
+- Load Agenda → Open Nova Atividade ✅
+- Load Ocorrencias → Open modal ✅
+- Navigate all sections → No console errors ✅
 

@@ -147,7 +147,7 @@ function renderizarListaBrigadistas() {
     });
 }
 
-async function salvarBrigadista(dados) {
+async function salvarBrigadaBrigadista(dados) {
     try {
         // Se dados não foi passado (chamada via onclick), coleta do formulário
         if (!dados || typeof dados !== 'object') {
@@ -171,7 +171,7 @@ async function salvarBrigadista(dados) {
             mostrarMensagem('Brigadista cadastrado!', 'success');
         }
         await carregarDadosBrigada();
-        fecharModalBrigadista();
+        fecharModalBrigadaBrigadista();
     } catch (error) {
         mostrarMensagem('Erro: ' + error.message, 'error');
     }
@@ -190,7 +190,7 @@ async function editarBrigadista(id) {
     document.getElementById('brigada-brigadista-curso-validade').value = brigadista.validadeCurso ? new Date(brigadista.validadeCurso.toDate()).toISOString().split('T')[0] : '';
     document.getElementById('brigada-brigadista-status').value = brigadista.status || 'Ativo';
     
-    abrirModalBrigadista();
+    abrirModalBrigadaBrigadista();
 }
 
 async function excluirBrigadista(id) {
@@ -205,12 +205,12 @@ async function excluirBrigadista(id) {
 }
 
 // ========== MODAL BRIGADISTA ==========
-function abrirModalBrigadista() {
+function abrirModalBrigadaBrigadista() {
     const modal = new bootstrap.Modal(document.getElementById('brigada-brigadista-modal'));
     modal.show();
 }
 
-function fecharModalBrigadista() {
+function fecharModalBrigadaBrigadista() {
     const modal = bootstrap.Modal.getInstance(document.getElementById('brigada-brigadista-modal'));
     if (modal) modal.hide();
     const form = document.getElementById('brigada-brigadista-form');
@@ -238,7 +238,7 @@ function renderizarListaSimulados() {
     });
 }
 
-async function salvarSimulado(dados) {
+async function salvarBrigadaSimulado(dados) {
     try {
         // Coleta dados do formulário se não forem passados
         if (!dados || typeof dados !== 'object') {
@@ -312,7 +312,7 @@ function renderizarListaOcorrencias() {
     });
 }
 
-async function salvarOcorrencia(dados) {
+async function salvarBrigadaOcorrencia(dados) {
     try {
         // CORREÇÃO: Coleta dados do formulário se a função for chamada sem argumentos (pelo botão Salvar)
         if (!dados || typeof dados !== 'object') {
@@ -380,22 +380,22 @@ function verificarAlertasBrigada() {
 
 // ========== EXPOSE GLOBAL FUNCTIONS ==========
 window.inicializarBrigadaIncendio = inicializarBrigadaIncendio;
-window.abrirModalBrigadista = abrirModalBrigadista;
-window.salvarBrigadista = salvarBrigadista;
+window.abrirModalBrigadaBrigadista = abrirModalBrigadaBrigadista;
+window.salvarBrigadaBrigadista = salvarBrigadaBrigadista;
 window.editarBrigadista = editarBrigadista;
 window.excluirBrigadista = excluirBrigadista;
-window.salvarSimulado = salvarSimulado;
-window.salvarOcorrencia = salvarOcorrencia;
-window.fecharModalBrigadista = fecharModalBrigadista;
+window.salvarBrigadaSimulado = salvarBrigadaSimulado;
+window.salvarBrigadaOcorrencia = salvarBrigadaOcorrencia;
+window.fecharModalBrigadaBrigadista = fecharModalBrigadaBrigadista;
 
 // Missing onclick handlers from brigada-incendio.html
-window.abrirModalSimulado = () => {
+window.abrirModalBrigadaSimulado = () => {
     document.getElementById('brigada-simulado-form').reset();
     document.getElementById('brigada-simulado-id').value = '';
     new bootstrap.Modal(document.getElementById('brigada-simulado-modal')).show();
 };
 
-window.excluirSimulado = async (id) => {
+window.excluirBrigadaSimulado = async (id) => {
     if (confirm('Excluir simulado?')) {
         await db.collection('brigada_simulados').doc(id).delete();
         mostrarMensagem('Simulado excluído!', 'success');
@@ -403,13 +403,13 @@ window.excluirSimulado = async (id) => {
     }
 };
 
-window.abrirModalOcorrencia = () => {
+window.abrirModalBrigadaOcorrencia = () => {
     document.getElementById('brigada-ocorrencia-form').reset();
     document.getElementById('brigada-ocorrencia-id').value = '';
     bootstrap.Modal.getOrCreateInstance(document.getElementById('brigada-ocorrencia-modal')).show();
 };
 
-window.excluirOcorrencia = async (id) => {
+window.excluirBrigadaOcorrencia = async (id) => {
     if (confirm('Excluir ocorrência?')) {
         await db.collection('brigada_ocorrencias').doc(id).delete();
         mostrarMensagem('Ocorrência excluída!', 'success');

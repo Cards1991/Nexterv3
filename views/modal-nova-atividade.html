@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head></head>
+<body>
+  <!-- Bootstrap 5 Modal - Native backdrop handling -->
+  <div class="modal fade" id="novaAtividadeModal" tabindex="-1" aria-labelledby="novaAtividadeModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="novaAtividadeModalLabel">Nova Atividade</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form id="form-nova-atividade">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="atividade-assunto" class="form-label">Assunto *</label>
+              <input type="text" class="form-control" id="atividade-assunto" required>
+            </div>
+            <div class="row">
+              <div class="col-md-7">
+                <label for="atividade-data" class="form-label">Data *</label>
+                <input type="date" class="form-control" id="atividade-data" required>
+              </div>
+              <div class="col-md-5">
+                <label for="atividade-hora" class="form-label">Horário</label>
+                <input type="time" class="form-control" id="atividade-hora">
+              </div>
+            </div>
+            <div class="mb-3">
+              <label for="atividade-tipo" class="form-label">Tipo *</label>
+              <select class="form-select" id="atividade-tipo" required>
+                <option value="">Selecione...</option>
+                <option value="Tarefa">Tarefa</option>
+                <option value="Follow-up">Follow-up</option>
+                <option value="Revisão">Revisão</option>
+                <option value="Reunião">Reunião</option>
+                <option value="Outro">Outro</option>
+              </select>
+            </div>
+            <div class="row">
+              <div class="col-md-6 mb-3">
+                <label for="atividade-recorrencia" class="form-label">Repetir</label>
+                <select class="form-select" id="atividade-recorrencia">
+                  <option value="nao">Não se repete</option>
+                  <option value="diariamente">Diariamente</option>
+                  <option value="semanal">Semanalmente</option>
+                  <option value="mensal">Mensalmente</option>
+                </select>
+              </div>
+            </div>
+            <div class="mb-3" id="container-repetir-diariamente" style="display: none;">
+              <label for="atividade-repetir-dias" class="form-label">Repetir por quantos dias?</label>
+              <input type="number" class="form-control" id="atividade-repetir-dias" value="7" min="1" max="365">
+            </div>
+            <div class="mb-3 form-check" id="container-gerar-ano-todo-atividade" style="display: none;">
+              <input type="checkbox" class="form-check-input" id="atividade-gerar-ano-todo">
+              <label class="form-check-label" for="atividade-gerar-ano-todo">Gerar para o ano todo</label>
+            </div>
+            <div class="mb-3">
+              <label for="atividade-descricao" class="form-label">Descrição *</label>
+              <textarea class="form-control" id="atividade-descricao" rows="3" required></textarea>
+            </div>
+            <div class="mb-3">
+              <label for="atividade-atribuido-para" class="form-label">Atribuir para (Opcional)</label>
+              <select class="form-select" id="atividade-atribuido-para">
+                <option value="">Eu mesmo (Padrão)</option>
+              </select>
+            </div>
+            <div id="atividade-timelog-section" style="display: none;" class="mt-3 border-top pt-3">
+              <label class="form-label fw-bold"><i class="fas fa-history"></i> Histórico de Execução</label>
+              <div id="atividade-timelog-container"></div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary" onclick="salvarNovaAtividade()">Salvar Atividade</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</body>
+</html>
+

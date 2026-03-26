@@ -375,8 +375,7 @@ async function abrirModalNovaSolicitacao() {
     modalEl.querySelector('button[type="submit"]').innerHTML = '<i class="fas fa-paper-plane me-1"></i> Enviar Solicitação';
 
     // 2. Mostra o modal imediatamente para o usuário
-    const modal = new bootstrap.Modal(modalEl);
-    modal.show();
+    await window.safeShowModal(modalId);
 
     // 3. Carrega os funcionários do cache (agora é síncrono e rápido)
     const select = document.getElementById('sol-employee');
@@ -587,7 +586,7 @@ async function salvarNovaSolicitacao() {
             mostrarMensagem('Solicitação enviada para aprovação!', 'success');
         }
 
-        bootstrap.Modal.getInstance(document.getElementById('solicitacaoHorasModal')).hide();
+        await window.safeHideModal('solicitacaoHorasModal');
         await renderMinhasSolicitacoes();
 
     } catch (err) {

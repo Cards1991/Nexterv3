@@ -1,190 +1,235 @@
-<h2 class="page-title">Registro de Ocorrências</h2>
+<!-- views/ocorrencias.html - RECONSTRUÍDO DO ZERO (VERSÃO V3) -->
+<style>
+    /* Estilo para Modal Customizado (Independente do Bootstrap) */
+    .custom-modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: none; /* Escondido por padrão */
+        z-index: 1060;
+        align-items: center;
+        justify-content: center;
+        backdrop-filter: blur(4px);
+    }
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div class="d-flex gap-2 align-items-center">
-        <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-inicio" style="width: 150px;">
-        <span class="text-muted">até</span>
-        <input type="date" class="form-control form-control-sm" id="filtro-ocorrencia-fim" style="width: 150px;">
-        <input type="text" class="form-control form-control-sm" id="filtro-ocorrencia-nome"
-            placeholder="Buscar por nome..." style="width: 200px;">
-        <select class="form-select form-select-sm" id="filtro-ocorrencia-tipo" style="width: 180px;">
-            <option value="">Todos os Tipos</option>
-            <option value="Dor">Dor</option>
-            <option value="Acidente">Acidente</option>
-            <option value="Incidente">Incidente</option>
-            <option value="Doença">Doença</option>
-            <option value="Outro">Outro</option>
-        </select>
-        <button class="btn btn-primary btn-sm" onclick="filtrarOcorrencias()">
-            <i class="fas fa-filter"></i> Filtrar
-        </button>
+    .custom-modal-content {
+        background: white;
+        width: 90%;
+        max-width: 850px;
+        border-radius: 12px;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+        max-height: 90vh;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        animation: modalSlide 0.3s ease-out;
+    }
+
+    @keyframes modalSlide {
+        from { transform: translateY(-50px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+
+    .c-modal-header {
+        padding: 1.25rem;
+        border-bottom: 1px solid #dee2e6;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: #f8f9fa;
+        border-radius: 12px 12px 0 0;
+    }
+
+    .c-modal-body { padding: 1.5rem; flex-grow: 1; }
+    .c-modal-footer {
+        padding: 1rem;
+        border-top: 1px solid #dee2e6;
+        display: flex;
+        justify-content: flex-end;
+        gap: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 0 0 12px 12px;
+    }
+
+    .btn-close-custom {
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        line-height: 1;
+        cursor: pointer;
+        color: #6c757d;
+        transition: color 0.1s;
+    }
+    .btn-close-custom:hover { color: #dc3545; }
+</style>
+
+<div class="container-fluid py-2">
+    <h2 class="page-title mb-4">Registro de Ocorrências <small class="text-muted">(v3.0)</small></h2>
+
+    <!-- Filtros e Ações -->
+    <div class="row mb-4 align-items-end g-3">
+        <div class="col-md-2">
+            <label class="form-label small">Início</label>
+            <input type="date" class="form-control" id="f-oco-inicio">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Fim</label>
+            <input type="date" class="form-control" id="f-oco-fim">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label small">Buscar Nome</label>
+            <input type="text" class="form-control" id="f-oco-nome" placeholder="Nome do colaborador...">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label small">Tipo</label>
+            <select class="form-control" id="f-oco-tipo">
+                <option value="">Todos</option>
+                <option value="Dor">Dor</option>
+                <option value="Acidente">Acidente</option>
+                <option value="Incidente">Incidente</option>
+                <option value="Doença">Doença</option>
+                <option value="Outro">Outro</option>
+            </select>
+        </div>
+        <div class="col-md-3 d-flex gap-2">
+            <button class="btn btn-primary w-100" onclick="filtrarOcorrencias()">
+                <i class="fas fa-filter"></i> Filtrar
+            </button>
+            <button class="btn btn-success" onclick="abrirModalOcorrenciaSaude()">
+                <i class="fas fa-plus"></i> Novo
+            </button>
+        </div>
     </div>
-    <button class="btn btn-primary" id="btn-nova-ocorrencia" onclick="abrirModalNovaOcorrencia()">
-        <i class="fas fa-plus-circle"></i> Nova Ocorrência
-    </button>
+
+    <!-- KPIs -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card p-3 bg-primary text-white border-0 shadow-sm">
+                <div class="small fw-bold opacity-75">TOTAL ACUMULADO</div>
+                <div class="h3 mb-0" id="k-oco-total">0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 bg-warning text-dark border-0 shadow-sm">
+                <div class="small fw-bold opacity-75">OCORRÊNCIAS NO MÊS</div>
+                <div class="h3 mb-0" id="k-oco-mes">0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 bg-danger text-white border-0 shadow-sm">
+                <div class="small fw-bold opacity-75">ACIDENTES REGISTRADOS</div>
+                <div class="h3 mb-0" id="k-oco-acidentes">0</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 bg-info text-white border-0 shadow-sm">
+                <div class="small fw-bold opacity-75">ENCAMINHADOS AO P.A.</div>
+                <div class="h3 mb-0" id="k-oco-pa">0</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela principal -->
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Listagem de Registros</h5>
+            <button class="btn btn-sm btn-outline-secondary" onclick="exportarOcorrenciasExcel()">
+                <i class="fas fa-download"></i> Exportar
+            </button>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3" style="width: 180px;">Data/Hora</th>
+                        <th>Colaborador</th>
+                        <th>Empresa/Setor</th>
+                        <th>Tipo</th>
+                        <th class="text-end pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-oco-v3">
+                    <tr><td colspan="5" class="text-center py-5"><i class="fas fa-spinner fa-spin me-2"></i>Aguarde...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
-<!-- KPIs de Ocorrências -->
-<div class="row mb-4">
-    <div class="col-md-3 mb-2">
-        <div class="card bg-primary text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="h4 mb-0" id="kpi-total-ocorrencias">0</div>
-                        <small>Total de Ocorrências</small>
-                    </div>
-                    <i class="fas fa-exclamation-circle fa-2x opacity-50"></i>
-                </div>
-            </div>
+<!-- ============================================== -->
+<!-- MODAL CUSTOMIZADO: INDEPENDENTE DO BOOTSTRAP   -->
+<!-- ============================================== -->
+<div class="custom-modal-overlay" id="modalV3Overlay">
+    <div class="custom-modal-content">
+        <div class="c-modal-header">
+            <h5 class="mb-0 fw-bold" id="modalV3Title">Registrar Nova Ocorrência</h5>
+            <button type="button" class="btn-close-custom" onclick="fecharModalOcorrenciaSaude()">&times;</button>
         </div>
-    </div>
-    <div class="col-md-3 mb-2">
-        <div class="card bg-warning text-dark h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="h4 mb-0" id="kpi-ocorrencias-mes">0</div>
-                        <small>Este Mês</small>
+        <div class="c-modal-body">
+            <form id="formOcoV3">
+                <input type="hidden" id="v3-id">
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Data e Horário</label>
+                        <input type="datetime-local" class="form-control" id="v3-data" required>
                     </div>
-                    <i class="fas fa-calendar-alt fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-2">
-        <div class="card bg-danger text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="h4 mb-0" id="kpi-ocorrencias-acidente">0</div>
-                        <small>Acidentes</small>
-                    </div>
-                    <i class="fas fa-user-injured fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3 mb-2">
-        <div class="card bg-info text-white h-100">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <div class="h4 mb-0" id="kpi-ocorrencias-pa">0</div>
-                        <small>Encaminhados ao PA</small>
-                    </div>
-                    <i class="fas fa-ambulance fa-2x opacity-50"></i>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="card">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Ocorrências Registradas</span>
-        <button class="btn btn-success btn-sm" onclick="exportarOcorrenciasExcel()">
-            <i class="fas fa-file-excel"></i> Exportar
-        </button>
-    </div>
-    <div class="card-body table-responsive" style="max-height: 500px; overflow-y: auto;">
-        <table class="table table-hover align-middle">
-            <thead class="table-light sticky-top">
-                <tr>
-                    <th>Data</th>
-                    <th>Colaborador</th>
-                    <th>Empresa/Setor</th>
-                    <th>Tipo</th>
-                    <th class="text-end">Ações</th>
-                </tr>
-            </thead>
-            <tbody id="tabela-ocorrencias">
-                <tr>
-                    <td colspan="5" class="text-center">Carregando...</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
-
-<!-- Modal: Nova Ocorrência -->
-<div class="modal fade" id="modalNovaOcorrencia" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-exclamation-circle"></i> Nova Ocorrência</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
-            </div>
-            <div class="modal-body">
-                <form id="form-nova-ocorrencia">
-                    <input type="hidden" id="ocorrencia-id">
-
-                    <div class="row mb-3">
-                        <div class="col-md-6">
-                            <label for="ocorrencia-data" class="form-label">Data/Hora</label>
-                            <input type="datetime-local" class="form-control" id="ocorrencia-data" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="ocorrencia-tipo" class="form-label">Tipo</label>
-                            <select class="form-select" id="ocorrencia-tipo" required>
-                                <option value="">Selecione...</option>
-                                <option value="Dor">Dor</option>
-                                <option value="Acidente">Acidente</option>
-                                <option value="Incidente">Incidente</option>
-                                <option value="Doença">Doença</option>
-                                <option value="Outro">Outro</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="ocorrencia-colaborador" class="form-label">Colaborador</label>
-                        <select class="form-select" id="ocorrencia-colaborador" required>
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small">Tipo de Ocorrência</label>
+                        <select class="form-select" id="v3-tipo" required>
                             <option value="">Selecione...</option>
+                            <option value="Dor">Dor</option>
+                            <option value="Acidente">Acidente</option>
+                            <option value="Incidente">Incidente</option>
+                            <option value="Doença">Doença</option>
+                            <option value="Outro">Outro</option>
                         </select>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="ocorrencia-descricao" class="form-label">Descrição</label>
-                        <textarea class="form-control" id="ocorrencia-descricao" rows="3" required
-                            placeholder="Descreva a ocorrência..."></textarea>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Colaborador</label>
+                        <select class="form-select select2-custom" id="v3-colaborador" required>
+                            <option value="">Selecione o funcionário...</option>
+                        </select>
                     </div>
-
-                    <div class="mb-3">
-                        <label for="ocorrencia-tratamento" class="form-label">Tratamento
-                            Realizado</label>
-                        <textarea class="form-control" id="ocorrencia-tratamento" rows="2"
-                            placeholder="Descreva o tratamento realizado..."></textarea>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Descrição Detalhada</label>
+                        <textarea class="form-control" id="v3-descricao" rows="4" placeholder="..." required></textarea>
                     </div>
-
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="ocorrencia-encaminhado-pa"
-                                onchange="toggleCampoVeiculo()">
-                            <label class="form-check-label" for="ocorrencia-encaminhado-pa">
-                                Encaminhado ao Posto de Atendimento (PA)
-                            </label>
+                    <div class="col-12">
+                        <label class="form-label fw-bold small">Tratamento / Conduta</label>
+                        <textarea class="form-control" id="v3-tratamento" rows="2" placeholder="O que foi feito?"></textarea>
+                    </div>
+                    <div class="col-md-6 pt-2">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="v3-pa" onchange="toggleV3Veiculo()">
+                            <label class="form-check-label" for="v3-pa">Encaminhado ao P.A.</label>
                         </div>
                     </div>
-
-                    <div id="container-veiculo-pa" style="display: none;" class="mb-3">
-                        <label for="ocorrencia-veiculo" class="form-label">Veículo</label>
-                        <select class="form-select" id="ocorrencia-veiculo">
-                            <option value="">Selecione o veículo...</option>
-                            <option value="Particular">Veículo Particular</option>
+                    <div class="col-md-6" id="v3-veiculo-container" style="display: none;">
+                        <label class="form-label fw-bold small">Veículo de Transporte</label>
+                        <select class="form-select" id="v3-veiculo">
+                            <option value="">Selecione...</option>
+                            <option value="Particular">Particular</option>
                             <option value="Uber/Taxi">Uber / Táxi</option>
                             <option value="Ambulancia">Ambulância</option>
-                            <option disabled>--- Frota da Empresa ---</option>
                         </select>
                     </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarOcorrencia()">
-                    <i class="fas fa-save"></i> Salvar
-                </button>
-            </div>
+                </div>
+            </form>
+        </div>
+        <div class="c-modal-footer">
+            <button type="button" class="btn btn-light" onclick="fecharModalOcorrenciaSaude()">Cancelar</button>
+            <button type="button" class="btn btn-primary px-4" id="v3-btn-salvar" onclick="salvarOcorrenciaSaude()">Gravar Registro</button>
         </div>
     </div>
 </div>
+
+<script>
+    // Chamada inicial para preencher as seleções ao carregar a página
+    if (typeof inicializarOcorrenciasV3 === 'function') {
+        inicializarOcorrenciasV3();
+    }
+</script>

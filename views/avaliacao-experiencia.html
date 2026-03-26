@@ -104,6 +104,37 @@
                         </div>
                     </div>
 
+                    <!-- Filtros para Avaliações Concluídas -->
+                    <div class="card mb-4 shadow-sm border-0 bg-light">
+                        <div class="card-body">
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold">Buscar Colaborador</label>
+                                    <input type="text" class="form-control form-control-sm" id="filtro-exp-conc-nome" placeholder="Digite o nome...">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold">Data De:</label>
+                                    <input type="date" class="form-control form-control-sm" id="filtro-exp-conc-inicio">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label small fw-bold">Até:</label>
+                                    <input type="date" class="form-control form-control-sm" id="filtro-exp-conc-fim">
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-primary btn-sm w-100" onclick="carregarAvaliacoesConcluidas()">
+                                        <i class="fas fa-search"></i> Filtrar
+                                    </button>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-success btn-sm w-100" onclick="exportarAvaliacoesConcluidasExcel()">
+                                        <i class="fas fa-file-excel"></i> Excel
+                                    </button>
+                                </div>
+                                <div class="col-md-1 d-none d-md-block"></div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Histórico de Avaliações Concluídas -->
                     <div class="card mt-4">
                         <div class="card-header">
