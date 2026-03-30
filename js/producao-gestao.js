@@ -842,10 +842,16 @@ function renderizarListaSessao() {
 
 // 11. Scanner por Câmera (Mobile)
 let __html5QrCode = null;
+let __ultimoCodigoCapturado = null;
 
 window.abrirCameraScanner = () => {
     const modalEl = document.getElementById('modalCameraScanner');
     if (!modalEl) return;
+    
+    const divScanner = document.getElementById('reader-container');
+    const divConfirmacao = document.getElementById('scanner-confirmacao');
+    if(divScanner) divScanner.classList.remove('d-none');
+    if(divConfirmacao) divConfirmacao.classList.add('d-none');
     
     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
     modal.show();
@@ -857,32 +863,94 @@ window.abrirCameraScanner = () => {
         
         __html5QrCode = new Html5Qrcode("reader");
         const config = { 
-            fps: 10, 
-            qrbox: { width: 300, height: 150 },
+            fps: 6, // Reduzido um pouco para economizar bateria e processamento em mobile
+            qrbox: { width: 250, height: 120 },
             aspectRatio: 1.0
         };
         
         __html5QrCode.start(
             { facingMode: "environment" }, 
             config,
-            (decodedText) => {
-                // Sucesso: Bipa e processa
-                processarLeitura(decodedText);
+            async (decodedText) => {
+                // Ao capturar, pausa imediatamente e entra no fluxo de confirmação
+                if (__html5QrCode.isScanning) {
+                    await __html5QrCode.pause();
+                }
+                __ultimoCodigoCapturado = decodedText;
                 
-                // Feedback visual temporário no modal para o usuário saber que leu
-                const readerEl = document.getElementById('reader');
-                readerEl.style.border = "5px solid #198754";
-                setTimeout(() => { if(readerEl) readerEl.style.border = "none"; }, 500);
+                // Feedback Sonoro de Captura (Opcional - Bipar antes de confirmar?)
+                const somOk = document.getElementById('som-ok');
+                if (somOk) somOk.play().catch(e => {});
+
+                mostrarConfirmacaoLeitura(decodedText);
             },
-            (errorMessage) => {
-                // Silencioso: Erros de frames que não contêm código
-            }
+            (errorMessage) => {}
         ).catch(err => {
             console.error("Erro ao iniciar câmera:", err);
             alert("Erro ao acessar câmera: " + err);
         });
     }, { once: true });
 };
+
+async function mostrarConfirmacaoLeitura(codigo) {
+    const divScanner = document.getElementById('reader-container');
+    const divConfirmacao = document.getElementById('scanner-confirmacao');
+    const msgLeitura = document.getElementById('reader-msg');
+    
+    if (msgLeitura) msgLeitura.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Identificando produto...';
+    
+    try {
+        const docProd = await db.collection('producao_produtos').doc(codigo).get();
+        
+        if (!docProd.exists) {
+            alert("Código não cadastrado na grade: " + codigo);
+            if (__html5QrCode) __html5QrCode.resume();
+            if (msgLeitura) msgLeitura.innerHTML = 'Posicione o código no centro do quadrado.';
+            return;
+        }
+        
+        const p = docProd.data();
+        document.getElementById('sc-produto-nome').innerText = p.descricao;
+        document.getElementById('sc-produto-tamanho').innerText = `Tamanho: ${p.tamanho}`;
+        
+        // Alterna visual para confirmação
+        divScanner.classList.add('d-none');
+        divConfirmacao.classList.remove('d-none');
+        
+    } catch (e) {
+        console.error("Erro ao buscar produto:", e);
+        if (__html5QrCode) __html5QrCode.resume();
+    }
+}
+
+window.salvarLeituraConfirmada = async () => {
+    if (!__ultimoCodigoCapturado) return;
+    
+    // Processa o salvamento (mesma função da estação de leitura)
+    await processarLeitura(__ultimoCodigoCapturado);
+    
+    // Retorna ao estado de leitura
+    voltarAoScanner();
+};
+
+window.cancelarLeituraConfirmada = () => {
+    voltarAoScanner();
+};
+
+function voltarAoScanner() {
+    __ultimoCodigoCapturado = null;
+    const divScanner = document.getElementById('reader-container');
+    const divConfirmacao = document.getElementById('scanner-confirmacao');
+    const msgLeitura = document.getElementById('reader-msg');
+    
+    divConfirmacao.classList.add('d-none');
+    divScanner.classList.remove('d-none');
+    if (msgLeitura) msgLeitura.innerHTML = 'Posicione o código no centro do quadrado.';
+    
+    if (__html5QrCode) {
+        __html5QrCode.resume();
+    }
+}
 
 window.pararCameraScanner = async () => {
     if (__html5QrCode) {
