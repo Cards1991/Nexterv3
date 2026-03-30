@@ -957,6 +957,7 @@ async function mostrarConfirmacaoLeitura(codigo) {
         const docProd = await db.collection('producao_produtos').doc(codigo).get();
         
         if (!docProd.exists) {
+            console.warn("Produto não encontrado para o código:", codigo);
             alert("Código não cadastrado na grade: " + codigo);
             if (__html5QrCode) __html5QrCode.resume();
             if (msgLeitura) msgLeitura.innerHTML = 'Posicione o código no centro do quadrado.';
@@ -964,32 +965,50 @@ async function mostrarConfirmacaoLeitura(codigo) {
         }
         
         const p = docProd.data();
+        console.log("Produto Identificado:", p);
+        
         document.getElementById('sc-produto-nome').innerText = p.descricao;
         document.getElementById('sc-produto-tamanho').innerText = `Tamanho: ${p.tamanho}`;
         
-        // 2. Buscar funcionários elegíveis para esse setor
+        // 2. Buscar funcionários ativos e filtrar pelo setor do produto
+        // Fazemos o filtro via JS para evitar problemas de índices no Firestore e ser mais flexível
         const funcSnapshot = await db.collection('funcionarios')
             .where('status', '==', 'Ativo')
-            .where('setor', '==', p.setorNome)
             .get();
         
         const select = document.getElementById('sc-funcionario-vincular');
         if (select) {
             select.innerHTML = '<option value="">Selecione o produtor...</option>';
+            
+            let encontrados = 0;
             funcSnapshot.forEach(doc => {
                 const f = doc.data();
-                if (f.beneficios?.elegivelBonusProducao === true) {
+                // Compara o setor do funcionário com o setorNome do produto (case-insensitive)
+                const setorFunc = (f.setor || "").toString().trim().toUpperCase();
+                const setorProd = (p.setorNome || "").toString().trim().toUpperCase();
+                
+                if (setorFunc === setorProd && f.beneficios?.elegivelBonusProducao === true) {
                     select.innerHTML += `<option value="${doc.id}">${f.nome}</option>`;
+                    encontrados++;
                 }
             });
+            
+            console.log(`Encontrados ${encontrados} colaboradores para o setor ${p.setorNome}`);
+            
+            if (encontrados === 0) {
+                select.innerHTML = `<option value="">Nenhum colaborador no setor ${p.setorNome || 'Desconhecido'}</option>`;
+            }
         }
+        
+        if (msgLeitura) msgLeitura.innerHTML = '<i class="fas fa-check"></i> Produto Identificado';
         
         // Alterna visual para confirmação
         divScanner.classList.add('d-none');
         divConfirmacao.classList.remove('d-none');
         
     } catch (e) {
-        console.error("Erro ao buscar produto/funcionário:", e);
+        console.error("Erro detalhado ao buscar dados:", e);
+        alert("Erro ao processar dados da leitura. Verifique o console.");
         if (__html5QrCode) __html5QrCode.resume();
     }
 }
