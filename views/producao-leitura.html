@@ -114,17 +114,25 @@
                 
                 <!-- Área de Confirmação (Oculta por padrão) -->
                 <div id="scanner-confirmacao" class="d-none animate__animated animate__fadeIn">
-                    <div class="card bg-light border-0 rounded-4 p-4 mb-3">
+                    <div class="card bg-light border-0 rounded-4 p-3 mb-3">
                         <div class="text-primary mb-2 small fw-bold">PRODUTO IDENTIFICADO</div>
-                        <h3 id="sc-produto-nome" class="fw-bold mb-1">---</h3>
-                        <div id="sc-produto-tamanho" class="h5 text-muted mb-0">Tamanho: --</div>
+                        <h4 id="sc-produto-nome" class="fw-bold mb-1">---</h4>
+                        <div id="sc-produto-tamanho" class="small text-muted mb-3">Tamanho: --</div>
+                        
+                        <div class="text-start mt-2 p-3 bg-white rounded-4 shadow-sm border border-primary-subtle">
+                            <label class="form-label small fw-bold text-primary mb-2"><i class="fas fa-user-check me-2"></i>QUEM PRODUZIU?</label>
+                            <select id="sc-funcionario-vincular" class="form-select form-select-lg border-0 bg-light fw-bold" style="font-size: 1rem;">
+                                <option value="">Selecione o funcionário...</option>
+                            </select>
+                            <div class="text-muted small mt-1">Apenas colaboradores elegíveis ao bônus aparecem aqui.</div>
+                        </div>
                     </div>
                     <div class="d-grid gap-2">
-                        <button class="btn btn-success btn-lg py-3 fw-bold rounded-4" onclick="salvarLeituraConfirmada()">
-                            <i class="fas fa-check me-2"></i> SALVAR PRODUÇÃO
+                        <button class="btn btn-success btn-lg py-3 fw-bold rounded-4 shadow" onclick="salvarLeituraConfirmada()">
+                            <i class="fas fa-check me-2"></i> CONFIRMAR E SALVAR
                         </button>
-                        <button class="btn btn-outline-danger py-2 rounded-4" onclick="cancelarLeituraConfirmada()">
-                            DESCARTAR / VOLTAR
+                        <button class="btn btn-link text-danger text-decoration-none py-2" onclick="cancelarLeituraConfirmada()">
+                            DESCARTAR / CANCELAR
                         </button>
                     </div>
                 </div>

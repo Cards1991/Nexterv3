@@ -254,6 +254,7 @@ async function salvarFuncionario() {
         const temValeTransporte = document.getElementById('beneficio-vale-transporte').checked;
         const temValeAlimentacao = document.getElementById('beneficio-vale-alimentacao').checked;
         const temSeguroVida = document.getElementById('beneficio-seguro-vida').checked;
+        const elegivelBonusProducao = document.getElementById('beneficio-bonus-producao').checked;
         const outrosBeneficios = document.getElementById('beneficio-outros').value;
 
         // Dados de Endereço
@@ -354,6 +355,7 @@ async function salvarFuncionario() {
                 valeTransporte: temValeTransporte,
                 valeAlimentacao: temValeAlimentacao,
                 seguroVida: temSeguroVida,
+                elegivelBonusProducao: elegivelBonusProducao,
                 outros: outrosBeneficios
             },
 
@@ -529,6 +531,7 @@ async function editarFuncionario(funcionarioId) {
         document.getElementById('beneficio-vale-transporte').checked = funcionario.beneficios?.valeTransporte || false;
         document.getElementById('beneficio-vale-alimentacao').checked = funcionario.beneficios?.valeAlimentacao || false;
         document.getElementById('beneficio-seguro-vida').checked = funcionario.beneficios?.seguroVida || false;
+        document.getElementById('beneficio-bonus-producao').checked = funcionario.beneficios?.elegivelBonusProducao || false;
         document.getElementById('beneficio-outros').value = funcionario.beneficios?.outros || '';
 
         // Preencher Endereço
@@ -673,6 +676,7 @@ async function atualizarFuncionario(funcionarioId) {
         const temValeTransporte = document.getElementById('beneficio-vale-transporte').checked;
         const temValeAlimentacao = document.getElementById('beneficio-vale-alimentacao').checked;
         const temSeguroVida = document.getElementById('beneficio-seguro-vida').checked;
+        const elegivelBonusProducao = document.getElementById('beneficio-bonus-producao').checked;
         const outrosBeneficios = document.getElementById('beneficio-outros').value;
 
         // Dados de Endereço
@@ -760,6 +764,7 @@ async function atualizarFuncionario(funcionarioId) {
                 valeTransporte: temValeTransporte,
                 valeAlimentacao: temValeAlimentacao,
                 seguroVida: temSeguroVida,
+                elegivelBonusProducao: elegivelBonusProducao,
                 outros: outrosBeneficios
             },
 

@@ -124,12 +124,23 @@ function processarDadosDashboard() {
         else card.className = 'card p-3 border-0 shadow-sm bg-danger text-white';
     }
 
-    // Cálculo Simbólico de Bônus (Exemplo: R$ 500 se meta batida + R$ 10 por % extra)
-    let bonusPrevisao = 0;
-    if (eficiencia >= 95) {
-        bonusPrevisao = 500 + (eficiencia > 100 ? (eficiencia - 100) * 50 : 0);
-    }
-    document.getElementById('kpi-producao-bonus').innerText = `R$ ${bonusPrevisao.toFixed(2)}`;
+    // Cálculo de Bônus baseado nas Regras (Novos campos bonusValue)
+    let bonusTotalProvisionado = 0;
+    __PRODUCAO_CONFIG.metas.forEach(m => {
+        const prodSetor = __PRODUCAO_CONFIG.lancamentos
+            .filter(l => l.setorId === m.setorId)
+            .reduce((a, b) => a + b.quantidade, 0);
+        
+        const percSetor = m.metaValue > 0 ? (prodSetor / m.metaValue) * 100 : 0;
+        if (percSetor >= 100) {
+            bonusTotalProvisionado += (m.bonusValue || 0);
+        } else if (percSetor >= 95) {
+            bonusTotalProvisionado += (m.bonusValue || 0) * 0.5; // Exemplo: 50% se bater 95%
+        }
+    });
+
+    const bonusEl = document.getElementById('kpi-producao-bonus');
+    if (bonusEl) bonusEl.innerText = `R$ ${bonusTotalProvisionado.toFixed(2)}`;
     
     renderizarGraficoEvolucao();
 }
@@ -166,15 +177,31 @@ window.abrirModalConfigMetas = async () => {
     container.innerHTML = '<div class="row gx-3">';
     
     __PRODUCAO_CONFIG.setores.forEach(s => {
-        const metaAtual = __PRODUCAO_CONFIG.metas.find(m => m.setorId === s.id)?.metaValue || 0;
+        const metaDoc = __PRODUCAO_CONFIG.metas.find(m => m.setorId === s.id);
+        const metaAtual = metaDoc?.metaValue || 0;
+        const bonusAtual = metaDoc?.bonusValue || 0;
+        
         container.innerHTML += `
             <div class="col-md-6 mb-3">
-                <label class="form-label small fw-bold">${s.descricao}</label>
-                <div class="input-group">
-                    <input type="number" class="form-control input-meta-setor" 
-                           data-setor-id="${s.id}" data-setor-nome="${s.descricao}" 
-                           value="${metaAtual}" placeholder="Meta semanal...">
-                    <span class="input-group-text">Unid</span>
+                <div class="card p-2 border-0 shadow-sm bg-light">
+                    <label class="form-label small fw-bold mb-1">${s.descricao}</label>
+                    <div class="row g-2">
+                        <div class="col-7">
+                            <div class="input-group input-group-sm">
+                                <input type="number" class="form-control input-meta-setor" 
+                                       data-setor-id="${s.id}" data-setor-nome="${s.descricao}" 
+                                       value="${metaAtual}" placeholder="Meta Qtd...">
+                                <span class="input-group-text bg-white">Pares</span>
+                            </div>
+                        </div>
+                        <div class="col-5">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white small">R$</span>
+                                <input type="number" class="form-control input-bonus-setor" 
+                                       data-setor-id="${s.id}" value="${bonusAtual}" placeholder="Bônus...">
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -191,6 +218,8 @@ async function salvarMetasSemanais() {
     inputs.forEach(input => {
         const setorId = input.dataset.setorId;
         const metaValue = parseInt(input.value) || 0;
+        const bonusInput = document.querySelector(`.input-bonus-setor[data-setor-id="${setorId}"]`);
+        const bonusValue = parseFloat(bonusInput?.value) || 0;
         
         // Usar ID composto para evitar duplicados na mesma semana
         const metaId = `meta_${semana}_${setorId}`;
@@ -199,8 +228,9 @@ async function salvarMetasSemanais() {
             setorId: setorId,
             setorNome: input.dataset.setorNome,
             metaValue: metaValue,
+            bonusValue: bonusValue,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
-        }));
+        }, { merge: true }));
     });
     
     try {
@@ -465,6 +495,8 @@ window.salvarLoteProducao = async () => {
 };
 
 // 8. Gestão de Bônus (Bônus Gestores)
+let __ULTIMO_RESUMO_BONUS = {};
+
 async function inicializarGestaoBonus() {
     const mesInput = document.getElementById('filtro-bonus-mes');
     if (!mesInput) return;
@@ -508,9 +540,26 @@ async function carregarDashboardBonus() {
             const m = doc.data();
             if (setoresResumo[m.setorId]) {
                 setoresResumo[m.setorId].meta += m.metaValue;
+                setoresResumo[m.setorId].bonusBase = m.bonusValue || 0;
             }
         });
         
+        // Buscar Funcionários Elegíveis por Setor
+        const snapFunc = await db.collection('funcionarios')
+            .where('status', '==', 'Ativo')
+            .get();
+        
+        const funcionarios = snapFunc.docs.map(d => ({ id: d.id, ...d.data() }));
+        
+        Object.keys(setoresResumo).forEach(setorId => {
+            const s = setoresResumo[setorId];
+            s.funcionarios = funcionarios.filter(f => 
+                f.setor === s.nome && 
+                f.beneficios?.elegivelBonusProducao === true
+            );
+        });
+        
+        __ULTIMO_RESUMO_BONUS = setoresResumo;
         renderizarCardsBonus(setoresResumo);
         renderizarTabelaBonus(setoresResumo, mes);
         
@@ -525,8 +574,10 @@ function renderizarCardsBonus(resumo) {
         const s = resumo[id];
         const perc = s.meta > 0 ? (s.real / s.meta) * 100 : 0;
         let bonus = 0;
-        if (perc >= 100) bonus = 500 + ((perc - 100) * 50);
-        else if (perc >= 95) bonus = 250;
+        if (perc >= 100) bonus = s.bonusBase || 500;
+        else if (perc >= 95) bonus = (s.bonusBase || 500) * 0.5;
+        
+        const totalEquipe = s.funcionarios ? s.funcionarios.length : 0;
         
         return `
             <div class="col-md-4">
@@ -550,10 +601,11 @@ function renderizarCardsBonus(resumo) {
                             </div>
                         </div>
                         <div class="bg-light p-3 rounded text-center">
-                            <small class="text-muted d-block mb-1">PROVISÃO DE BÔNUS</small>
+                            <small class="text-muted d-block mb-1">PROVISÃO PARA O SETOR</small>
                             <div class="h4 text-primary fw-bold mb-0">R$ ${bonus.toFixed(2)}</div>
+                            <small class="text-muted small">${totalEquipe} Colaboradores Elegíveis</small>
                         </div>
-                        <button class="btn btn-sm btn-outline-primary w-100 mt-3" onclick="verDetalheBonus('${id}')">Ver Detalhes</button>
+                        <button class="btn btn-sm btn-outline-primary w-100 mt-3" onclick="verDetalheBonus('${id}')">Ver Equipe e Detalhes</button>
                     </div>
                 </div>
             </div>
@@ -722,7 +774,7 @@ window.aoScaneamento = async (e) => {
     }
 };
 
-async function processarLeitura(codigo) {
+async function processarLeitura(codigo, funcionarioId = null, funcionarioNome = null) {
     const feedback = document.getElementById('feedback-leitura');
     const somOk = document.getElementById('som-ok');
     const somErro = document.getElementById('som-erro');
@@ -777,6 +829,8 @@ async function processarLeitura(codigo) {
             hora: new Date().toLocaleTimeString(),
             turno,
             setorId: produto.setorId,
+            funcionarioId: funcionarioId || null,
+            funcionarioNome: funcionarioNome || null,
             usuario: auth.currentUser?.email || 'Estação-Scanner'
         });
         
@@ -913,12 +967,29 @@ async function mostrarConfirmacaoLeitura(codigo) {
         document.getElementById('sc-produto-nome').innerText = p.descricao;
         document.getElementById('sc-produto-tamanho').innerText = `Tamanho: ${p.tamanho}`;
         
+        // 2. Buscar funcionários elegíveis para esse setor
+        const funcSnapshot = await db.collection('funcionarios')
+            .where('status', '==', 'Ativo')
+            .where('setor', '==', p.setorNome)
+            .get();
+        
+        const select = document.getElementById('sc-funcionario-vincular');
+        if (select) {
+            select.innerHTML = '<option value="">Selecione o produtor...</option>';
+            funcSnapshot.forEach(doc => {
+                const f = doc.data();
+                if (f.beneficios?.elegivelBonusProducao === true) {
+                    select.innerHTML += `<option value="${doc.id}">${f.nome}</option>`;
+                }
+            });
+        }
+        
         // Alterna visual para confirmação
         divScanner.classList.add('d-none');
         divConfirmacao.classList.remove('d-none');
         
     } catch (e) {
-        console.error("Erro ao buscar produto:", e);
+        console.error("Erro ao buscar produto/funcionário:", e);
         if (__html5QrCode) __html5QrCode.resume();
     }
 }
@@ -926,8 +997,18 @@ async function mostrarConfirmacaoLeitura(codigo) {
 window.salvarLeituraConfirmada = async () => {
     if (!__ultimoCodigoCapturado) return;
     
-    // Processa o salvamento (mesma função da estação de leitura)
-    await processarLeitura(__ultimoCodigoCapturado);
+    // Pegar o funcionário selecionado
+    const select = document.getElementById('sc-funcionario-vincular');
+    const funcId = select?.value;
+    const funcNome = select?.options[select.selectedIndex]?.text;
+    
+    if (!funcId) {
+        alert("Por favor, selecione quem produziu este par.");
+        return;
+    }
+    
+    // Processa o salvamento (mesma função da estação de leitura, agora com vínculo)
+    await processarLeitura(__ultimoCodigoCapturado, funcId, funcNome);
     
     // Retorna ao estado de leitura
     voltarAoScanner();
@@ -1000,11 +1081,31 @@ window.excluirLancamentoProducao = async (id) => {
 };
 
 window.verDetalheBonus = (setorId) => {
-    const s = __PRODUCAO_CONFIG.setores.find(s => s.id === setorId);
-    const el = document.getElementById('detalhe-bonus-gestor');
-    if (el) el.innerText = s?.descricao || 'Setor';
+    const s = __ULTIMO_RESUMO_BONUS[setorId];
+    if (!s) return;
+    
+    document.getElementById('detalhe-bonus-gestor').innerText = s.nome;
+    
+    const tbody = document.getElementById('lista-equipe-elegivel-bonus');
+    if (tbody) {
+        if (!s.funcionarios || s.funcionarios.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">Nenhum colaborador elegível neste setor.</td></tr>';
+        } else {
+            tbody.innerHTML = s.funcionarios.map(f => `
+                <tr>
+                    <td class="ps-2"><i class="fas fa-user-circle text-muted me-2"></i>${f.nome}</td>
+                    <td>${f.cargo}</td>
+                    <td class="text-end pe-2"><span class="badge bg-light text-primary">Sim</span></td>
+                </tr>
+            `).join('');
+        }
+    }
+    
     const modalEl = document.getElementById('modalDetalheBonus');
-    if (modalEl) new bootstrap.Modal(modalEl).show();
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
 };
 
 window.configurarRegrasBonus = () => {
