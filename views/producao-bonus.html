@@ -1,0 +1,105 @@
+<!-- views/producao-bonus.html -->
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="page-title mb-1"><i class="fas fa-hand-holding-dollar me-2"></i>Gestão de Bônus de Gestores</h2>
+            <p class="text-muted small mb-0">Monitoramento de bonificações baseadas em performance de produção</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="configurarRegrasBonus()">
+                <i class="fas fa-sliders-h me-1"></i> Regras de Bônus
+            </button>
+            <button class="btn btn-success" onclick="aprovarBonusLote()">
+                <i class="fas fa-check-double me-1"></i> Aprovar Pagamentos
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros Período -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Mês de Referência</label>
+                    <input type="month" class="form-control" id="filtro-bonus-mes" onchange="carregarDashboardBonus()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Status do Pagamento</label>
+                    <select class="form-select" id="filtro-bonus-status">
+                        <option value="todos">Todos</option>
+                        <option value="pendente">Pendentes</option>
+                        <option value="aprovado">Aprovados</option>
+                        <option value="pago">Pagos</option>
+                    </select>
+                </div>
+                <div class="col-md-6 text-end">
+                    <div class="d-flex justify-content-end gap-3 pt-3">
+                        <div class="text-center">
+                            <div class="small text-muted mb-0">Total Pendente</div>
+                            <div class="h5 fw-bold text-danger mb-0" id="total-bonus-pendente">R$ 0,00</div>
+                        </div>
+                        <div class="text-center">
+                            <div class="small text-muted mb-0">Total Aprovado</div>
+                            <div class="h5 fw-bold text-success mb-0" id="total-bonus-aprovado">R$ 0,00</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cards de Gestores Performance -->
+    <div class="row g-4" id="painel-gestores-bonus">
+        <!-- Dinamicamente preenchido com cards de cada gestor -->
+        <div class="col-12 text-center py-5">
+            <i class="fas fa-users-cog fa-3x text-light mb-3"></i>
+            <p class="text-muted">Aguardando dados de performance...</p>
+        </div>
+    </div>
+
+    <!-- Listagem Detalhada -->
+    <div class="card mt-4 border-0 shadow-sm overflow-hidden">
+        <div class="card-header bg-dark text-white py-3">
+            <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i>Histórico e Detalhamento</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">Gestor / Supervisor</th>
+                        <th>Período</th>
+                        <th>Média Eficiência</th>
+                        <th>Meta Batida</th>
+                        <th>Valor Bônus</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-bonus-corpo">
+                    <tr><td colspan="7" class="text-center py-4">Carregando histórico...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalhamento Semanal para Bônus -->
+<div class="modal fade" id="modalDetalheBonus" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Detalhamento de Performance: <span id="detalhe-bonus-gestor">--</span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="grafico-detalhe-container" style="height: 250px;">
+                    <canvas id="chart-detalhe-performance"></canvas>
+                </div>
+                <hr>
+                <div id="detalhe-semanas-lista" class="mt-3">
+                    <!-- Lista de semanas e o percentual batido de cada uma -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

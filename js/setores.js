@@ -22,7 +22,7 @@ async function carregarSetores() {
         const funcionariosMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, doc.data().nome]));
 
         if (setoresSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum setor cadastrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum setor cadastrado.</td></tr>';
             return;
         }
 
@@ -32,12 +32,17 @@ async function carregarSetores() {
             const empresaNome = empresasMap.get(setor.empresaId) || 'N/A';
             const gerenteNome = funcionariosMap.get(setor.gerenteId) || 'N/A';
             const dataCriacao = setor.createdAt?.toDate ? setor.createdAt.toDate().toLocaleDateString('pt-BR') : 'N/A';
+            
+            const badgeProducao = setor.controlaProducao 
+                ? '<span class="badge bg-success"><i class="fas fa-check"></i> Sim</span>' 
+                : '<span class="badge bg-light text-muted">Não</span>';
 
             const row = `
                 <tr>
                     <td>${setor.descricao}</td>
                     <td>${empresaNome}</td>
                     <td>${gerenteNome}</td>
+                    <td class="text-center">${badgeProducao}</td>
                     <td class="text-center">${setor.qtdIdeal || 0}</td>
                     <td>${dataCriacao}</td>
                     <td class="text-end">
@@ -94,6 +99,7 @@ async function abrirModalSetor(setorId = null) {
             document.getElementById('setor-horario-entrada').value = data.horarioEntrada || '';
             document.getElementById('setor-horario-saida').value = data.horarioSaida || '';
             document.getElementById('setor-observacao').value = data.observacao || '';
+            document.getElementById('setor-controla-producao').checked = data.controlaProducao || false;
         }
     }
 
@@ -110,6 +116,7 @@ async function salvarSetor() {
         horarioEntrada: document.getElementById('setor-horario-entrada').value || '',
         horarioSaida: document.getElementById('setor-horario-saida').value || '',
         observacao: document.getElementById('setor-observacao').value.trim(),
+        controlaProducao: document.getElementById('setor-controla-producao').checked,
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 

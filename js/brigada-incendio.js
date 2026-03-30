@@ -417,4 +417,5 @@ window.excluirBrigadaOcorrencia = async (id) => {
     }
 };
 
-window.excluirSimulado = excluirSimulado; // Already defined above
+window.excluirSimulado = window.excluirBrigadaSimulado;
+window.excluirOcorrencia = window.excluirBrigadaOcorrencia;

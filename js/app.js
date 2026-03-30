@@ -14,7 +14,8 @@ const TODAS_SECOES = [
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
-    'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar'
+    'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
+    'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'
 ];
 
 let currentUserPermissions = {};
@@ -200,6 +201,13 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'ocorrencias':
                 if (typeof inicializarOcorrencias === 'function') await inicializarOcorrencias();
+                break;
+            case 'producao-gestao':
+            case 'producao-lancamento':
+            case 'producao-bonus':
+            case 'producao-produtos':
+            case 'producao-leitura':
+                if (typeof inicializarProducaoMetas === 'function') await inicializarProducaoMetas(sectionName);
                 break;
             case 'faltas':
                 if (typeof inicializarFaltas === 'function') await inicializarFaltas();

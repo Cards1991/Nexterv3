@@ -1,0 +1,204 @@
+<!-- views/producao-gestao.html -->
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="page-title mb-0"><i class="fas fa-industry me-2"></i>Gestão de Produção e Metas</h2>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="abrirModalConfigMetas()">
+                <i class="fas fa-cog"></i> Configurar Metas
+            </button>
+            <button class="btn btn-primary" onclick="abrirModalLancamentoProducao()">
+                <i class="fas fa-plus"></i> Novo Lançamento
+            </button>
+        </div>
+    </div>
+
+    <!-- Filtros Globais -->
+    <div class="card mb-4 border-0 shadow-sm">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Período (Semana)</label>
+                    <select class="form-select" id="filtro-producao-semana" onchange="carregarDashboardProducao()">
+                        <!-- Preenchido via JS -->
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Setor</label>
+                    <select class="form-select" id="filtro-producao-setor" onchange="carregarDashboardProducao()">
+                        <option value="">Todos os Setores</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-outline-secondary w-100" onclick="exportarProducao()">
+                        <i class="fas fa-download"></i> Exportar Relatório
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm bg-primary text-white">
+                <div class="small fw-bold opacity-75">PRODUÇÃO REAL (TOTAL)</div>
+                <div class="h3 mb-0 fw-bold" id="kpi-producao-real">0</div>
+                <div class="small mt-1" id="kpi-producao-tendencia-real">--</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm bg-info text-white">
+                <div class="small fw-bold opacity-75">META ESTABELECIDA</div>
+                <div class="h3 mb-0 fw-bold" id="kpi-producao-meta">0</div>
+                <div class="small mt-1" id="kpi-producao-percentual-meta">0% alcançado</div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm bg-success text-white" id="card-producao-eficiencia">
+                <div class="small fw-bold opacity-75">EFICIÊNCIA MÉDIA</div>
+                <div class="h3 mb-0 fw-bold" id="kpi-producao-eficiencia">0%</div>
+                <div class="progress mt-2" style="height: 4px; background: rgba(255,255,255,0.2);">
+                    <div class="progress-bar bg-white" id="progress-producao-eficiencia" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card p-3 border-0 shadow-sm bg-dark text-white">
+                <div class="small fw-bold opacity-75">ESTIMATIVA BÔNUS GESTOR</div>
+                <div class="h3 mb-0 fw-bold" id="kpi-producao-bonus">R$ 0,00</div>
+                <div class="small mt-1 text-success"><i class="fas fa-check-circle"></i> Meta Provável</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficos e Tabelas -->
+    <div class="row g-4">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-primary">Evolução Produção vs Meta</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chart-producao-evolucao" height="300"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold text-primary">Meta por Equipe</h5>
+                </div>
+                <div class="card-body">
+                    <div id="lista-producao-setores" class="mt-2">
+                        <!-- Itens renderizados aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela Detalhada -->
+    <div class="card mt-4 border-0 shadow-sm">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0 fw-bold">Histórico de Lançamentos</h5>
+            <div class="btn-group">
+                <button class="btn btn-sm btn-outline-secondary">Dia</button>
+                <button class="btn btn-sm btn-primary">Semana</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">Data/Período</th>
+                        <th>Setor/Equipe</th>
+                        <th>Meta</th>
+                        <th>Produção Real</th>
+                        <th>Diferença</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="tabela-producao-corpo">
+                    <tr><td colspan="7" class="text-center py-5"><i class="fas fa-spinner fa-spin me-2"></i>Preparando dados...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAIS                                         -->
+<!-- ============================================== -->
+
+<!-- Modal: Lançamento de Produção -->
+<div class="modal fade" id="modalLancamentoProducao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Lançar Produção Realizada</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-producao-lancamento">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Setor / Equipe</label>
+                        <select class="form-select" id="lp-setor" required></select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Data do Lançamento</label>
+                            <input type="date" class="form-control" id="lp-data" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Turno</label>
+                            <select class="form-select" id="lp-turno">
+                                <option value="Geral">Dia Todo</option>
+                                <option value="Manhã">Manhã</option>
+                                <option value="Tarde">Tarde</option>
+                                <option value="Noite">Noite</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Quantidade Produzida (Pares/Peças)</label>
+                        <input type="number" class="form-control form-control-lg text-primary fw-bold" id="lp-quantidade" placeholder="0" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Observações (Opcional)</label>
+                        <textarea class="form-control" id="lp-obs" rows="2" placeholder="Informações extras sobre o turno..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="salvarLancamentoProducao()">Salvar Produção</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Configuração de Metas -->
+<div class="modal fade" id="modalConfigMetas" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-bullseye me-2"></i>Definir Metas Semanais</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 small mb-3">
+                    As metas definidas aqui são usadas para o cálculo de eficiência e bônus dos gestores.
+                </div>
+                <div id="config-metas-container">
+                    <!-- Dinamicamente preenchido com input por setor -->
+                    <div class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Carregando setores...</div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success px-4" onclick="salvarMetasSemanais()">Aplicar Metas</button>
+            </div>
+        </div>
+    </div>
+</div>

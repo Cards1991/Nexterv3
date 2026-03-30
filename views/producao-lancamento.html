@@ -1,0 +1,142 @@
+<!-- views/producao-lancamento.html -->
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="page-title mb-1"><i class="fas fa-edit me-2"></i>Lançar Produção Diária</h2>
+            <p class="text-muted small mb-0">Registre os resultados de produção por setor e turno</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" onclick="showSection('producao-gestao')">
+                <i class="fas fa-chart-line me-1"></i> Ir para Dashboard
+            </button>
+            <button class="btn btn-primary" onclick="salvarLoteProducao()">
+                <i class="fas fa-save me-1"></i> Salvar Lançamentos
+            </button>
+        </div>
+    </div>
+
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-body bg-light rounded shadow-inner">
+            <div class="row g-3 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Data da Produção</label>
+                    <input type="date" class="form-control" id="form-lp-data-lote" onchange="verificarLancamentosExistentes()">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-bold text-muted">Turno Predominante</label>
+                    <select class="form-select" id="form-lp-turno-lote">
+                        <option value="1º Turno">1º Turno (Manhã)</option>
+                        <option value="2º Turno">2º Turno (Tarde)</option>
+                        <option value="3º Turno">3º Turno (Noite)</option>
+                        <option value="Geral">Geral / Comercial</option>
+                    </select>
+                </div>
+                <div class="col-md-6 text-end">
+                    <button class="btn btn-warning btn-sm me-2" onclick="abrirModalLancamentoProducao()">
+                        <i class="fas fa-plus me-1"></i> Lançamento Manual (Unitário)
+                    </button>
+                    <div class="alert alert-warning d-inline-block py-1 px-3 mb-0 small border-0" id="aviso-lancamento">
+                        <i class="fas fa-info-circle me-1"></i> Preencha o volume produzido para cada setor abaixo.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabela de Lançamento em Massa -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-dark text-white">
+                    <tr>
+                        <th class="ps-3" style="width: 300px;">Setor / Equipe</th>
+                        <th class="text-center">Meta Diária (Est.)</th>
+                        <th class="text-center" style="width: 250px;">Produção Realizada</th>
+                        <th>Status</th>
+                        <th class="text-end pe-3">Observações do Turno</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-setores-lancamento">
+                    <!-- Dinamicamente preenchido -->
+                    <tr><td colspan="5" class="text-center py-5">Carregando setores ativos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Histórico Rápido do Dia -->
+    <div class="mt-4">
+        <h5 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Lançamentos Realizados Recentemente</h5>
+        <div id="historico-lançamentos-dia" class="row g-3">
+            <!-- Cards de histórico aqui -->
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Lançar Produção (Manual) -->
+<div class="modal fade" id="modalLancamentoProducao" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Lançamento Manual</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-producao-lancamento" onsubmit="salvarLancamentoProducao(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Setor / Equipe</label>
+                        <select class="form-select" id="lp-setor" required></select>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Data</label>
+                            <input type="date" class="form-control" id="lp-data" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Turno</label>
+                            <select class="form-select" id="lp-turno" required>
+                                <option value="1º Turno">1º Turno</option>
+                                <option value="2º Turno">2º Turno</option>
+                                <option value="3º Turno">3º Turno</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Quantidade Produzida</label>
+                        <input type="number" class="form-control h4 py-2" id="lp-quantidade" placeholder="0" required>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small fw-bold">Observações</label>
+                        <textarea class="form-control" id="lp-obs" rows="2" placeholder="Opcional..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar Produção</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+    .input-producao-lote {
+        font-weight: bold;
+        text-align: center;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        border: 2px solid #dee2e6;
+        transition: all 0.2s;
+    }
+    .input-producao-lote:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
+    }
+    .status-indicador {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 6px;
+    }
+</style>

@@ -1,0 +1,93 @@
+<!-- views/producao-produtos.html -->
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="page-title mb-1"><i class="fas fa-tags me-2"></i>Grade de Produtos (SKU)</h2>
+            <p class="text-muted small mb-0">Cadastre os modelos e tamanhos com seus respectivos códigos de barras</p>
+        </div>
+        <button class="btn btn-primary" onclick="abrirModalNovoProduto()">
+            <i class="fas fa-plus me-1"></i> Novo Produto / Grade
+        </button>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-header bg-white border-bottom py-3">
+            <div class="row g-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text bg-light border-0"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control bg-light border-0" id="busca-produtos" 
+                               placeholder="Buscar por nome, código ou tamanho..." onkeyup="filtrarTabelaProdutos()">
+                    </div>
+                </div>
+                <div class="col-md-4 text-end">
+                    <button class="btn btn-outline-secondary btn-sm" onclick="carregarListaProdutos()">
+                        <i class="fas fa-sync-alt"></i> Atualizar
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light">
+                    <tr>
+                        <th class="ps-3">Código de Barras</th>
+                        <th>Modelo / Descrição</th>
+                        <th>Grade (Nº)</th>
+                        <th>Setor</th>
+                        <th class="text-end pe-3">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-produtos-corpo">
+                    <tr><td colspan="5" class="text-center py-5">Carregando grade de produtos...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Novo Produto -->
+<div class="modal fade" id="modalNovoProduto" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-barcode me-2"></i>Cadastrar SKU / Grade</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <form id="form-novo-produto" onsubmit="salvarProduto(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Descrição do Modelo</label>
+                        <input type="text" class="form-control" id="p-descricao" placeholder="Ex: Cabedal Modelo A" required>
+                    </div>
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Número / Grade</label>
+                            <input type="text" class="form-control" id="p-tamanho" placeholder="Ex: 38" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-bold">Setor Responsável</label>
+                            <select class="form-select" id="p-setor" required>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label small fw-bold">Código de Barras (EAN/Unique ID)</label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" id="p-codigo" required>
+                            <button class="btn btn-outline-secondary" type="button" onclick="gerarCodigoAleatorio()">
+                                <i class="fas fa-magic"></i>
+                            </button>
+                        </div>
+                        <small class="text-muted">Este é o código que o scanner irá buscar na produção.</small>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary px-4">Salvar SKU</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
