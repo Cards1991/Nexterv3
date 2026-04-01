@@ -13,9 +13,9 @@ async function carregarSetores() {
 
     try {
         const [setoresSnap, empresasSnap, funcionariosSnap] = await Promise.all([
-            db.collection('setores').orderBy('descricao').get(),
-            db.collection('empresas').get(),
-            db.collection('funcionarios').get()
+            db.collection('setores').orderBy('descricao').get({ source: 'server' }),
+            db.collection('empresas').get({ source: 'server' }),
+            db.collection('funcionarios').get({ source: 'server' })
         ]);
 
         const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
@@ -32,9 +32,9 @@ async function carregarSetores() {
             const empresaNome = empresasMap.get(setor.empresaId) || 'N/A';
             const gerenteNome = funcionariosMap.get(setor.gerenteId) || 'N/A';
             const dataCriacao = setor.createdAt?.toDate ? setor.createdAt.toDate().toLocaleDateString('pt-BR') : 'N/A';
-            
-            const badgeProducao = setor.controlaProducao 
-                ? '<span class="badge bg-success"><i class="fas fa-check"></i> Sim</span>' 
+
+            const badgeProducao = setor.controlaProducao
+                ? '<span class="badge bg-success"><i class="fas fa-check"></i> Sim</span>'
                 : '<span class="badge bg-light text-muted">Não</span>';
 
             const row = `
@@ -66,10 +66,16 @@ async function abrirModalSetor(setorId = null) {
     document.getElementById('setor-id').value = setorId || '';
     document.querySelector('#setorModal .modal-title').textContent = setorId ? 'Editar Setor' : 'Novo Setor';
 
+    // Reset do checkbox para garantir estado inicial correto
+    const controlaProducaoCheckbox = document.getElementById('setor-controla-producao');
+    if (controlaProducaoCheckbox) {
+        controlaProducaoCheckbox.checked = false;
+    }
+
     // Popular selects
     const empresaSelect = document.getElementById('setor-empresa');
     const gerenteSelect = document.getElementById('setor-gerente');
-    
+
     empresaSelect.innerHTML = '<option value="">Carregando...</option>';
     gerenteSelect.innerHTML = '<option value="">Carregando...</option>';
 
@@ -99,63 +105,97 @@ async function abrirModalSetor(setorId = null) {
             document.getElementById('setor-horario-entrada').value = data.horarioEntrada || '';
             document.getElementById('setor-horario-saida').value = data.horarioSaida || '';
             document.getElementById('setor-observacao').value = data.observacao || '';
-            document.getElementById('setor-controla-producao').checked = data.controlaProducao || false;
+
+            // CARREGAR O CHECKBOX CORRETAMENTE
+            if (controlaProducaoCheckbox) {
+                controlaProducaoCheckbox.checked = data.controlaProducao || false;
+                console.log("🔍 Checkbox carregado com valor:", data.controlaProducao);
+            }
         }
     }
 
-    new bootstrap.Modal(modalEl).show();
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
 }
 
 async function salvarSetor() {
+    const btn = document.querySelector('#setorModal .btn-primary');
+    if (!btn) return;
+
     const setorId = document.getElementById('setor-id').value;
+    const empresaId = document.getElementById('setor-empresa').value;
+    const descricao = document.getElementById('setor-descricao').value.trim();
+    const controlaProducaoCheckbox = document.getElementById('setor-controla-producao');
+
+    // VALIDAÇÃO EXPLÍCITA DO CHECKBOX
+    const valorControlaProducao = controlaProducaoCheckbox ? controlaProducaoCheckbox.checked : false;
+
+    console.log("🔍 DEBUG - Salvando Setor:", {
+        setorId: setorId || "NOVO",
+        descricao: descricao,
+        controlaProducao: valorControlaProducao,
+        checkboxExists: !!controlaProducaoCheckbox,
+        checkboxValue: controlaProducaoCheckbox?.checked
+    });
+
+    if (!empresaId || !descricao) {
+        mostrarMensagem("Empresa e Descrição são obrigatórios.", "warning");
+        return;
+    }
+
     const dados = {
-        empresaId: document.getElementById('setor-empresa').value,
-        descricao: document.getElementById('setor-descricao').value.trim(),
+        empresaId: empresaId,
+        descricao: descricao,
         gerenteId: document.getElementById('setor-gerente').value || null,
         qtdIdeal: parseInt(document.getElementById('setor-qtd-ideal').value) || 0,
         horarioEntrada: document.getElementById('setor-horario-entrada').value || '',
         horarioSaida: document.getElementById('setor-horario-saida').value || '',
         observacao: document.getElementById('setor-observacao').value.trim(),
-        controlaProducao: document.getElementById('setor-controla-producao').checked,
+        controlaProducao: valorControlaProducao, // VALOR CORRETO
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    if (!dados.empresaId || !dados.descricao) {
-        mostrarMensagem("Empresa e Descrição são obrigatórios.", "warning");
-        return;
-    }
-
-    // Validação de duplicidade
     try {
-        const duplicidadeSnap = await db.collection('setores')
-            .where('empresaId', '==', dados.empresaId)
-            .where('descricao', '==', dados.descricao)
-            .get();
+        btn.disabled = true;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Salvando...';
 
-        const duplicado = duplicidadeSnap.docs.some(doc => doc.id !== setorId);
-        if (duplicado) {
-            mostrarMensagem("Já existe um setor com esta descrição para a empresa selecionada.", "warning");
-            return;
-        }
-    } catch (error) {
-        console.error("Erro ao verificar duplicidade:", error);
-    }
-
-    try {
         if (setorId) {
+            // ATUALIZAÇÃO
             await db.collection('setores').doc(setorId).update(dados);
+            console.log("✅ Setor atualizado com sucesso!", dados);
             mostrarMensagem("Setor atualizado com sucesso!", "success");
         } else {
+            // CRIAÇÃO
             dados.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            await db.collection('setores').add(dados);
+            const docRef = await db.collection('setores').add(dados);
+            console.log("✅ Setor criado com sucesso! ID:", docRef.id, dados);
             mostrarMensagem("Setor cadastrado com sucesso!", "success");
         }
-        bootstrap.Modal.getInstance(document.getElementById('setorModal')).hide();
+
+        // Tenta fechar o modal com segurança
+        const modalEl = document.getElementById('setorModal');
+        const modalInstance = bootstrap.Modal.getInstance(modalEl);
+        if (modalInstance) {
+            modalInstance.hide();
+        } else if (modalEl) {
+            // Fallback caso não tenha instância
+            const bsModal = new bootstrap.Modal(modalEl);
+            bsModal.hide();
+        }
+
+        // Recarregar tabelas e dashboards
         await carregarSetores();
-        await carregarDashboardSetores();
+        if (typeof carregarDashboardSetores === 'function') await carregarDashboardSetores();
+
     } catch (error) {
-        console.error("Erro ao salvar setor:", error);
-        mostrarMensagem("Erro ao salvar o setor.", "error");
+        console.error("❌ Erro ao salvar setor:", error);
+        mostrarMensagem("Erro ao salvar o setor: " + error.message, "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Salvar';
     }
 }
 
@@ -166,7 +206,7 @@ async function excluirSetor(setorId) {
         await db.collection('setores').doc(setorId).delete();
         mostrarMensagem("Setor excluído com sucesso.", "info");
         await carregarSetores();
-        await carregarDashboardSetores();
+        if (typeof carregarDashboardSetores === 'function') await carregarDashboardSetores();
     } catch (error) {
         console.error("Erro ao excluir setor:", error);
         mostrarMensagem("Erro ao excluir o setor.", "error");
@@ -196,7 +236,7 @@ async function carregarDashboardSetores() {
         ]);
 
         const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
-        
+
         // Estrutura para agrupar dados por setor
         const dadosSetores = {};
 
@@ -222,9 +262,6 @@ async function carregarDashboardSetores() {
         funcionariosSnap.forEach(doc => {
             const f = doc.data();
             if (f.empresaId && f.setor) {
-                // Tenta encontrar o setor correspondente. 
-                // Nota: Isso depende da consistência do nome do setor entre as coleções.
-                // Idealmente, usaríamos IDs, mas o sistema atual usa nomes em muitos lugares.
                 const chave = `${f.empresaId}_${f.setor}`;
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].qtdAtual++;
@@ -266,15 +303,13 @@ async function carregarDashboardSetores() {
         });
 
         // 6. Conta colaboradores sumidos (apenas ativos)
-        // Mapeia funcionários ativos para buscar empresaId
         const funcionariosMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, doc.data()]));
 
         sumidosSnap.forEach(doc => {
             const s = doc.data();
-            if (s.status === 'Finalizado') return; // Ignora casos finalizados
+            if (s.status === 'Finalizado') return;
 
             const func = funcionariosMap.get(s.funcionarioId);
-            // Só conta se o funcionário ainda estiver ativo e tivermos os dados de empresa/setor
             if (func && func.empresaId && s.setor) {
                 const chave = `${func.empresaId}_${s.setor}`;
                 if (dadosSetores[chave]) {
@@ -298,7 +333,7 @@ async function carregarDashboardSetores() {
             const gap = s.qtdAtual - s.qtdIdeal;
             let gapClass = 'text-success';
             let gapIcon = '<i class="fas fa-check"></i>';
-            
+
             if (gap < 0) {
                 gapClass = 'text-danger fw-bold';
                 gapIcon = '<i class="fas fa-arrow-down"></i>';
@@ -334,18 +369,18 @@ function exportarDashboardSetoresExcel() {
         mostrarMensagem("Tabela não encontrada.", "error");
         return;
     }
-    const wb = XLSX.utils.table_to_book(table, {sheet: "Lotação"});
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Lotação" });
     XLSX.writeFile(wb, 'Analise_Lotacao_Vagas.xlsx');
 }
 
 function exportarDashboardSetoresWord() {
-     const table = document.getElementById('table-analise-lotacao');
-     if (!table) {
+    const table = document.getElementById('table-analise-lotacao');
+    if (!table) {
         mostrarMensagem("Tabela não encontrada.", "error");
         return;
-     }
-     
-     const html = `
+    }
+
+    const html = `
         <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
         <head>
             <meta charset="utf-8">
@@ -390,11 +425,11 @@ function exportarDashboardSetoresWord() {
         </body>
         </html>
      `;
-     
-     const blob = new Blob(['\ufeff', html], {
+
+    const blob = new Blob(['\ufeff', html], {
         type: 'application/msword'
     });
-    
+
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
@@ -416,13 +451,10 @@ function adicionarBotaoVerificacao() {
     if (!tbody) return;
 
     const table = tbody.closest('table');
-    // Encontra o container da tabela (pode ser um .table-responsive ou o pai direto)
     const container = table.closest('.table-responsive') || table.parentElement;
-    
-    // Tenta encontrar um container de ações acima da tabela
+
     let toolbar = container.previousElementSibling;
-    
-    // Verifica se é um container válido para botões (d-flex), senão cria um
+
     if (!toolbar || !toolbar.classList.contains('d-flex')) {
         toolbar = document.createElement('div');
         toolbar.className = 'd-flex justify-content-end mb-3 gap-2';
@@ -434,23 +466,22 @@ function adicionarBotaoVerificacao() {
     btn.className = 'btn btn-warning text-dark btn-sm';
     btn.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Verificar Desconformidades';
     btn.onclick = verificarDesconformidadeSetores;
-    
+
     toolbar.appendChild(btn);
 }
 
-// --- Início da Refatoração do Modal de Desconformidade ---
+// --- Modal de Desconformidade ---
 
-// Gerencia as instâncias dos modais para evitar duplicação
 const modalManager = {
     report: null,
     correction: null,
-    getReportModal: function() {
+    getReportModal: function () {
         if (!this.report) {
             this.report = new bootstrap.Modal(document.getElementById('desconformidadeModal'));
         }
         return this.report;
     },
-    getCorrectionModal: function() {
+    getCorrectionModal: function () {
         if (!this.correction) {
             this.correction = new bootstrap.Modal(document.getElementById('correcaoSetorModal'));
         }
@@ -458,7 +489,6 @@ const modalManager = {
     }
 };
 
-// Cria os elementos do DOM para os modais na inicialização da página
 function criarModaisDeDesconformidade() {
     if (document.getElementById('desconformidadeModal')) return;
 
@@ -532,15 +562,16 @@ function criarModaisDeDesconformidade() {
 
     document.body.insertAdjacentHTML('beforeend', reportModalHTML);
     document.body.insertAdjacentHTML('beforeend', correctionModalHTML);
-    
-    // Adiciona o listener para salvar a correção
-    document.getElementById('btn-salvar-correcao').addEventListener('click', salvarCorrecaoSetor);
-}
 
+    const btnSalvar = document.getElementById('btn-salvar-correcao');
+    if (btnSalvar) {
+        btnSalvar.addEventListener('click', salvarCorrecaoSetor);
+    }
+}
 
 async function verificarDesconformidadeSetores() {
     mostrarMensagem("Verificando conformidade de setores...", "info");
-    
+
     try {
         const [setoresSnap, funcionariosSnap, empresasSnap] = await Promise.all([
             db.collection('setores').get(),
@@ -580,27 +611,31 @@ async function verificarDesconformidadeSetores() {
 
 function renderizarModalDesconformidade(desconformidades) {
     const summary = document.getElementById('desconformidade-summary');
-    summary.textContent = `Foram encontrados ${desconformidades.length} colaborador(es) com inconsistências.`;
+    if (summary) {
+        summary.textContent = `Foram encontrados ${desconformidades.length} colaborador(es) com inconsistências.`;
+    }
 
     const tableBody = document.getElementById('desconformidade-table-body');
-    tableBody.innerHTML = ''; 
+    if (!tableBody) return;
+
+    tableBody.innerHTML = '';
 
     desconformidades.forEach(item => {
         const tr = document.createElement('tr');
-        
+
         const createCell = (content) => {
             const td = document.createElement('td');
             td.innerHTML = content;
             return td;
         };
-        
+
         const actionTd = document.createElement('td');
         actionTd.className = 'text-center';
-        
+
         const editButton = document.createElement('button');
         editButton.className = 'btn btn-sm btn-outline-primary';
         editButton.innerHTML = '<i class="fas fa-edit"></i>';
-        
+
         if (!item.empresaId) {
             editButton.disabled = true;
             editButton.title = 'Não é possível corrigir: o colaborador não possui uma empresa definida.';
@@ -610,7 +645,7 @@ function renderizarModalDesconformidade(desconformidades) {
                 abrirModalCorrecaoSetor(item.id, item.empresaId, item.nome, item.setor);
             });
         }
-        
+
         actionTd.appendChild(editButton);
         tr.appendChild(actionTd);
 
@@ -622,27 +657,31 @@ function renderizarModalDesconformidade(desconformidades) {
         tableBody.appendChild(tr);
     });
 
-    modalManager.getReportModal().show();
+    const reportModal = modalManager.getReportModal();
+    if (reportModal) reportModal.show();
 }
 
-
 async function abrirModalCorrecaoSetor(funcId, empresaId, nomeFunc, setorAtual) {
-    document.getElementById('correcao-func-id').value = funcId;
-    document.getElementById('correcao-func-nome').value = nomeFunc;
-    document.getElementById('correcao-setor-atual').value = setorAtual;
-
+    const funcIdInput = document.getElementById('correcao-func-id');
+    const funcNomeInput = document.getElementById('correcao-func-nome');
+    const setorAtualInput = document.getElementById('correcao-setor-atual');
     const select = document.getElementById('correcao-novo-setor');
+
+    if (funcIdInput) funcIdInput.value = funcId;
+    if (funcNomeInput) funcNomeInput.value = nomeFunc;
+    if (setorAtualInput) setorAtualInput.value = setorAtual;
+
+    if (!select) return;
+
     select.innerHTML = '<option value="">Carregando...</option>';
     select.disabled = true;
 
     try {
-        // Removido o .orderBy('descricao') para evitar erro de índice no Firebase
         const setoresSnap = await db.collection('setores').where('empresaId', '==', empresaId).get();
-        
+
         if (setoresSnap.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado para esta empresa</option>';
         } else {
-            // Ordenar os resultados no lado do cliente
             const setores = setoresSnap.docs.map(doc => doc.data());
             setores.sort((a, b) => a.descricao.localeCompare(b.descricao));
 
@@ -658,14 +697,17 @@ async function abrirModalCorrecaoSetor(funcId, empresaId, nomeFunc, setorAtual) 
         console.error("Erro ao carregar setores para correção:", error);
         select.innerHTML = '<option value="">Erro ao carregar setores</option>';
     }
-    
-    modalManager.getReportModal().hide();
-    modalManager.getCorrectionModal().show();
+
+    const reportModal = modalManager.getReportModal();
+    const correctionModal = modalManager.getCorrectionModal();
+
+    if (reportModal) reportModal.hide();
+    if (correctionModal) correctionModal.show();
 }
 
 async function salvarCorrecaoSetor() {
-    const funcId = document.getElementById('correcao-func-id').value;
-    const novoSetor = document.getElementById('correcao-novo-setor').value;
+    const funcId = document.getElementById('correcao-func-id')?.value;
+    const novoSetor = document.getElementById('correcao-novo-setor')?.value;
 
     if (!novoSetor) {
         mostrarMensagem("Selecione um novo setor.", "warning");
@@ -673,19 +715,22 @@ async function salvarCorrecaoSetor() {
     }
 
     const button = document.getElementById('btn-salvar-correcao');
+    if (!button) return;
+
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
 
     try {
-        await db.collection('funcionarios').doc(funcId).update({ 
+        await db.collection('funcionarios').doc(funcId).update({
             setor: novoSetor,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
-        
+
         mostrarMensagem("Setor do colaborador corrigido com sucesso!", "success");
-        modalManager.getCorrectionModal().hide();
-        
-        // Re-executa a verificação para atualizar a lista
+
+        const correctionModal = modalManager.getCorrectionModal();
+        if (correctionModal) correctionModal.hide();
+
         verificarDesconformidadeSetores();
 
     } catch (error) {
@@ -697,9 +742,20 @@ async function salvarCorrecaoSetor() {
     }
 }
 
-
 // Adicionar funções ao escopo global e inicializar
-document.addEventListener('DOMContentLoaded', criarModaisDeDesconformidade);
-window.verificarDesconformidadeSetores = verificarDesconformidadeSetores;
+document.addEventListener('DOMContentLoaded', () => {
+    criarModaisDeDesconformidade();
 
-// --- Fim da Refatoração do Modal de Desconformidade ---
+    // Adicionar listener para depuração do checkbox (opcional)
+    const controlaProducaoCheckbox = document.getElementById('setor-controla-producao');
+    if (controlaProducaoCheckbox) {
+        controlaProducaoCheckbox.addEventListener('change', function (e) {
+            console.log("🔄 Checkbox alterado para:", e.target.checked);
+        });
+    }
+});
+
+window.verificarDesconformidadeSetores = verificarDesconformidadeSetores;
+window.abrirModalSetor = abrirModalSetor;
+window.excluirSetor = excluirSetor;
+window.salvarSetor = salvarSetor;

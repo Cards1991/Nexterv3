@@ -1041,12 +1041,14 @@ function exportarTabelaAutorizacao() {
         const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
         const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
         const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
+        const duracao = Math.max(0, (end - start) / 3600000); // Diferença em horas decimais
 
         return {
             "Data Solicitação": createdAt.toLocaleDateString('pt-BR'),
             "Funcionário": s.employeeName || 'N/A',
             "Setor": s.setor || 'N/A',
             "Período": `${start.toLocaleDateString('pt-BR')} ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
+            "Horas": Number(duracao.toFixed(2)),
             "Motivo": s.reason || 'Não especificado',
             "Valor Estimado": s.valorEstimado || 0,
             "Status": s.status,
@@ -1054,34 +1056,71 @@ function exportarTabelaAutorizacao() {
         };
     });
 
-    // 2. Calcular o total geral
-    const totalGeral = cacheSolicitacoes.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    // 2. Preparar os dados de resumo por colaborador (Horas Acumuladas)
+    const resumoMap = {};
+    cacheSolicitacoes.forEach(s => {
+        const id = s.employeeId || s.employeeName;
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        const duracaoHoras = Math.max(0, (end - start) / 3600000); // 1000 * 60 * 60
 
-    // 3. Criar a planilha a partir do JSON
-    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
-
-    // 4. Adicionar a linha de total
-    XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 }); // Linha em branco
-    XLSX.utils.sheet_add_aoa(ws, [["", "", "", "", "TOTAL GERAL:", totalGeral]], { origin: -1 });
-
-    // 5. Formatar a coluna de valor como moeda
-    const range = XLSX.utils.decode_range(ws['!ref']);
-    const valorColIndex = 5; // Coluna F
-    for (let R = 1; R <= range.e.r; ++R) {
-        const cell_address = { c: valorColIndex, r: R };
-        const cell_ref = XLSX.utils.encode_cell(cell_address);
-        if (ws[cell_ref] && typeof ws[cell_ref].v === 'number') {
-            ws[cell_ref].t = 'n';
-            ws[cell_ref].z = 'R$ #,##0.00';
+        if (!resumoMap[id]) {
+            resumoMap[id] = {
+                "Colaborador": s.employeeName || 'N/A',
+                "Setor": s.setor || 'N/A',
+                "Total Horas Acumuladas": 0,
+                "Total Valor Estimado": 0,
+                "Qtd. Solicitações": 0
+            };
         }
-    }
+        resumoMap[id]["Total Horas Acumuladas"] += duracaoHoras;
+        resumoMap[id]["Total Valor Estimado"] += (s.valorEstimado || 0);
+        resumoMap[id]["Qtd. Solicitações"] += 1;
+    });
 
-    // 6. Ajustar a largura das colunas
-    ws['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 20 } ];
+    const dadosResumo = Object.values(resumoMap).sort((a, b) => b["Total Horas Acumuladas"] - a["Total Horas Acumuladas"]);
 
-    // 7. Criar o workbook e salvar o arquivo
+    // 3. Calcular totais gerais para as linhas de rodapé
+    const totalGeral = cacheSolicitacoes.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
+    const totalHorasGeral = Object.values(resumoMap).reduce((acc, r) => acc + r["Total Horas Acumuladas"], 0);
+
+    // 4. Criar o workbook e as planilhas
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Autorizacoes");
+
+    // --- Aba 1: Resumo por Colaborador (Horas Acumuladas) ---
+    const wsResumo = XLSX.utils.json_to_sheet(dadosResumo);
+    XLSX.utils.sheet_add_aoa(wsResumo, [[]], { origin: -1 });
+    XLSX.utils.sheet_add_aoa(wsResumo, [["TOTAL GERAL:", "", totalHorasGeral, totalGeral]], { origin: -1 });
+
+    // Formatação na Aba de Resumo
+    const rangeResumo = XLSX.utils.decode_range(wsResumo['!ref']);
+    for (let R = 1; R <= rangeResumo.e.r; ++R) {
+        // Coluna C (Índice 2): Horas Acumuladas
+        const cellH = wsResumo[XLSX.utils.encode_cell({c: 2, r: R})];
+        if (cellH && typeof cellH.v === 'number') cellH.z = '0.00';
+        
+        // Coluna D (Índice 3): Valor Total
+        const cellV = wsResumo[XLSX.utils.encode_cell({c: 3, r: R})];
+        if (cellV && typeof cellV.v === 'number') cellV.z = 'R$ #,##0.00';
+    }
+    wsResumo['!cols'] = [ { wch: 35 }, { wch: 20 }, { wch: 20 }, { wch: 20 }, { wch: 15 } ];
+    XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo por Colaborador");
+
+    // --- Aba 2: Lista Detalhada (Registro a Registro) ---
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    XLSX.utils.sheet_add_aoa(ws, [[]], { origin: -1 });
+    XLSX.utils.sheet_add_aoa(ws, [["", "", "", "", "", "TOTAL GERAL:", totalGeral]], { origin: -1 });
+    
+    // Formatação de Moeda na Aba de Detalhes (Agora na Coluna G - Índice 6 devido à nova coluna 'Horas')
+    const rangeWs = XLSX.utils.decode_range(ws['!ref']);
+    for (let R = 1; R <= rangeWs.e.r; ++R) {
+        const cell = ws[XLSX.utils.encode_cell({c: 6, r: R})];
+        if (cell && typeof cell.v === 'number') cell.z = 'R$ #,##0.00';
+    }
+    ws['!cols'] = [ { wch: 15 }, { wch: 30 }, { wch: 20 }, { wch: 35 }, { wch: 10 }, { wch: 25 }, { wch: 15 }, { wch: 12 }, { wch: 20 } ];
+    XLSX.utils.book_append_sheet(wb, ws, "Lista Detalhada");
+
+    // 5. Salvar o arquivo final
     XLSX.writeFile(wb, "Relatorio_Autorizacoes_HE.xlsx");
     mostrarMensagem("Exportado para Excel com sucesso!", "success");
 }
@@ -1211,14 +1250,16 @@ function mostrarMensagem(mensagem, tipo = 'info') {
 
 function openPrintWindow(content, options = {}) {
     const printWindow = window.open('', '_blank');
-    printWindow.document.write(content);
-    printWindow.document.close();
-    
-    if (options.autoPrint) {
-        printWindow.onload = () => {
-            printWindow.print();
-            printWindow.onafterprint = () => printWindow.close();
-        };
+    if (printWindow) {
+        printWindow.document.write(content);
+        printWindow.document.close();
+        
+        if (options.autoPrint) {
+            printWindow.onload = () => {
+                printWindow.print();
+                printWindow.onafterprint = () => printWindow.close();
+            };
+        }
     }
 }
 
@@ -1230,9 +1271,9 @@ function limparListenerAutorizacao() {
         console.log("Listener de autorização de horas removido.");
     }
 }
-window.limparListenerAutorizacao = limparListenerAutorizacao;
 
 // Exporta funções auxiliares
+window.limparListenerAutorizacao = limparListenerAutorizacao;
 window.carregarDadosAuxiliaresAuth = carregarDadosAuxiliaresAuth;
 window.obterNomeGerenteSetor = obterNomeGerenteSetor;
 window.obterNomeMacroSetor = obterNomeMacroSetor;

@@ -35,7 +35,7 @@ async function inicializarProducaoMetas(secaoNome) {
 // 2. Carregamento de Dados (Firestore)
 async function carregarSectoresProducao() {
     try {
-        const snapshot = await db.collection('setores').get();
+        const snapshot = await db.collection('setores').get({ source: 'server' });
         __PRODUCAO_CONFIG.setores = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .filter(s => s.controlaProducao === true);
