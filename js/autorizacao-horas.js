@@ -114,6 +114,12 @@ async function inicializarTelaAutorizacao() {
         btnExportar.bound = true;
     }
 
+    const btnHolerite = document.getElementById('auth-btn-holerite');
+    if (btnHolerite && !btnHolerite.bound) {
+        btnHolerite.addEventListener('click', imprimirHoleritesHE);
+        btnHolerite.bound = true;
+    }
+
     const btnIntegrar = document.getElementById('auth-btn-integrar-custos');
     if (btnIntegrar && !btnIntegrar.bound) {
         btnIntegrar.addEventListener('click', integrarComAnaliseDeCustos);
@@ -125,6 +131,15 @@ async function inicializarTelaAutorizacao() {
         btnFiltrar.addEventListener('click', carregarSolicitacoes);
         btnFiltrar.bound = true;
     }
+
+    // Adiciona listeners para atualizar automaticamente ao mudar filtros
+    ['auth-filtro-funcionario', 'auth-filtro-setor', 'auth-filtro-status', 'auth-filtro-pagamento'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el && !el.bound) {
+            el.addEventListener('change', carregarSolicitacoes);
+            el.bound = true;
+        }
+    });
 
     // Inicia o carregamento de dados em tempo real
     await popularFiltrosAutorizacao();
@@ -157,10 +172,21 @@ async function popularFiltrosAutorizacao() {
             (doc.data().setores || []).forEach(setor => setores.add(setor));
         });
 
+        // Popula filtro de setores
         setorSelect.innerHTML = '<option value="">Todos os Setores</option>';
         [...setores].sort().forEach(setor => {
             setorSelect.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
+
+        // Popula filtro de funcionários
+        const funcionarioSelect = document.getElementById('auth-filtro-funcionario');
+        if (funcionarioSelect) {
+            const funcionarios = await carregarFuncionariosAuth();
+            funcionarioSelect.innerHTML = '<option value="">Todos os Funcionários</option>';
+            funcionarios.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(f => {
+                funcionarioSelect.innerHTML += `<option value="${f.id}">${f.nome}</option>`;
+            });
+        }
 
         // Set default filters to current month and approved status
         const now = new Date();
@@ -215,6 +241,7 @@ async function carregarSolicitacoes() {
     const dataInicio = document.getElementById('auth-filtro-data-inicio').value;
     const dataFim = document.getElementById('auth-filtro-data-fim').value;
     const setor = document.getElementById('auth-filtro-setor').value;
+    const funcionarioId = document.getElementById('auth-filtro-funcionario')?.value; // Novo: Filtro por funcionário
     const status = document.getElementById('auth-filtro-status').value; // Novo: Pega o valor do filtro de status
 
     // Cria um novo listener
@@ -302,6 +329,11 @@ async function carregarSolicitacoes() {
             // Aplica filtro de setor no lado do cliente
             if (setor) {
                 solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.setor === setor);
+            }
+
+            // Aplica filtro de funcionário no lado do cliente
+            if (funcionarioId) {
+                solicitacoesProcessadas = solicitacoesProcessadas.filter(s => s.employeeId === funcionarioId);
             }
 
             // Aplica filtro de status no lado do cliente para evitar erro de índice e garantir consistência
@@ -1132,6 +1164,291 @@ if (typeof XLSX === 'undefined') {
     document.head.appendChild(script);
 }
 
+/**
+ * Gera e imprime recibos (holerites) de horas extras acumuladas por colaborador.
+ */
+async function imprimirHoleritesHE() {
+    if (!cacheSolicitacoes || cacheSolicitacoes.length === 0) {
+        mostrarMensagem("Não há solicitações filtradas para gerar holerites.", "warning");
+        return;
+    }
+
+    // Filtrar apenas solicitações aprovadas, a menos que o usuário queira todas
+    let solicitacoesParaProcessar = cacheSolicitacoes.filter(s => s.status === 'aprovado');
+    
+    if (solicitacoesParaProcessar.length === 0) {
+        if (confirm("Não há solicitações APROVADAS no período. Deseja imprimir holerites de todas as solicitações visíveis (pendentes + aprovadas)?")) {
+            solicitacoesParaProcessar = cacheSolicitacoes;
+        } else {
+            return;
+        }
+    }
+
+    const dataPagamentoFiltro = document.getElementById('auth-filtro-data-pagamento')?.value;
+    const dataPagamentoFormatada = dataPagamentoFiltro 
+        ? new Date(dataPagamentoFiltro + 'T12:00:00').toLocaleDateString('pt-BR') 
+        : '___/___/____';
+
+    mostrarMensagem("Gerando holerites e extratos...", "info");
+
+    // 1. Agrupar solicitações por funcionário
+    const colaboradoresMap = {};
+    
+    // Precisamos dos salários para calcular HE e DSR separadamente se não estiverem no doc
+    const funcionariosSnap = await db.collection('funcionarios').get();
+    const infoFuncionarios = {};
+    funcionariosSnap.forEach(doc => {
+        const data = doc.data();
+        infoFuncionarios[doc.id] = {
+            nome: data.nome,
+            setor: data.setor,
+            salario: parseFloat(data.salario || 0),
+            matricula: data.matricula || '---'
+        };
+    });
+
+    solicitacoesParaProcessar.forEach(s => {
+        const empId = s.employeeId;
+        if (!colaboradoresMap[empId]) {
+            colaboradoresMap[empId] = {
+                id: empId,
+                nome: s.employeeName || (infoFuncionarios[empId]?.nome || 'Desconhecido'),
+                setor: s.setor || (infoFuncionarios[empId]?.setor || 'N/A'),
+                matricula: infoFuncionarios[empId]?.matricula || '---',
+                totalMinutos: 0,
+                totalHE: 0,
+                totalDSR: 0,
+                totalGeral: 0,
+                qtdSolicitacoes: 0,
+                detalhes: []
+            };
+        }
+
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        const duracaoMinutos = Math.max(0, (end - start) / (1000 * 60));
+        
+        // Recalcular componentes para precisão no holerite
+        const salario = infoFuncionarios[empId]?.salario || 0;
+        const valorHora = salario / 220;
+        const horas = duracaoMinutos / 60;
+        const valorExtra = horas * (valorHora * 1.5);
+        const dsr = valorExtra / 6; // Mantendo a lógica simplificada do sistema
+
+        colaboradoresMap[empId].totalMinutos += duracaoMinutos;
+        colaboradoresMap[empId].totalHE += valorExtra;
+        colaboradoresMap[empId].totalDSR += dsr;
+        colaboradoresMap[empId].totalGeral += (valorExtra + dsr);
+        colaboradoresMap[empId].qtdSolicitacoes++;
+        colaboradoresMap[empId].detalhes.push({
+            data: start.toLocaleDateString('pt-BR'),
+            horas: horas.toFixed(2),
+            periodo: `${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
+            motivo: s.reason || 'S/ Motivo',
+            valor: (valorExtra + dsr).toFixed(2)
+        });
+    });
+
+    const listaColaboradores = Object.values(colaboradoresMap).sort((a, b) => a.nome.localeCompare(b.nome));
+    
+    // 2. Gerar o HTML para a janela de impressão
+    const dataEmissao = new Date().toLocaleDateString('pt-BR', { 
+        day: '2-digit', month: 'long', year: 'numeric' 
+    });
+
+    const filtroDataInicio = document.getElementById('auth-filtro-data-inicio')?.value || '';
+    const filtroDataFim = document.getElementById('auth-filtro-data-fim')?.value || '';
+    const periodoStr = filtroDataInicio && filtroDataFim 
+        ? `Período: ${filtroDataInicio.split('-').reverse().join('/')} a ${filtroDataFim.split('-').reverse().join('/')}`
+        : 'Período Acumulado';
+
+    let htmlHolerites = '';
+
+    listaColaboradores.forEach((c, index) => {
+        const totalHoras = (c.totalMinutos / 60).toFixed(2);
+        
+        // Ordenar detalhes por data
+        c.detalhes.sort((a, b) => {
+            const dateA = a.data.split('/').reverse().join('');
+            const dateB = b.data.split('/').reverse().join('');
+            return dateA.localeCompare(dateB);
+        });
+
+        htmlHolerites += `
+        <div class="holerite-page" style="${index > 0 ? 'page-break-before: always;' : ''}">
+            <!-- CABEÇALHO DO HOLERITE -->
+            <div class="header-holerite">
+                <div class="empresa-info">
+                    <div class="logo"><i class="fas fa-building"></i> CALÇADOS CRIVAL</div>
+                    <div class="descr">SISTEMA NEXTER - GESTÃO DE RH</div>
+                </div>
+                <div class="titulo-recibo">
+                    RECIBO DE PAGAMENTO<br>
+                    <span>HORAS EXTRAS ACUMULADAS</span>
+                </div>
+            </div>
+
+            <div class="dados-colaborador">
+                <div class="info-row">
+                    <div class="item"><strong>Colaborador:</strong> ${c.nome}</div>
+                    <div class="item text-end"><strong>Matrícula:</strong> ${c.matricula}</div>
+                </div>
+                <div class="info-row">
+                    <div class="item"><strong>Setor:</strong> ${c.setor}</div>
+                    <div class="item text-end"><strong>Data Pagto:</strong> ${dataPagamentoFormatada}</div>
+                </div>
+            </div>
+
+            <table class="tabela-vencimentos">
+                <thead>
+                    <tr>
+                        <th>Cód.</th>
+                        <th>Descrição da Verba</th>
+                        <th class="text-end">Referência</th>
+                        <th class="text-end">Vencimentos (R$)</th>
+                        <th class="text-end">Descontos (R$)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>0010</td>
+                        <td>HORA EXTRA 50% ACUMULADA</td>
+                        <td class="text-end">${totalHoras} h</td>
+                        <td class="text-end">${c.totalHE.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="text-end">0,00</td>
+                    </tr>
+                    <tr>
+                        <td>0050</td>
+                        <td>DSR S/ HORA EXTRA</td>
+                        <td class="text-end">1/6</td>
+                        <td class="text-end">${c.totalDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td class="text-end">0,00</td>
+                    </tr>
+                    ${new Array(4).fill('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>').join('')}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3" class="text-end"><strong>TOTAIS:</strong></td>
+                        <td class="text-end"><strong>${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
+                        <td class="text-end"><strong>0,00</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+
+            <div class="total-liquido">
+                <div class="label">VALOR LÍQUIDO A RECEBER:</div>
+                <div class="valor">R$ ${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+            </div>
+
+            <div class="footer-assinatura">
+                <div class="msg">
+                    Declaro ter recebido a importância líquida discriminada neste recibo, 
+                    referente ao pagamento de horas extras do período ${periodoStr}.
+                </div>
+                <div class="linhas">
+                    <div class="data-linha">${new Date().toLocaleDateString('pt-BR')}</div>
+                    <div class="assinatura-linha">Assinatura do Colaborador</div>
+                </div>
+            </div>
+
+            <!-- EXTRATO DETALHADO (ANEXO) -->
+            <div class="extrato-container" style="margin-top: 30px; border-top: 2px dashed #000; padding-top: 20px;">
+                <div style="font-weight: bold; text-align: center; margin-bottom: 15px; font-size: 14px;">EXTRATO DETALHADO DE HORAS EXTRAS (ANEXO)</div>
+                <div style="margin-bottom: 10px; font-size: 10px;">
+                    <strong>Colaborador:</strong> ${c.nome} | <strong>${periodoStr}</strong>
+                </div>
+                <table class="tabela-extrato" style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                    <thead>
+                        <tr style="background-color: #f0f0f0;">
+                            <th style="border: 1px solid #000; padding: 4px;">Data</th>
+                            <th style="border: 1px solid #000; padding: 4px;">Período (Início/Fim)</th>
+                            <th style="border: 1px solid #000; padding: 4px; text-align: center;">Horas</th>
+                            <th style="border: 1px solid #000; padding: 4px;">Motivo/Ocorrência</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${c.detalhes.map(d => `
+                        <tr>
+                            <td style="border: 1px solid #000; padding: 4px;">${d.data}</td>
+                            <td style="border: 1px solid #000; padding: 4px;">${d.periodo}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${d.horas}</td>
+                            <td style="border: 1px solid #000; padding: 4px;">${d.motivo}</td>
+                        </tr>
+                        `).join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr style="background-color: #f9f9f9; font-weight: bold;">
+                            <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right;">TOTAL ACUMULADO:</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${totalHoras} h</td>
+                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+
+            <div class="copia-aviso" style="margin-top: 15px;">Emitido em ${dataEmissao} - Sistema Nexter</div>
+        </div>`;
+    });
+
+    const fullHTML = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Holerites e Extratos de Horas Extras</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+        <style>
+            @media print {
+                body { margin: 0; padding: 0; }
+                .no-print { display: none; }
+                .holerite-page { page-break-after: always; }
+            }
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }
+            .holerite-page { 
+                max-width: 800px; 
+                margin: 0 auto 30px auto; 
+                border: 2px solid #000; 
+                padding: 20px;
+                background: #fff;
+            }
+            .header-holerite { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+            .empresa-info .logo { font-size: 18px; font-weight: bold; }
+            .empresa-info .descr { font-size: 10px; font-weight: 600; }
+            .titulo-recibo { text-align: right; font-size: 16px; font-weight: bold; }
+            .titulo-recibo span { font-size: 11px; color: #444; }
+            
+            .dados-colaborador { background: #f8f9fa; border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+            .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+            .info-row .item { flex: 1; font-size: 11px; }
+            
+            .tabela-vencimentos { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+            .tabela-vencimentos th { border: 1px solid #000; background: #eaedf0; padding: 6px; text-transform: uppercase; font-size: 10px; }
+            .tabela-vencimentos td { border: 1px solid #000; padding: 6px; height: 25px; vertical-align: middle; }
+            .tabela-vencimentos tfoot td { border: 1px solid #000; background: #f8f9fa; padding: 8px; font-size: 12px; }
+            
+            .total-liquido { display: flex; justify-content: flex-end; align-items: center; gap: 20px; margin-bottom: 20px; }
+            .total-liquido .label { font-weight: bold; font-size: 13px; }
+            .total-liquido .valor { border: 3px solid #000; padding: 8px 20px; font-size: 18px; font-weight: bold; background: #f0f0f0; }
+            
+            .footer-assinatura { margin-top: 30px; }
+            .footer-assinatura .msg { font-size: 10px; margin-bottom: 30px; text-align: justify; line-height: 1.4; }
+            .footer-assinatura .linhas { display: flex; justify-content: space-between; align-items: flex-end; }
+            .data-linha { border-bottom: 1px solid #000; width: 180px; text-align: center; padding-bottom: 5px; }
+            .assinatura-linha { border-top: 1px solid #000; width: 350px; text-align: center; padding-top: 8px; font-weight: bold; }
+            
+            .copia-aviso { font-style: italic; font-size: 9px; text-align: right; color: #666; }
+            .tabela-extrato th { text-align: left; }
+        </style>
+    </head>
+    <body onload="window.print();">
+        ${htmlHolerites}
+    </body>
+    </html>`;
+
+    openPrintWindow(fullHTML);
+}
+
 // Exporta as funções para o escopo global para serem chamadas pelos `onclick`
 window.inicializarTelaAutorizacao = inicializarTelaAutorizacao;
 window.aprovarSolicitacao = aprovarSolicitacao;
@@ -1141,6 +1458,7 @@ window.abrirModalAjuste = abrirModalAjuste;
 window.salvarAjusteSolicitacao = salvarAjusteSolicitacao;
 window.imprimirTabelaAutorizacao = imprimirTabelaAutorizacao;
 window.exportarTabelaAutorizacao = exportarTabelaAutorizacao;
+window.imprimirHoleritesHE = imprimirHoleritesHE;
 
 /**
  * Aglutina os custos de horas extras aprovadas por setor e os envia para a Análise de Custos.
