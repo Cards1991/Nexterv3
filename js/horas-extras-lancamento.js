@@ -604,16 +604,19 @@ async function calcularEExibirHorasExtras() {
             return;
         }
 
-        // Calcula o total de minutos para conversão no formato usado pelo sistema
-        const totalMinutes = Math.round(hoursDiff * 60);
-        // Formato customizado para cálculo/exibição: minutos como fração de 100 (ex: 33 minutos -> 0.33)
-        const hoursDisplayFormat = parseFloat((Math.floor(totalMinutes / 60) + (totalMinutes % 60) / 100).toFixed(2));
+        // Cálculo de horas para exibição amigável
+        const hoursHHmm = decimalToHHmm(hoursDiff);
 
-        // Calcular valores
-        const hourlyRate = salary / 220; // 220 horas mensais
-        const overtimeRate = (overtimeType === 50) ? hourlyRate * 1.5 : hourlyRate * 2;
-        // Usa o formato minutos/100 para compatibilidade com cálculo legado
-        const overtimePay = overtimeRate * hoursDisplayFormat;
+        // Lógica sugerida pelo usuário: Salário / 220 -> x 1.5 -> x 4.45 (em vez de 4.75)
+        const hourlyRateRaw = salary / 220; 
+        const multiplier = (overtimeType === 50) ? 1.5 : 2;
+        const overtimeRate = hourlyRateRaw * multiplier;
+        
+        const hoursFakeDecimal = trueDecimalToFakeDecimal(hoursDiff);
+        const overtimePay = overtimeRate * hoursFakeDecimal;
+
+        // Armazenamos o "fake decimal" para consistência posterior (ex: 4:45 -> 4.45)
+        const hoursDecimal = parseFloat(hoursFakeDecimal.toFixed(2));
         
         // Cálculo do DSR (Descanso Semanal Remunerado)
         // Fórmula: (Valor Total Horas Extras / Dias Úteis do Mês) * (Domingos e Feriados do Mês)
@@ -636,7 +639,8 @@ async function calcularEExibirHorasExtras() {
             reason: reason,
             entryTime: entryTime,
             exitTime: exitTime,
-            hours: hoursDisplayFormat,
+            hours: hoursDecimal, // Mantém o valor decimal para o banco
+            hoursFormatted: hoursHHmm, // Documenta o tempo formatado
             overtimeType: overtimeType,
             hourlyRate: parseFloat(hourlyRate.toFixed(2)),
             overtimeRate: parseFloat(overtimeRate.toFixed(2)),
@@ -687,13 +691,12 @@ function exibirResultadoModal(overtimeData) {
                 <p><strong>Taxa Hora Extra:</strong></p>
                 <p><strong>Horas Trabalhadas:</strong></p>
                 <p><strong>Valor Horas Extras:</strong></p>
-                <p><strong>DSR:</strong></p>
             </div>
             <div class="col-6 text-end">
                 <p>R$ ${overtimeData.salary.toFixed(2)}</p>
                 <p>R$ ${overtimeData.hourlyRate.toFixed(2)}</p>
                 <p>R$ ${overtimeData.overtimeRate.toFixed(2)} (${overtimeData.overtimeType}%)</p>
-                <p>${overtimeData.hours}h</p>
+                <p>${overtimeData.hoursFormatted} (${overtimeData.hours.toFixed(2)}h)</p>
                 <p class="fw-bold">R$ ${overtimeData.overtimePay.toFixed(2)}</p>
                 <p>R$ ${overtimeData.dsr.toFixed(2)}</p>
             </div>

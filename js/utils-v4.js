@@ -128,3 +128,37 @@ window.safeModal = safeModal;
 window.safeShowModal = safeShowModal;
 window.safeHideModal = safeHideModal;
 window.toggleRoleElements = toggleRoleElements;
+
+// ✅ NEW: Time conversion utilities
+function decimalToHHmm(decimal) {
+    if (decimal === null || decimal === undefined || isNaN(decimal)) return "00:00";
+    const hours = Math.floor(decimal);
+    const minutes = Math.round((decimal - hours) * 60);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+function timeToDecimal(timeStr) {
+    if (!timeStr || !timeStr.includes(':')) return 0;
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    return hours + (minutes / 60);
+}
+
+// ✅ NEW: Fake decimal utilities (4:45 -> 4.45)
+function trueDecimalToFakeDecimal(trueDecimal) {
+    if (trueDecimal === null || trueDecimal === undefined || isNaN(trueDecimal)) return 0;
+    const hours = Math.floor(trueDecimal);
+    const minutes = Math.round((trueDecimal - hours) * 60);
+    return hours + (minutes / 100);
+}
+
+function fakeDecimalToHHmm(fakeDecimal) {
+    if (fakeDecimal === null || fakeDecimal === undefined || isNaN(fakeDecimal)) return "00:00";
+    const hours = Math.floor(fakeDecimal);
+    const minutes = Math.round((fakeDecimal - hours) * 100);
+    return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+}
+
+window.decimalToHHmm = decimalToHHmm;
+window.timeToDecimal = timeToDecimal;
+window.trueDecimalToFakeDecimal = trueDecimalToFakeDecimal;
+window.fakeDecimalToHHmm = fakeDecimalToHHmm;

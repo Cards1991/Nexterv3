@@ -1034,13 +1034,14 @@ function imprimirRelatorioDesempenho() {
         const horaFim = s.end.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         const duracao = ((s.end.toDate() - s.start.toDate()) / 3600000);
         totalHoras += duracao;
+        const duracaoFormatada = decimalToHHmm(duracao);
 
         linhasHtml += `
             <tr>
                 <td>${s.employeeName}</td>
                 <td>${data}</td>
                 <td>${horaInicio} - ${horaFim}</td>
-                <td>${duracao.toFixed(2)}h</td>
+                <td>${duracaoFormatada}</td>
                 <td>${s.reason || '-'}</td>
                 <td>${s.status}</td>
             </tr>
@@ -1064,7 +1065,7 @@ function imprimirRelatorioDesempenho() {
         <body>
             <h2>Relatório de Solicitações de Horas Extras</h2>
             <p><strong>Solicitante:</strong> ${solicitante} | <strong>Período:</strong> ${periodo}</p>
-            <p><strong>Total de Horas Listadas:</strong> ${totalHoras.toFixed(2)}h</p>
+            <p><strong>Total de Horas Listadas:</strong> ${decimalToHHmm(totalHoras)}</p>
             
             <table>
                 <thead><tr><th>Colaborador</th><th>Data</th><th>Horário</th><th>Duração</th><th>Motivo</th><th>Status</th></tr></thead>

@@ -238,8 +238,10 @@ async function listarHorasExtras() {
             if (overtime.signed) {
                 deleteButton = `<button class="btn btn-sm btn-outline-secondary" disabled title="Registro assinado não pode ser excluído"><i class="fas fa-trash"></i></button>`;
             } else {
-                deleteButton = `<button class="btn btn-sm btn-outline-danger" onclick="excluirHoraExtra('${doc.id}')"><i class="fas fa-trash"></i></button>`;
+                deleteButton = `<button class="btn btn-sm btn-outline-danger" onclick="excluirHoraExtra('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>`;
             }
+
+            let reprocessButtonRow = `<button class="btn btn-sm btn-outline-primary me-1" onclick="reprocessarUmaHoraExtra('${doc.id}')" title="Recalcular Valores"><i class="fas fa-sync"></i></button>`;
 
             // Buscar o nome do setor macro baseado no setor
             const setorNome = (overtime.sector || '').trim().toLowerCase();
@@ -252,17 +254,20 @@ async function listarHorasExtras() {
                     <td>${overtime.employeeName}</td>
                     <td>${formatarData(date)}</td>
                     <td>${overtime.reason}</td>
-                    <td>${extraHours.toFixed(2)}</td>
-                    <td>R$ ${overtimePay.toFixed(2)}</td>
+                    <td class="fw-bold">${fakeDecimalToHHmm(extraHours)}</td>
+                    <td>R$ ${overtimePay.toFixed(2)} (${overtime.overtimeType}%)</td>
                     <td>R$ ${dsrValue.toFixed(2)}</td>
                     <td>R$ ${(overtimePay + dsrValue).toFixed(2)}</td>
-                    <td>${deleteButton}</td>
+                    <td>
+                        ${reprocessButtonRow}
+                        ${deleteButton}
+                    </td>
                 </tr>
             `;
             tbody.innerHTML += row;
         });
 
-        document.getElementById('he-totalHours').textContent = totalExtraHours.toFixed(2);
+        document.getElementById('he-totalHours').textContent = fakeDecimalToHHmm(totalExtraHours);
         document.getElementById('he-totalDSR').textContent = `R$ ${totalDSRValue.toFixed(2)}`;
         document.getElementById('he-grandTotal').textContent = `R$ ${totalValue.toFixed(2)}`;
 
@@ -316,9 +321,23 @@ async function reprocessarHorasExtras() {
             const jornadaMensal = parseFloat(funcionarioData.jornada) || 220;
             const valorHora = salarioBase / jornadaMensal;
 
-            const percentualHE = parseFloat(item.percentage) || 1.5; // 50% extra
-            const valorHoraExtra = valorHora * percentualHE;
-            const totalHorasExtras = valorHoraExtra * (parseFloat(item.hours) || 0);
+            // Determinar o multiplicador baseado no tipo de hora extra (ex: 50 -> 1.5, 100 -> 2.0)
+            const tipoHE = parseFloat(item.overtimeType) || 50;
+            const multiplicador = 1 + (tipoHE / 100);
+
+            const valorHoraExtra = valorHora * multiplicador;
+            
+            // Recalcular as horas no formato "fake decimal" (ex: 4:45 -> 4.45) se tivermos os horários
+            let horasParaCalculo = parseFloat(item.hours) || 0;
+            if (item.entryTime && item.exitTime) {
+                const d1 = new Date(`${item.date}T${item.entryTime}:00`);
+                let d2 = new Date(`${item.date}T${item.exitTime}:00`);
+                if (d2 <= d1) d2.setDate(d2.getDate() + 1);
+                const diffHorasReais = (d2 - d1) / 3600000;
+                horasParaCalculo = trueDecimalToFakeDecimal(diffHorasReais);
+            }
+
+            const totalHorasExtras = valorHoraExtra * horasParaCalculo;
 
             // Recálculo do DSR (exemplo simples)
             // A lógica real pode ser mais complexa e depender de dias úteis/domingos no período.
@@ -351,6 +370,92 @@ async function reprocessarHorasExtras() {
         reprocessButton.disabled = false;
         reprocessButton.innerHTML = `<i class="fas fa-sync-alt"></i> Reprocessar`;
         await listarHorasExtras(); // Atualiza a visualização
+    }
+}
+
+/**
+ * Reprocessa uma única hora extra pelo ID
+ */
+async function reprocessarUmaHoraExtra(id) {
+    try {
+        const docRef = db.collection('overtime').doc(id);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            mostrarMensagem("Registro não encontrado.", "error");
+            return;
+        }
+
+        const item = docSnap.data();
+        if (item.signed) {
+            if (!confirm("Este registro já foi ASSINADO. Deseja realmente REPROCESSAR e possivelmente alterar os valores?")) {
+                return;
+            }
+        }
+
+        // Feedback visual no botão
+        const btn = document.querySelector(`button[onclick*="${id}"][onclick*="reprocessar"]`);
+        const originalHtml = btn ? btn.innerHTML : '';
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+        }
+
+        // Buscar dados do funcionário para obter salário atualizado
+        const funcDoc = await db.collection('funcionarios').doc(item.employeeId).get();
+        if (!funcDoc.exists) {
+            mostrarMensagem(`Funcionário com ID ${item.employeeId} não encontrado.`, "error");
+            if (btn) { btn.disabled = false; btn.innerHTML = originalHtml; }
+            return;
+        }
+
+        const funcionarioData = funcDoc.data();
+        const salarioBase = parseFloat(funcionarioData.salario) || 0;
+        const jornadaMensal = parseFloat(funcionarioData.jornada) || 220;
+        const valorHora = salarioBase / jornadaMensal;
+
+        // Determinar o multiplicador baseado no tipo de hora extra
+        const tipoHE = parseFloat(item.overtimeType) || 50;
+        const multiplicador = 1 + (tipoHE / 100);
+
+        const valorHoraExtra = valorHora * multiplicador;
+        
+        // Recalcular as horas no formato "fake decimal" (ex: 4:45 -> 4.45) se tivermos os horários
+        let horasParaCalculo = parseFloat(item.hours) || 0;
+        if (item.entryTime && item.exitTime) {
+            const d1 = new Date(`${item.date}T${item.entryTime}:00`);
+            let d2 = new Date(`${item.date}T${item.exitTime}:00`);
+            if (d2 <= d1) d2.setDate(d2.getDate() + 1);
+            const diffHorasReais = (d2 - d1) / 3600000;
+            horasParaCalculo = trueDecimalToFakeDecimal(diffHorasReais);
+        }
+
+        const totalHorasExtras = valorHoraExtra * horasParaCalculo;
+
+        // Recálculo do DSR (usando lógica compatível com o sistema)
+        const dataLanc = new Date(item.date + 'T12:00:00');
+        const ano = dataLanc.getFullYear();
+        const mes = dataLanc.getMonth();
+        const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+        const domingosEFeriados = 5; // Valor exemplo simplificado
+        const diasUteis = diasNoMes - domingosEFeriados;
+        const valorDSR = (totalHorasExtras / (diasUteis || 25)) * domingosEFeriados;
+
+        const setorFuncionario = funcionarioData.setor || '';
+
+        await docRef.update({
+            hours: horasParaCalculo, // Atualiza para o formato esperado (ex: 4.45)
+            overtimePay: parseFloat(totalHorasExtras.toFixed(2)),
+            dsr: parseFloat(valorDSR.toFixed(2)),
+            sector: setorFuncionario,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mostrarMensagem(`Valores recalculados para ${item.employeeName}!`, "success");
+        await listarHorasExtras();
+
+    } catch (error) {
+        console.error("Erro ao reprocessar:", error);
+        mostrarMensagem("Erro ao recalcular: " + error.message, "error");
     }
 }
 
@@ -425,7 +530,7 @@ function renderizarRankingHorasExtras(employeeData) {
                     <div class="fw-semibold">${nome}</div>
                 </div>
             </div>
-            <span class="badge bg-primary rounded-pill px-3 py-2">${horas.toFixed(2)} horas</span>
+            <span class="badge bg-primary rounded-pill px-3 py-2">${decimalToHHmm(horas)}</span>
         `;
         container.appendChild(itemEl);
     });
@@ -509,7 +614,7 @@ async function imprimirRelatorioHorasExtras() {
                 <td>${item.employeeName}</td>
                 <td>${item.sector}</td>
                 <td>${item.reason}</td>
-                <td style="text-align: center;">${horas.toFixed(2)}</td>
+                <td style="text-align: center; font-weight: bold;">${decimalToHHmm(horas)}</td>
                 <td style="text-align: right;">R$ ${valor.toFixed(2)}</td>
                 <td style="text-align: center;">${assinaturaImg}</td>
             </tr>
@@ -539,7 +644,7 @@ async function imprimirRelatorioHorasExtras() {
                 </thead>
                 <tbody>
                     ${linhasHtml}
-                    <tr class="total-row"><td colspan="4" style="text-align: right;">TOTAIS:</td><td style="text-align: center;">${totalGeralHoras.toFixed(2)}</td><td style="text-align: right;">R$ ${totalGeralValor.toFixed(2)}</td><td></td></tr>
+                    <tr class="total-row"><td colspan="4" style="text-align: right;">TOTAIS:</td><td style="text-align: center;">${decimalToHHmm(totalGeralHoras)}</td><td style="text-align: right;">R$ ${totalGeralValor.toFixed(2)}</td><td></td></tr>
                 </tbody>
             </table>
             <div class="footer">Gerado pelo Sistema Nexter em ${new Date().toLocaleString('pt-BR')}</div>
@@ -712,6 +817,7 @@ window.inicializarHorasExtras = inicializarHorasExtras;
 window.abrirModalAssinatura = abrirModalAssinatura;
 window.limparAssinatura = limparAssinatura;
 window.salvarAssinatura = salvarAssinatura;
+window.reprocessarUmaHoraExtra = reprocessarUmaHoraExtra;
 
 // Adiciona a dependência do XLSX se não existir
 if (typeof XLSX === 'undefined') {

@@ -413,6 +413,7 @@ function renderizarTabela(solicitacoes, container) {
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
                         <button class="btn btn-outline-info" onclick="abrirModalAjuste('${s.id}', true)" title="Visualizar"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-outline-primary" onclick="reprocessarUmaSolicitacao('${s.id}')" title="Recalcular"><i class="fas fa-sync"></i></button>
                         <button class="btn btn-outline-primary" onclick="abrirModalAjuste('${s.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                         ${s.status === 'pendente' ? `
                             <button class="btn btn-success" onclick="aprovarSolicitacao('${s.id}')" title="Aprovar"><i class="fas fa-check"></i></button>
@@ -449,12 +450,13 @@ async function aprovarSolicitacao(id) {
         const start = solicitacao.start.toDate();
         const end = solicitacao.end.toDate();
         const duracaoMinutos = Math.round((end - start) / (1000 * 60));
-        const horasDecimais = duracaoMinutos / 60;
+        const totalHorasReais = duracaoMinutos / 60;
+        const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
 
         const salarioBase = parseFloat(funcionario.salario) || 0;
         const valorHora = salarioBase / 220;
         const taxaHoraExtra = valorHora * 1.5;
-        const valorTotalHoras = horasDecimais * taxaHoraExtra;
+        const valorTotalHoras = horasFakeDecimais * taxaHoraExtra;
 
         const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
         const diasNaoUteis = 5; // Simplificação
@@ -467,7 +469,7 @@ async function aprovarSolicitacao(id) {
             employeeName: solicitacao.employeeName,
             sector: funcionario.setor,
             reason: solicitacao.reason || 'Aprovado via solicitação',
-            hours: horasDecimais.toFixed(2),
+            hours: horasFakeDecimais,
             overtimePay: parseFloat(valorTotalHoras.toFixed(2)),
             dsr: parseFloat(dsr.toFixed(2)),
             createdAt: new Date(),
@@ -743,15 +745,15 @@ async function calcularValorEstimado(start, end, employeeId, salariosMap = null)
             if (funcDoc.exists) salario = parseFloat(funcDoc.data().salario || 0);
         }
 
-        // 🟢 CORREÇÃO: Se não encontrar salário, usa um valor padrão para teste
         if (salario <= 0 || isNaN(salario)) {
-            console.warn(`⚠️ Salário não encontrado para funcionário ${employeeId}, usando valor padrão R$ 2000`);
-            salario = 2000; // Valor padrão para testes
+            // Se não houver salário, não retorna erro mas loga
+            return 0;
         }
 
         const valorHora = salario / 220;
-        const horas = duracaoMinutos / 60;
-        const valorExtra = horas * (valorHora * 1.5);
+        const totalHorasReais = duracaoMinutos / 60;
+        const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
+        const valorExtra = horasFakeDecimais * (valorHora * 1.5);
         const dsr = valorExtra / 6; // DSR simplificado
 
         return parseFloat((valorExtra + dsr).toFixed(2));
@@ -1080,7 +1082,8 @@ function exportarTabelaAutorizacao() {
             "Funcionário": s.employeeName || 'N/A',
             "Setor": s.setor || 'N/A',
             "Período": `${start.toLocaleDateString('pt-BR')} ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
-            "Horas": Number(duracao.toFixed(2)),
+            "Horas": decimalToHHmm(duracao), // Alterado para HH:mm para clareza do usuário
+            "Horas Decimais": Number(duracao.toFixed(2)), // Mantemos o decimal para cálculos se necessário
             "Motivo": s.reason || 'Não especificado',
             "Valor Estimado": s.valorEstimado || 0,
             "Status": s.status,
@@ -1231,8 +1234,9 @@ async function imprimirHoleritesHE() {
         // Recalcular componentes para precisão no holerite
         const salario = infoFuncionarios[empId]?.salario || 0;
         const valorHora = salario / 220;
-        const horas = duracaoMinutos / 60;
-        const valorExtra = horas * (valorHora * 1.5);
+        const totalHorasReais = duracaoMinutos / 60;
+        const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
+        const valorExtra = horasFakeDecimais * (valorHora * 1.5);
         const dsr = valorExtra / 6; // Mantendo a lógica simplificada do sistema
 
         colaboradoresMap[empId].totalMinutos += duracaoMinutos;
@@ -1242,10 +1246,13 @@ async function imprimirHoleritesHE() {
         colaboradoresMap[empId].qtdSolicitacoes++;
         colaboradoresMap[empId].detalhes.push({
             data: start.toLocaleDateString('pt-BR'),
-            horas: horas.toFixed(2),
+            horas: fakeDecimalToHHmm(horasFakeDecimais),
+            horasDecimais: horasFakeDecimais.toFixed(2),
             periodo: `${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
             motivo: s.reason || 'S/ Motivo',
-            valor: (valorExtra + dsr).toFixed(2)
+            valorHE: valorExtra.toFixed(2),
+            valorDSR: dsr.toFixed(2),
+            valorTotal: (valorExtra + dsr).toFixed(2)
         });
     });
 
@@ -1265,7 +1272,7 @@ async function imprimirHoleritesHE() {
     let htmlHolerites = '';
 
     listaColaboradores.forEach((c, index) => {
-        const totalHoras = (c.totalMinutos / 60).toFixed(2);
+        const totalHorasFormatado = decimalToHHmm(c.totalMinutos / 60);
         
         // Ordenar detalhes por data
         c.detalhes.sort((a, b) => {
@@ -1313,7 +1320,7 @@ async function imprimirHoleritesHE() {
                     <tr>
                         <td>0010</td>
                         <td>HORA EXTRA 50% ACUMULADA</td>
-                        <td class="text-end">${totalHoras} h</td>
+                        <td class="text-end">${totalHorasFormatado} h</td>
                         <td class="text-end">${c.totalHE.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td class="text-end">0,00</td>
                     </tr>
@@ -1363,7 +1370,10 @@ async function imprimirHoleritesHE() {
                             <th style="border: 1px solid #000; padding: 4px;">Data</th>
                             <th style="border: 1px solid #000; padding: 4px;">Período (Início/Fim)</th>
                             <th style="border: 1px solid #000; padding: 4px; text-align: center;">Horas</th>
-                            <th style="border: 1px solid #000; padding: 4px;">Motivo/Ocorrência</th>
+                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Vlr. Horas</th>
+                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Vlr. DSR</th>
+                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Total Dia</th>
+                            <th style="border: 1px solid #000; padding: 4px;">Motivo</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1372,6 +1382,9 @@ async function imprimirHoleritesHE() {
                             <td style="border: 1px solid #000; padding: 4px;">${d.data}</td>
                             <td style="border: 1px solid #000; padding: 4px;">${d.periodo}</td>
                             <td style="border: 1px solid #000; padding: 4px; text-align: center;">${d.horas}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorHE.replace('.', ',')}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorDSR.replace('.', ',')}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorTotal.replace('.', ',')}</td>
                             <td style="border: 1px solid #000; padding: 4px;">${d.motivo}</td>
                         </tr>
                         `).join('')}
@@ -1379,7 +1392,10 @@ async function imprimirHoleritesHE() {
                     <tfoot>
                         <tr style="background-color: #f9f9f9; font-weight: bold;">
                             <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right;">TOTAL ACUMULADO:</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${totalHoras} h</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${totalHorasFormatado}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalHE.toFixed(2).replace('.', ',')}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalDSR.toFixed(2).replace('.', ',')}</td>
+                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalGeral.toFixed(2).replace('.', ',')}</td>
                             <td style="border: 1px solid #000; padding: 4px;"></td>
                         </tr>
                     </tfoot>
@@ -1591,7 +1607,41 @@ function limparListenerAutorizacao() {
 }
 
 // Exporta funções auxiliares
-window.limparListenerAutorizacao = limparListenerAutorizacao;
+async function reprocessarUmaSolicitacao(id) {
+    try {
+        const solRef = db.collection('solicitacoes_horas').doc(id);
+        const solDoc = await solRef.get();
+        if (!solDoc.exists) return;
+
+        const s = solDoc.data();
+        const funcDoc = await db.collection('funcionarios').doc(s.employeeId).get();
+        if (!funcDoc.exists) {
+            mostrarMensagem("Funcionário não encontrado", "error");
+            return;
+        }
+
+        const start = s.start.toDate();
+        const end = s.end.toDate();
+        
+        // CORREÇÃO: Usa a função centralizada para garantir a lógica de Decimal Manual (4.45) e DSR
+        const valorEstimado = await calcularValorEstimado(start, end, s.employeeId);
+
+        await solRef.update({
+            valorEstimado: valorEstimado,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mostrarMensagem("Solicitação recalculada com sucesso!", "success");
+        // Não precisamos chamar renderizarTabela() aqui, pois o update no Firestore 
+        // disparará o listener configurarListenerAutorizacao automaticamente.
+
+    } catch (error) {
+        console.error("Erro ao reprocessar solicitação:", error);
+        mostrarMensagem("Erro ao recalcular", "error");
+    }
+}
+
+window.reprocessarUmaSolicitacao = reprocessarUmaSolicitacao;
 window.carregarDadosAuxiliaresAuth = carregarDadosAuxiliaresAuth;
 window.obterNomeGerenteSetor = obterNomeGerenteSetor;
 window.obterNomeMacroSetor = obterNomeMacroSetor;
