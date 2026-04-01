@@ -1271,8 +1271,10 @@ async function imprimirHoleritesHE() {
 
     let htmlHolerites = '';
 
-    listaColaboradores.forEach((c, index) => {
-        const totalHorasFormatado = decimalToHHmm(c.totalMinutos / 60);
+    listaColaboradores.forEach((c) => {
+        const totalHorasReais = c.totalMinutos / 60;
+        const totalHorasFake = trueDecimalToFakeDecimal(totalHorasReais);
+        const totalHorasFormatado = fakeDecimalToHHmm(totalHorasFake);
         
         // Ordenar detalhes por data
         c.detalhes.sort((a, b) => {
@@ -1282,127 +1284,148 @@ async function imprimirHoleritesHE() {
         });
 
         htmlHolerites += `
-        <div class="holerite-page" style="${index > 0 ? 'page-break-before: always;' : ''}">
-            <!-- CABEÇALHO DO HOLERITE -->
-            <div class="header-holerite">
-                <div class="empresa-info">
-                    <div class="logo"><i class="fas fa-building"></i> CALÇADOS CRIVAL</div>
-                    <div class="descr">SISTEMA NEXTER - GESTÃO DE RH</div>
+        <div class="holerite-container">
+            <div class="holerite-box">
+                <!-- CABEÇALHO -->
+                <div class="header-recibo">
+                    <div class="empresa-info">
+                        <h2 class="m-0">CALÇADOS CRIVAL</h2>
+                        <p class="m-0 text-muted" style="font-size: 10px;">CNPJ: 00.320.320/0001-32 | TEL: (32) 3232-3232</p>
+                        <p class="m-0 text-muted" style="font-size: 10px;">SISTEMA NEXTER - GESTÃO DE RECURSOS HUMANOS</p>
+                    </div>
+                    <div class="recibo-tipo">
+                        <div class="recibo-titulo">RECIBO DE PAGAMENTO</div>
+                        <div class="recibo-sub">HORAS EXTRAS ACUMULADAS</div>
+                    </div>
                 </div>
-                <div class="titulo-recibo">
-                    RECIBO DE PAGAMENTO<br>
-                    <span>HORAS EXTRAS ACUMULADAS</span>
-                </div>
-            </div>
 
-            <div class="dados-colaborador">
-                <div class="info-row">
-                    <div class="item"><strong>Colaborador:</strong> ${c.nome}</div>
-                    <div class="item text-end"><strong>Matrícula:</strong> ${c.matricula}</div>
+                <!-- DADOS DO COLABORADOR -->
+                <div class="secao-dados mb-3">
+                    <div class="row g-0">
+                        <div class="col-6 border-end border-dark p-2">
+                            <label>COLABORADOR</label>
+                            <div class="info-val fw-bold">${c.nome}</div>
+                        </div>
+                        <div class="col-3 border-end border-dark p-2">
+                            <label>MATRÍCULA</label>
+                            <div class="info-val">${c.matricula}</div>
+                        </div>
+                        <div class="col-3 p-2">
+                            <label>SETOR</label>
+                            <div class="info-val">${c.setor}</div>
+                        </div>
+                    </div>
+                    <div class="row g-0 border-top border-dark">
+                        <div class="col-6 border-end border-dark p-2">
+                            <label>PAGAMENTO REFERENTE A</label>
+                            <div class="info-val">${periodoStr}</div>
+                        </div>
+                        <div class="col-3 border-end border-dark p-2">
+                            <label>DATA PAGTO (EST.)</label>
+                            <div class="info-val">${new Date().toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        <div class="col-3 p-2 text-center">
+                            <label>VIA</label>
+                            <div class="info-val">ORIGINAL</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="info-row">
-                    <div class="item"><strong>Setor:</strong> ${c.setor}</div>
-                    <div class="item text-end"><strong>Data Pagto:</strong> ${dataPagamentoFormatada}</div>
-                </div>
-            </div>
 
-            <table class="tabela-vencimentos">
-                <thead>
-                    <tr>
-                        <th>Cód.</th>
-                        <th>Descrição da Verba</th>
-                        <th class="text-end">Referência</th>
-                        <th class="text-end">Vencimentos (R$)</th>
-                        <th class="text-end">Descontos (R$)</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr>
-                        <td>0010</td>
-                        <td>HORA EXTRA 50% ACUMULADA</td>
-                        <td class="text-end">${totalHorasFormatado} h</td>
-                        <td class="text-end">${c.totalHE.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td class="text-end">0,00</td>
-                    </tr>
-                    <tr>
-                        <td>0050</td>
-                        <td>DSR S/ HORA EXTRA</td>
-                        <td class="text-end">1/6</td>
-                        <td class="text-end">${c.totalDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                        <td class="text-end">0,00</td>
-                    </tr>
-                    ${new Array(4).fill('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>').join('')}
-                </tbody>
-                <tfoot>
-                    <tr>
-                        <td colspan="3" class="text-end"><strong>TOTAIS:</strong></td>
-                        <td class="text-end"><strong>${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong></td>
-                        <td class="text-end"><strong>0,00</strong></td>
-                    </tr>
-                </tfoot>
-            </table>
-
-            <div class="total-liquido">
-                <div class="label">VALOR LÍQUIDO A RECEBER:</div>
-                <div class="valor">R$ ${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
-            </div>
-
-            <div class="footer-assinatura">
-                <div class="msg">
-                    Declaro ter recebido a importância líquida discriminada neste recibo, 
-                    referente ao pagamento de horas extras do período ${periodoStr}.
-                </div>
-                <div class="linhas">
-                    <div class="data-linha">${new Date().toLocaleDateString('pt-BR')}</div>
-                    <div class="assinatura-linha">Assinatura do Colaborador</div>
-                </div>
-            </div>
-
-            <!-- EXTRATO DETALHADO (ANEXO) -->
-            <div class="extrato-container" style="margin-top: 30px; border-top: 2px dashed #000; padding-top: 20px;">
-                <div style="font-weight: bold; text-align: center; margin-bottom: 15px; font-size: 14px;">EXTRATO DETALHADO DE HORAS EXTRAS (ANEXO)</div>
-                <div style="margin-bottom: 10px; font-size: 10px;">
-                    <strong>Colaborador:</strong> ${c.nome} | <strong>${periodoStr}</strong>
-                </div>
-                <table class="tabela-extrato" style="width: 100%; border-collapse: collapse; font-size: 9px;">
+                <!-- TABELA DE VENCIMENTOS -->
+                <table class="tabela-holerite w-100 mb-3">
                     <thead>
-                        <tr style="background-color: #f0f0f0;">
-                            <th style="border: 1px solid #000; padding: 4px;">Data</th>
-                            <th style="border: 1px solid #000; padding: 4px;">Período (Início/Fim)</th>
-                            <th style="border: 1px solid #000; padding: 4px; text-align: center;">Horas</th>
-                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Vlr. Horas</th>
-                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Vlr. DSR</th>
-                            <th style="border: 1px solid #000; padding: 4px; text-align: right;">Total Dia</th>
-                            <th style="border: 1px solid #000; padding: 4px;">Motivo</th>
+                        <tr>
+                            <th style="width: 10%;">CÓD.</th>
+                            <th style="width: 50%;">DESCRIÇÃO DA VERBA</th>
+                            <th style="width: 15%; text-align: center;">REF.</th>
+                            <th style="width: 25%; text-align: right;">VENCIMENTOS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="text-center">0020</td>
+                            <td>HORA EXTRA 50% ACUMULADA</td>
+                            <td class="text-center">${totalHorasFormatado}</td>
+                            <td class="text-end">R$ ${c.totalHE.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        <tr>
+                            <td class="text-center">0050</td>
+                            <td>DSR S/ HORA EXTRA</td>
+                            <td class="text-center">1/6</td>
+                            <td class="text-end">R$ ${c.totalDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        ${new Array(4).fill('<tr><td class="empty-cell">&nbsp;</td><td class="empty-cell"></td><td class="empty-cell"></td><td class="empty-cell"></td></tr>').join('')}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td colspan="3" class="text-end fw-bold p-2">TOTAL BRUTO:</td>
+                            <td class="text-end fw-bold p-2">R$ ${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                        <tr class="liquid-row">
+                            <td colspan="3" class="text-end liquid-label">LÍQUIDO A RECEBER:</td>
+                            <td class="text-end liquid-val">R$ ${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <!-- ASSINATURA -->
+                <div class="secao-assinatura">
+                    <div class="declaracao">
+                        Declaro ter recebido a importância líquida discriminada neste recibo, referente ao pagamento das horas extras acima descritas.
+                    </div>
+                    <div class="assinatura-box">
+                        <div class="campo-data">_____/_____/_________</div>
+                        <div class="campo-assinatura">Assinatura do Colaborador</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXTRATO DETALHADO -->
+            <div class="extrato-box mt-4">
+                <div class="extrato-header">
+                    EXTRATO DETALHADO DE HORAS EXTRAS (ANEXO)
+                </div>
+                <table class="tabela-extrato">
+                    <thead>
+                        <tr>
+                            <th>DATA</th>
+                            <th>PERÍODO</th>
+                            <th class="text-center">HORAS</th>
+                            <th class="text-end">VLR. HE</th>
+                            <th class="text-end">DSR</th>
+                            <th class="text-end">TOTAL</th>
+                            <th>MOTIVO</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${c.detalhes.map(d => `
                         <tr>
-                            <td style="border: 1px solid #000; padding: 4px;">${d.data}</td>
-                            <td style="border: 1px solid #000; padding: 4px;">${d.periodo}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${d.horas}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorHE.replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorDSR.replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${d.valorTotal.replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px;">${d.motivo}</td>
+                            <td>${d.data}</td>
+                            <td><small>${d.periodo}</small></td>
+                            <td class="text-center fw-bold">${d.horas}</td>
+                            <td class="text-end">R$ ${d.valorHE.replace('.', ',')}</td>
+                            <td class="text-end">R$ ${d.valorDSR.replace('.', ',')}</td>
+                            <td class="text-end fw-bold">R$ ${d.valorTotal.replace('.', ',')}</td>
+                            <td><small>${d.motivo}</small></td>
                         </tr>
                         `).join('')}
                     </tbody>
                     <tfoot>
-                        <tr style="background-color: #f9f9f9; font-weight: bold;">
-                            <td colspan="2" style="border: 1px solid #000; padding: 4px; text-align: right;">TOTAL ACUMULADO:</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: center;">${totalHorasFormatado}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalHE.toFixed(2).replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalDSR.toFixed(2).replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px; text-align: right;">R$ ${c.totalGeral.toFixed(2).replace('.', ',')}</td>
-                            <td style="border: 1px solid #000; padding: 4px;"></td>
+                        <tr>
+                            <td colspan="2" class="text-end fw-bold">TOTAIS:</td>
+                            <td class="text-center fw-bold">${totalHorasFormatado}</td>
+                            <td class="text-end fw-bold">R$ ${c.totalHE.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td class="text-end fw-bold">R$ ${c.totalDSR.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td class="text-end fw-bold">R$ ${c.totalGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
+                <div class="print-footer">
+                    <span>Emitido em ${dataEmissao} - Sistema Nexter</span>
+                    <span class="ps-3 border-start text-muted">ID: ${Math.random().toString(36).substr(2, 9).toUpperCase()}</span>
+                </div>
             </div>
-
-            <div class="copia-aviso" style="margin-top: 15px;">Emitido em ${dataEmissao} - Sistema Nexter</div>
         </div>`;
     });
 
@@ -1411,53 +1434,73 @@ async function imprimirHoleritesHE() {
     <html lang="pt-BR">
     <head>
         <meta charset="UTF-8">
-        <title>Holerites e Extratos de Horas Extras</title>
+        <title>Recibos de Horas Extras</title>
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-        <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
         <style>
             @media print {
-                body { margin: 0; padding: 0; }
-                .no-print { display: none; }
-                .holerite-page { page-break-after: always; }
+                body { padding: 0 !important; background: white !important; }
+                .no-print { display: none !important; }
+                .holerite-container { page-break-after: always; padding: 0 !important; margin: 0 !important; border: none !important; box-shadow: none !important; }
+                @page { size: A4; margin: 1cm; }
             }
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 11px; padding: 20px; color: #000; }
-            .holerite-page { 
-                max-width: 800px; 
-                margin: 0 auto 30px auto; 
-                border: 2px solid #000; 
-                padding: 20px;
-                background: #fff;
+            
+            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #eee; padding: 40px 0; color: #000; }
+            
+            .holerite-container { 
+                background: #fff; 
+                width: 210mm; 
+                min-height: 290mm;
+                margin: 0 auto 40px auto; 
+                padding: 1.5cm; 
+                box-shadow: 0 0 20px rgba(0,0,0,0.1);
+                display: flex;
+                flex-direction: column;
             }
-            .header-holerite { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
-            .empresa-info .logo { font-size: 18px; font-weight: bold; }
-            .empresa-info .descr { font-size: 10px; font-weight: 600; }
-            .titulo-recibo { text-align: right; font-size: 16px; font-weight: bold; }
-            .titulo-recibo span { font-size: 11px; color: #444; }
+
+            .holerite-box { border: 2px solid #000; padding: 15px; margin-bottom: 20px; }
             
-            .dados-colaborador { background: #f8f9fa; border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
-            .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
-            .info-row .item { flex: 1; font-size: 11px; }
+            .header-recibo { display: flex; justify-content: space-between; border-bottom: 2px solid #000; padding-bottom: 5px; margin-bottom: 15px; }
+            .empresa-info h2 { font-size: 24px; font-weight: 800; color: #000; margin-bottom: 3px !important; }
             
-            .tabela-vencimentos { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-            .tabela-vencimentos th { border: 1px solid #000; background: #eaedf0; padding: 6px; text-transform: uppercase; font-size: 10px; }
-            .tabela-vencimentos td { border: 1px solid #000; padding: 6px; height: 25px; vertical-align: middle; }
-            .tabela-vencimentos tfoot td { border: 1px solid #000; background: #f8f9fa; padding: 8px; font-size: 12px; }
+            .recibo-tipo { text-align: right; }
+            .recibo-titulo { font-size: 20px; font-weight: 800; line-height: 1; margin-bottom: 2px; }
+            .recibo-sub { font-size: 12px; font-weight: 600; text-transform: uppercase; color: #444; }
+
+            .secao-dados { border: 1.5px solid #000; background: #fff; }
+            .secao-dados label { font-size: 9px; font-weight: 800; color: #000; display: block; margin-bottom: 1px; text-transform: uppercase; }
+            .info-val { font-size: 13px; color: #000; }
+
+            .tabela-holerite { border-collapse: collapse; border: 1.5px solid #000; }
+            .tabela-holerite th { border: 1px solid #000; background: #f2f2f2; padding: 8px; font-size: 10px; font-weight: 800; }
+            .tabela-holerite td { border: 1px solid #000; padding: 6px 10px; font-size: 12px; vertical-align: middle; }
+            .tabela-holerite .empty-cell { height: 25px; }
             
-            .total-liquido { display: flex; justify-content: flex-end; align-items: center; gap: 20px; margin-bottom: 20px; }
-            .total-liquido .label { font-weight: bold; font-size: 13px; }
-            .total-liquido .valor { border: 3px solid #000; padding: 8px 20px; font-size: 18px; font-weight: bold; background: #f0f0f0; }
+            .liquid-row td { background: #f0f0f0 !important; border-top: 3px solid #000 !important; }
+            .liquid-label { font-size: 16px; font-weight: 800; padding: 12px !important; }
+            .liquid-val { font-size: 24px; font-weight: 900; padding: 12px !important; border-left: 2px solid #000 !important; }
+
+            .secao-assinatura { display: flex; justify-content: space-between; align-items: flex-end; margin-top: 20px; }
+            .declaracao { width: 60%; font-size: 10px; line-height: 1.3; font-style: italic; color: #333; }
+            .assinatura-box { width: 35%; text-align: center; }
+            .campo-data { margin-bottom: 20px; font-size: 12px; font-weight: 600; }
+            .campo-assinatura { border-top: 1.5px solid #000; padding-top: 5px; font-size: 11px; font-weight: 800; text-transform: uppercase; }
+
+            .extrato-box { border: 1.5px dashed #000; padding: 15px; background: #fdfdfd; flex-grow: 1; }
+            .extrato-header { text-align: center; font-weight: 800; font-size: 14px; margin-bottom: 15px; border-bottom: 2px solid #000; padding-bottom: 5px; }
             
-            .footer-assinatura { margin-top: 30px; }
-            .footer-assinatura .msg { font-size: 10px; margin-bottom: 30px; text-align: justify; line-height: 1.4; }
-            .footer-assinatura .linhas { display: flex; justify-content: space-between; align-items: flex-end; }
-            .data-linha { border-bottom: 1px solid #000; width: 180px; text-align: center; padding-bottom: 5px; }
-            .assinatura-linha { border-top: 1px solid #000; width: 350px; text-align: center; padding-top: 8px; font-weight: bold; }
-            
-            .copia-aviso { font-style: italic; font-size: 9px; text-align: right; color: #666; }
-            .tabela-extrato th { text-align: left; }
+            .tabela-extrato { width: 100%; border-collapse: collapse; font-size: 11px; }
+            .tabela-extrato th { background: #f2f2f2; border: 1px solid #000; padding: 6px; font-weight: 800; text-transform: uppercase; }
+            .tabela-extrato td { border: 1px solid #000; padding: 5px 8px; }
+            .tabela-extrato tfoot td { background: #f2f2f2; border-top: 2.5px solid #000; padding: 8px; }
+
+            .print-footer { margin-top: 15px; font-size: 9px; font-style: italic; color: #555; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 5px; }
         </style>
     </head>
     <body onload="window.print();">
+        <div class="no-print p-4 text-center bg-primary text-white mb-4">
+            <h4><i class="fas fa-print"></i> Visualização de Holerites</h4>
+            <p class="m-0">Cada página A4 contém o Holerite e o Extrato de um colaborador.</p>
+        </div>
         ${htmlHolerites}
     </body>
     </html>`;
