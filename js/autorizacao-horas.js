@@ -132,6 +132,12 @@ async function inicializarTelaAutorizacao() {
         btnFiltrar.bound = true;
     }
 
+    const btnReprocessarTudo = document.getElementById('auth-btn-reprocessar-tudo');
+    if (btnReprocessarTudo && !btnReprocessarTudo.bound) {
+        btnReprocessarTudo.addEventListener('click', reprocessarTudoVisivel);
+        btnReprocessarTudo.bound = true;
+    }
+
     // Adiciona listeners para atualizar automaticamente ao mudar filtros
     ['auth-filtro-funcionario', 'auth-filtro-setor', 'auth-filtro-status', 'auth-filtro-pagamento'].forEach(id => {
         const el = document.getElementById(id);
@@ -474,14 +480,16 @@ async function aprovarSolicitacao(id) {
             dsr: parseFloat(dsr.toFixed(2)),
             createdAt: new Date(),
             source: 'solicitacao',
-            solicitacaoId: id
+            solicitacaoId: id,
+            formaPagamento: solicitacao.formaPagamento || 'por-fora'
         };
 
         const batch = db.batch();
         batch.update(solicitacaoRef, {
             status: 'aprovado',
             approvedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            approvedByUid: firebase.auth().currentUser.uid
+            approvedByUid: firebase.auth().currentUser.uid,
+            formaPagamento: solicitacao.formaPagamento || 'por-fora'
         });
         
         const novoLancamentoRef = db.collection('overtime').doc();
@@ -1650,6 +1658,11 @@ function limparListenerAutorizacao() {
 }
 
 // Exporta funções auxiliares
+/**
+ * Reprocessa uma solicitação de horas extras, recalculando valores e 
+ * garantindo que campos como 'formaPagamento' e 'valorOriginalSolicitado' 
+ * estejam preenchidos corretamente.
+ */
 async function reprocessarUmaSolicitacao(id) {
     try {
         const solRef = db.collection('solicitacoes_horas').doc(id);
@@ -1662,25 +1675,119 @@ async function reprocessarUmaSolicitacao(id) {
             mostrarMensagem("Funcionário não encontrado", "error");
             return;
         }
+        const func = funcDoc.data();
 
+        // Datas da solicitação
         const start = s.start.toDate();
         const end = s.end.toDate();
         
-        // CORREÇÃO: Usa a função centralizada para garantir a lógica de Decimal Manual (4.45) e DSR
+        // 1. Recalcular valor estimado usando a lógica atualizada
         const valorEstimado = await calcularValorEstimado(start, end, s.employeeId);
 
-        await solRef.update({
+        // 2. Preparar dados de atualização (Reprocessamento)
+        const updateData = {
             valorEstimado: valorEstimado,
+            employeeName: func.nome || s.employeeName,
+            setor: func.setor || s.setor || 'N/A',
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        };
 
-        mostrarMensagem("Solicitação recalculada com sucesso!", "success");
-        // Não precisamos chamar renderizarTabela() aqui, pois o update no Firestore 
-        // disparará o listener configurarListenerAutorizacao automaticamente.
+        // 3. Persistir forma de pagamento se estiver em branco
+        // Seguindo o padrão do modal de ajuste: default para 'por-fora'
+        if (!s.formaPagamento) {
+            updateData.formaPagamento = 'por-fora';
+        }
+
+        // 4. Garantir que o valor original esteja gravado para histórico
+        if (s.valorOriginalSolicitado === undefined || s.valorOriginalSolicitado === null) {
+            updateData.valorOriginalSolicitado = s.valorEstimado || valorEstimado;
+        }
+
+        // 5. Atualizar o documento da solicitação
+        await solRef.update(updateData);
+
+        // 6. Se a solicitação já estiver 'aprovada', atualizar também o registro no dashboard (overtime)
+        if (s.status === 'aprovado') {
+            const overtimeSnap = await db.collection('overtime')
+                .where('solicitacaoId', '==', id)
+                .limit(1)
+                .get();
+            
+            if (!overtimeSnap.empty) {
+                const otDoc = overtimeSnap.docs[0];
+                
+                // Recálculo completo para o lançamento final
+                const duracaoMinutos = Math.round((end - start) / (1000 * 60));
+                const totalHorasReais = duracaoMinutos / 60;
+                const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
+                
+                const salarioBase = parseFloat(func.salario) || 0;
+                const valorHora = salarioBase / 220;
+                const taxaHoraExtra = valorHora * 1.5;
+                const valorTotalHoras = horasFakeDecimais * taxaHoraExtra;
+                
+                const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
+                const diasNaoUteis = 5; 
+                const diasUteis = diasNoMes - diasNaoUteis;
+                const dsr = (valorTotalHoras / (diasUteis || 25)) * diasNaoUteis;
+                
+                await otDoc.ref.update({
+                    employeeName: func.nome,
+                    sector: func.setor,
+                    hours: horasFakeDecimais,
+                    overtimePay: parseFloat(valorTotalHoras.toFixed(2)),
+                    dsr: parseFloat(dsr.toFixed(2)),
+                    formaPagamento: s.formaPagamento || updateData.formaPagamento,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        }
+
+        mostrarMensagem(`Solicitação de ${func.nome} reprocessada com sucesso!`, "success");
 
     } catch (error) {
         console.error("Erro ao reprocessar solicitação:", error);
-        mostrarMensagem("Erro ao recalcular", "error");
+        mostrarMensagem("Erro ao recalcular/reprocessar a solicitação.", "error");
+    }
+}
+
+/**
+ * Reprocessa todas as solicitações visíveis na listagem atual (bulk).
+ */
+async function reprocessarTudoVisivel() {
+    if (!cacheSolicitacoes || cacheSolicitacoes.length === 0) {
+        mostrarMensagem("Não há solicitações para reprocessar nos filtros atuais.", "warning");
+        return;
+    }
+
+    if (!confirm(`Deseja reprocessar e recalcular as ${cacheSolicitacoes.length} solicitações visíveis? Esta ação corrigirá campos em branco e sincronizará nomes/setores.`)) {
+        return;
+    }
+
+    mostrarMensagem(`Reprocessando ${cacheSolicitacoes.length} itens... Isso pode levar alguns segundos.`, "info");
+    
+    // Desativar botões para evitar cliques duplos
+    const btn = document.getElementById('auth-btn-reprocessar-tudo');
+    if (btn) btn.disabled = true;
+
+    try {
+        // Para evitar estresse no Firestore e limites de taxa, faremos em sequência curta
+        // mas Idealmente poderíamos usar batch se não precisássemos ler funcionarios de cada uma.
+        // Como o cache de funcionários é feito por doc.get() em loop, é melhor fazer um a um 
+        // ou pré-carregar os funcionários. Para simplicidade e confiabilidade, faremos um loop.
+        
+        let count = 0;
+        for (const sol of cacheSolicitacoes) {
+            await reprocessarUmaSolicitacao(sol.id);
+            count++;
+        }
+
+        mostrarMensagem(`${count} solicitações foram reprocessadas e atualizadas!`, "success");
+    } catch (error) {
+        console.error("Erro no reprocessamento em lote :", error);
+        mostrarMensagem("Ocorreu um erro parcial durante o reprocessamento.", "error");
+    } finally {
+        if (btn) btn.disabled = false;
     }
 }
 
