@@ -1897,14 +1897,24 @@ async function exportarAtestadosExcel() {
         return;
     }
 
-    const funcSnap = await db.collection('funcionarios').get();
+    // Busca funcionários e empresas para o mapeamento
+    const [funcSnap, empresasMap] = await Promise.all([
+        db.collection('funcionarios').get(),
+        getEmpresasCache()
+    ]);
+    
     const funcMap = new Map(funcSnap.docs.map(doc => [doc.id, doc.data()]));
 
     const dadosExportacao = filtrados.map(a => {
         const func = funcMap.get(a.funcionarioId);
+        // Tenta pegar empresaId do atestado (novo padrão) ou do funcionário (legado)
+        const empId = a.empresaId || (func ? func.empresaId : null);
+        const empresaNome = empId ? (empresasMap[empId] || 'N/A') : 'N/A';
+
         return {
             'Colaborador': a.colaborador_nome,
-            'Setor': func ? func.setor : 'N/A',
+            'Empresa': empresaNome,
+            'Setor': a.setor || (func ? func.setor : 'N/A'),
             'Data': formatarData(a.data_atestado),
             'Motivo': a.tipo,
             'Duracao': `${a.duracaoValor || a.dias} ${a.duracaoTipo || 'dias'}`,
@@ -1919,6 +1929,7 @@ async function exportarAtestadosExcel() {
     // Ajustar largura das colunas
     ws['!cols'] = [
         { wch: 30 }, // Colaborador
+        { wch: 25 }, // Empresa
         { wch: 20 }, // Setor
         { wch: 12 }, // Data
         { wch: 20 }, // Motivo
