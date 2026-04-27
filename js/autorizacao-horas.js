@@ -1084,14 +1084,15 @@ function exportarTabelaAutorizacao() {
         const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
         const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
         const duracao = Math.max(0, (end - start) / 3600000); // Diferença em horas decimais
+        const horasFakeDecimais = trueDecimalToFakeDecimal(duracao);
 
         return {
             "Data Solicitação": createdAt.toLocaleDateString('pt-BR'),
             "Funcionário": s.employeeName || 'N/A',
             "Setor": s.setor || 'N/A',
             "Período": `${start.toLocaleDateString('pt-BR')} ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} - ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}`,
-            "Horas": decimalToHHmm(duracao), // Alterado para HH:mm para clareza do usuário
-            "Horas Decimais": Number(duracao.toFixed(2)), // Mantemos o decimal para cálculos se necessário
+            "Horas": fakeDecimalToHHmm(horasFakeDecimais),
+            "Horas Decimais": Number(horasFakeDecimais.toFixed(2)),
             "Motivo": s.reason || 'Não especificado',
             "Valor Estimado": s.valorEstimado || 0,
             "Status": s.status,
@@ -1106,6 +1107,7 @@ function exportarTabelaAutorizacao() {
         const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
         const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
         const duracaoHoras = Math.max(0, (end - start) / 3600000); // 1000 * 60 * 60
+        const horasFakeDecimais = trueDecimalToFakeDecimal(duracaoHoras);
 
         if (!resumoMap[id]) {
             resumoMap[id] = {
@@ -1116,16 +1118,21 @@ function exportarTabelaAutorizacao() {
                 "Qtd. Solicitações": 0
             };
         }
-        resumoMap[id]["Total Horas Acumuladas"] += duracaoHoras;
+        resumoMap[id]["Total Horas Acumuladas"] += horasFakeDecimais;
         resumoMap[id]["Total Valor Estimado"] += (s.valorEstimado || 0);
         resumoMap[id]["Qtd. Solicitações"] += 1;
+    });
+
+    // Arredondar para evitar problemas de ponto flutuante antes de ordenar
+    Object.values(resumoMap).forEach(r => {
+        r["Total Horas Acumuladas"] = Number(r["Total Horas Acumuladas"].toFixed(2));
     });
 
     const dadosResumo = Object.values(resumoMap).sort((a, b) => b["Total Horas Acumuladas"] - a["Total Horas Acumuladas"]);
 
     // 3. Calcular totais gerais para as linhas de rodapé
     const totalGeral = cacheSolicitacoes.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
-    const totalHorasGeral = Object.values(resumoMap).reduce((acc, r) => acc + r["Total Horas Acumuladas"], 0);
+    const totalHorasGeral = Number(Object.values(resumoMap).reduce((acc, r) => acc + r["Total Horas Acumuladas"], 0).toFixed(2));
 
     // 4. Criar o workbook e as planilhas
     const wb = XLSX.utils.book_new();
@@ -1227,6 +1234,7 @@ async function imprimirHoleritesHE() {
                 setor: s.setor || (infoFuncionarios[empId]?.setor || 'N/A'),
                 matricula: infoFuncionarios[empId]?.matricula || '---',
                 totalMinutos: 0,
+                totalFakeDecimais: 0,
                 totalHE: 0,
                 totalDSR: 0,
                 totalGeral: 0,
@@ -1248,6 +1256,7 @@ async function imprimirHoleritesHE() {
         const dsr = valorExtra / 6; // Mantendo a lógica simplificada do sistema
 
         colaboradoresMap[empId].totalMinutos += duracaoMinutos;
+        colaboradoresMap[empId].totalFakeDecimais += horasFakeDecimais;
         colaboradoresMap[empId].totalHE += valorExtra;
         colaboradoresMap[empId].totalDSR += dsr;
         colaboradoresMap[empId].totalGeral += (valorExtra + dsr);
@@ -1280,8 +1289,7 @@ async function imprimirHoleritesHE() {
     let htmlHolerites = '';
 
     listaColaboradores.forEach((c) => {
-        const totalHorasReais = c.totalMinutos / 60;
-        const totalHorasFake = trueDecimalToFakeDecimal(totalHorasReais);
+        const totalHorasFake = Number(c.totalFakeDecimais.toFixed(2));
         const totalHorasFormatado = fakeDecimalToHHmm(totalHorasFake);
         
         // Ordenar detalhes por data

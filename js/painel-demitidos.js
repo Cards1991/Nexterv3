@@ -2,6 +2,8 @@
 // Painel de Demitidos - Lógica de Controle
 // =================================================================
 
+let dadosDemitidosExportacao = [];
+
 async function inicializarPainelDemitidos() {
     console.log("Inicializando Painel de Demitidos...");
     
@@ -54,6 +56,8 @@ async function carregarPainelDemitidos() {
     const dataFimFiltro = document.getElementById('filtro-demitidos-data-fim')?.value;
 
     try {
+        dadosDemitidosExportacao = [];
+
         // Carregamento paralelo de dados necessários para preencher as lacunas
         const [funcionariosSnap, empresasSnap, movimentacoesSnap, financeirosSnap] = await Promise.all([
             db.collection('funcionarios').where('status', '==', 'Inativo').orderBy('nome').get(),
@@ -84,6 +88,7 @@ async function carregarPainelDemitidos() {
                     demissoesMap[mov.funcionarioId] = {
                         dataObj: dataMov,
                         motivo: mov.motivo || mov.tipoDemissao,
+                        motivoDetalhado: mov.motivoDetalhado || '-',
                         dataStr: dataMov.toLocaleDateString('pt-BR'),
                         dataISO: dataMov.toISOString().split('T')[0]
                     };
@@ -129,7 +134,12 @@ async function carregarPainelDemitidos() {
                 // Fallback para dados da movimentação se não estiver no funcionário
                 dataDemissao = demissoesMap[doc.id].dataStr;
                 dataDemissaoISO = demissoesMap[doc.id].dataISO;
-                if (motivo === '-') motivo = demissoesMap[doc.id].motivo || '-';
+                if (tipoDemissao === '-') tipoDemissao = demissoesMap[doc.id].motivo || '-';
+            }
+
+            let motivoDetalhado = f.motivoDesligamento || '-';
+            if ((motivoDetalhado === '-' || !motivoDetalhado) && demissoesMap[doc.id]) {
+                motivoDetalhado = demissoesMap[doc.id].motivoDetalhado || '-';
             }
 
             // Aplica filtro de data em memória
@@ -139,6 +149,16 @@ async function carregarPainelDemitidos() {
             if (dataFimFiltro && (!dataDemissaoISO || dataDemissaoISO > dataFimFiltro)) {
                 return;
             }
+
+            dadosDemitidosExportacao.push({
+                nome: f.nome,
+                cpf: f.cpf || '',
+                empresa: empresaNome,
+                setor: f.setor || '-',
+                dataDemissao: dataDemissao,
+                tipoDemissao: tipoDemissao,
+                motivo: motivoDetalhado
+            });
 
             // Verifica se já tem custo lançado
             const custoLancado = custosMap[doc.id];
@@ -592,6 +612,49 @@ async function processarImportacaoCustos() {
     reader.readAsArrayBuffer(file);
 }
 
+// --- Função de Exportação ---
+async function exportarPainelDemitidosExcel() {
+    if (!dadosDemitidosExportacao || dadosDemitidosExportacao.length === 0) {
+        alert("Não há dados para exportar com os filtros atuais.");
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarPainelDemitidosExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    const dadosMapeados = dadosDemitidosExportacao.map(item => ({
+        'Nome do Funcionário': item.nome,
+        'CPF': item.cpf,
+        'Empresa': item.empresa,
+        'Setor': item.setor,
+        'Data da Demissão': item.dataDemissao,
+        'Tipo de Demissão': item.tipoDemissao,
+        'Motivo': item.motivo
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(dadosMapeados);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Demitidos");
+
+    // Ajustar largura das colunas
+    worksheet['!cols'] = [
+        { wch: 40 }, // Nome
+        { wch: 15 }, // CPF
+        { wch: 25 }, // Empresa
+        { wch: 20 }, // Setor
+        { wch: 18 }, // Data
+        { wch: 25 }, // Tipo
+        { wch: 30 }  // Motivo
+    ];
+
+    XLSX.writeFile(workbook, "Relatorio_Demitidos.xlsx");
+}
+
 // Exportar funções
 window.inicializarPainelDemitidos = inicializarPainelDemitidos;
 window.abrirModalCustoRescisao = abrirModalCustoRescisao;
@@ -602,3 +665,4 @@ window.visualizarCustoRescisao = visualizarCustoRescisao;
 window.cancelarDemissao = cancelarDemissao;
 window.abrirModalEditarDemissao = abrirModalEditarDemissao;
 window.salvarEdicaoDemissao = salvarEdicaoDemissao;
+window.exportarPainelDemitidosExcel = exportarPainelDemitidosExcel;
