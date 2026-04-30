@@ -1107,7 +1107,6 @@ function exportarTabelaAutorizacao() {
         const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
         const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
         const duracaoHoras = Math.max(0, (end - start) / 3600000); // 1000 * 60 * 60
-        const horasFakeDecimais = trueDecimalToFakeDecimal(duracaoHoras);
 
         if (!resumoMap[id]) {
             resumoMap[id] = {
@@ -1115,24 +1114,28 @@ function exportarTabelaAutorizacao() {
                 "Setor": s.setor || 'N/A',
                 "Total Horas Acumuladas": 0,
                 "Total Valor Estimado": 0,
-                "Qtd. Solicitações": 0
+                "Qtd. Solicitações": 0,
+                "_duracaoHorasTotal": 0
             };
         }
-        resumoMap[id]["Total Horas Acumuladas"] += horasFakeDecimais;
+        resumoMap[id]["_duracaoHorasTotal"] += duracaoHoras;
         resumoMap[id]["Total Valor Estimado"] += (s.valorEstimado || 0);
         resumoMap[id]["Qtd. Solicitações"] += 1;
     });
 
-    // Arredondar para evitar problemas de ponto flutuante antes de ordenar
+    // Converter duração real para decimal fake no final para evitar erros de soma
+    let duracaoHorasGeralReais = 0;
     Object.values(resumoMap).forEach(r => {
-        r["Total Horas Acumuladas"] = Number(r["Total Horas Acumuladas"].toFixed(2));
+        duracaoHorasGeralReais += r["_duracaoHorasTotal"];
+        r["Total Horas Acumuladas"] = Number(trueDecimalToFakeDecimal(r["_duracaoHorasTotal"]).toFixed(2));
+        delete r["_duracaoHorasTotal"];
     });
 
     const dadosResumo = Object.values(resumoMap).sort((a, b) => b["Total Horas Acumuladas"] - a["Total Horas Acumuladas"]);
 
     // 3. Calcular totais gerais para as linhas de rodapé
     const totalGeral = cacheSolicitacoes.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
-    const totalHorasGeral = Number(Object.values(resumoMap).reduce((acc, r) => acc + r["Total Horas Acumuladas"], 0).toFixed(2));
+    const totalHorasGeral = Number(trueDecimalToFakeDecimal(duracaoHorasGeralReais).toFixed(2));
 
     // 4. Criar o workbook e as planilhas
     const wb = XLSX.utils.book_new();
@@ -1256,7 +1259,6 @@ async function imprimirHoleritesHE() {
         const dsr = valorExtra / 6; // Mantendo a lógica simplificada do sistema
 
         colaboradoresMap[empId].totalMinutos += duracaoMinutos;
-        colaboradoresMap[empId].totalFakeDecimais += horasFakeDecimais;
         colaboradoresMap[empId].totalHE += valorExtra;
         colaboradoresMap[empId].totalDSR += dsr;
         colaboradoresMap[empId].totalGeral += (valorExtra + dsr);
@@ -1289,6 +1291,8 @@ async function imprimirHoleritesHE() {
     let htmlHolerites = '';
 
     listaColaboradores.forEach((c) => {
+        // Converter o total de minutos reais acumulados para fake decimais no final
+        c.totalFakeDecimais = trueDecimalToFakeDecimal(c.totalMinutos / 60);
         const totalHorasFake = Number(c.totalFakeDecimais.toFixed(2));
         const totalHorasFormatado = fakeDecimalToHHmm(totalHorasFake);
         
