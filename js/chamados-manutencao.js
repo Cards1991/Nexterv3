@@ -218,6 +218,10 @@ async function abrirModalNovoChamado() {
     document.getElementById('form-chamado-manutencao').reset();
     document.getElementById('chamado-id').value = '';
     
+    // Limpa os motivos frequentes da abertura anterior
+    const motivosContainer = document.getElementById('chamados-motivos-frequentes');
+    if (motivosContainer) motivosContainer.innerHTML = '';
+    
     // Preenche a data atual
     const now = new Date();
     document.getElementById('chamado-data').value = now.toISOString().split('T')[0];
@@ -241,9 +245,6 @@ async function popularSelectMaquinas() {
     const select = document.getElementById('chamados-maquina');
     if (!select) return;
 
-    // Evita repopular se já tiver opções carregadas
-    if (select.options.length > 1) return;
-
     try {
         const maquinasSnap = await db.collection('maquinas').orderBy('nome').get();
         select.innerHTML = '<option value="">Selecione uma máquina</option>';
@@ -253,10 +254,39 @@ async function popularSelectMaquinas() {
             const option = document.createElement('option');
             option.value = doc.id;
             option.textContent = maquina.nome || doc.id;
+            // Armazena os motivos como atributo data para uso no onchange
+            option.dataset.motivos = JSON.stringify(maquina.motivos || []);
             select.appendChild(option);
         });
     } catch (error) {
         console.error("Erro ao carregar máquinas:", error);
+    }
+}
+
+/**
+ * Exibe os motivos frequentes da máquina selecionada.
+ * Chamada via onchange no select de máquinas.
+ */
+function exibirMotivosFrequentes(selectEl) {
+    const motivosContainer = document.getElementById('chamados-motivos-frequentes');
+    if (!motivosContainer) return;
+
+    const selectedOption = selectEl.options[selectEl.selectedIndex];
+    let motivos = [];
+    try {
+        motivos = selectedOption ? JSON.parse(selectedOption.dataset.motivos || '[]') : [];
+    } catch(e) { motivos = []; }
+
+    if (motivos.length > 0) {
+        let html = '<div class="d-flex flex-wrap gap-2 mb-1">';
+        motivos.forEach(motivo => {
+            // Usa data-motivo para evitar problemas com aspas no onclick
+            html += `<button type="button" class="btn btn-sm btn-outline-secondary" data-motivo="${motivo.replace(/"/g, '&quot;')}" onclick="document.getElementById('chamados-motivo').value=this.dataset.motivo">${motivo}</button>`;
+        });
+        html += '</div><small class="text-muted">Clique para preencher o motivo automaticamente.</small>';
+        motivosContainer.innerHTML = html;
+    } else {
+        motivosContainer.innerHTML = '<small class="text-muted fst-italic">Nenhum motivo frequente cadastrado para esta máquina.</small>';
     }
 }
 
@@ -449,3 +479,4 @@ window.visualizarChamado = visualizarChamado;
 window.iniciarChamado = iniciarChamado;
 window.concluirChamado = concluirChamado;
 window.renderChamados = renderChamados;
+window.exibirMotivosFrequentes = exibirMotivosFrequentes;

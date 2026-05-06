@@ -194,10 +194,20 @@ async function popularFiltrosAutorizacao() {
             });
         }
 
-        // Set default filters to current month and approved status
+        // Set default filters to cycle (26 to 25)
         const now = new Date();
-        const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        let anoInicio = now.getFullYear();
+        let mesInicio = now.getMonth();
+        
+        if (now.getDate() <= 25) {
+            mesInicio -= 1;
+            if (mesInicio < 0) {
+                mesInicio = 11;
+                anoInicio -= 1;
+            }
+        }
+        
+        const firstDay = new Date(anoInicio, mesInicio, 26);
         
         // Helper para formatar data localmente (evita problemas de fuso horário do toISOString)
         const toLocalISO = (date) => {
@@ -206,7 +216,7 @@ async function popularFiltrosAutorizacao() {
         };
 
         dataInicio.value = toLocalISO(firstDay);
-        dataFim.value = toLocalISO(lastDay);
+        dataFim.value = toLocalISO(now);
         // 🟢 CORREÇÃO: Para teste, buscar TODOS os status
         status.value = ''; // Vazio = todos os status
 

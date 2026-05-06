@@ -143,11 +143,28 @@ async function preencherFiltrosHorasExtras() {
         console.error("Erro ao popular filtros:", error);
     }
 
-    // Definir datas padrão
+    // Definir datas padrão (ciclo de fechamento: dia 26 ao dia 25)
     const hoje = new Date();
-    const primeiroDiaDoMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    document.getElementById('he-startDate').valueAsDate = primeiroDiaDoMes;
-    document.getElementById('he-endDate').valueAsDate = hoje;
+    let anoInicio = hoje.getFullYear();
+    let mesInicio = hoje.getMonth();
+    
+    if (hoje.getDate() <= 25) {
+        mesInicio -= 1;
+        if (mesInicio < 0) {
+            mesInicio = 11;
+            anoInicio -= 1;
+        }
+    }
+    
+    const dataInicio = new Date(anoInicio, mesInicio, 26);
+    
+    const toLocalISO = (date) => {
+        const offset = date.getTimezoneOffset() * 60000;
+        return new Date(date.getTime() - offset).toISOString().split('T')[0];
+    };
+
+    document.getElementById('he-startDate').value = toLocalISO(dataInicio);
+    document.getElementById('he-endDate').value = toLocalISO(hoje);
 }
 
 
@@ -163,6 +180,10 @@ async function listarHorasExtras() {
     const companyId = document.getElementById('he-companyFilter').value;
     const employeeId = document.getElementById('he-employeeFilter').value;
     const macroSectorFilter = document.getElementById('he-macroSectorFilter');
+    const paymentFilter = document.getElementById('he-paymentFilter');
+    const paymentId = paymentFilter ? paymentFilter.value : '';
+    const statusFilter = document.getElementById('he-statusFilter');
+    const statusId = statusFilter ? statusFilter.value : '';
 
     // Obter os setores selecionados (pode ser um ou vários)
     const selectedSectors = Array.from(sectorFilter.selectedOptions).map(opt => opt.value);
@@ -187,7 +208,22 @@ async function listarHorasExtras() {
         const docs = querySnapshot.docs.filter(doc => {
             const data = doc.data();
 
-            if (data.status === 'pendente') return false;
+            // Filtro de Status
+            if (statusId) {
+                if (statusId === 'aprovado') {
+                    if (data.status === 'pendente' || data.status === 'rejeitado' || data.status === 'cancelado') return false;
+                } else {
+                    if (data.status !== statusId) return false;
+                }
+            } else {
+                if (data.status === 'pendente') return false; // Default behavior when no status filter is selected
+            }
+
+            // Filtro de Pagamento
+            if (paymentId) {
+                const forma = data.formaPagamento || 'por-fora';
+                if (forma !== paymentId) return false;
+            }
 
             // Filtro de Setor (agora suporta múltiplos)
             if (!selectedSectors.includes('Todos') && !selectedSectors.includes(data.sector)) return false;

@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Painel do Mecânico</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --cor-primaria: #1a1a2e;
+            --cor-acento: #e94560;
+            --cor-card: #16213e;
+            --cor-surface: #0f3460;
+            --cor-texto: #e0e0e0;
+            --cor-muted: #8a8fa3;
+            --cor-sucesso: #28a745;
+            --cor-aviso: #ffc107;
+            --cor-perigo: #dc3545;
+            --cor-info: #17a2b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-surface) 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: var(--cor-texto);
+        }
+
+        /* ===== LOGIN ===== */
+        .login-wrap {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .login-card {
+            background: rgba(22, 33, 62, 0.95);
+            border: 1px solid rgba(233, 69, 96, 0.3);
+            border-radius: 20px;
+            padding: 40px 32px;
+            width: 100%;
+            max-width: 400px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+            backdrop-filter: blur(10px);
+        }
+
+        .brand-icon {
+            width: 72px; height: 72px;
+            background: linear-gradient(135deg, var(--cor-acento), #c23152);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 28px; color: white;
+            box-shadow: 0 8px 24px rgba(233,69,96,0.4);
+        }
+
+        .brand-title {
+            font-size: 1.6rem; font-weight: 700;
+            background: linear-gradient(135deg, #fff, var(--cor-acento));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+            text-align: center; margin-bottom: 6px;
+        }
+
+        .brand-sub { color: var(--cor-muted); font-size: 0.9rem; text-align: center; margin-bottom: 28px; }
+
+        .form-control-dark {
+            background: rgba(15,52,96,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px;
+            color: white;
+            padding: 14px 16px;
+            font-size: 1rem;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        .form-control-dark:focus {
+            outline: none;
+            border-color: var(--cor-acento);
+            box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
+            background: rgba(15,52,96,0.8);
+            color: white;
+        }
+        .form-control-dark::placeholder { color: var(--cor-muted); }
+
+        .form-label-dark { color: var(--cor-muted); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; display: block; text-transform: uppercase; }
+
+        .btn-primary-custom {
+            background: linear-gradient(135deg, var(--cor-acento), #c23152);
+            border: none; border-radius: 12px;
+            color: white; font-weight: 700; font-size: 1rem;
+            padding: 14px; width: 100%; cursor: pointer;
+            transition: transform 0.15s, box-shadow 0.15s;
+            box-shadow: 0 6px 20px rgba(233,69,96,0.4);
+        }
+        .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(233,69,96,0.5); }
+        .btn-primary-custom:active { transform: translateY(0); }
+        .btn-primary-custom:disabled { opacity: 0.6; transform: none; }
+
+        /* ===== APP SHELL ===== */
+        #app-shell { display: none; flex-direction: column; min-height: 100vh; }
+
+        /* TOP BAR */
+        .topbar {
+            background: rgba(22,33,62,0.98);
+            border-bottom: 2px solid var(--cor-acento);
+            padding: 14px 16px;
+            display: flex; align-items: center; justify-content: space-between;
+            position: sticky; top: 0; z-index: 100;
+            backdrop-filter: blur(10px);
+        }
+        .topbar-user { display: flex; align-items: center; gap: 10px; }
+        .topbar-avatar {
+            width: 38px; height: 38px;
+            background: linear-gradient(135deg, var(--cor-acento), #c23152);
+            border-radius: 50%; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-size: 0.95rem;
+        }
+        .topbar-name { font-weight: 600; font-size: 0.95rem; line-height: 1.2; }
+        .topbar-role { color: var(--cor-acento); font-size: 0.75rem; }
+
+        .btn-logout {
+            background: rgba(220,53,69,0.15);
+            border: 1px solid rgba(220,53,69,0.4);
+            border-radius: 8px; color: #dc3545;
+            padding: 7px 12px; font-size: 0.8rem; cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { background: rgba(220,53,69,0.25); }
+
+        /* CONTENT */
+        .app-content { flex: 1; padding: 16px; max-width: 640px; margin: 0 auto; width: 100%; }
+
+        /* STATS ROW */
+        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
+        .stat-chip {
+            background: rgba(22,33,62,0.9);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 14px 8px;
+            text-align: center;
+            transition: transform 0.15s;
+        }
+        .stat-chip:hover { transform: translateY(-2px); }
+        .stat-chip .num { font-size: 1.7rem; font-weight: 800; line-height: 1; }
+        .stat-chip .lbl { font-size: 0.68rem; color: var(--cor-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 4px; }
+        .chip-aberto .num { color: var(--cor-aviso); }
+        .chip-andamento .num { color: var(--cor-info); }
+        .chip-urgente .num { color: var(--cor-perigo); }
+
+        /* SECTION TITLE */
+        .section-title {
+            font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 1px; color: var(--cor-muted);
+            margin: 20px 0 12px; display: flex; align-items: center; gap: 8px;
+        }
+        .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
+
+        /* CHAMADO CARD */
+        .chamado-card {
+            background: rgba(22,33,62,0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 16px;
+            margin-bottom: 12px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            cursor: pointer;
+        }
+        .chamado-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .chamado-card.urgente { border-color: rgba(220,53,69,0.5); background: rgba(220,53,69,0.08); }
+        .chamado-card.parada { border-color: rgba(255,193,7,0.5); }
+
+        .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .maquina-nome { font-weight: 700; font-size: 1rem; line-height: 1.2; }
+        .maquina-setor { color: var(--cor-muted); font-size: 0.78rem; margin-top: 2px; }
+
+        .badge-status {
+            border-radius: 20px; padding: 4px 10px;
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .badge-aberto { background: rgba(255,193,7,0.2); color: #ffc107; border: 1px solid rgba(255,193,7,0.4); }
+        .badge-andamento { background: rgba(23,162,184,0.2); color: #17a2b8; border: 1px solid rgba(23,162,184,0.4); }
+        .badge-concluido { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid rgba(40,167,69,0.4); }
+
+        .badge-prioridade {
+            border-radius: 20px; padding: 3px 8px;
+            font-size: 0.68rem; font-weight: 700;
+        }
+        .prio-urgente { background: var(--cor-perigo); color: white; }
+        .prio-prioritario { background: var(--cor-aviso); color: #000; }
+        .prio-normal { background: rgba(255,255,255,0.1); color: var(--cor-muted); }
+
+        .card-motivo { font-size: 0.88rem; color: var(--cor-texto); margin-bottom: 8px; line-height: 1.4; }
+        .card-meta { display: flex; gap: 14px; font-size: 0.75rem; color: var(--cor-muted); flex-wrap: wrap; }
+        .card-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .card-parada-alert {
+            background: rgba(255,193,7,0.15);
+            border: 1px solid rgba(255,193,7,0.3);
+            border-radius: 8px; padding: 8px 12px;
+            font-size: 0.8rem; color: #ffc107;
+            margin-top: 10px; display: flex; align-items: center; gap: 6px;
+        }
+
+        .card-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .btn-action {
+            flex: 1; border-radius: 10px; padding: 10px 8px;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            border: none; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-iniciar { background: rgba(23,162,184,0.2); color: #17a2b8; border: 1px solid rgba(23,162,184,0.4); }
+        .btn-iniciar:hover { background: rgba(23,162,184,0.35); }
+        .btn-finalizar { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid rgba(40,167,69,0.4); }
+        .btn-finalizar:hover { background: rgba(40,167,69,0.35); }
+        .btn-detalhe { background: rgba(255,255,255,0.07); color: var(--cor-muted); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-detalhe:hover { background: rgba(255,255,255,0.12); }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; padding: 48px 20px; color: var(--cor-muted); }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state p { font-size: 0.95rem; }
+
+        /* MODAL SHEET */
+        .sheet-overlay {
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 200;
+            display: none; align-items: flex-end;
+        }
+        .sheet-overlay.open { display: flex; }
+        .sheet {
+            background: var(--cor-card);
+            border-radius: 24px 24px 0 0;
+            padding: 24px 20px 36px;
+            width: 100%; max-height: 90vh;
+            overflow-y: auto;
+            animation: slideUp 0.3s ease;
+        }
+        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+
+        .sheet-handle {
+            width: 40px; height: 4px;
+            background: rgba(255,255,255,0.2);
+            border-radius: 2px; margin: 0 auto 20px;
+        }
+        .sheet-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 18px; }
+
+        .form-group-sheet { margin-bottom: 16px; }
+        .form-label-sheet { font-size: 0.8rem; font-weight: 600; color: var(--cor-muted); text-transform: uppercase; margin-bottom: 6px; display: block; }
+        .form-select-dark, .form-textarea-dark {
+            background: rgba(15,52,96,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px; color: white;
+            padding: 12px 14px; width: 100%; font-size: 0.95rem;
+        }
+        .form-select-dark:focus, .form-textarea-dark:focus {
+            outline: none; border-color: var(--cor-acento);
+            box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
+        }
+        .form-select-dark option { background: var(--cor-card); }
+
+        .btn-sheet-submit {
+            background: linear-gradient(135deg, var(--cor-sucesso), #1e7e34);
+            border: none; border-radius: 12px; color: white;
+            font-weight: 700; font-size: 1rem; padding: 14px;
+            width: 100%; cursor: pointer; margin-top: 8px;
+            transition: all 0.2s;
+        }
+        .btn-sheet-cancel {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 12px; color: var(--cor-muted);
+            font-weight: 600; font-size: 0.95rem; padding: 12px;
+            width: 100%; cursor: pointer; margin-top: 8px;
+        }
+
+        /* DETALHE SHEET */
+        .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
+        .detail-label { font-size: 0.8rem; color: var(--cor-muted); }
+        .detail-value { font-size: 0.88rem; font-weight: 600; text-align: right; max-width: 60%; }
+
+        /* FEEDBACK */
+        #feedback-toast {
+            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
+            z-index: 999; min-width: 260px; max-width: 90vw;
+            border-radius: 12px; padding: 12px 18px;
+            font-size: 0.9rem; font-weight: 600;
+            display: none; text-align: center;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+        }
+        .toast-success { background: rgba(40,167,69,0.95); color: white; }
+        .toast-error { background: rgba(220,53,69,0.95); color: white; }
+        .toast-warning { background: rgba(255,193,7,0.95); color: #000; }
+        .toast-info { background: rgba(23,162,184,0.95); color: white; }
+
+        /* LOADING */
+        .loading-spinner {
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px; color: var(--cor-muted);
+        }
+
+        /* FILTER TABS */
+        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+        .filter-tab {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 7px 14px;
+            font-size: 0.8rem; font-weight: 600; color: var(--cor-muted);
+            cursor: pointer; white-space: nowrap; transition: all 0.2s;
+        }
+        .filter-tab.active { background: var(--cor-acento); color: white; border-color: var(--cor-acento); }
+    </style>
+</head>
+<body>
+
+<!-- FEEDBACK TOAST -->
+<div id="feedback-toast"></div>
+
+<!-- ======== LOGIN ======== -->
+<div id="login-section" class="login-wrap">
+    <div class="login-card">
+        <div class="brand-icon"><i class="fas fa-hard-hat"></i></div>
+        <div class="brand-title">Painel Mecânico</div>
+        <div class="brand-sub">Acesse seus chamados de manutenção</div>
+
+        <form id="form-login">
+            <div style="margin-bottom:16px;">
+                <label class="form-label-dark">E-mail</label>
+                <input type="email" id="login-email" class="form-control-dark" placeholder="seu.email@empresa.com" required>
+            </div>
+            <div style="margin-bottom:24px;">
+                <label class="form-label-dark">Senha</label>
+                <input type="password" id="login-senha" class="form-control-dark" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn-primary-custom" id="btn-login">
+                <i class="fas fa-sign-in-alt"></i> Entrar
+            </button>
+            <div id="login-erro" class="alert alert-danger d-none mt-3" style="border-radius:10px; font-size:0.85rem;"></div>
+        </form>
+    </div>
+</div>
+
+<!-- ======== APP SHELL ======== -->
+<div id="app-shell">
+    <!-- TOP BAR -->
+    <div class="topbar">
+        <div class="topbar-user">
+            <div class="topbar-avatar" id="user-avatar">M</div>
+            <div>
+                <div class="topbar-name" id="user-nome">Mecânico</div>
+                <div class="topbar-role"><i class="fas fa-hard-hat"></i> Mecânico</div>
+            </div>
+        </div>
+        <button class="btn-logout" id="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
+    </div>
+
+    <!-- CONTENT -->
+    <div class="app-content">
+        <!-- STATS -->
+        <div class="stats-row">
+            <div class="stat-chip chip-aberto">
+                <div class="num" id="stat-abertos">0</div>
+                <div class="lbl">Abertos</div>
+            </div>
+            <div class="stat-chip chip-andamento">
+                <div class="num" id="stat-andamento">0</div>
+                <div class="lbl">Andamento</div>
+            </div>
+            <div class="stat-chip chip-urgente">
+                <div class="num" id="stat-urgentes">0</div>
+                <div class="lbl">Urgentes</div>
+            </div>
+        </div>
+
+        <!-- FILTER TABS -->
+        <div class="filter-tabs">
+            <div class="filter-tab active" data-filter="ativos">Ativos</div>
+            <div class="filter-tab" data-filter="todos">Todos</div>
+            <div class="filter-tab" data-filter="concluidos">Concluídos</div>
+        </div>
+
+        <!-- CHAMADOS LIST -->
+        <div class="section-title"><i class="fas fa-wrench"></i> Meus Chamados</div>
+        <div id="lista-chamados">
+            <div class="loading-spinner"><i class="fas fa-spinner fa-spin me-2"></i> Carregando...</div>
+        </div>
+    </div>
+</div>
+
+<!-- ======== SHEET: DETALHES ======== -->
+<div class="sheet-overlay" id="sheet-detalhes">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title"><i class="fas fa-clipboard-list me-2"></i>Detalhes do Chamado</div>
+        <div id="detalhe-content"></div>
+        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-detalhes')">Fechar</button>
+    </div>
+</div>
+
+<!-- ======== SHEET: INICIAR ATENDIMENTO ======== -->
+<div class="sheet-overlay" id="sheet-iniciar">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title"><i class="fas fa-play-circle me-2 text-info"></i>Iniciar Atendimento</div>
+        <input type="hidden" id="iniciar-id">
+        <div class="form-group-sheet">
+            <label class="form-label-sheet">Observação inicial (opcional)</label>
+            <textarea class="form-textarea-dark" id="iniciar-obs" rows="3" placeholder="Descreva o que foi identificado ao chegar..."></textarea>
+        </div>
+        <button class="btn-sheet-submit" id="btn-confirmar-iniciar" style="background: linear-gradient(135deg,#17a2b8,#117a8b);">
+            <i class="fas fa-play-circle"></i> Confirmar Início
+        </button>
+        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-iniciar')">Cancelar</button>
+    </div>
+</div>
+
+<!-- ======== SHEET: FINALIZAR CHAMADO ======== -->
+<div class="sheet-overlay" id="sheet-finalizar">
+    <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title"><i class="fas fa-check-circle me-2 text-success"></i>Finalizar Chamado</div>
+        <input type="hidden" id="finalizar-id">
+        <input type="hidden" id="finalizar-maquina-id">
+
+        <div class="form-group-sheet">
+            <label class="form-label-sheet">Motivo da Manutenção *</label>
+            <select class="form-select-dark" id="finalizar-motivo">
+                <option value="">Carregando motivos...</option>
+            </select>
+        </div>
+        <div class="form-group-sheet">
+            <label class="form-label-sheet">Tipo de Manutenção *</label>
+            <select class="form-select-dark" id="finalizar-tipo">
+                <option value="">Selecione...</option>
+                <option>Corretiva</option>
+                <option>Preventiva</option>
+                <option>Preditiva</option>
+                <option>Melhoria</option>
+                <option>Ajuste Operacional</option>
+                <option>Lubrificação</option>
+                <option>Inspeção</option>
+                <option>Calibração</option>
+            </select>
+        </div>
+        <div class="form-group-sheet">
+            <label class="form-label-sheet">Serviço Realizado *</label>
+            <textarea class="form-textarea-dark" id="finalizar-obs" rows="4" placeholder="Descreva o serviço realizado, diagnóstico, peças trocadas..."></textarea>
+        </div>
+        <button class="btn-sheet-submit" id="btn-confirmar-finalizar">
+            <i class="fas fa-check"></i> Finalizar Chamado
+        </button>
+        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-finalizar')">Cancelar</button>
+    </div>
+</div>
+
+<!-- SCRIPTS -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+<script src="js/env-loader.js"></script>
+<script src="firebase-config-mobile.js"></script>
+<script src="js/mecanico-mobile.js"></script>
+</body>
+</html>

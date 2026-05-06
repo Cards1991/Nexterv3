@@ -1281,3 +1281,79 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
     font-size: 1.1rem;
     margin-right: 12px !important;
 }
+
+/* ===== ESTILOS PAINEL DO MECÂNICO (PORTADO DO MOBILE) ===== */
+.mecanico-theme {
+    --cor-mecanico-bg: #1a1a2e;
+    --cor-mecanico-card: #16213e;
+    --cor-mecanico-accent: #e94560;
+    --cor-mecanico-text: #e0e0e0;
+}
+
+.section-mecanico {
+    background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
+    border-radius: var(--border-radius-lg);
+    padding: 20px;
+    color: #e0e0e0;
+    min-height: 80vh;
+}
+
+.mecanico-stat-chip {
+    background: rgba(22, 33, 62, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 14px;
+    padding: 15px;
+    text-align: center;
+}
+
+.mecanico-stat-chip .num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    display: block;
+}
+
+.mecanico-card {
+    background: rgba(22, 33, 62, 0.92);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 16px;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+}
+
+.mecanico-card:hover {
+    border-color: var(--cor-mecanico-accent);
+    transform: translateY(-2px);
+}
+
+.mecanico-card.urgente {
+    border-left: 5px solid #dc3545;
+}
+
+.mecanico-badge-status {
+    font-size: 0.7rem;
+    padding: 4px 10px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.filter-tab-mecanico {
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 7px 15px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    transition: 0.2s;
+}
+
+.filter-tab-mecanico.active {
+    background: #e94560;
+    color: white;
+}
+
+.mecanico-btn-action {
+    border-radius: 10px;
+    font-weight: 600;
+}

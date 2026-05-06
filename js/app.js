@@ -13,7 +13,7 @@ const TODAS_SECOES = [
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
-    'gestao-cipa', 'brigada-incendio', 'controle-extintores',
+    'gestao-cipa', 'brigada-incendio', 'controle-extintores', 'manutencao-mobile', 'mecanico-mobile',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'
 ];
@@ -106,6 +106,10 @@ async function showSection(sectionName) {
             // CASO ESPECIAL PARA PÁGINA MOBILE
             if (sectionName === 'manutencao-mobile') {
                 window.location.href = 'manutencao-mobile.html' + window.location.search;
+                return;
+            }
+            if (sectionName === 'mecanico-mobile') {
+                window.location.href = 'mecanico-mobile.html' + window.location.search;
                 return;
             }
 
@@ -596,10 +600,21 @@ document.addEventListener('viewsLoaded', function () {
     // Verificar autenticação
     firebase.auth().onAuthStateChanged(async (user) => {
         if (user) {
+            // Se tínhamos um redirect agendado por estado null, cancela
+            if (window.__BBX_LOGIN_REDIRECT_TIMEOUT__) {
+                clearTimeout(window.__BBX_LOGIN_REDIRECT_TIMEOUT__);
+                window.__BBX_LOGIN_REDIRECT_TIMEOUT__ = null;
+            }
+
+            // Garantia extra: marca como logado agora
+            window.__BBX_AUTH_USER_PRESENT__ = true;
+
+
             const appContainer = document.querySelector('.app-container');
             if (appContainer) {
                 appContainer.style.display = 'flex';
             }
+
 
             const userDocRef = db.collection('usuarios').doc(user.uid);
             const userDoc = await userDocRef.get();
@@ -660,9 +675,31 @@ document.addEventListener('viewsLoaded', function () {
             await carregarLogoEmpresa();
 
         } else {
-            if (!window.location.href.includes('login.html')) {
-                window.location.replace('login.html');
+            // Quando o Firebase retorna user=null (momento de reconexão/refresh), não redirecionar imediatamente.
+            // Aguarda um curto período e re-checa o currentUser.
+            const ms = 1500;
+            if (window.__BBX_LOGIN_REDIRECT_TIMEOUT__) {
+                clearTimeout(window.__BBX_LOGIN_REDIRECT_TIMEOUT__);
             }
+
+            window.__BBX_LOGIN_REDIRECT_TIMEOUT__ = setTimeout(() => {
+                try {
+                    const currentUser = firebase.auth().currentUser;
+                    if (currentUser) {
+                        // Recuperou sessão, não redireciona.
+                        return;
+                    }
+
+                    if (!window.location.href.includes('login.html')) {
+                        window.location.replace('login.html');
+                    }
+                } catch (e) {
+                    // Se algo der errado na checagem, não ficamos em loop.
+                    if (!window.location.href.includes('login.html')) {
+                        window.location.replace('login.html');
+                    }
+                }
+            }, ms);
         }
     });
 });

@@ -93,7 +93,6 @@ function adicionarBotaoSair(user) {
 }
 
 async function fetchMachineInfo(maquinaId) {
-    // Adicionado log para depuração
     console.log(`[DEBUG] Buscando no Firestore: collection='maquinas', id_ou_codigo='${maquinaId}'`);
     try {
         let machineData = null;
@@ -104,7 +103,7 @@ async function fetchMachineInfo(maquinaId) {
         if (maquinaDoc.exists) {
             machineData = maquinaDoc.data();
         } else {
-            // Se não encontrou por ID, tenta buscar pelo código (para suportar QR Codes antigos e comportamento atual)
+            // Se não encontrou por ID, tenta buscar pelo código
             const maquinaPorCodigoSnap = await db.collection('maquinas').where('codigo', '==', maquinaId).limit(1).get();
             if (!maquinaPorCodigoSnap.empty) {
                 machineData = maquinaPorCodigoSnap.docs[0].data();
@@ -115,8 +114,50 @@ async function fetchMachineInfo(maquinaId) {
         if (machineData) {
             console.log("[DEBUG] Máquina encontrada:", machineData);
             document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
-            // Atualiza o hidden input caso ele tenha vindo como código, para gravar com o Doc ID correto no chamado
             document.getElementById('chamado-maquina-id').value = finalMaquinaId;
+
+            // --- MOTIVOS FREQUENTES ---
+            const motivos = machineData.motivos || [];
+            const containerFrequentes = document.getElementById('container-motivos-frequentes');
+            const containerSimples = document.getElementById('container-motivo-simples');
+            const selectMotivo = document.getElementById('select-motivo-frequente');
+
+            if (motivos.length > 0) {
+                // Popular o select com os motivos cadastrados
+                selectMotivo.innerHTML = '<option value="">Selecione um motivo...</option>';
+                motivos.forEach(motivo => {
+                    const opt = document.createElement('option');
+                    opt.value = motivo;
+                    opt.textContent = motivo;
+                    selectMotivo.appendChild(opt);
+                });
+                // Adicionar opção de digitar manualmente
+                const optOutro = document.createElement('option');
+                optOutro.value = '__outro__';
+                optOutro.textContent = 'Outro (descrever abaixo)...';
+                selectMotivo.appendChild(optOutro);
+
+                // Ao selecionar do dropdown, preenche o campo de texto
+                selectMotivo.onchange = function() {
+                    const inputMotivo = document.getElementById('chamado-motivo');
+                    if (this.value && this.value !== '__outro__') {
+                        inputMotivo.value = this.value;
+                        inputMotivo.required = false; // já foi preenchido pelo select
+                    } else {
+                        inputMotivo.value = '';
+                        inputMotivo.required = true;
+                    }
+                };
+
+                // Mostrar container com select, esconder o simples
+                containerFrequentes.style.display = 'block';
+                containerSimples.style.display = 'none';
+                document.getElementById('chamado-motivo-fallback').required = false;
+            } else {
+                // Sem motivos cadastrados: mostrar apenas campo de texto simples
+                containerFrequentes.style.display = 'none';
+                containerSimples.style.display = 'block';
+            }
         } else {
             console.warn(`[DEBUG] Doc com ID/Código '${maquinaId}' não encontrado.`);
             document.getElementById('chamado-maquina-nome').value = 'Máquina não encontrada';
@@ -156,7 +197,22 @@ async function salvarChamadoMobile(event) {
 
     const maquinaId = document.getElementById('chamado-maquina-id').value;
     const maquinaNome = document.getElementById('chamado-maquina-nome').value;
-    const motivo = document.getElementById('chamado-motivo').value;
+    
+    // Lê o motivo do campo correto (frequente ou simples)
+    const containerFrequentes = document.getElementById('container-motivos-frequentes');
+    let motivo = '';
+    if (containerFrequentes && containerFrequentes.style.display !== 'none') {
+        // Primeiro tenta o campo de texto (pode ter sido preenchido via select ou manualmente)
+        motivo = document.getElementById('chamado-motivo').value.trim();
+        // Se vazio, tenta o valor do select diretamente
+        if (!motivo) {
+            const sel = document.getElementById('select-motivo-frequente');
+            if (sel && sel.value && sel.value !== '__outro__') motivo = sel.value;
+        }
+    } else {
+        motivo = (document.getElementById('chamado-motivo-fallback')?.value || '').trim();
+    }
+    
     const observacoes = document.getElementById('chamado-obs').value;
     const maquinaParada = document.getElementById('chamado-maquina-parada').checked;
 

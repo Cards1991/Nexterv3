@@ -53,9 +53,19 @@
                             <input type="text" class="form-control bg-light" id="chamado-maquina-nome" readonly>
                             <input type="hidden" id="chamado-maquina-id">
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3" id="container-motivos-frequentes" style="display:none;">
+                            <label class="form-label fw-bold">Motivo da Manutenção *</label>
+                            <select class="form-select" id="select-motivo-frequente">
+                                <option value="">Selecione um motivo...</option>
+                            </select>
+                            <div class="mt-2">
+                                <input type="text" class="form-control" id="chamado-motivo" placeholder="Ou descreva o motivo manualmente..." required>
+                            </div>
+                            <small class="text-muted">Selecione uma opção acima ou descreva o motivo no campo.</small>
+                        </div>
+                        <div class="mb-3" id="container-motivo-simples">
                             <label class="form-label">Motivo da Manutenção *</label>
-                            <input type="text" class="form-control" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
+                            <input type="text" class="form-control" id="chamado-motivo-fallback" placeholder="Ex: Vazamento de óleo, falha no motor" required>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Observações</label>

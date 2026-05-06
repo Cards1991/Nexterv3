@@ -1032,7 +1032,8 @@ async function abrirModalChamado(chamadoId = null) {
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Motivo da Manutenção *</label>
-                                <input type="text" class="form-control" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
+                                <div id="chamado-motivos-frequentes"></div>
+                                <input type="text" class="form-control mt-1" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
                             </div>
                             <div class="mb-3">
                                 <label class="form-label">Observações</label>
@@ -1129,7 +1130,8 @@ async function abrirModalChamado(chamadoId = null) {
                     listaMaquinas.push({
                         id: doc.id,
                         nome: dados.nome || 'Sem Nome',
-                        codigo: dados.codigo || 'S/C'
+                        codigo: dados.codigo || 'S/C',
+                        motivos: dados.motivos || []
                     });
                 });
 
@@ -1142,6 +1144,34 @@ async function abrirModalChamado(chamadoId = null) {
 
                 maquinaSelect.innerHTML = optionsHTML;
                 maquinaSelect.disabled = false;
+                
+                // Configura ação de mudança da máquina para exibir os motivos frequentes
+                maquinaSelect._maquinasList = listaMaquinas;
+                maquinaSelect.onchange = function() {
+                    const selectedId = this.value;
+                    const motivosContainer = document.getElementById('chamado-motivos-frequentes');
+                    const inputMotivo = document.getElementById('chamado-motivo');
+                    
+                    if (!selectedId) {
+                        motivosContainer.innerHTML = '';
+                        return;
+                    }
+                    
+                    const maquina = this._maquinasList.find(m => m.id === selectedId);
+                    if (maquina && maquina.motivos && maquina.motivos.length > 0) {
+                        let html = '<div class="d-flex flex-wrap gap-2 mb-2">';
+                        maquina.motivos.forEach(motivo => {
+                            // Escapa aspas para não quebrar o HTML
+                            const safeMotivo = motivo.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+                            html += `<span class="badge bg-secondary cursor-pointer" onclick="document.getElementById('chamado-motivo').value = '${safeMotivo}'" style="cursor:pointer; padding:6px 10px; font-size:13px;" title="Clique para preencher">${motivo}</span>`;
+                        });
+                        html += '</div>';
+                        motivosContainer.innerHTML = html;
+                    } else {
+                        motivosContainer.innerHTML = '';
+                    }
+                };
+
             })
             .catch((error) => {
                 console.error("Erro ao buscar máquinas:", error);
@@ -1588,7 +1618,17 @@ async function abrirModalFinalizar(chamadoId) {
                             <div class="col-md-6 mb-3">
                                 <label class="form-label">Mecânico Responsável *</label>
                                 <select class="form-select" id="finalizar-mecanico" required></select>
+                                <div class="form-text text-success" id="finalizar-mecanico-info" style="display:none;">
+                                    <i class="fas fa-check-circle"></i> Mecânico pré-preenchido automaticamente
+                                </div>
                             </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Motivo da Manutenção *</label>
+                            <select class="form-select" id="finalizar-motivo-manutencao" required>
+                                <option value="">Carregando motivos...</option>
+                            </select>
+                            <div class="form-text">Motivos cadastrados para a máquina deste chamado.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Observações do Mecânico *</label>
@@ -1618,10 +1658,11 @@ async function abrirModalFinalizar(chamadoId) {
     }
 
     // Preencher dados do chamado no modal de finalização
+    let chamadoData = null;
     try {
         const chamadoDoc = await db.collection('manutencao_chamados').doc(chamadoId).get();
         if (chamadoDoc.exists) {
-            const chamadoData = chamadoDoc.data();
+            chamadoData = chamadoDoc.data();
             // Se a máquina estava parada, o campo de observações do mecânico se torna obrigatório
             const obsMecanicoInput = document.getElementById('finalizar-obs');
             if (obsMecanicoInput) {
@@ -1638,8 +1679,9 @@ async function abrirModalFinalizar(chamadoId) {
     document.getElementById('finalizar-pecas').value = '';
     document.getElementById('finalizar-enviar-whatsapp').checked = WHATSAPP_CONFIG.enabled;
 
-    // Popular select de mecânicos
+    // ✅ Popular select de mecânicos e pré-preencher o responsável do chamado
     const mecanicoSelect = document.getElementById('finalizar-mecanico');
+    const mecanicoInfo = document.getElementById('finalizar-mecanico-info');
     if (mecanicoSelect) {
         mecanicoSelect.innerHTML = '<option value="">Carregando...</option>';
         try {
@@ -1649,9 +1691,66 @@ async function abrirModalFinalizar(chamadoId) {
                 const funcionario = doc.data();
                 mecanicoSelect.innerHTML += `<option value="${doc.id}">${funcionario.nome} - ${funcionario.matricula || ''}</option>`;
             });
+
+            // ✅ Auto-preencher mecânico responsável já atribuído no painel
+            if (chamadoData && chamadoData.mecanicoResponsavelId) {
+                mecanicoSelect.value = chamadoData.mecanicoResponsavelId;
+                if (mecanicoSelect.value === chamadoData.mecanicoResponsavelId) {
+                    // Seleção bem-sucedida: mostrar hint
+                    if (mecanicoInfo) mecanicoInfo.style.display = 'block';
+                } else {
+                    // Mecânico não encontrado na lista: adicionar como opção temporária
+                    const opt = document.createElement('option');
+                    opt.value = chamadoData.mecanicoResponsavelId;
+                    opt.textContent = chamadoData.mecanicoResponsavelNome || 'Mecânico designado';
+                    mecanicoSelect.appendChild(opt);
+                    mecanicoSelect.value = chamadoData.mecanicoResponsavelId;
+                    if (mecanicoInfo) mecanicoInfo.style.display = 'block';
+                }
+            } else {
+                if (mecanicoInfo) mecanicoInfo.style.display = 'none';
+            }
         } catch (error) {
             console.error("Erro ao carregar mecânicos:", error);
             mecanicoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+
+    // ✅ Popular select de motivos da máquina do chamado
+    const motivoSelect = document.getElementById('finalizar-motivo-manutencao');
+    if (motivoSelect) {
+        motivoSelect.innerHTML = '<option value="">Carregando motivos...</option>';
+        try {
+            const maquinaId = chamadoData ? chamadoData.maquinaId : null;
+            if (maquinaId) {
+                const maquinaDoc = await db.collection('maquinas').doc(maquinaId).get();
+                if (maquinaDoc.exists) {
+                    const motivos = maquinaDoc.data().motivos || [];
+                    if (motivos.length > 0) {
+                        motivoSelect.innerHTML = '<option value="">Selecione o motivo...</option>';
+                        motivos.forEach(m => {
+                            const opt = document.createElement('option');
+                            opt.value = m;
+                            opt.textContent = m;
+                            motivoSelect.appendChild(opt);
+                        });
+                        // Opção para motivo livre
+                        const optOutro = document.createElement('option');
+                        optOutro.value = '__outro__';
+                        optOutro.textContent = 'Outro (digitar manualmente)';
+                        motivoSelect.appendChild(optOutro);
+                    } else {
+                        motivoSelect.innerHTML = '<option value="">Nenhum motivo cadastrado para esta máquina</option>';
+                    }
+                } else {
+                    motivoSelect.innerHTML = '<option value="">Máquina não encontrada</option>';
+                }
+            } else {
+                motivoSelect.innerHTML = '<option value="">Chamado sem máquina associada</option>';
+            }
+        } catch (error) {
+            console.error("Erro ao carregar motivos da máquina:", error);
+            motivoSelect.innerHTML = '<option value="">Erro ao carregar motivos</option>';
         }
     }
 
@@ -1669,6 +1768,11 @@ async function finalizarChamado() {
     const mecanicoNome = mecanicoSelect ? mecanicoSelect.options[mecanicoSelect.selectedIndex].text.split(' - ')[0] : '';
     const enviarWhatsapp = document.getElementById('finalizar-enviar-whatsapp')?.checked;
 
+    // ✅ Motivo da manutenção (do select de motivos da máquina)
+    const motivoSelect = document.getElementById('finalizar-motivo-manutencao');
+    const motivoSelecionado = motivoSelect?.value;
+    const motivoManutencao = (motivoSelecionado && motivoSelecionado !== '__outro__') ? motivoSelecionado : null;
+
     if (!tipoManutencao) {
         mostrarMensagem("Selecione o tipo de manutenção realizada.", "warning");
         return;
@@ -1676,6 +1780,12 @@ async function finalizarChamado() {
 
     if (!mecanicoId) {
         mostrarMensagem("Selecione o mecânico responsável.", "warning");
+        return;
+    }
+
+    if (!motivoManutencao) {
+        mostrarMensagem("Selecione o motivo da manutenção.", "warning");
+        motivoSelect?.focus();
         return;
     }
 
@@ -1717,6 +1827,7 @@ async function finalizarChamado() {
             dataEncerramento: dataEncerramento,
             tempoParada: tempoParada,
             tipoManutencao: tipoManutencao,
+            motivoManutencao: motivoManutencao,
             observacoesMecanico: observacoesMecanico,
             pecasUtilizadas: pecasUtilizadas || null,
             mecanicoResponsavelId: mecanicoId,

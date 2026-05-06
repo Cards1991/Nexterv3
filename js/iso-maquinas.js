@@ -152,6 +152,16 @@ async function abrirModalMaquina(maquinaId = null) {
                             <div class="mb-3"><label class="form-label">Nome da Máquina</label><input type="text" class="form-control" id="maquina-nome" required></div>
                             <div class="mb-3"><label class="form-label">Número do Patrimônio</label><input type="text" class="form-control" id="maquina-patrimonio"></div>
                             <div class="mb-3"><label class="form-label">Gerente Responsável</label><input type="text" class="form-control" id="maquina-gerente"></div>
+                            
+                            <hr>
+                            <h6 class="mb-2 fw-bold text-secondary">Principais Motivos de Abertura (Até 5)</h6>
+                            <div class="mb-2"><input type="text" class="form-control form-control-sm" id="maquina-motivo-1" placeholder="Motivo 1 (Ex: Falha no motor)"></div>
+                            <div class="mb-2"><input type="text" class="form-control form-control-sm" id="maquina-motivo-2" placeholder="Motivo 2 (Ex: Vazamento de óleo)"></div>
+                            <div class="mb-2"><input type="text" class="form-control form-control-sm" id="maquina-motivo-3" placeholder="Motivo 3 (Ex: Ruído estranho)"></div>
+                            <div class="mb-2"><input type="text" class="form-control form-control-sm" id="maquina-motivo-4" placeholder="Motivo 4 (Ex: Parada repentina)"></div>
+                            <div class="mb-3"><input type="text" class="form-control form-control-sm" id="maquina-motivo-5" placeholder="Motivo 5 (Ex: Peça quebrada)"></div>
+                            <hr>
+
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="maquina-critica">
                                 <label class="form-check-label" for="maquina-critica">Máquina Crítica (Prioridade em manutenções)</label>
@@ -191,7 +201,16 @@ async function abrirModalMaquina(maquinaId = null) {
                 document.getElementById('maquina-codigo').value = data.codigo;
                 document.getElementById('maquina-nome').value = data.nome;
                 document.getElementById('maquina-patrimonio').value = data.patrimonio || '';
-                document.getElementById('maquina-gerente').value = data.gerente;
+                document.getElementById('maquina-gerente').value = data.gerente || '';
+                
+                // Carregar motivos se existirem
+                const motivos = data.motivos || [];
+                document.getElementById('maquina-motivo-1').value = motivos[0] || '';
+                document.getElementById('maquina-motivo-2').value = motivos[1] || '';
+                document.getElementById('maquina-motivo-3').value = motivos[2] || '';
+                document.getElementById('maquina-motivo-4').value = motivos[3] || '';
+                document.getElementById('maquina-motivo-5').value = motivos[4] || '';
+                
                 document.getElementById('maquina-critica').checked = data.isCritica || false;
             }
         } catch (error) {
@@ -212,6 +231,14 @@ async function salvarMaquina() {
     }
 
     const maquinaId = document.getElementById('maquina-id').value;
+    const motivos = [
+        document.getElementById('maquina-motivo-1').value.trim(),
+        document.getElementById('maquina-motivo-2').value.trim(),
+        document.getElementById('maquina-motivo-3').value.trim(),
+        document.getElementById('maquina-motivo-4').value.trim(),
+        document.getElementById('maquina-motivo-5').value.trim()
+    ].filter(m => m !== '');
+
     const dados = {
         empresaId: document.getElementById('maquina-empresa').value,
         setor: document.getElementById('maquina-setor').value,
@@ -219,6 +246,7 @@ async function salvarMaquina() {
         nome: document.getElementById('maquina-nome').value.trim(),
         patrimonio: document.getElementById('maquina-patrimonio').value.trim(),
         gerente: document.getElementById('maquina-gerente').value.trim(),
+        motivos: motivos,
         isCritica: document.getElementById('maquina-critica').checked
     };
 

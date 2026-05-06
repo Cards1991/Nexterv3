@@ -68,7 +68,7 @@
                     <div class="row g-3">
                         <div class="col-md-12">
                             <label class="form-label">Máquina <span class="text-danger">*</span></label>
-                            <select id="chamados-maquina" class="form-select" required>
+                            <select id="chamados-maquina" class="form-select" required onchange="exibirMotivosFrequentes(this)">
                                 <option value="">Selecione uma máquina</option>
                             </select>
                         </div>
@@ -87,14 +87,9 @@
                         </div>
                         <div class="col-md-12">
                             <label class="form-label">Motivo <span class="text-danger">*</span></label>
-                            <select id="chamados-motivo" class="form-select" required>
-                                <option value="">Selecione o motivo</option>
-                                <option value="Preventiva">Manutenção Preventiva</option>
-                                <option value="Corretiva">Manutenção Corretiva</option>
-                                <option value="Emergencial">Emergencial</option>
-                                <option value="Melhoria">Melhoria</option>
-                                <option value="Outro">Outro</option>
-                            </select>
+                            <!-- Motivos frequentes da máquina selecionada aparecem aqui -->
+                            <div id="chamados-motivos-frequentes" class="mb-2"></div>
+                            <input type="text" id="chamados-motivo" class="form-control" placeholder="Digite o motivo ou clique em uma opção acima..." required>
                         </div>
                         <div class="col-12">
                             <label class="form-label">Observações</label>
