@@ -1,8 +1,8 @@
 // js/ai-assistant.js
 // Módulo para o Assistente de IA e Chat Inteligente
 
-document.addEventListener('DOMContentLoaded', () => {
-    console.log("Módulo Assistente de IA carregado e DOM pronto.");
+document.addEventListener('viewsLoaded', () => {
+    console.log("🤖 Inicializando Assistente de IA após carregamento das views...");
 
     const chatFab = document.getElementById('ai-chat-fab');
     const chatWindow = document.getElementById('ai-chat-window');
@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const chatBody = document.getElementById('ai-chat-body');
 
     if (!chatFab || !chatWindow || !closeButton || !sendButton || !chatInput || !chatBody) {
-        console.error("Elementos do chat não encontrados. A interface do assistente não será inicializada.");
+        // Silenciosamente ignora se os elementos não existirem na página atual
         return;
     }
 
@@ -29,10 +29,8 @@ document.addEventListener('DOMContentLoaded', () => {
         chatInput.value = '';
 
         // Simula o envio para o backend e recebe uma resposta
-        // Em um cenário real, aqui você chamaria uma Cloud Function
         showTypingIndicator();
         setTimeout(() => {
-            // A IA "decide" o que fazer.
             const commandResponse = processUserCommand(messageText);
             removeTypingIndicator();
             appendMessage(commandResponse, 'assistant');
@@ -45,11 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const bubble = document.createElement('div');
         bubble.className = 'message-bubble';
-        bubble.innerHTML = text; // Usamos innerHTML para permitir formatação
+        bubble.innerHTML = text; 
 
         messageDiv.appendChild(bubble);
         chatBody.appendChild(messageDiv);
-        chatBody.scrollTop = chatBody.scrollHeight; // Auto-scroll para a última mensagem
+        chatBody.scrollTop = chatBody.scrollHeight; 
     };
 
     const showTypingIndicator = () => {
@@ -74,21 +72,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-
-    // Processa o comando do usuário e retorna uma resposta (simulação)
     const processUserCommand = (command) => {
         const lowerCaseCommand = command.toLowerCase();
         if (lowerCaseCommand.includes('inconsistências') || lowerCaseCommand.includes('analise')) {
             return "Iniciando análise de inconsistências cadastrais... <br>Acesse a seção 'Análise de Pendências' para ver os resultados.";
-            // Aqui, você chamaria a função do `auto-correction-agent.js`
-            // Ex: window.AutoCorrectionAgent.detectInconsistencies();
         } else if (lowerCaseCommand.includes('corrija')) {
             return "Ok, iniciando o agente de autocorreção. <br>As correções de alta confiança serão aplicadas automaticamente. As demais irão para revisão humana.";
-            // Ex: window.AutoCorrectionAgent.runCorrectionCycle();
         } else if (lowerCaseCommand.includes('riscos de demissão')) {
             return "Analisando dados de turnover e desempenho... <br>O relatório de riscos de demissão está sendo gerado na seção 'Análise de Rescisão'.";
-            // Acessaria a seção correspondente
-            // showSection('analise-rescisao');
         } else if (lowerCaseCommand.includes('ações')) {
             return "Com base nos dados atuais, sugiro as seguintes ações: <br>1. Revisar as <strong>3 pendências</strong> de cadastro com score de confiança médio. <br>2. Acompanhar o funcionário <strong>João Silva</strong>, que apresenta alto risco de turnover.";
         }
@@ -106,33 +97,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Adicionar estilos para o indicador de digitação
-    const style = document.createElement('style');
-    style.innerHTML = `
-        .typing-dot {
-            height: 8px;
-            width: 8px;
-            background-color: #999;
-            border-radius: 50%;
-            display: inline-block;
-            animation: wave 1.3s linear infinite;
-            margin: 0 2px;
-        }
-        .typing-dot:nth-child(2) {
-            animation-delay: -1.1s;
-        }
-        .typing-dot:nth-child(3) {
-            animation-delay: -0.9s;
-        }
-        @keyframes wave {
-            0%, 60%, 100% {
-                transform: initial;
+    // Adicionar estilos para o indicador de digitação (se ainda não existirem)
+    if (!document.getElementById('ai-chat-styles')) {
+        const style = document.createElement('style');
+        style.id = 'ai-chat-styles';
+        style.innerHTML = `
+            .typing-dot {
+                height: 8px;
+                width: 8px;
+                background-color: #999;
+                border-radius: 50%;
+                display: inline-block;
+                animation: wave 1.3s linear infinite;
+                margin: 0 2px;
             }
-            30% {
-                transform: translateY(-8px);
+            .typing-dot:nth-child(2) { animation-delay: -1.1s; }
+            .typing-dot:nth-child(3) { animation-delay: -0.9s; }
+            @keyframes wave {
+                0%, 60%, 100% { transform: initial; }
+                30% { transform: translateY(-8px); }
             }
-        }
-    `;
-    document.head.appendChild(style);
-
+        `;
+        document.head.appendChild(style);
+    }
 });
