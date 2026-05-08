@@ -24,6 +24,7 @@ async function atualizarMeusChamados() {
 
     const tbody = document.getElementById('tabela-meus-chamados');
     const totalBadge = document.getElementById('total-meus-chamados');
+    if (!tbody) return;
     tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>';
 
     try {
@@ -38,12 +39,9 @@ async function atualizarMeusChamados() {
                 window.meusChamados = chamadosList;
 
                 // Fallback: alguns chamados podem ter designação gravada por nome
-                // (garante que o mecânico veja os designados a ele mesmo se o ID estiver divergente)
                 if (window.meusChamados.length === 0) {
                     try {
                         const displayName = user.displayName || '';
-
-                        // Busca por nome do responsável (caso o campo esteja preenchido)
                         const fallbackSnap = await db.collection('manutencao_chamados')
                             .where('mecanicoResponsavelNome', '==', displayName)
                             .limit(200)
@@ -57,15 +55,17 @@ async function atualizarMeusChamados() {
                     }
                 }
 
-
-                totalBadge.textContent = window.meusChamados.length;
+                if (totalBadge) totalBadge.textContent = window.meusChamados.length;
                 await renderizarTabelaMeusChamados();
                 renderizarMetricasMecanico();
             });
     } catch (error) {
         console.error("Erro:", error);
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar chamados</td></tr>';
-  async function renderizarTabelaMeusChamados() {
+    }
+}
+
+async function renderizarTabelaMeusChamados() {
     const container = document.getElementById('lista-cards-chamados');
     if (!container) return;
     
@@ -140,8 +140,8 @@ async function atualizarMeusChamados() {
     }
 
     container.innerHTML = html;
-}TML = html;
 }
+
 
 async function renderizarMetricasMecanico() {
     const container = document.getElementById('metricas-mecanico');

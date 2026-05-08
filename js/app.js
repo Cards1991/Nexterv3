@@ -21,7 +21,7 @@ const TODAS_SECOES = [
 let currentUserPermissions = {};
 
 // Variável para rastrear a seção atual
-let secaoAtual = null;
+window.secaoAtual = null;
 
 // Função showSection
 async function showSection(sectionName) {
@@ -31,7 +31,7 @@ async function showSection(sectionName) {
     }
 
     // Cleanup da seção anterior
-    if (secaoAtual && secaoAtual !== sectionName) {
+    if (window.secaoAtual && window.secaoAtual !== sectionName) {
         try {
             switch (secaoAtual) {
                 case 'controle-usuario-master':
@@ -51,12 +51,12 @@ async function showSection(sectionName) {
                     break;
             }
         } catch (cleanupError) {
-            console.warn(`Erro no cleanup da seção ${secaoAtual}:`, cleanupError);
+            console.warn(`Erro no cleanup da seção ${window.secaoAtual}:`, cleanupError);
         }
     }
 
     // Atualiza a seção atual
-    secaoAtual = sectionName;
+    window.secaoAtual = sectionName;
 
     // Esconder todas as seções estáticas do index
     const sections = document.querySelectorAll('.content-section');

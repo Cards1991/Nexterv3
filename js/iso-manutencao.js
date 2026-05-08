@@ -1453,7 +1453,7 @@ async function iniciarAtendimento(chamadoId) {
                     </div>
                     <div class="modal-footer">
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="confirmarInicioAtendimento()">Confirmar Início</button>
+                        <button type="button" class="btn btn-primary" onclick="confirmarInicioAtendimentoISO()">Confirmar Início</button>
                     </div>
                 </div>
             </div>
@@ -1519,7 +1519,10 @@ async function iniciarAtendimento(chamadoId) {
     modal.show();
 }
 
-async function confirmarInicioAtendimento() {
+/**
+ * Confirma o início do atendimento no contexto do Painel ISO 9001.
+ */
+async function confirmarInicioAtendimentoISO() {
     const currentUserPermissions = window.currentUserPermissions || {};
     if (!currentUserPermissions.isMecanicoAdmin) {
         mostrarMensagem("❌ Mecânicos não podem atribuir chamados. Contate o gerente.", "warning");
@@ -2294,3 +2297,6 @@ window.addEventListener('beforeunload', limparListenerManutencao);
 window.addEventListener('pagehide', limparListenerManutencao);
 
 // Removido listener automático - agora inicializado via app.js / showSection
+
+// Expor função renomeada para o escopo global
+window.confirmarInicioAtendimentoISO = confirmarInicioAtendimentoISO;

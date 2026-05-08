@@ -154,6 +154,35 @@ function buildChamadoCard(c, currentUserId) {
  * @param {string} chamadoId - ID do chamado a ser iniciado.
  */
 function abrirModalIniciarAtendimento(chamadoId) {
+    let modalEl = document.getElementById('modalMecanicoIniciar');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'modalMecanicoIniciar';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title"><i class="fas fa-play-circle me-2"></i>Iniciar Atendimento</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="iniciar-id">
+                        <div class="mb-3">
+                            <label class="form-label">Observações Iniciais</label>
+                            <textarea class="form-control" id="iniciar-obs" rows="3" placeholder="Ex: Buscando ferramentas, aguardando peça..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn-confirmar-iniciar" onclick="confirmarInicioAtendimentoMecanico()">
+                            Confirmar Início
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modalEl);
+    }
     document.getElementById('iniciar-id').value = chamadoId;
     document.getElementById('iniciar-obs').value = '';
     const modal = new bootstrap.Modal(document.getElementById('modalMecanicoIniciar'));
@@ -163,14 +192,40 @@ function abrirModalIniciarAtendimento(chamadoId) {
 /**
  * Confirma o início do atendimento, atualizando o status do chamado no Firestore.
  */
-async function confirmarInicioAtendimento() {
-    const chamadoId = document.getElementById('iniciar-id').value;
-    const obs = document.getElementById('iniciar-obs').value.trim();
-    const user = firebase.auth().currentUser;
+async function confirmarInicioAtendimentoMecanico() {
+    const iniciarIdEl = document.getElementById('iniciar-id');
+    const iniciarObsEl = document.getElementById('iniciar-obs');
     const btn = document.getElementById('btn-confirmar-iniciar');
+
+    // Evita crash quando o modal não está presente (ex: carregamento dinâmico/rota diferente)
+    // Observação: o modal deveria existir em `views/painel-mecanico.html`. Ainda assim, não podemos falhar com null.
+    if (!iniciarIdEl || !iniciarObsEl) {
+        console.warn('[PainelMecanico] Elementos do modal iniciar não encontrados.');
+        // Sem o modal, não é possível executar o update do chamado.
+        return;
+    }
+
+    if (!btn) {
+        mostrarMensagem('Botão de confirmação não encontrado. Recarregue e tente novamente.', 'warning');
+        return;
+    }
+
+    const chamadoId = iniciarIdEl.value;
+    const obs = (iniciarObsEl.value || '').trim();
+    const user = firebase.auth().currentUser;
+
+    if (!chamadoId) {
+        mostrarMensagem('Chamado inválido (ID não encontrado).', 'warning');
+        return;
+    }
+    if (!user) {
+        mostrarMensagem('Você precisa estar logado para iniciar o atendimento.', 'warning');
+        return;
+    }
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processando...';
+
 
     try {
         await db.collection('manutencao_chamados').doc(chamadoId).update({
@@ -197,6 +252,52 @@ async function confirmarInicioAtendimento() {
  * @param {string} chamadoId - ID do chamado a ser finalizado.
  */
 async function abrirModalFinalizarChamado(chamadoId) {
+    let modalEl = document.getElementById('modalMecanicoFinalizar');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'modalMecanicoFinalizar';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header bg-success text-white">
+                        <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Finalizar Chamado</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" id="finalizar-id">
+                        <input type="hidden" id="finalizar-maquina-id">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Tipo de Manutenção *</label>
+                                <select class="form-select" id="finalizar-tipo" required>
+                                    <option value="">Selecione...</option>
+                                    <option>Corretiva</option><option>Preventiva</option><option>Ajuste</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Motivo Constatado *</label>
+                                <select class="form-select" id="finalizar-motivo" required></select>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Serviço Realizado *</label>
+                            <textarea class="form-control" id="finalizar-obs" rows="3" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Peças Utilizadas</label>
+                            <input type="text" class="form-control" id="finalizar-pecas">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-success" id="btn-confirmar-finalizar" onclick="confirmarFinalizarChamado()">Finalizar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modalEl);
+    }
+
     document.getElementById('finalizar-id').value = chamadoId;
     const chamado = __chamados_cache.find(c => c.id === chamadoId);
     if (!chamado) return;
@@ -302,6 +403,27 @@ async function confirmarFinalizarChamado() {
  * @param {string} chamadoId - ID do chamado a ser visualizado.
  */
 function abrirModalDetalhes(chamadoId) {
+    let modalEl = document.getElementById('modalMecanicoDetalhes');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.id = 'modalMecanicoDetalhes';
+        modalEl.className = 'modal fade';
+        modalEl.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Detalhes do Chamado</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body"></div>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modalEl);
+    }
+
     const c = __chamados_cache.find(x => x.id === chamadoId);
     if (!c) return;
 
@@ -339,7 +461,7 @@ function abrirModalDetalhes(chamadoId) {
 // Expor para o escopo global do app.js
 window.inicializarPainelMecanico = inicializarPainelMecanico;
 window.abrirModalIniciarAtendimento = abrirModalIniciarAtendimento;
-window.confirmarInicioAtendimento = confirmarInicioAtendimento;
+window.confirmarInicioAtendimentoMecanico = confirmarInicioAtendimentoMecanico;
 window.abrirModalFinalizarChamado = abrirModalFinalizarChamado;
 window.confirmarFinalizarChamado = confirmarFinalizarChamado;
 window.abrirModalDetalhes = abrirModalDetalhes;
