@@ -1,4 +1,138 @@
-<div class="container-fluid section-mecanico animate__animated animate__fadeIn">
+<div id="painel-mecanico" class="content-section container-fluid section-mecanico animate__animated animate__fadeIn">
+    <style>
+        :root {
+            --cor-primaria: #1a1a2e;
+            --cor-acento: #e94560;
+            --cor-card: #16213e;
+            --cor-surface: #0f3460;
+            --cor-texto: #e0e0e0;
+            --cor-muted: #8a8fa3;
+            --cor-sucesso: #28a745;
+            --cor-aviso: #ffc107;
+            --cor-perigo: #dc3545;
+            --cor-info: #17a2b8;
+        }
+
+        .section-mecanico {
+            background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-surface) 100%);
+            min-height: calc(100vh - 70px); /* Ajuste para o header */
+            padding: 20px;
+            color: var(--cor-texto);
+        }
+
+        .section-mecanico h2, .section-mecanico h5 {
+            color: var(--cor-texto);
+        }
+
+        /* STATS ROW */
+        .mecanico-stat-chip {
+            background: rgba(22,33,62,0.9);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px; padding: 14px 8px;
+            text-align: center;
+            transition: transform 0.15s;
+        }
+        .mecanico-stat-chip:hover { transform: translateY(-2px); }
+        .mecanico-stat-chip .num { font-size: 1.7rem; font-weight: 800; line-height: 1; }
+        .mecanico-stat-chip .lbl { font-size: 0.68rem; color: var(--cor-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 4px; }
+        .mecanico-stat-chip.chip-aberto .num { color: var(--cor-aviso); }
+        .mecanico-stat-chip.chip-andamento .num { color: var(--cor-info); }
+        .mecanico-stat-chip.chip-urgente .num { color: var(--cor-perigo); }
+
+        /* FILTER TABS */
+        .filter-tabs-mecanico { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
+        .filter-tab-mecanico {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 20px; padding: 7px 14px;
+            font-size: 0.8rem; font-weight: 600; color: var(--cor-muted);
+            cursor: pointer; white-space: nowrap; transition: all 0.2s;
+        }
+        .filter-tab-mecanico.active { background: var(--cor-acento); color: white; border-color: var(--cor-acento); }
+
+        /* CHAMADO CARD */
+        .mecanico-card {
+            background: rgba(22,33,62,0.92);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 16px; padding: 16px;
+            margin-bottom: 12px;
+            transition: transform 0.15s, box-shadow 0.15s;
+            cursor: pointer;
+        }
+        .mecanico-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
+        .mecanico-card.urgente { border-color: rgba(220,53,69,0.5); background: rgba(220,53,69,0.08); }
+        .mecanico-card.parada { border-color: rgba(255,193,7,0.5); }
+
+        .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+        .maquina-nome { font-weight: 700; font-size: 1rem; line-height: 1.2; }
+        .maquina-setor { color: var(--cor-muted); font-size: 0.78rem; margin-top: 2px; }
+
+        .mecanico-badge-status {
+            border-radius: 20px; padding: 4px 10px;
+            font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+            white-space: nowrap;
+        }
+        .mecanico-badge-status.bg-danger { background: rgba(255,193,7,0.2) !important; color: #ffc107 !important; border: 1px solid rgba(255,193,7,0.4); }
+        .mecanico-badge-status.bg-info { background: rgba(23,162,184,0.2) !important; color: #17a2b8 !important; border: 1px solid rgba(23,162,184,0.4); }
+        .mecanico-badge-status.bg-success { background: rgba(40,167,69,0.2) !important; color: #28a745 !important; border: 1px solid rgba(40,167,69,0.4); }
+
+        .badge-prioridade {
+            border-radius: 20px; padding: 3px 8px;
+            font-size: 0.68rem; font-weight: 700;
+        }
+        .prio-urgente { background: var(--cor-perigo); color: white; }
+        .prio-prioritario { background: var(--cor-aviso); color: #000; }
+        .prio-normal { background: rgba(255,255,255,0.1); color: var(--cor-muted); }
+
+        .card-motivo { font-size: 0.88rem; color: var(--cor-texto); margin-bottom: 8px; line-height: 1.4; }
+        .card-meta { display: flex; gap: 14px; font-size: 0.75rem; color: var(--cor-muted); flex-wrap: wrap; }
+        .card-meta span { display: flex; align-items: center; gap: 4px; }
+
+        .card-parada-alert {
+            background: rgba(255,193,7,0.15);
+            border: 1px solid rgba(255,193,7,0.3);
+            border-radius: 8px; padding: 8px 12px;
+            font-size: 0.8rem; color: #ffc107;
+            margin-top: 10px; display: flex; align-items: center; gap: 6px;
+        }
+
+        .card-actions { display: flex; gap: 8px; margin-top: 14px; }
+        .btn-action {
+            flex: 1; border-radius: 10px; padding: 10px 8px;
+            font-size: 0.82rem; font-weight: 600; cursor: pointer;
+            border: none; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .btn-action.btn-iniciar { background: rgba(23,162,184,0.2); color: #17a2b8; border: 1px solid rgba(23,162,184,0.4); }
+        .btn-action.btn-iniciar:hover { background: rgba(23,162,184,0.35); }
+        .btn-action.btn-finalizar { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid rgba(40,167,69,0.4); }
+        .btn-action.btn-finalizar:hover { background: rgba(40,167,69,0.35); }
+        .btn-action.btn-detalhe { background: rgba(255,255,255,0.07); color: var(--cor-muted); border: 1px solid rgba(255,255,255,0.1); }
+        .btn-action.btn-detalhe:hover { background: rgba(255,255,255,0.12); }
+
+        /* EMPTY STATE */
+        .empty-state { text-align: center; padding: 48px 20px; color: var(--cor-muted); }
+        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
+        .empty-state p { font-size: 0.95rem; }
+
+        /* MODAL STYLES */
+        .modal-content { background-color: var(--cor-card); color: var(--cor-texto); }
+        .modal-header { border-bottom-color: rgba(255,255,255,0.1); }
+        .modal-footer { border-top-color: rgba(255,255,255,0.1); }
+        .form-control, .form-select, .form-textarea-dark {
+            background: rgba(15,52,96,0.6);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: white;
+        }
+        .form-control:focus, .form-select:focus, .form-textarea-dark:focus {
+            background: rgba(15,52,96,0.8);
+            border-color: var(--cor-acento);
+            box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
+            color: white;
+        }
+        .form-control::placeholder { color: var(--cor-muted); }
+        .form-label { color: var(--cor-muted); }
+    </style>
+
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="h4 mb-0"><i class="fas fa-hard-hat me-2"></i> Painel do Mecânico</h2>
         <div id="mecanico-user-info" class="small text-muted"></div>
@@ -7,19 +141,19 @@
     <!-- Estatísticas Rápidas -->
     <div class="row g-3 mb-4">
         <div class="col-4">
-            <div class="mecanico-stat-chip">
+            <div class="mecanico-stat-chip chip-aberto">
                 <span class="num text-warning" id="mec-stat-abertos">0</span>
                 <span class="small text-uppercase">Abertos</span>
             </div>
         </div>
         <div class="col-4">
-            <div class="mecanico-stat-chip">
+            <div class="mecanico-stat-chip chip-andamento">
                 <span class="num text-info" id="mec-stat-andamento">0</span>
                 <span class="small text-uppercase">Em Curso</span>
             </div>
         </div>
         <div class="col-4">
-            <div class="mecanico-stat-chip">
+            <div class="mecanico-stat-chip chip-urgente">
                 <span class="num text-danger" id="mec-stat-urgentes">0</span>
                 <span class="small text-uppercase">Urgentes</span>
             </div>
@@ -28,7 +162,7 @@
 
     <!-- Filtros -->
     <div class="d-flex gap-2 mb-4 overflow-auto pb-2">
-        <div class="filter-tab-mecanico active" data-filter="meus">Meus Chamados</div>
+        <div class="filter-tab-mecanico active" data-filter="meus">Meus Chamados</div> <!-- Alterado para filter-tab-mecanico -->
         <div class="filter-tab-mecanico" data-filter="abertos">Disponíveis</div>
         <div class="filter-tab-mecanico" data-filter="concluidos">Concluídos</div>
     </div>
@@ -42,10 +176,86 @@
     </div>
 </div>
 
-<!-- Modal Finalizar (Reutiliza lógica da ISO Manutenção) -->
-<div class="modal fade" id="modalMecanicoFinalizar" tabindex="-1">
+<!-- ======== MODAL: INICIAR ATENDIMENTO ======== -->
+<div class="modal fade" id="modalMecanicoIniciar" tabindex="-1" aria-labelledby="modalMecanicoIniciarLabel" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content bg-dark text-white">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalMecanicoIniciarLabel"><i class="fas fa-play-circle me-2"></i> Iniciar Atendimento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="iniciar-id">
+                <div class="mb-3">
+                    <label for="iniciar-obs" class="form-label">Observação inicial (opcional)</label>
+                    <textarea class="form-control" id="iniciar-obs" rows="3" placeholder="Descreva o que foi identificado ao chegar..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="btn-confirmar-iniciar" onclick="confirmarInicioAtendimento()">
+                    <i class="fas fa-play-circle me-1"></i> Confirmar Início
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======== MODAL: FINALIZAR CHAMADO ======== -->
+<div class="modal fade" id="modalMecanicoFinalizar" tabindex="-1" aria-labelledby="modalMecanicoFinalizarLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalMecanicoFinalizarLabel"><i class="fas fa-check-circle me-2"></i> Finalizar Chamado</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="finalizar-id">
+                <input type="hidden" id="finalizar-maquina-id">
+
+                <div class="mb-3">
+                    <label for="finalizar-motivo" class="form-label">Motivo da Manutenção *</label>
+                    <select class="form-select" id="finalizar-motivo" required>
+                        <option value="">Carregando motivos...</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="finalizar-tipo" class="form-label">Tipo de Manutenção *</label>
+                    <select class="form-select" id="finalizar-tipo" required>
+                        <option value="">Selecione...</option>
+                        <option>Corretiva</option>
+                        <option>Preventiva</option>
+                        <option>Preditiva</option>
+                        <option>Melhoria</option>
+                        <option>Ajuste Operacional</option>
+                        <option>Lubrificação</option>
+                        <option>Inspeção</option>
+                        <option>Calibração</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label for="finalizar-obs" class="form-label">Serviço Realizado *</label>
+                    <textarea class="form-control" id="finalizar-obs" rows="4" placeholder="Descreva o serviço realizado, diagnóstico, peças trocadas..." required></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="finalizar-pecas" class="form-label">Peças Utilizadas (opcional)</label>
+                    <textarea class="form-control" id="finalizar-pecas" rows="3" placeholder="Ex: 1x Rolamento 6203, 2m de Correia XPTO..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btn-confirmar-finalizar" onclick="confirmarFinalizarChamado()">
+                    <i class="fas fa-check me-1"></i> Finalizar Chamado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ======== MODAL: DETALHES DO CHAMADO ======== -->
+<div class="modal fade" id="modalMecanicoDetalhes" tabindex="-1" aria-labelledby="modalMecanicoDetalhesLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
             <div class="modal-header border-secondary">
                 <h5 class="modal-title">Finalizar Chamado</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>

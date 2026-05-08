@@ -741,6 +741,33 @@ async function carregarChamadosManutencao() {
 
         let query = db.collection('manutencao_chamados');
 
+// Se for mecânico normal, filtra apenas chamados atribuídos ao mecânico responsável
+        const currentUserPermissions = window.currentUserPermissions || {};
+
+
+        // Debug: loga qual uid e qual permissão está aplicando o filtro no painel ISO 9001
+        try {
+            const uid = firebase?.auth?.().currentUser?.uid;
+            console.log('[ISO-DEBUG] uid:', uid);
+            console.log('[ISO-DEBUG] perms:', currentUserPermissions);
+        } catch (e) {
+            console.warn('[ISO-DEBUG] erro debug:', e);
+        }
+
+        if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+            const user = firebase.auth().currentUser;
+            const funcionarioId = currentUserPermissions.funcionarioId;
+            const idParaBusca = funcionarioId || user?.uid;
+            
+            if (idParaBusca) {
+                query = query.where('mecanicoResponsavelId', '==', idParaBusca);
+            } else {
+                console.warn('Usuário logado não encontrado para aplicar filtro de mecânico responsável');
+            }
+        }
+
+
+
         const dataInicio = document.getElementById('filtro-manut-inicio')?.value;
         const dataFim = document.getElementById('filtro-manut-fim')?.value;
 
@@ -755,7 +782,7 @@ async function carregarChamadosManutencao() {
 
         const filtroSetor = document.getElementById('filtro-manut-setor')?.value;
 
-__unsubscribe_manutencao = query.orderBy('dataAbertura', 'desc').onSnapshot((snap) => {
+__unsubscribe_manutencao = query.onSnapshot((snap) => {
             let chamados = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             const prioridadeValor = { 'Urgente': 1, 'Prioritário': 2, 'Normal': 3 };

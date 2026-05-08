@@ -102,9 +102,7 @@ async function carregarSelectFuncionariosAtivosModal() {
     try {
         const snap = await db.collection('funcionarios')
             .where('status', '==', 'Ativo')
-            .where('isMecanico', '==', false)
             .orderBy('nome')
-            .limit(100)
             .get();
         
         snap.forEach(doc => {
@@ -282,7 +280,8 @@ async function carregarSelectSetores() {
         const snap = await db.collection('setores').get();
         select.innerHTML = '<option value="">Todos Setores</option>';
         snap.forEach(doc => {
-            const setor = doc.data().descricao;
+            const setor = doc.data()?.descricao;
+            if (!setor) return;
             select.innerHTML += `<option value="${setor}">${setor}</option>`;
         });
     } catch (error) {
@@ -312,6 +311,13 @@ async function exportarListaMecanicos() {
 
 // ✅ Global Functions - Load LAST so local functions defined first
 // Exposto globalmente via window - Fixed order issue
+window.loadAllEmployees = async function loadAllEmployees() {
+    // Botão “Buscar Todos” no modal de mecânicos.
+    // Atualmente o dropdown carrega apenas Ativos e não-mecânicos.
+    // Mantemos o comportamento chamando o mesmo carregamento do select.
+    await carregarSelectFuncionariosAtivosModal();
+};
+
 window.abrirModalNovoMecanico = abrirModalNovoMecanico;
 window.carregarListaMecanicos = carregarListaMecanicos;
 window.exportarListaMecanicos = exportarListaMecanicos;

@@ -203,7 +203,8 @@ async function salvarPermissoes() {
         }, { merge: true });
 
         mostrarMensagem('Permissões salvas com sucesso!', 'success');
-        bootstrap.Modal.getInstance(document.getElementById('permissoesModal')).hide();
+        const modalInst = bootstrap.Modal.getOrCreateInstance(document.getElementById('permissoesModal'));
+        if (modalInst) modalInst.hide();
         await carregarUsuariosAdmin();
     } catch (error) {
         console.error("Erro ao salvar permissões:", error);
@@ -276,7 +277,12 @@ async function salvarNovoUsuario() {
         });
 
         mostrarMensagem("Usuário criado com sucesso! Edite as permissões conforme necessário.", "success");
-        bootstrap.Modal.getInstance(document.getElementById('novoUsuarioModal')).hide();
+
+        const modalEl = document.getElementById('novoUsuarioModal');
+        if (modalEl) {
+            const modalInst = bootstrap.Modal.getOrCreateInstance(modalEl);
+            if (modalInst) modalInst.hide();
+        }
         await carregarUsuariosAdmin(); // Atualiza a lista de usuários
 
     } catch (error) {
@@ -289,7 +295,16 @@ async function salvarNovoUsuario() {
     }
 }
 
+async function exibirSenhaCadastrada() {
+    // Não é possível recuperar/exibir a senha cadastrada no Firebase Authentication.
+    mostrarMensagem(
+        'Não é possível exibir a senha cadastrada.\n\nNo Firebase Authentication, a senha não é recuperável após o cadastro.\nUse “Resetar Senha” para redefinir o acesso do usuário.',
+        'warning'
+    );
+}
+
 async function resetarSenhaUsuario(email) {
+
     if (!confirm(`Deseja enviar um e-mail de redefinição de senha para ${email}?`)) {
         return;
     }

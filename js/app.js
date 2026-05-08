@@ -12,8 +12,8 @@ const TODAS_SECOES = [
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
-    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador',
-    'gestao-cipa', 'brigada-incendio', 'controle-extintores', 'manutencao-mobile', 'mecanico-mobile',
+    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico',
+    'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'
 ];
@@ -43,6 +43,12 @@ async function showSection(sectionName) {
                 case 'control-horas-autorizacao':
                     if (typeof limparListenerAutorizacao === 'function') limparListenerAutorizacao();
                     break;
+                case 'manutencao-mecanico':
+                    if (window.unsubscribeMeusChamados) {
+                        window.unsubscribeMeusChamados();
+                        window.unsubscribeMeusChamados = null;
+                    }
+                    break;
             }
         } catch (cleanupError) {
             console.warn(`Erro no cleanup da seção ${secaoAtual}:`, cleanupError);
@@ -60,8 +66,15 @@ async function showSection(sectionName) {
 
     // 🔴 IMPORTANTE: NÃO manipular modais aqui! Cada módulo gerencia seus próprios modais
     // Apenas reset básico do body, sem tocar em modais
+    // 🛠️ CORREÇÃO: Limpeza de overlays remanescentes (dark screen) que podem ocorrer
+    // ao trocar de seção sem fechar corretamente um modal ou por erro do Bootstrap.
     document.body.style.overflow = '';
     document.body.style.paddingRight = '';
+    document.body.classList.remove('modal-open');
+    
+    // Remove qualquer fundo escuro (backdrop) preso na tela
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops.forEach(b => b.remove());
 
     // Adiciona/remove classe especial para a página de denúncia
     if (sectionName === 'compliance-denuncia') {
@@ -70,11 +83,13 @@ async function showSection(sectionName) {
         document.body.classList.remove('denuncia-ativa');
     }
 
-    // Oculta container dinâmico se já existir
+    // Oculta container dinâmico se já existir (evita conteúdo "por trás")
     const containerDinamico = document.getElementById('dynamic-content');
     if (containerDinamico) {
         containerDinamico.classList.add('d-none');
+        containerDinamico.innerHTML = '';
     }
+
 
     // Mostrar seção selecionada
     const targetSection = document.getElementById(sectionName);
@@ -103,16 +118,6 @@ async function showSection(sectionName) {
         mainContent.innerHTML = '<div class="text-center mt-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><p class="mt-2 text-muted">Carregando módulo...</p></div>';
 
         try {
-            // CASO ESPECIAL PARA PÁGINA MOBILE
-            if (sectionName === 'manutencao-mobile') {
-                window.location.href = 'manutencao-mobile.html' + window.location.search;
-                return;
-            }
-            if (sectionName === 'mecanico-mobile') {
-                window.location.href = 'mecanico-mobile.html' + window.location.search;
-                return;
-            }
-
             const resposta = await fetch(`views/${sectionName}.html`);
             if (!resposta.ok) {
                 mainContent.innerHTML = '<div class="alert alert-danger mt-5">Tela não encontrada ou não migrada.</div>';
@@ -261,6 +266,9 @@ async function carregarDadosSecao(sectionName) {
                 if (typeof inicializarModuloMaquinas === 'function') {
                     await inicializarModuloMaquinas(db);
                 }
+                break;
+            case 'manutencao-mecanico':
+                if (typeof inicializarMeusChamados === 'function') await inicializarMeusChamados();
                 break;
             case 'ponto-eletronico':
                 if (typeof inicializarPontoEletronico === 'function') inicializarPontoEletronico();
@@ -609,6 +617,12 @@ document.addEventListener('viewsLoaded', function () {
             // Garantia extra: marca como logado agora
             window.__BBX_AUTH_USER_PRESENT__ = true;
 
+            // Se tínhamos um redirect agendado, cancela imediatamente
+            if (window.__BBX_LOGIN_REDIRECT_TIMEOUT__) {
+                clearTimeout(window.__BBX_LOGIN_REDIRECT_TIMEOUT__);
+                window.__BBX_LOGIN_REDIRECT_TIMEOUT__ = null;
+            }
+
 
             const appContainer = document.querySelector('.app-container');
             if (appContainer) {
@@ -625,13 +639,19 @@ document.addEventListener('viewsLoaded', function () {
                 currentUserPermissions.funcionarioId = userDoc.data().funcionarioId;
                 window.currentUserPermissions = currentUserPermissions;
                 console.log('User permissions:', currentUserPermissions);
+                
+                // Garante que o mecânico tenha permissão para o próprio painel
+                if (currentUserPermissions.isMecanico && !currentUserPermissions.secoesPermitidas.includes('manutencao-mecanico')) {
+                    currentUserPermissions.secoesPermitidas.push('manutencao-mecanico');
+                    await userDocRef.update({ 'permissoes.secoesPermitidas': firebase.firestore.FieldValue.arrayUnion('manutencao-mecanico') });
+                }
             } else {
                 currentUserPermissions = { 
                     isAdmin: false, 
                     isMecanico: false, 
                     isMecanicoAdmin: false, 
                     hasIsoAccess: true, 
-                    secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot'], 
+                    secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot', 'manutencao-mecanico'], 
                     restricaoSetor: null 
                 };
                 window.currentUserPermissions = currentUserPermissions;
@@ -677,10 +697,12 @@ document.addEventListener('viewsLoaded', function () {
         } else {
             // Quando o Firebase retorna user=null (momento de reconexão/refresh), não redirecionar imediatamente.
             // Aguarda um curto período e re-checa o currentUser.
-            const ms = 1500;
+            const ms = 3000; // Aumentado para 3s para evitar o "flash" e volta ao login
             if (window.__BBX_LOGIN_REDIRECT_TIMEOUT__) {
                 clearTimeout(window.__BBX_LOGIN_REDIRECT_TIMEOUT__);
             }
+
+            if (window.__BBX_AUTH_USER_PRESENT__) return; // Se já logou uma vez, não expulsa por oscilação
 
             window.__BBX_LOGIN_REDIRECT_TIMEOUT__ = setTimeout(() => {
                 try {
@@ -769,11 +791,19 @@ function inicializarNavegacao() {
         link.addEventListener('click', function (e) {
             e.preventDefault();
             const targetSection = this.getAttribute('data-target');
-            if (currentUserPermissions.secoesPermitidas.includes(targetSection)) {
+
+            // Permissão extra para mecânico admin (gerente de manutenção de mecânicos)
+            // Permite acessar ISO 9001 e seus módulos mesmo se o array secoesPermitidas estiver incompleto.
+            const isMecanicoAdmin = currentUserPermissions?.isMecanicoAdmin;
+            const allowMecanicoAdminISO = isMecanicoAdmin && (targetSection === 'iso-manutencao' || targetSection === 'manutencao-mecanico' || targetSection.startsWith('iso-'));
+
+            if (currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO) {
                 showSection(targetSection);
             } else {
                 mostrarMensagem('Você não tem permissão para acessar esta seção.', 'error');
             }
+
+
         });
     });
 
@@ -784,6 +814,11 @@ function inicializarNavegacao() {
     }
 
     let secaoInicial = 'agenda';
+
+    // Se for mecânico normal (não admin), a tela inicial DEVE ser o painel integrado "Meus Chamados"
+    if (currentUserPermissions.isMecanico && !currentUserPermissions.isAdmin) {
+        secaoInicial = 'manutencao-mecanico';
+    }
 
     if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('agenda')) {
         const primeiraSecaoValida = currentUserPermissions.secoesPermitidas.find(secao => TODAS_SECOES.includes(secao));

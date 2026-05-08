@@ -134,23 +134,8 @@ async function renderChamados() {
             </div>
         `;
 
-        // Tabela de chamados
-        html += `
-            <div class="table-responsive">
-                <table class="table table-sm table-hover align-middle">
-                    <thead class="table-light sticky-top">
-                        <tr>
-                            <th>Status</th>
-                            <th>Data</th>
-                            <th>Máquina</th>
-                            <th>Motivo</th>
-                            <th>Prioridade</th>
-                            <th>Solicitante</th>
-                            <th class="text-end">Ações</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-        `;
+        // Tabela de chamados (convertido para CARDS mobile-friendly)
+        html += '<div class="row g-3">';
 
         docs.forEach(c => {
             const statusBadge = {
@@ -161,40 +146,58 @@ async function renderChamados() {
             }[c.status] || 'bg-light';
 
             const prioridadeBadge = c.prioridade === 'Urgente' ? 'bg-danger' : 'bg-info text-dark';
-            
             const dataAbertura = c.dataAbertura ? c.dataAbertura.toDate().toLocaleString('pt-BR') : '-';
             const maquinaNome = c.maquinaNome || c.maquinaId || '-';
 
             html += `
-                <tr>
-                    <td><span class="badge ${statusBadge}">${c.status || 'Aberto'}</span></td>
-                    <td><small>${dataAbertura}</small></td>
-                    <td>${maquinaNome}</td>
-                    <td>${c.motivo || '-'}</td>
-                    <td><span class="badge ${prioridadeBadge}">${c.prioridade || 'Normal'}</span></td>
-                    <td>${c.createdByNome || '-'}</td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="visualizarChamado('${c.id}')" title="Visualizar">
+                <div class="col-md-6 col-lg-4">
+                    <div class="card chamado-card h-100 ${c.maquinaParada ? 'border-warning' : ''}">
+                        <div class="card-header-custom">
+                            <div>
+                                <h6 class="m-0 fw-bold text-truncate" style="max-width: 180px;">${maquinaNome}</h6>
+                                <small class="text-muted"><i class="fas fa-clock me-1"></i>${dataAbertura}</small>
+                            </div>
+                            <div>
+                                <span class="badge ${statusBadge}">${c.status || 'Aberto'}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-12 mb-2">
+                                    <div class="info-label">Motivo</div>
+                                    <div class="info-value"><i class="fas fa-tools text-muted me-2"></i>${c.motivo || '-'}</div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <div class="info-label">Prioridade</div>
+                                    <div class="info-value"><span class="badge ${prioridadeBadge}">${c.prioridade || 'Normal'}</span></div>
+                                </div>
+                                <div class="col-6 mb-2">
+                                    <div class="info-label">Solicitante</div>
+                                    <div class="info-value text-truncate">${c.createdByNome || '-'}</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer bg-white border-top-0 d-flex justify-content-end gap-2 pt-0 pb-3">
+                            <button class="btn btn-sm btn-outline-primary" onclick="visualizarChamado('${c.id}')" title="Visualizar">
                                 <i class="fas fa-eye"></i>
                             </button>
                             ${c.status === 'Aberto' ? `
-                            <button class="btn btn-outline-warning" onclick="iniciarChamado('${c.id}')" title="Iniciar">
-                                <i class="fas fa-play"></i>
+                            <button class="btn btn-sm btn-outline-warning" onclick="iniciarChamado('${c.id}')" title="Iniciar">
+                                <i class="fas fa-play"></i> Iniciar
                             </button>
                             ` : ''}
                             ${c.status !== 'Concluído' && c.status !== 'Cancelado' ? `
-                            <button class="btn btn-outline-success" onclick="concluirChamado('${c.id}')" title="Concluir">
-                                <i class="fas fa-check"></i>
+                            <button class="btn btn-sm btn-success px-3" onclick="concluirChamado('${c.id}')" title="Concluir">
+                                <i class="fas fa-check me-1"></i> Concluir
                             </button>
                             ` : ''}
                         </div>
-                    </td>
-                </tr>
+                    </div>
+                </div>
             `;
         });
 
-        html += '</tbody></table></div>';
+        html += '</div>';
         container.innerHTML = html;
 
     } catch (err) {
@@ -426,22 +429,112 @@ async function iniciarChamado(id) {
 }
 
 /**
- * Conclui um chamado.
+ * Conclui um chamado (abre o modal).
  */
 async function concluirChamado(id) {
-    if (!confirm("Deseja marcar este chamado como concluído?")) return;
+    const chamado = __chamados_manutencao_cache.find(c => c.id === id);
+    if (!chamado) {
+        mostrarMensagem("Chamado não encontrado no cache.", "error");
+        return;
+    }
+
+    document.getElementById('finalizar-mec-id').value = id;
+    document.getElementById('finalizar-mec-maquina-id').value = chamado.maquinaId || '';
+    document.getElementById('finalizar-mec-tipo').value = '';
+    document.getElementById('finalizar-mec-obs').value = '';
+
+    const selectMotivo = document.getElementById('finalizar-mec-motivo');
+    selectMotivo.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        await db.collection('manutencao_chamados').doc(id).update({
+        if (chamado.maquinaId) {
+            const maqDoc = await db.collection('maquinas').doc(chamado.maquinaId).get();
+            if (maqDoc.exists && maqDoc.data().motivos && maqDoc.data().motivos.length > 0) {
+                let options = '<option value="">Selecione o motivo...</option>';
+                maqDoc.data().motivos.forEach(m => {
+                    options += `<option value="${m}">${m}</option>`;
+                });
+                options += '<option value="Outro">Outro (descrever nas observações)</option>';
+                selectMotivo.innerHTML = options;
+            } else {
+                selectMotivo.innerHTML = '<option value="Outro">Sem motivos cadastrados (descreva abaixo)</option>';
+                selectMotivo.value = 'Outro';
+            }
+        } else {
+            selectMotivo.innerHTML = '<option value="Outro">Máquina não informada (descreva abaixo)</option>';
+            selectMotivo.value = 'Outro';
+        }
+    } catch (e) {
+        console.error('Erro ao buscar motivos', e);
+        selectMotivo.innerHTML = '<option value="Outro">Erro ao carregar motivos</option>';
+    }
+
+    const modal = new bootstrap.Modal(document.getElementById('modalFinalizarChamadoMec'));
+    modal.show();
+}
+
+/**
+ * Confirma a conclusão de um chamado via Modal.
+ */
+async function confirmarConcluirChamado() {
+    const chamadoId = document.getElementById('finalizar-mec-id').value;
+    const tipo = document.getElementById('finalizar-mec-tipo').value;
+    const motivo = document.getElementById('finalizar-mec-motivo').value;
+    const obs = document.getElementById('finalizar-mec-obs').value;
+
+    if (!tipo || !motivo || !obs) {
+        mostrarMensagem('Preencha todos os campos obrigatórios!', 'warning');
+        return;
+    }
+
+    const chamado = __chamados_manutencao_cache.find(c => c.id === chamadoId);
+    if (!chamado) return;
+
+    try {
+        const dataEncerramento = new Date();
+        let tempoParada = null;
+
+        if (chamado.paradaInicioTimestamp) {
+            const inicio = chamado.paradaInicioTimestamp.toDate();
+            const diffMs = dataEncerramento - inicio;
+            const horas = Math.floor(diffMs / 3600000);
+            const mins = Math.floor((diffMs % 3600000) / 60000);
+            tempoParada = `${horas}h ${mins}m`;
+        }
+
+        const btn = document.querySelector('#modalFinalizarChamadoMec .btn-success');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Salvando...';
+
+        await db.collection('manutencao_chamados').doc(chamadoId).update({
             status: 'Concluído',
-            dataEncerramento: firebase.firestore.FieldValue.serverTimestamp(),
+            maquinaParada: false,
+            dataEncerramento: dataEncerramento,
+            tempoParada: tempoParada,
+            tipoManutencao: tipo,
+            motivoManutencao: motivo,
+            observacoesMecanico: obs,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
+
         mostrarMensagem("Chamado concluído.", "success");
+        
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalFinalizarChamadoMec'));
+        if (modal) modal.hide();
+        
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar e Finalizar';
+
         await renderChamados();
     } catch (err) {
         console.error("Erro ao concluir chamado:", err);
         mostrarMensagem("Falha ao concluir o chamado.", "error");
+        
+        const btn = document.querySelector('#modalFinalizarChamadoMec .btn-success');
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-save me-2"></i> Salvar e Finalizar';
+        }
     }
 }
 
@@ -478,5 +571,6 @@ window.salvarNovoChamado = salvarNovoChamado;
 window.visualizarChamado = visualizarChamado;
 window.iniciarChamado = iniciarChamado;
 window.concluirChamado = concluirChamado;
+window.confirmarConcluirChamado = confirmarConcluirChamado;
 window.renderChamados = renderChamados;
 window.exibirMotivosFrequentes = exibirMotivosFrequentes;
