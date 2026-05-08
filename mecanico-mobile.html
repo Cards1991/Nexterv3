@@ -799,19 +799,26 @@
         let _unsubscribe = null;
 
         // Initialization
-        document.addEventListener('firebaseMobileReady', () => {
-            _db = window.db;
-            _auth = window.auth;
-            
+        function bootstrapApp() {
+            if (window.auth && window.db) {
+                console.log("🚀 Firebase detected, starting app...");
+                _db = window.db;
+                _auth = window.auth;
+                setupAuthListener();
+            } else {
+                console.log("⏳ Waiting for Firebase...");
+                setTimeout(bootstrapApp, 100);
+            }
+        }
+
+        function setupAuthListener() {
             _auth.onAuthStateChanged(user => {
-                // Esconde o loader inicial assim que temos uma resposta do Firebase (logado ou não)
-                setTimeout(() => {
-                    const loader = document.getElementById('app-loader');
-                    if (loader) {
-                        loader.classList.add('animate__animated', 'animate__fadeOut');
-                        setTimeout(() => loader.style.display = 'none', 500);
-                    }
-                }, 500);
+                // Esconde o loader inicial assim que temos uma resposta do Firebase
+                const loader = document.getElementById('app-loader');
+                if (loader) {
+                    loader.classList.add('animate__animated', 'animate__fadeOut');
+                    setTimeout(() => loader.style.display = 'none', 500);
+                }
 
                 if (user) {
                     _user = user;
@@ -820,7 +827,11 @@
                     showLogin();
                 }
             });
-        });
+        }
+
+        // Tenta iniciar via evento ou diretamente
+        document.addEventListener('firebaseMobileReady', bootstrapApp);
+        window.addEventListener('load', bootstrapApp);
 
         // Permission Check (Simplified - access is controlled by sidebar visibility)
         async function checkPermissions(user) {
