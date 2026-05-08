@@ -38,29 +38,22 @@ document.addEventListener('firebaseMobileReady', () => {
                 // Força a atualização do token
                 await user.getIdToken(true);
 
-                // VERIFICAÇÃO DE PERMISSÃO: Se for mecânico, vai para o painel do mecânico
-                const userDoc = await db.collection('usuarios').doc(user.uid).get();
-                if (userDoc.exists && (userDoc.data().permissoes?.isMecanico || userDoc.data().isMecanico)) {
-                    console.log("Usuário é mecânico. Redirecionando para o Painel do Mecânico...");
-                    window.location.href = `mecanico-mobile.html?maquinaId=${maquinaId}`;
-                    return;
-                }
-
-                // Usuário está logado (e não é mecânico ou quer abrir chamado), mostra o formulário de chamado
-                document.getElementById('login-section').classList.add('d-none');
+                // Usuário está logado, mostra o formulário de chamado
+                document.getElementById('login-section').style.display = 'none';
                 document.getElementById('chamado-section').classList.remove('d-none');
+                
                 // Configura o formulário e carrega os dados da máquina APÓS o login
                 document.getElementById('chamado-maquina-id').value = maquinaId;
                 fetchMachineInfo(maquinaId);
                 adicionarBotaoSair(user);
             } catch (tokenError) {
-                console.error("Erro ao atualizar token ou verificar permissões:", tokenError);
+                console.error("Erro ao atualizar token:", tokenError);
                 mostrarMensagemMobile("Erro de autenticação. Por favor, faça login novamente.", "danger");
                 auth.signOut();
             }
         } else {
             // Usuário não está logado, mostra a tela de login
-            document.getElementById('login-section').classList.remove('d-none');
+            document.getElementById('login-section').style.display = 'block';
             document.getElementById('chamado-section').classList.add('d-none');
         }
     });

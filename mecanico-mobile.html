@@ -533,7 +533,7 @@
     <div id="toast-root" class="toast-container"></div>
 
     <!-- ======== LOGIN SECTION ======== -->
-    <div id="login-section">
+    <div id="login-section" style="display: none;">
         <div class="login-card animate__animated animate__fadeInUp">
             <div class="login-logo"><i class="fas fa-screwdriver-wrench"></i></div>
             <h1 class="login-title">Nexter Mecânico</h1>
@@ -725,13 +725,16 @@
             _db = window.db;
             _auth = window.auth;
             
-            // Hide Loader
-            setTimeout(() => {
-                document.getElementById('app-loader').classList.add('animate__animated', 'animate__fadeOut');
-                setTimeout(() => document.getElementById('app-loader').style.display = 'none', 500);
-            }, 800);
-
             _auth.onAuthStateChanged(user => {
+                // Esconde o loader inicial assim que temos uma resposta do Firebase (logado ou não)
+                setTimeout(() => {
+                    const loader = document.getElementById('app-loader');
+                    if (loader) {
+                        loader.classList.add('animate__animated', 'animate__fadeOut');
+                        setTimeout(() => loader.style.display = 'none', 500);
+                    }
+                }, 500);
+
                 if (user) {
                     _user = user;
                     checkPermissions(user);
@@ -741,21 +744,20 @@
             });
         });
 
-        // Permission Check
+        // Permission Check (Simplified - access is controlled by sidebar visibility)
         async function checkPermissions(user) {
             try {
                 const userDoc = await _db.collection('usuarios').doc(user.uid).get();
-                if (userDoc.exists && (userDoc.data().isMecanico || userDoc.data().isMecanicoAdmin)) {
-                    document.getElementById('user-name').textContent = userDoc.data().nome || user.email;
-                    document.getElementById('user-avatar').textContent = (userDoc.data().nome || 'M').charAt(0).toUpperCase();
-                    showApp();
-                } else {
-                    toast('Acesso restrito a mecânicos.', 'danger');
-                    _auth.signOut();
-                }
+                const data = userDoc.exists ? userDoc.data() : {};
+                
+                document.getElementById('user-name').textContent = data.nome || user.email;
+                document.getElementById('user-avatar').textContent = (data.nome || 'M').charAt(0).toUpperCase();
+                showApp();
             } catch (e) {
                 console.error(e);
-                toast('Erro ao verificar permissões.', 'danger');
+                // Mesmo com erro ao buscar nome, permite o acesso se estiver logado
+                document.getElementById('user-name').textContent = user.email;
+                showApp();
             }
         }
 
