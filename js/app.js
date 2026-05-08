@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
-    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico',
+    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico', 'mecanico-mobile',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'

@@ -2,467 +2,1070 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Painel do Mecânico</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Nexter | Mecânico Mobile</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- UI Frameworks -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
     <style>
         :root {
-            --cor-primaria: #1a1a2e;
-            --cor-acento: #e94560;
-            --cor-card: #16213e;
-            --cor-surface: #0f3460;
-            --cor-texto: #e0e0e0;
-            --cor-muted: #8a8fa3;
-            --cor-sucesso: #28a745;
-            --cor-aviso: #ffc107;
-            --cor-perigo: #dc3545;
-            --cor-info: #17a2b8;
+            --bg-dark: #0a0b10;
+            --surface: #161b22;
+            --surface-light: #21262d;
+            --primary: #3fb950;
+            --accent: #238636;
+            --danger: #f85149;
+            --warning: #d29922;
+            --info: #58a6ff;
+            --text-main: #c9d1d9;
+            --text-dim: #8b949e;
+            --glass: rgba(22, 27, 34, 0.8);
+            --safe-bottom: env(safe-area-inset-bottom);
         }
 
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
 
         body {
-            background: linear-gradient(135deg, var(--cor-primaria) 0%, var(--cor-surface) 100%);
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
             min-height: 100vh;
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            color: var(--cor-texto);
         }
 
-        /* ===== LOGIN ===== */
-        .login-wrap {
+        h1, h2, h3, .brand-title {
+            font-family: 'Outfit', sans-serif;
+        }
+
+        /* ===== LOGIN VIEW ===== */
+        #login-section {
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
+            background: radial-gradient(circle at top right, #1a202c, #0a0b10);
         }
 
         .login-card {
-            background: rgba(22, 33, 62, 0.95);
-            border: 1px solid rgba(233, 69, 96, 0.3);
-            border-radius: 20px;
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 24px;
             padding: 40px 32px;
             width: 100%;
             max-width: 400px;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
-            backdrop-filter: blur(10px);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+            text-align: center;
         }
 
-        .brand-icon {
-            width: 72px; height: 72px;
-            background: linear-gradient(135deg, var(--cor-acento), #c23152);
-            border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            margin: 0 auto 16px;
-            font-size: 28px; color: white;
-            box-shadow: 0 8px 24px rgba(233,69,96,0.4);
+        .login-logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 10px 20px rgba(63, 185, 80, 0.3);
         }
 
-        .brand-title {
-            font-size: 1.6rem; font-weight: 700;
-            background: linear-gradient(135deg, #fff, var(--cor-acento));
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            text-align: center; margin-bottom: 6px;
+        .login-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: white;
         }
 
-        .brand-sub { color: var(--cor-muted); font-size: 0.9rem; text-align: center; margin-bottom: 28px; }
+        .login-subtitle {
+            color: var(--text-dim);
+            font-size: 14px;
+            margin-bottom: 32px;
+        }
 
-        .form-control-dark {
-            background: rgba(15,52,96,0.6);
-            border: 1px solid rgba(255,255,255,0.1);
+        .form-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .form-label {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .form-control-custom {
+            background: var(--surface-light);
+            border: 1px solid transparent;
             border-radius: 12px;
             color: white;
             padding: 14px 16px;
-            font-size: 1rem;
-            transition: border-color 0.2s, box-shadow 0.2s;
             width: 100%;
+            transition: all 0.3s;
         }
-        .form-control-dark:focus {
+
+        .form-control-custom:focus {
             outline: none;
-            border-color: var(--cor-acento);
-            box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
-            background: rgba(15,52,96,0.8);
+            border-color: var(--primary);
+            background: #2d333b;
+            box-shadow: 0 0 0 4px rgba(63, 185, 80, 0.15);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            color: white;
+            border: none;
+            border-radius: 12px;
+            padding: 16px;
+            width: 100%;
+            font-weight: 700;
+            font-size: 16px;
+            margin-top: 12px;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .btn-login:active {
+            transform: scale(0.98);
+        }
+
+        /* ===== MAIN APP LAYOUT ===== */
+        #app-shell {
+            display: none;
+            padding-bottom: 100px; /* Space for bottom nav */
+        }
+
+        .app-header {
+            background: var(--glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 16px 20px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid var(--surface-light);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            color: white;
+            font-size: 18px;
+        }
+
+        .user-details h6 {
+            margin: 0;
+            font-size: 14px;
             color: white;
         }
-        .form-control-dark::placeholder { color: var(--cor-muted); }
 
-        .form-label-dark { color: var(--cor-muted); font-size: 0.85rem; font-weight: 600; letter-spacing: 0.5px; margin-bottom: 6px; display: block; text-transform: uppercase; }
-
-        .btn-primary-custom {
-            background: linear-gradient(135deg, var(--cor-acento), #c23152);
-            border: none; border-radius: 12px;
-            color: white; font-weight: 700; font-size: 1rem;
-            padding: 14px; width: 100%; cursor: pointer;
-            transition: transform 0.15s, box-shadow 0.15s;
-            box-shadow: 0 6px 20px rgba(233,69,96,0.4);
+        .user-details span {
+            font-size: 11px;
+            color: var(--text-dim);
+            text-transform: uppercase;
         }
-        .btn-primary-custom:hover { transform: translateY(-2px); box-shadow: 0 10px 28px rgba(233,69,96,0.5); }
-        .btn-primary-custom:active { transform: translateY(0); }
-        .btn-primary-custom:disabled { opacity: 0.6; transform: none; }
 
-        /* ===== APP SHELL ===== */
-        #app-shell { display: none; flex-direction: column; min-height: 100vh; }
-
-        /* TOP BAR */
-        .topbar {
-            background: rgba(22,33,62,0.98);
-            border-bottom: 2px solid var(--cor-acento);
-            padding: 14px 16px;
-            display: flex; align-items: center; justify-content: space-between;
-            position: sticky; top: 0; z-index: 100;
-            backdrop-filter: blur(10px);
+        .header-actions .btn-logout {
+            color: var(--text-dim);
+            font-size: 20px;
+            background: none;
+            border: none;
         }
-        .topbar-user { display: flex; align-items: center; gap: 10px; }
-        .topbar-avatar {
-            width: 38px; height: 38px;
-            background: linear-gradient(135deg, var(--cor-acento), #c23152);
-            border-radius: 50%; display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-size: 0.95rem;
+
+        /* DASHBOARD STATS */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            padding: 20px;
         }
-        .topbar-name { font-weight: 600; font-size: 0.95rem; line-height: 1.2; }
-        .topbar-role { color: var(--cor-acento); font-size: 0.75rem; }
 
-        .btn-logout {
-            background: rgba(220,53,69,0.15);
-            border: 1px solid rgba(220,53,69,0.4);
-            border-radius: 8px; color: #dc3545;
-            padding: 7px 12px; font-size: 0.8rem; cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-logout:hover { background: rgba(220,53,69,0.25); }
-
-        /* CONTENT */
-        .app-content { flex: 1; padding: 16px; max-width: 640px; margin: 0 auto; width: 100%; }
-
-        /* STATS ROW */
-        .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 20px; }
-        .stat-chip {
-            background: rgba(22,33,62,0.9);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 14px; padding: 14px 8px;
+        .stat-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 16px 12px;
             text-align: center;
-            transition: transform 0.15s;
-        }
-        .stat-chip:hover { transform: translateY(-2px); }
-        .stat-chip .num { font-size: 1.7rem; font-weight: 800; line-height: 1; }
-        .stat-chip .lbl { font-size: 0.68rem; color: var(--cor-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-top: 4px; }
-        .chip-aberto .num { color: var(--cor-aviso); }
-        .chip-andamento .num { color: var(--cor-info); }
-        .chip-urgente .num { color: var(--cor-perigo); }
-
-        /* SECTION TITLE */
-        .section-title {
-            font-size: 0.8rem; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 1px; color: var(--cor-muted);
-            margin: 20px 0 12px; display: flex; align-items: center; gap: 8px;
-        }
-        .section-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.08); }
-
-        /* CHAMADO CARD */
-        .chamado-card {
-            background: rgba(22,33,62,0.92);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 16px; padding: 16px;
-            margin-bottom: 12px;
-            transition: transform 0.15s, box-shadow 0.15s;
-            cursor: pointer;
-        }
-        .chamado-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.3); }
-        .chamado-card.urgente { border-color: rgba(220,53,69,0.5); background: rgba(220,53,69,0.08); }
-        .chamado-card.parada { border-color: rgba(255,193,7,0.5); }
-
-        .card-header-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-        .maquina-nome { font-weight: 700; font-size: 1rem; line-height: 1.2; }
-        .maquina-setor { color: var(--cor-muted); font-size: 0.78rem; margin-top: 2px; }
-
-        .badge-status {
-            border-radius: 20px; padding: 4px 10px;
-            font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
-            white-space: nowrap;
-        }
-        .badge-aberto { background: rgba(255,193,7,0.2); color: #ffc107; border: 1px solid rgba(255,193,7,0.4); }
-        .badge-andamento { background: rgba(23,162,184,0.2); color: #17a2b8; border: 1px solid rgba(23,162,184,0.4); }
-        .badge-concluido { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid rgba(40,167,69,0.4); }
-
-        .badge-prioridade {
-            border-radius: 20px; padding: 3px 8px;
-            font-size: 0.68rem; font-weight: 700;
-        }
-        .prio-urgente { background: var(--cor-perigo); color: white; }
-        .prio-prioritario { background: var(--cor-aviso); color: #000; }
-        .prio-normal { background: rgba(255,255,255,0.1); color: var(--cor-muted); }
-
-        .card-motivo { font-size: 0.88rem; color: var(--cor-texto); margin-bottom: 8px; line-height: 1.4; }
-        .card-meta { display: flex; gap: 14px; font-size: 0.75rem; color: var(--cor-muted); flex-wrap: wrap; }
-        .card-meta span { display: flex; align-items: center; gap: 4px; }
-
-        .card-parada-alert {
-            background: rgba(255,193,7,0.15);
-            border: 1px solid rgba(255,193,7,0.3);
-            border-radius: 8px; padding: 8px 12px;
-            font-size: 0.8rem; color: #ffc107;
-            margin-top: 10px; display: flex; align-items: center; gap: 6px;
+            border: 1px solid var(--surface-light);
         }
 
-        .card-actions { display: flex; gap: 8px; margin-top: 14px; }
-        .btn-action {
-            flex: 1; border-radius: 10px; padding: 10px 8px;
-            font-size: 0.82rem; font-weight: 600; cursor: pointer;
-            border: none; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 6px;
-        }
-        .btn-iniciar { background: rgba(23,162,184,0.2); color: #17a2b8; border: 1px solid rgba(23,162,184,0.4); }
-        .btn-iniciar:hover { background: rgba(23,162,184,0.35); }
-        .btn-finalizar { background: rgba(40,167,69,0.2); color: #28a745; border: 1px solid rgba(40,167,69,0.4); }
-        .btn-finalizar:hover { background: rgba(40,167,69,0.35); }
-        .btn-detalhe { background: rgba(255,255,255,0.07); color: var(--cor-muted); border: 1px solid rgba(255,255,255,0.1); }
-        .btn-detalhe:hover { background: rgba(255,255,255,0.12); }
-
-        /* EMPTY STATE */
-        .empty-state { text-align: center; padding: 48px 20px; color: var(--cor-muted); }
-        .empty-state i { font-size: 3rem; margin-bottom: 16px; opacity: 0.4; }
-        .empty-state p { font-size: 0.95rem; }
-
-        /* MODAL SHEET */
-        .sheet-overlay {
-            position: fixed; inset: 0;
-            background: rgba(0,0,0,0.7);
-            z-index: 200;
-            display: none; align-items: flex-end;
-        }
-        .sheet-overlay.open { display: flex; }
-        .sheet {
-            background: var(--cor-card);
-            border-radius: 24px 24px 0 0;
-            padding: 24px 20px 36px;
-            width: 100%; max-height: 90vh;
-            overflow-y: auto;
-            animation: slideUp 0.3s ease;
-        }
-        @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
-
-        .sheet-handle {
-            width: 40px; height: 4px;
-            background: rgba(255,255,255,0.2);
-            border-radius: 2px; margin: 0 auto 20px;
-        }
-        .sheet-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 18px; }
-
-        .form-group-sheet { margin-bottom: 16px; }
-        .form-label-sheet { font-size: 0.8rem; font-weight: 600; color: var(--cor-muted); text-transform: uppercase; margin-bottom: 6px; display: block; }
-        .form-select-dark, .form-textarea-dark {
-            background: rgba(15,52,96,0.6);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px; color: white;
-            padding: 12px 14px; width: 100%; font-size: 0.95rem;
-        }
-        .form-select-dark:focus, .form-textarea-dark:focus {
-            outline: none; border-color: var(--cor-acento);
-            box-shadow: 0 0 0 3px rgba(233,69,96,0.2);
-        }
-        .form-select-dark option { background: var(--cor-card); }
-
-        .btn-sheet-submit {
-            background: linear-gradient(135deg, var(--cor-sucesso), #1e7e34);
-            border: none; border-radius: 12px; color: white;
-            font-weight: 700; font-size: 1rem; padding: 14px;
-            width: 100%; cursor: pointer; margin-top: 8px;
-            transition: all 0.2s;
-        }
-        .btn-sheet-cancel {
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 12px; color: var(--cor-muted);
-            font-weight: 600; font-size: 0.95rem; padding: 12px;
-            width: 100%; cursor: pointer; margin-top: 8px;
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            display: block;
         }
 
-        /* DETALHE SHEET */
-        .detail-row { display: flex; justify-content: space-between; align-items: flex-start; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.06); }
-        .detail-label { font-size: 0.8rem; color: var(--cor-muted); }
-        .detail-value { font-size: 0.88rem; font-weight: 600; text-align: right; max-width: 60%; }
-
-        /* FEEDBACK */
-        #feedback-toast {
-            position: fixed; top: 70px; left: 50%; transform: translateX(-50%);
-            z-index: 999; min-width: 260px; max-width: 90vw;
-            border-radius: 12px; padding: 12px 18px;
-            font-size: 0.9rem; font-weight: 600;
-            display: none; text-align: center;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-        }
-        .toast-success { background: rgba(40,167,69,0.95); color: white; }
-        .toast-error { background: rgba(220,53,69,0.95); color: white; }
-        .toast-warning { background: rgba(255,193,7,0.95); color: #000; }
-        .toast-info { background: rgba(23,162,184,0.95); color: white; }
-
-        /* LOADING */
-        .loading-spinner {
-            display: flex; align-items: center; justify-content: center;
-            padding: 40px; color: var(--cor-muted);
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 4px;
+            display: block;
         }
 
         /* FILTER TABS */
-        .filter-tabs { display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 4px; }
-        .filter-tab {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 20px; padding: 7px 14px;
-            font-size: 0.8rem; font-weight: 600; color: var(--cor-muted);
-            cursor: pointer; white-space: nowrap; transition: all 0.2s;
+        .filter-scroller {
+            overflow-x: auto;
+            padding: 0 20px 16px;
+            display: flex;
+            gap: 10px;
+            scrollbar-width: none;
         }
-        .filter-tab.active { background: var(--cor-acento); color: white; border-color: var(--cor-acento); }
+
+        .filter-scroller::-webkit-scrollbar { display: none; }
+
+        .filter-tab {
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 100px;
+            padding: 8px 20px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-dim);
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-tab.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(63, 185, 80, 0.3);
+        }
+
+        /* TICKET CARDS */
+        .tickets-container {
+            padding: 0 20px;
+        }
+
+        .ticket-card {
+            background: var(--surface);
+            border-radius: 20px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid var(--surface-light);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s;
+        }
+
+        .ticket-card:active {
+            transform: scale(0.98);
+        }
+
+        .ticket-card.urgente {
+            border-left: 4px solid var(--danger);
+        }
+
+        .ticket-card.andamento {
+            border-left: 4px solid var(--info);
+        }
+
+        .ticket-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .machine-info h3 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+            color: white;
+        }
+
+        .machine-info p {
+            font-size: 12px;
+            color: var(--text-dim);
+            margin: 0;
+        }
+
+        .status-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 100px;
+            text-transform: uppercase;
+        }
+
+        .status-aberto { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
+        .status-andamento { background: rgba(88, 166, 255, 0.2); color: var(--info); }
+        .status-concluido { background: rgba(63, 185, 80, 0.2); color: var(--primary); }
+
+        .ticket-body {
+            margin-bottom: 16px;
+        }
+
+        .reason {
+            font-size: 14px;
+            color: var(--text-main);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .meta-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .ticket-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-ticket {
+            flex: 1;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 700;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn-view { background: var(--surface-light); color: white; }
+        .btn-start { background: var(--info); color: white; }
+        .btn-finish { background: var(--primary); color: white; }
+
+        /* BOTTOM NAV */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid var(--surface-light);
+            display: flex;
+            justify-content: space-around;
+            padding: 10px 0 calc(10px + var(--safe-bottom));
+            z-index: 2000;
+        }
+
+        .nav-item-bottom {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 10px;
+            font-weight: 600;
+        }
+
+        .nav-item-bottom.active {
+            color: var(--primary);
+        }
+
+        .nav-item-bottom i {
+            font-size: 20px;
+        }
+
+        /* MODAL SHEETS */
+        .sheet-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 3000;
+            display: none;
+            align-items: flex-end;
+        }
+
+        .sheet-overlay.active { display: flex; }
+
+        .sheet {
+            background: var(--surface);
+            width: 100%;
+            border-radius: 24px 24px 0 0;
+            padding: 24px 20px calc(24px + var(--safe-bottom));
+            transform: translateY(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .sheet-overlay.active .sheet {
+            transform: translateY(0);
+        }
+
+        .sheet-handle {
+            width: 40px;
+            height: 4px;
+            background: var(--surface-light);
+            border-radius: 2px;
+            margin: 0 auto 20px;
+        }
+
+        .sheet-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: white;
+            margin-bottom: 24px;
+        }
+
+        /* EMPTY STATE */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+
+        .empty-icon {
+            font-size: 60px;
+            color: var(--surface-light);
+            margin-bottom: 16px;
+        }
+
+        .empty-text {
+            color: var(--text-dim);
+            font-size: 16px;
+        }
+
+        /* TOAST */
+        .toast-container {
+            position: fixed;
+            top: 70px;
+            left: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+
+        .custom-toast {
+            background: var(--surface);
+            border: 1px solid var(--surface-light);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            animation: slideInRight 0.3s;
+        }
+
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* LOADER */
+        .loader-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(63, 185, 80, 0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
     </style>
 </head>
 <body>
 
-<!-- FEEDBACK TOAST -->
-<div id="feedback-toast"></div>
+    <!-- Loading State -->
+    <div id="app-loader" class="loader-overlay">
+        <div class="spinner"></div>
+        <p style="margin-top: 16px; font-size: 14px; color: var(--text-dim);">Inicializando Nexter Mobile...</p>
+    </div>
 
-<!-- ======== LOGIN ======== -->
-<div id="login-section" class="login-wrap">
-    <div class="login-card">
-        <div class="brand-icon"><i class="fas fa-hard-hat"></i></div>
-        <div class="brand-title">Painel Mecânico</div>
-        <div class="brand-sub">Acesse seus chamados de manutenção</div>
+    <!-- Feedback Toasts -->
+    <div id="toast-root" class="toast-container"></div>
 
-        <form id="form-login">
-            <div style="margin-bottom:16px;">
-                <label class="form-label-dark">E-mail</label>
-                <input type="email" id="login-email" class="form-control-dark" placeholder="seu.email@empresa.com" required>
+    <!-- ======== LOGIN SECTION ======== -->
+    <div id="login-section">
+        <div class="login-card animate__animated animate__fadeInUp">
+            <div class="login-logo"><i class="fas fa-screwdriver-wrench"></i></div>
+            <h1 class="login-title">Nexter Mecânico</h1>
+            <p class="login-subtitle">Entre com suas credenciais para gerenciar seus chamados.</p>
+            
+            <form id="form-login">
+                <div class="form-group">
+                    <label class="form-label">E-mail</label>
+                    <input type="email" id="login-email" class="form-control-custom" placeholder="seu.email@crival.com" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Senha</label>
+                    <input type="password" id="login-senha" class="form-control-custom" placeholder="••••••••" required>
+                </div>
+                <button type="submit" id="btn-login" class="btn-login">Acessar Painel</button>
+            </form>
+            
+            <p id="login-error" class="mt-3 text-danger small d-none"></p>
+        </div>
+    </div>
+
+    <!-- ======== APP SHELL ======== -->
+    <div id="app-shell">
+        <!-- Header -->
+        <header class="app-header">
+            <div class="user-info">
+                <div class="avatar" id="user-avatar">M</div>
+                <div class="user-details">
+                    <h6 id="user-name">Carregando...</h6>
+                    <span id="user-role">Mecânico Responsável</span>
+                </div>
             </div>
-            <div style="margin-bottom:24px;">
-                <label class="form-label-dark">Senha</label>
-                <input type="password" id="login-senha" class="form-control-dark" placeholder="••••••••" required>
+            <div class="header-actions">
+                <button class="btn-logout" id="btn-logout"><i class="fas fa-sign-out-alt"></i></button>
             </div>
-            <button type="submit" class="btn-primary-custom" id="btn-login">
-                <i class="fas fa-sign-in-alt"></i> Entrar
+        </header>
+
+        <!-- Main Content (Scrollable) -->
+        <main>
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="stat-value text-warning" id="stat-abertos">0</span>
+                    <span class="stat-label">Abertos</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value text-info" id="stat-andamento">0</span>
+                    <span class="stat-label">Em Curso</span>
+                </div>
+                <div class="stat-card">
+                    <span class="stat-value text-danger" id="stat-urgentes">0</span>
+                    <span class="stat-label">Urgentes</span>
+                </div>
+            </div>
+
+            <!-- Filters -->
+            <div class="filter-scroller" id="filter-tabs">
+                <div class="filter-tab active" data-filter="ativos">Meus Chamados</div>
+                <div class="filter-tab" data-filter="disponiveis">Disponíveis</div>
+                <div class="filter-tab" data-filter="concluidos">Histórico</div>
+            </div>
+
+            <!-- Tickets List -->
+            <div class="tickets-container" id="tickets-list">
+                <!-- Skeleton Loader -->
+                <div class="text-center py-5 opacity-25">
+                    <i class="fas fa-circle-notch fa-spin fa-2x"></i>
+                </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item-bottom active" data-nav="home">
+                <i class="fas fa-home-alt"></i>
+                <span>Início</span>
+            </a>
+            <a href="#" class="nav-item-bottom" data-nav="tickets">
+                <i class="fas fa-list-check"></i>
+                <span>Chamados</span>
+            </a>
+            <a href="#" class="nav-item-bottom" data-nav="qr">
+                <i class="fas fa-qrcode"></i>
+                <span>Scanner</span>
+            </a>
+            <a href="#" class="nav-item-bottom" data-nav="profile">
+                <i class="fas fa-user-circle"></i>
+                <span>Perfil</span>
+            </a>
+        </nav>
+    </div>
+
+    <!-- ======== SHEET: DETALHES ======== -->
+    <div class="sheet-overlay" id="sheet-detalhes">
+        <div class="sheet">
+            <div class="sheet-handle"></div>
+            <h2 class="sheet-title">Detalhes do Chamado</h2>
+            <div id="detalhe-content" class="mb-4">
+                <!-- Preenchido via JS -->
+            </div>
+            <button class="btn-login" style="background: var(--surface-light); color: white;" onclick="closeSheet('sheet-detalhes')">Fechar</button>
+        </div>
+    </div>
+
+    <!-- ======== SHEET: INICIAR ATENDIMENTO ======== -->
+    <div class="sheet-overlay" id="sheet-iniciar">
+        <div class="sheet">
+            <div class="sheet-handle"></div>
+            <h2 class="sheet-title">Iniciar Atendimento</h2>
+            <input type="hidden" id="iniciar-id">
+            
+            <div class="form-group">
+                <label class="form-label">Observação Inicial</label>
+                <textarea id="iniciar-obs" class="form-control-custom" rows="3" placeholder="O que você identificou ao chegar na máquina?"></textarea>
+            </div>
+            
+            <button id="btn-confirm-start" class="btn-login">
+                <i class="fas fa-play-circle me-2"></i> Confirmar Início
             </button>
-            <div id="login-erro" class="alert alert-danger d-none mt-3" style="border-radius:10px; font-size:0.85rem;"></div>
-        </form>
+            <button class="btn btn-link w-100 mt-2 text-dim text-decoration-none" onclick="closeSheet('sheet-iniciar')">Cancelar</button>
+        </div>
     </div>
-</div>
 
-<!-- ======== APP SHELL ======== -->
-<div id="app-shell">
-    <!-- TOP BAR -->
-    <div class="topbar">
-        <div class="topbar-user">
-            <div class="topbar-avatar" id="user-avatar">M</div>
-            <div>
-                <div class="topbar-name" id="user-nome">Mecânico</div>
-                <div class="topbar-role"><i class="fas fa-hard-hat"></i> Mecânico</div>
+    <!-- ======== SHEET: FINALIZAR CHAMADO ======== -->
+    <div class="sheet-overlay" id="sheet-finalizar">
+        <div class="sheet">
+            <div class="sheet-handle"></div>
+            <h2 class="sheet-title">Finalizar Manutenção</h2>
+            <input type="hidden" id="finalizar-id">
+            <input type="hidden" id="finalizar-maquina-id">
+            
+            <div class="form-group">
+                <label class="form-label">Motivo Constatado *</label>
+                <select id="finalizar-motivo" class="form-control-custom" required>
+                    <option value="">Selecione o motivo...</option>
+                </select>
             </div>
-        </div>
-        <button class="btn-logout" id="btn-logout"><i class="fas fa-sign-out-alt"></i> Sair</button>
-    </div>
-
-    <!-- CONTENT -->
-    <div class="app-content">
-        <!-- STATS -->
-        <div class="stats-row">
-            <div class="stat-chip chip-aberto">
-                <div class="num" id="stat-abertos">0</div>
-                <div class="lbl">Abertos</div>
+            
+            <div class="form-group">
+                <label class="form-label">Tipo de Manutenção *</label>
+                <select id="finalizar-tipo" class="form-control-custom" required>
+                    <option value="">Selecione...</option>
+                    <option>Corretiva</option>
+                    <option>Preventiva</option>
+                    <option>Melhoria</option>
+                    <option>Ajuste Operacional</option>
+                </select>
             </div>
-            <div class="stat-chip chip-andamento">
-                <div class="num" id="stat-andamento">0</div>
-                <div class="lbl">Andamento</div>
+            
+            <div class="form-group">
+                <label class="form-label">Serviço Realizado *</label>
+                <textarea id="finalizar-obs" class="form-control-custom" rows="3" placeholder="Descreva o que foi feito..." required></textarea>
             </div>
-            <div class="stat-chip chip-urgente">
-                <div class="num" id="stat-urgentes">0</div>
-                <div class="lbl">Urgentes</div>
+
+            <div class="form-group">
+                <label class="form-label">Peças Utilizadas (opcional)</label>
+                <input type="text" id="finalizar-pecas" class="form-control-custom" placeholder="Ex: 1x Rolamento 6203">
             </div>
-        </div>
-
-        <!-- FILTER TABS -->
-        <div class="filter-tabs">
-            <div class="filter-tab active" data-filter="ativos">Ativos</div>
-            <div class="filter-tab" data-filter="todos">Todos</div>
-            <div class="filter-tab" data-filter="concluidos">Concluídos</div>
-        </div>
-
-        <!-- CHAMADOS LIST -->
-        <div class="section-title"><i class="fas fa-wrench"></i> Meus Chamados</div>
-        <div id="lista-chamados">
-            <div class="loading-spinner"><i class="fas fa-spinner fa-spin me-2"></i> Carregando...</div>
+            
+            <button id="btn-confirm-finish" class="btn-login">
+                <i class="fas fa-check-circle me-2"></i> Salvar e Finalizar
+            </button>
+            <button class="btn btn-link w-100 mt-2 text-dim text-decoration-none" onclick="closeSheet('sheet-finalizar')">Cancelar</button>
         </div>
     </div>
-</div>
 
-<!-- ======== SHEET: DETALHES ======== -->
-<div class="sheet-overlay" id="sheet-detalhes">
-    <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title"><i class="fas fa-clipboard-list me-2"></i>Detalhes do Chamado</div>
-        <div id="detalhe-content"></div>
-        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-detalhes')">Fechar</button>
-    </div>
-</div>
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    
+    <script src="js/env-loader.js"></script>
+    <script src="firebase-config-mobile.js"></script>
+    
+    <!-- App Logic -->
+    <script>
+        // Global State
+        let _db = null;
+        let _auth = null;
+        let _user = null;
+        let _tickets = [];
+        let _activeFilter = 'ativos';
+        let _maquinaIdParam = new URLSearchParams(window.location.search).get('maquinaId');
+        let _unsubscribe = null;
 
-<!-- ======== SHEET: INICIAR ATENDIMENTO ======== -->
-<div class="sheet-overlay" id="sheet-iniciar">
-    <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title"><i class="fas fa-play-circle me-2 text-info"></i>Iniciar Atendimento</div>
-        <input type="hidden" id="iniciar-id">
-        <div class="form-group-sheet">
-            <label class="form-label-sheet">Observação inicial (opcional)</label>
-            <textarea class="form-textarea-dark" id="iniciar-obs" rows="3" placeholder="Descreva o que foi identificado ao chegar..."></textarea>
-        </div>
-        <button class="btn-sheet-submit" id="btn-confirmar-iniciar" style="background: linear-gradient(135deg,#17a2b8,#117a8b);">
-            <i class="fas fa-play-circle"></i> Confirmar Início
-        </button>
-        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-iniciar')">Cancelar</button>
-    </div>
-</div>
+        // Initialization
+        document.addEventListener('firebaseMobileReady', () => {
+            _db = window.db;
+            _auth = window.auth;
+            
+            // Hide Loader
+            setTimeout(() => {
+                document.getElementById('app-loader').classList.add('animate__animated', 'animate__fadeOut');
+                setTimeout(() => document.getElementById('app-loader').style.display = 'none', 500);
+            }, 800);
 
-<!-- ======== SHEET: FINALIZAR CHAMADO ======== -->
-<div class="sheet-overlay" id="sheet-finalizar">
-    <div class="sheet">
-        <div class="sheet-handle"></div>
-        <div class="sheet-title"><i class="fas fa-check-circle me-2 text-success"></i>Finalizar Chamado</div>
-        <input type="hidden" id="finalizar-id">
-        <input type="hidden" id="finalizar-maquina-id">
+            _auth.onAuthStateChanged(user => {
+                if (user) {
+                    _user = user;
+                    checkPermissions(user);
+                } else {
+                    showLogin();
+                }
+            });
+        });
 
-        <div class="form-group-sheet">
-            <label class="form-label-sheet">Motivo da Manutenção *</label>
-            <select class="form-select-dark" id="finalizar-motivo">
-                <option value="">Carregando motivos...</option>
-            </select>
-        </div>
-        <div class="form-group-sheet">
-            <label class="form-label-sheet">Tipo de Manutenção *</label>
-            <select class="form-select-dark" id="finalizar-tipo">
-                <option value="">Selecione...</option>
-                <option>Corretiva</option>
-                <option>Preventiva</option>
-                <option>Preditiva</option>
-                <option>Melhoria</option>
-                <option>Ajuste Operacional</option>
-                <option>Lubrificação</option>
-                <option>Inspeção</option>
-                <option>Calibração</option>
-            </select>
-        </div>
-        <div class="form-group-sheet">
-            <label class="form-label-sheet">Serviço Realizado *</label>
-            <textarea class="form-textarea-dark" id="finalizar-obs" rows="4" placeholder="Descreva o serviço realizado, diagnóstico, peças trocadas..."></textarea>
-        </div>
-        <button class="btn-sheet-submit" id="btn-confirmar-finalizar">
-            <i class="fas fa-check"></i> Finalizar Chamado
-        </button>
-        <button class="btn-sheet-cancel" onclick="fecharSheet('sheet-finalizar')">Cancelar</button>
-    </div>
-</div>
+        // Permission Check
+        async function checkPermissions(user) {
+            try {
+                const userDoc = await _db.collection('usuarios').doc(user.uid).get();
+                if (userDoc.exists && (userDoc.data().isMecanico || userDoc.data().isMecanicoAdmin)) {
+                    document.getElementById('user-name').textContent = userDoc.data().nome || user.email;
+                    document.getElementById('user-avatar').textContent = (userDoc.data().nome || 'M').charAt(0).toUpperCase();
+                    showApp();
+                } else {
+                    toast('Acesso restrito a mecânicos.', 'danger');
+                    _auth.signOut();
+                }
+            } catch (e) {
+                console.error(e);
+                toast('Erro ao verificar permissões.', 'danger');
+            }
+        }
 
-<!-- SCRIPTS -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-<script src="js/env-loader.js"></script>
-<script src="firebase-config-mobile.js"></script>
-<script src="js/mecanico-mobile.js"></script>
+        // View Toggles
+        function showLogin() {
+            document.getElementById('login-section').style.display = 'flex';
+            document.getElementById('app-shell').style.display = 'none';
+            if (_unsubscribe) _unsubscribe();
+        }
+
+        function showApp() {
+            document.getElementById('login-section').style.display = 'none';
+            document.getElementById('app-shell').style.display = 'block';
+            startTicketsListener();
+        }
+
+        // Tickets Realtime Listener
+        function startTicketsListener() {
+            if (_unsubscribe) _unsubscribe();
+            
+            const query = _db.collection('manutencao_chamados').orderBy('dataAbertura', 'desc');
+            
+            _unsubscribe = query.onSnapshot(snap => {
+                _tickets = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                updateStats();
+                renderTickets();
+            }, err => {
+                console.error(err);
+                toast('Erro ao sincronizar chamados.', 'danger');
+            });
+        }
+
+        function updateStats() {
+            const abertos = _tickets.filter(t => t.status === 'Aberto').length;
+            const andamento = _tickets.filter(t => t.status === 'Em Andamento').length;
+            const urgentes = _tickets.filter(t => t.prioridade === 'Urgente' && t.status !== 'Concluído').length;
+            
+            document.getElementById('stat-abertos').textContent = abertos;
+            document.getElementById('stat-andamento').textContent = andamento;
+            document.getElementById('stat-urgentes').textContent = urgentes;
+        }
+
+        function renderTickets() {
+            const container = document.getElementById('tickets-list');
+            let filtered = [];
+            
+            // Se tiver maquinaId na URL, o filtro padrão muda para mostrar tudo daquela máquina (aberto ou em curso)
+            if (_maquinaIdParam) {
+                filtered = _tickets.filter(t => t.maquinaId === _maquinaIdParam && t.status !== 'Concluído');
+                
+                // Se não achar nada "vivo", mostra os concluídos daquela máquina
+                if (filtered.length === 0) {
+                    filtered = _tickets.filter(t => t.maquinaId === _maquinaIdParam);
+                }
+
+                // Adiciona um aviso de que está filtrado
+                const filterTitle = document.createElement('div');
+                filterTitle.className = 'px-3 mb-3 small text-dim d-flex justify-content-between align-items-center';
+                filterTitle.innerHTML = `
+                    <span>Exibindo chamados da máquina: <strong>${_maquinaIdParam}</strong></span>
+                    <a href="#" onclick="clearFilter(); return false;" class="text-primary text-decoration-none">Ver Todos</a>
+                `;
+                container.innerHTML = '';
+                container.appendChild(filterTitle);
+            } else {
+                if (_activeFilter === 'ativos') {
+                    filtered = _tickets.filter(t => t.status !== 'Concluído' && t.mecanicoResponsavelId === _user.uid);
+                } else if (_activeFilter === 'disponiveis') {
+                    filtered = _tickets.filter(t => t.status === 'Aberto' && !t.mecanicoResponsavelId);
+                } else {
+                    filtered = _tickets.filter(t => t.status === 'Concluído' && t.mecanicoResponsavelId === _user.uid);
+                }
+                container.innerHTML = '';
+            }
+
+            if (filtered.length === 0) {
+                container.innerHTML += `
+                    <div class="empty-state animate__animated animate__fadeIn">
+                        <div class="empty-icon"><i class="fas fa-clipboard-check"></i></div>
+                        <p class="empty-text">Nenhum chamado encontrado.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const ticketsHtml = filtered.map(t => {
+                const date = t.dataAbertura?.toDate().toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) || '--';
+                const statusClass = t.status === 'Aberto' ? 'status-aberto' : t.status === 'Em Andamento' ? 'status-andamento' : 'status-concluido';
+                const cardClass = t.prioridade === 'Urgente' ? 'ticket-card urgente' : t.status === 'Em Andamento' ? 'ticket-card andamento' : 'ticket-card';
+
+                let actionBtns = `<button class="btn-ticket btn-view" onclick="openDetails('${t.id}')"><i class="fas fa-eye"></i></button>`;
+                
+                if (t.status === 'Aberto') {
+                    actionBtns += `<button class="btn-ticket btn-start" onclick="openStartSheet('${t.id}')">Iniciar</button>`;
+                } else if (t.status === 'Em Andamento') {
+                    actionBtns += `<button class="btn-ticket btn-finish" onclick="openFinishSheet('${t.id}', '${t.maquinaId}')">Finalizar</button>`;
+                }
+
+                return `
+                    <div class="${cardClass} animate__animated animate__fadeInUp">
+                        <div class="ticket-header">
+                            <div class="machine-info">
+                                <h3>${t.maquinaNome || 'Máquina s/ nome'}</h3>
+                                <p>${t.maquinaId || 'ID não informado'}</p>
+                            </div>
+                            <span class="status-badge ${statusClass}">${t.status}</span>
+                        </div>
+                        <div class="ticket-body">
+                            <div class="reason">
+                                <i class="fas fa-tools text-dim"></i>
+                                <span>${t.motivo || 'Motivo não informado'}</span>
+                            </div>
+                            <div class="meta-row">
+                                <div class="meta-item"><i class="far fa-clock"></i> ${date}</div>
+                                ${t.prioridade === 'Urgente' ? '<div class="meta-item text-danger"><i class="fas fa-bolt"></i> URGENTE</div>' : ''}
+                                ${t.maquinaParada ? '<div class="meta-item text-warning"><i class="fas fa-stop"></i> MÁQUINA PARADA</div>' : ''}
+                            </div>
+                        </div>
+                        <div class="ticket-actions">${actionBtns}</div>
+                    </div>
+                `;
+            }).join('');
+            
+            container.innerHTML += ticketsHtml;
+        }
+
+        function clearFilter() {
+            _maquinaIdParam = null;
+            // Remove o parâmetro da URL sem recarregar a página
+            const newUrl = window.location.pathname;
+            window.history.pushState({}, '', newUrl);
+            renderTickets();
+        }
+
+        // Action Handlers
+        async function confirmStart() {
+            const id = document.getElementById('iniciar-id').value;
+            const obs = document.getElementById('iniciar-obs').value;
+            const btn = document.getElementById('btn-confirm-start');
+            
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                await _db.collection('manutencao_chamados').doc(id).update({
+                    status: 'Em Andamento',
+                    atendimentoIniciadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    mecanicoResponsavelId: _user.uid,
+                    mecanicoResponsavelNome: document.getElementById('user-name').textContent,
+                    observacoesInicio: obs
+                });
+                toast('Atendimento iniciado!', 'success');
+                closeSheet('sheet-iniciar');
+            } catch (e) {
+                toast('Erro ao iniciar atendimento.', 'danger');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = 'Confirmar Início';
+            }
+        }
+
+        async function confirmFinish() {
+            const id = document.getElementById('finalizar-id').value;
+            const maquinaId = document.getElementById('finalizar-maquina-id').value;
+            const motivo = document.getElementById('finalizar-motivo').value;
+            const tipo = document.getElementById('finalizar-tipo').value;
+            const obs = document.getElementById('finalizar-obs').value;
+            const pecas = document.getElementById('finalizar-pecas').value;
+            
+            if (!motivo || !tipo || !obs) {
+                toast('Preencha os campos obrigatórios.', 'warning');
+                return;
+            }
+
+            const btn = document.getElementById('btn-confirm-finish');
+            btn.disabled = true;
+            
+            try {
+                const doc = await _db.collection('manutencao_chamados').doc(id).get();
+                const data = doc.data();
+                let tempoParada = '--';
+                
+                if (data.paradaInicioTimestamp) {
+                    const diff = new Date() - data.paradaInicioTimestamp.toDate();
+                    const h = Math.floor(diff / 3600000);
+                    const m = Math.floor((diff % 3600000) / 60000);
+                    tempoParada = `${h}h ${m}m`;
+                }
+
+                await _db.collection('manutencao_chamados').doc(id).update({
+                    status: 'Concluído',
+                    maquinaParada: false,
+                    dataEncerramento: firebase.firestore.FieldValue.serverTimestamp(),
+                    tempoParada: tempoParada,
+                    motivoManutencao: motivo,
+                    tipoManutencao: tipo,
+                    observacoesMecanico: obs,
+                    pecasUtilizadas: pecas
+                });
+                
+                toast('Chamado finalizado!', 'success');
+                closeSheet('sheet-finalizar');
+            } catch (e) {
+                toast('Erro ao finalizar chamado.', 'danger');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        // Sheet Logic
+        function openSheet(id) {
+            document.getElementById(id).style.display = 'flex';
+            setTimeout(() => document.getElementById(id).classList.add('active'), 10);
+        }
+
+        function closeSheet(id) {
+            document.getElementById(id).classList.remove('active');
+            setTimeout(() => document.getElementById(id).style.display = 'none', 300);
+        }
+
+        function openDetails(id) {
+            const t = _tickets.find(x => x.id === id);
+            const content = document.getElementById('detalhe-content');
+            content.innerHTML = `
+                <div class="mb-3">
+                    <p class="small text-dim mb-1">LOCAL / MÁQUINA</p>
+                    <p class="fw-bold">${t.maquinaNome} (${t.maquinaId})</p>
+                </div>
+                <div class="mb-3">
+                    <p class="small text-dim mb-1">MOTIVO DA ABERTURA</p>
+                    <p>${t.motivo || '--'}</p>
+                </div>
+                <div class="mb-3">
+                    <p class="small text-dim mb-1">SOLICITANTE</p>
+                    <p>${t.createdByNome || '--'}</p>
+                </div>
+                <div class="mb-3">
+                    <p class="small text-dim mb-1">OBSERVAÇÕES ADICIONAIS</p>
+                    <p class="small">${t.observacoes || 'Nenhuma'}</p>
+                </div>
+            `;
+            openSheet('sheet-detalhes');
+        }
+
+        function openStartSheet(id) {
+            document.getElementById('iniciar-id').value = id;
+            document.getElementById('iniciar-obs').value = '';
+            openSheet('sheet-iniciar');
+        }
+
+        async function openFinishSheet(id, maquinaId) {
+            document.getElementById('finalizar-id').value = id;
+            document.getElementById('finalizar-maquina-id').value = maquinaId;
+            document.getElementById('finalizar-motivo').innerHTML = '<option value="">Carregando...</option>';
+            
+            openSheet('sheet-finalizar');
+
+            try {
+                const doc = await _db.collection('maquinas').doc(maquinaId).get();
+                if (doc.exists && doc.data().motivos) {
+                    let html = '<option value="">Selecione o motivo...</option>';
+                    doc.data().motivos.forEach(m => html += `<option value="${m}">${m}</option>`);
+                    html += '<option value="Outro">Outro (especificar no relato)</option>';
+                    document.getElementById('finalizar-motivo').innerHTML = html;
+                }
+            } catch (e) {
+                document.getElementById('finalizar-motivo').innerHTML = '<option value="Outro">Erro ao carregar motivos</option>';
+            }
+        }
+
+        // Utils
+        function toast(msg, type = 'info') {
+            const root = document.getElementById('toast-root');
+            const el = document.createElement('div');
+            el.className = `custom-toast animate__animated animate__slideInRight`;
+            const icon = type === 'success' ? 'fa-check-circle text-success' : type === 'danger' ? 'fa-exclamation-circle text-danger' : 'fa-info-circle text-info';
+            el.innerHTML = `<i class="fas ${icon}"></i><span>${msg}</span>`;
+            root.appendChild(el);
+            setTimeout(() => {
+                el.classList.replace('animate__slideInRight', 'animate__fadeOut');
+                setTimeout(() => el.remove(), 500);
+            }, 3000);
+        }
+
+        // Event Listeners
+        document.getElementById('form-login').onsubmit = e => {
+            e.preventDefault();
+            const email = document.getElementById('login-email').value;
+            const pass = document.getElementById('login-senha').value;
+            _auth.signInWithEmailAndPassword(email, pass).catch(err => {
+                const errorEl = document.getElementById('login-error');
+                errorEl.textContent = 'E-mail ou senha incorretos.';
+                errorEl.classList.remove('d-none');
+            });
+        };
+
+        document.getElementById('btn-logout').onclick = () => _auth.signOut();
+
+        document.querySelectorAll('.filter-tab').forEach(tab => {
+            tab.onclick = () => {
+                document.querySelectorAll('.filter-tab').forEach(t => t.classList.remove('active'));
+                tab.classList.add('active');
+                _activeFilter = tab.dataset.filter;
+                renderTickets();
+            };
+        });
+
+        document.getElementById('btn-confirm-start').onclick = confirmStart;
+        document.getElementById('btn-confirm-finish').onclick = confirmFinish;
+
+    </script>
 </body>
 </html>

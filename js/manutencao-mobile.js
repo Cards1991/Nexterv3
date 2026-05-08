@@ -35,13 +35,18 @@ document.addEventListener('firebaseMobileReady', () => {
     auth.onAuthStateChanged(async (user) => {
         if (user) {
             try {
-                // Força a atualização do token para garantir que o estado de autenticação
-                // seja propagado para todos os serviços do Firebase, incluindo o Firestore.
-                // Isso ajuda a prevenir "race conditions" onde o Firestore faz uma requisição
-                // antes de seu estado interno de autenticação ser atualizado.
+                // Força a atualização do token
                 await user.getIdToken(true);
 
-                // Usuário está logado, mostra o formulário de chamado
+                // VERIFICAÇÃO DE PERMISSÃO: Se for mecânico, vai para o painel do mecânico
+                const userDoc = await db.collection('usuarios').doc(user.uid).get();
+                if (userDoc.exists && (userDoc.data().permissoes?.isMecanico || userDoc.data().isMecanico)) {
+                    console.log("Usuário é mecânico. Redirecionando para o Painel do Mecânico...");
+                    window.location.href = `mecanico-mobile.html?maquinaId=${maquinaId}`;
+                    return;
+                }
+
+                // Usuário está logado (e não é mecânico ou quer abrir chamado), mostra o formulário de chamado
                 document.getElementById('login-section').classList.add('d-none');
                 document.getElementById('chamado-section').classList.remove('d-none');
                 // Configura o formulário e carrega os dados da máquina APÓS o login
@@ -49,9 +54,9 @@ document.addEventListener('firebaseMobileReady', () => {
                 fetchMachineInfo(maquinaId);
                 adicionarBotaoSair(user);
             } catch (tokenError) {
-                console.error("Erro ao atualizar token de autenticação:", tokenError);
+                console.error("Erro ao atualizar token ou verificar permissões:", tokenError);
                 mostrarMensagemMobile("Erro de autenticação. Por favor, faça login novamente.", "danger");
-                auth.signOut(); // Força o logout se o token não puder ser atualizado
+                auth.signOut();
             }
         } else {
             // Usuário não está logado, mostra a tela de login

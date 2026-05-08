@@ -193,25 +193,20 @@ function abrirModalIniciarAtendimento(chamadoId) {
  * Confirma o início do atendimento, atualizando o status do chamado no Firestore.
  */
 async function confirmarInicioAtendimentoMecanico() {
-    const iniciarIdEl = document.getElementById('iniciar-id');
-    const iniciarObsEl = document.getElementById('iniciar-obs');
-    const btn = document.getElementById('btn-confirmar-iniciar');
+    // Captura os elementos especificamente dentro do modal para evitar conflitos de IDs duplicados
+    const modal = document.getElementById('modalMecanicoIniciar');
+    const iniciarIdEl = modal ? modal.querySelector('#iniciar-id') : null;
+    const iniciarObsEl = modal ? modal.querySelector('#iniciar-obs') : null;
+    const btn = modal ? modal.querySelector('#btn-confirmar-iniciar') : null;
 
-    // Evita crash quando o modal não está presente (ex: carregamento dinâmico/rota diferente)
-    // Observação: o modal deveria existir em `views/painel-mecanico.html`. Ainda assim, não podemos falhar com null.
     if (!iniciarIdEl || !iniciarObsEl) {
-        console.warn('[PainelMecanico] Elementos do modal iniciar não encontrados.');
-        // Sem o modal, não é possível executar o update do chamado.
-        return;
-    }
-
-    if (!btn) {
-        mostrarMensagem('Botão de confirmação não encontrado. Recarregue e tente novamente.', 'warning');
+        console.error('[PainelMecanico] Erro crítico: Elementos do modal iniciar não encontrados no DOM.', {iniciarIdEl, iniciarObsEl});
+        mostrarMensagem('Erro técnico ao acessar o modal. Tente recarregar a página.', 'error');
         return;
     }
 
     const chamadoId = iniciarIdEl.value;
-    const obs = (iniciarObsEl.value || '').trim();
+    const obs = iniciarObsEl.value.trim();
     const user = firebase.auth().currentUser;
 
     if (!chamadoId) {
@@ -236,8 +231,8 @@ async function confirmarInicioAtendimentoMecanico() {
             observacoesInicio: obs // Salva a observação inicial
         });
         mostrarMensagem("Atendimento iniciado com sucesso!", "success");
-        const modal = bootstrap.Modal.getInstance(document.getElementById('modalMecanicoIniciar'));
-        if (modal) modal.hide();
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) modalInstance.hide();
         carregarChamadosMecanico(); // Recarrega a lista para atualizar o card
     } catch (e) {
         mostrarMensagem("Erro ao iniciar atendimento.", "error");
@@ -342,14 +337,29 @@ async function abrirModalFinalizarChamado(chamadoId) {
  * Confirma a finalização do chamado, atualizando o status e registrando os detalhes.
  */
 async function confirmarFinalizarChamado() {
-    const chamadoId = document.getElementById('finalizar-id').value;
-    const tipo = document.getElementById('finalizar-tipo').value;
-    const obs = document.getElementById('finalizar-obs').value.trim();
-    const pecas = document.getElementById('finalizar-pecas').value.trim();
-    const motivoVal = document.getElementById('finalizar-motivo').value;
+    // Captura os elementos especificamente dentro do modal para evitar conflitos de IDs duplicados
+    const modal = document.getElementById('modalMecanicoFinalizar');
+    const finalizarIdEl = modal ? modal.querySelector('#finalizar-id') : null;
+    const maquinaIdEl = modal ? modal.querySelector('#finalizar-maquina-id') : null;
+    const motivoEl = modal ? modal.querySelector('#finalizar-motivo') : null;
+    const tipoEl = modal ? modal.querySelector('#finalizar-tipo') : null;
+    const obsEl = modal ? modal.querySelector('#finalizar-obs') : null;
+    const pecasEl = modal ? modal.querySelector('#finalizar-pecas') : null;
+    const btn = modal ? modal.querySelector('#btn-confirmar-finalizar') : null;
+
+    if (!finalizarIdEl || !maquinaIdEl || !motivoEl || !tipoEl || !obsEl || !btn) {
+        console.error('[PainelMecanico] Erro crítico: Elementos do modal finalizar não encontrados.');
+        mostrarMensagem('Erro técnico ao acessar o formulário de finalização.', 'error');
+        return;
+    }
+
+    const chamadoId = finalizarIdEl.value;
+    const tipo = tipoEl.value;
+    const obs = obsEl.value.trim();
+    const pecas = pecasEl.value.trim();
+    const motivoVal = motivoEl.value;
     const motivoManutencao = (motivoVal && motivoVal !== '__outro__') ? motivoVal : null;
     const user = firebase.auth().currentUser;
-    const btn = document.getElementById('btn-confirmar-finalizar');
 
     if (!tipo) { mostrarMensagem('Selecione o tipo de manutenção.', 'warning'); return; }
     if (!motivoManutencao) { mostrarMensagem('Selecione o motivo da manutenção.', 'warning'); return; }

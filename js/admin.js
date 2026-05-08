@@ -88,7 +88,8 @@ async function abrirModalPermissoes(uid) {
         ],
         'ISO 9001': [
             'iso-manutencao', 'iso-maquinas', 'iso-mecanicos', 'iso-temperatura-injetoras',
-            'iso-organograma', 'gerenciar-avaliacoes', 'iso-swot', 'iso-avaliacao-colaboradores'
+            'iso-organograma', 'gerenciar-avaliacoes', 'iso-swot', 'iso-avaliacao-colaboradores',
+            'mecanico-mobile'
         ],
         'Logística': [
             'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete'
