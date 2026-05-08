@@ -98,6 +98,82 @@
             margin-bottom: 32px;
         }
 
+        .quick-actions-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .action-btn {
+            background: var(--surface);
+            border: 1px solid rgba(255,255,255,0.05);
+            border-radius: 16px;
+            padding: 20px 10px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            transition: all 0.2s ease;
+        }
+
+        .action-btn:active {
+            transform: scale(0.95);
+            background: var(--surface-light);
+        }
+
+        .action-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        }
+
+        .scanner-container {
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+
+        .scanner-header {
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(0,0,0,0.5);
+            z-index: 10;
+        }
+
+        .btn-close-scanner {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+        }
+
+        #qr-reader {
+            flex: 1;
+            display: flex;
+            align-items: center;
+        }
+
+        .scanner-footer {
+            padding: 30px;
+            text-align: center;
+            background: rgba(0,0,0,0.5);
+            color: white;
+            z-index: 10;
+        }
+
         .form-group {
             margin-bottom: 20px;
             text-align: left;
@@ -556,53 +632,59 @@
     </div>
 
     <!-- ======== APP SHELL ======== -->
-    <div id="app-shell">
+    <div id="app-shell" style="display: none;">
         <!-- Header -->
         <header class="app-header">
-            <div class="user-info">
+            <div class="user-profile">
                 <div class="avatar" id="user-avatar">M</div>
-                <div class="user-details">
-                    <h6 id="user-name">Carregando...</h6>
-                    <span id="user-role">Mecânico Responsável</span>
+                <div class="user-info">
+                    <p class="welcome">Olá,</p>
+                    <h2 id="user-name" class="user-name">Carregando...</h2>
                 </div>
             </div>
-            <div class="header-actions">
-                <button class="btn-logout" id="btn-logout"><i class="fas fa-sign-out-alt"></i></button>
-            </div>
+            <button id="btn-logout" class="btn-icon-only"><i class="fas fa-sign-out-alt"></i></button>
         </header>
 
-        <!-- Main Content (Scrollable) -->
-        <main>
-            <!-- Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="stat-value text-warning" id="stat-abertos">0</span>
-                    <span class="stat-label">Abertos</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-value text-info" id="stat-andamento">0</span>
-                    <span class="stat-label">Em Curso</span>
-                </div>
-                <div class="stat-card">
-                    <span class="stat-value text-danger" id="stat-urgentes">0</span>
-                    <span class="stat-label">Urgentes</span>
-                </div>
+        <!-- Stats Overview -->
+        <div class="stats-grid animate__animated animate__fadeIn">
+            <div class="stat-card">
+                <span class="stat-value" id="stat-abertos">0</span>
+                <span class="stat-label">Novos</span>
             </div>
+            <div class="stat-card">
+                <span class="stat-value" id="stat-andamento">0</span>
+                <span class="stat-label">Em Curso</span>
+            </div>
+            <div class="stat-card urgent">
+                <span class="stat-value" id="stat-urgentes">0</span>
+                <span class="stat-label">Urgentes</span>
+            </div>
+        </div>
 
-            <!-- Filters -->
-            <div class="filter-scroller" id="filter-tabs">
-                <div class="filter-tab active" data-filter="ativos">Meus Chamados</div>
-                <div class="filter-tab" data-filter="disponiveis">Disponíveis</div>
-                <div class="filter-tab" data-filter="concluidos">Histórico</div>
+        <!-- Quick Actions -->
+        <div class="px-3 mb-4">
+            <div class="quick-actions-row">
+                <button class="action-btn" onclick="abrirScanner()">
+                    <div class="action-icon"><i class="fas fa-qrcode"></i></div>
+                    <span>Scanner</span>
+                </button>
+                <button class="action-btn" onclick="window.location.href='manutencao-mobile.html?maquina=GENERICA'">
+                    <div class="action-icon"><i class="fas fa-plus"></i></div>
+                    <span>Abrir Chamado</span>
+                </button>
             </div>
+        </div>
 
-            <!-- Tickets List -->
-            <div class="tickets-container" id="tickets-list">
-                <!-- Skeleton Loader -->
-                <div class="text-center py-5 opacity-25">
-                    <i class="fas fa-circle-notch fa-spin fa-2x"></i>
-                </div>
-            </div>
+        <!-- Filter Tabs -->
+        <div class="filter-tabs">
+            <button class="filter-tab active" data-filter="ativos">Meus Chamados</button>
+            <button class="filter-tab" data-filter="disponiveis">Disponíveis</button>
+            <button class="filter-tab" data-filter="concluidos">Histórico</button>
+        </div>
+
+        <!-- Tickets List -->
+        <main id="tickets-list" class="tickets-container">
+            <!-- Rendered via JS -->
         </main>
 
         <!-- Bottom Navigation -->
@@ -615,13 +697,9 @@
                 <i class="fas fa-list-check"></i>
                 <span>Chamados</span>
             </a>
-            <a href="#" class="nav-item-bottom" data-nav="qr">
+            <a href="#" class="nav-item-bottom" data-nav="qr" onclick="abrirScanner(); return false;">
                 <i class="fas fa-qrcode"></i>
                 <span>Scanner</span>
-            </a>
-            <a href="#" class="nav-item-bottom" data-nav="profile">
-                <i class="fas fa-user-circle"></i>
-                <span>Perfil</span>
             </a>
         </nav>
     </div>
@@ -1067,6 +1145,55 @@
 
         document.getElementById('btn-confirm-start').onclick = confirmStart;
         document.getElementById('btn-confirm-finish').onclick = confirmFinish;
+
+        // Scanner Logic
+        let _html5QrCode = null;
+
+        function abrirScanner() {
+            document.getElementById('scanner-overlay').style.display = 'flex';
+            _html5QrCode = new Html5Qrcode("qr-reader");
+            
+            const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+            
+            _html5QrCode.start(
+                { facingMode: "environment" }, 
+                config, 
+                (decodedText) => {
+                    // Tenta extrair o maquinaId da URL ou texto escaneado
+                    console.log("QR Code Scaneado:", decodedText);
+                    let maquinaId = decodedText;
+                    
+                    try {
+                        if (decodedText.includes('maquina=')) {
+                            const url = new URL(decodedText);
+                            maquinaId = url.searchParams.get('maquina');
+                        } else if (decodedText.includes('maquinaId=')) {
+                            const url = new URL(decodedText);
+                            maquinaId = url.searchParams.get('maquinaId');
+                        }
+                    } catch(e) {}
+
+                    fecharScanner();
+                    _maquinaIdParam = maquinaId;
+                    renderTickets();
+                    toast(`Máquina ${maquinaId} identificada!`, 'success');
+                },
+                (errorMessage) => {
+                    // Erro silencioso durante o scan
+                }
+            ).catch(err => {
+                console.error("Erro ao iniciar scanner:", err);
+                toast("Não foi possível acessar a câmera.", "danger");
+                fecharScanner();
+            });
+        }
+
+        function fecharScanner() {
+            document.getElementById('scanner-overlay').style.display = 'none';
+            if (_html5QrCode) {
+                _html5QrCode.stop().catch(err => console.error(err));
+            }
+        }
 
     </script>
 </body>
