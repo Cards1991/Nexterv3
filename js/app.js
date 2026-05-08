@@ -12,7 +12,7 @@ const TODAS_SECOES = [
     'control-horas-autorizacao', 'juridico-analise-cpf',
     'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
-    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico', 'mecanico-mobile',
+    'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'
@@ -182,6 +182,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'avaliacao-experiencia':
                 if (typeof inicializarAvaliacaoExperiencia === 'function') await inicializarAvaliacaoExperiencia(currentUserPermissions);
+                break;
+            case 'manutencao-mecanico':
+                if (typeof inicializarMeusChamados === 'function') await inicializarMeusChamados();
                 break;
             case 'funcionarios':
                 if (typeof inicializarFuncionarios === 'function') {
@@ -789,21 +792,27 @@ function inicializarNavegacao() {
 
     navContainer.querySelectorAll('a[data-target]').forEach(link => {
         link.addEventListener('click', function (e) {
-            e.preventDefault();
             const targetSection = this.getAttribute('data-target');
+            const isExternal = this.getAttribute('target') === '_blank';
 
             // Permissão extra para mecânico admin (gerente de manutenção de mecânicos)
-            // Permite acessar ISO 9001 e seus módulos mesmo se o array secoesPermitidas estiver incompleto.
             const isMecanicoAdmin = currentUserPermissions?.isMecanicoAdmin;
             const allowMecanicoAdminISO = isMecanicoAdmin && (targetSection === 'iso-manutencao' || targetSection === 'manutencao-mecanico' || targetSection.startsWith('iso-'));
 
+            // Verifica permissão
             if (currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO) {
+                if (isExternal) {
+                    // Se for link externo (ex: Portal Mobile), deixa o navegador abrir a aba
+                    return;
+                }
+                
+                // Se for seção interna, previne o comportamento padrão e carrega
+                e.preventDefault();
                 showSection(targetSection);
             } else {
+                e.preventDefault();
                 mostrarMensagem('Você não tem permissão para acessar esta seção.', 'error');
             }
-
-
         });
     });
 

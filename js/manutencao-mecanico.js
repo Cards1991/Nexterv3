@@ -9,23 +9,18 @@ async function inicializarMeusChamados() {
         return;
     }
 
-    // Verificar se é mecânico
-        const userDoc = await db.collection('usuarios').doc(user.uid).get();
-    if (!userDoc.exists || !userDoc.data().isMecanico) {
-        mostrarMensagem("Acesso restrito a mecânicos", "error");
-        return;
-    }
-
     await atualizarMeusChamados();
 }
 
 async function atualizarMeusChamados() {
     if (window.unsubscribeMeusChamados) window.unsubscribeMeusChamados();
 
-    const tbody = document.getElementById('tabela-meus-chamados');
+    const container = document.getElementById('lista-cards-chamados');
     const totalBadge = document.getElementById('total-meus-chamados');
-    if (!tbody) return;
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i></td></tr>';
+    if (!container) return;
+    
+    // Mostra o spinner inicial
+    container.innerHTML = '<div class="text-center p-4"><i class="fas fa-spinner fa-spin fa-2x text-primary mb-2"></i><p class="text-muted">Sincronizando seus chamados...</p></div>';
 
     try {
         const user = firebase.auth().currentUser;
@@ -57,7 +52,11 @@ async function atualizarMeusChamados() {
 
                 if (totalBadge) totalBadge.textContent = window.meusChamados.length;
                 await renderizarTabelaMeusChamados();
-                renderizarMetricasMecanico();
+                
+                const metricasContainer = document.getElementById('metricas-mecanico');
+                if (metricasContainer) {
+                    renderizarMetricasMecanico();
+                }
             });
     } catch (error) {
         console.error("Erro:", error);

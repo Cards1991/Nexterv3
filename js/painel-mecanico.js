@@ -15,7 +15,10 @@ async function inicializarPainelMecanico() {
         window.__unsubscribe_mecanico = null;
     }
 
-    document.getElementById('mecanico-user-info').textContent = `Mecânico: ${user.displayName || user.email}`;
+    const userInfoEl = document.getElementById('mecanico-user-info');
+    if (userInfoEl) {
+        userInfoEl.textContent = `Mecânico: ${user.displayName || user.email}`;
+    }
 
     // Configurar Cliques nos Filtros
     document.querySelectorAll('.filter-tabs-mecanico .filter-tab-mecanico').forEach(tab => {
