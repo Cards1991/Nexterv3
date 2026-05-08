@@ -106,33 +106,41 @@
 
         .action-btn {
             background: var(--surface);
-            border: 1px solid rgba(255,255,255,0.05);
-            border-radius: 16px;
-            padding: 20px 10px;
+            border: 1px solid var(--surface-light);
+            border-radius: 24px;
+            padding: 24px;
             display: flex;
-            flex-direction: column;
+            flex-direction: row; /* Alterado para linha para melhor alinhamento */
             align-items: center;
             justify-content: center;
+            gap: 16px;
             color: white;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            text-decoration: none;
         }
 
         .action-btn:active {
-            transform: scale(0.95);
+            transform: scale(0.97);
             background: var(--surface-light);
         }
 
         .action-icon {
-            width: 48px;
-            height: 48px;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            border-radius: 12px;
+            width: 54px;
+            height: 54px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 20px;
-            margin-bottom: 10px;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+            font-size: 24px;
+            box-shadow: 0 4px 15px rgba(63, 185, 80, 0.3);
+        }
+
+        .action-btn span {
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
         }
 
         .scanner-container {
@@ -286,8 +294,8 @@
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            padding: 20px;
+            gap: 16px;
+            padding: 8px 20px 24px;
         }
 
         .stat-card {
@@ -351,17 +359,18 @@
 
         .ticket-card {
             background: var(--surface);
-            border-radius: 20px;
-            padding: 16px;
-            margin-bottom: 16px;
             border: 1px solid var(--surface-light);
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 16px;
             position: relative;
-            overflow: hidden;
-            transition: transform 0.2s;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .ticket-card:active {
             transform: scale(0.98);
+            background: var(--surface-light);
         }
 
         .ticket-card.urgente {
@@ -376,82 +385,100 @@
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 12px;
-        }
-
-        .machine-info h3 {
-            font-size: 16px;
-            font-weight: 700;
-            margin: 0;
-            color: white;
-        }
-
-        .machine-info p {
-            font-size: 12px;
-            color: var(--text-dim);
-            margin: 0;
-        }
-
-        .status-badge {
-            font-size: 10px;
-            font-weight: 700;
-            padding: 4px 10px;
-            border-radius: 100px;
-            text-transform: uppercase;
-        }
-
-        .status-aberto { background: rgba(210, 153, 34, 0.2); color: var(--warning); }
-        .status-andamento { background: rgba(88, 166, 255, 0.2); color: var(--info); }
-        .status-concluido { background: rgba(63, 185, 80, 0.2); color: var(--primary); }
-
-        .ticket-body {
             margin-bottom: 16px;
         }
 
+        .machine-info h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 4px;
+            color: white;
+            letter-spacing: -0.5px;
+        }
+
+        .machine-info p {
+            font-size: 13px;
+            color: var(--text-dim);
+            margin: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .status-badge {
+            font-size: 11px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .status-aberto { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
+        .status-andamento { background: rgba(88, 166, 255, 0.15); color: var(--info); }
+        .status-concluido { background: rgba(63, 185, 80, 0.15); color: var(--primary); }
+
+        .ticket-body {
+            margin-bottom: 20px;
+            background: rgba(255,255,255,0.03);
+            padding: 12px;
+            border-radius: 12px;
+        }
+
         .reason {
-            font-size: 14px;
-            color: var(--text-main);
-            margin-bottom: 8px;
             display: flex;
-            align-items: center;
-            gap: 8px;
+            gap: 10px;
+            margin-bottom: 12px;
+            align-items: flex-start;
+        }
+
+        .reason i {
+            margin-top: 3px;
+            font-size: 14px;
+        }
+
+        .reason span {
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--text-main);
         }
 
         .meta-row {
             display: flex;
             flex-wrap: wrap;
             gap: 12px;
-            font-size: 11px;
-            color: var(--text-dim);
         }
 
         .meta-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-dim);
         }
 
         .ticket-actions {
             display: flex;
-            gap: 8px;
+            gap: 12px;
         }
 
         .btn-ticket {
             flex: 1;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: 700;
             border: none;
+            border-radius: 14px;
+            padding: 12px;
+            font-size: 14px;
+            font-weight: 600;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 6px;
+            gap: 8px;
+            transition: all 0.2s;
         }
 
-        .btn-view { background: var(--surface-light); color: white; }
+        .btn-view { background: var(--surface-light); color: var(--text-main); flex: 0 0 50px; }
         .btn-start { background: var(--info); color: white; }
         .btn-finish { background: var(--primary); color: white; }
+
+        .btn-ticket:active { opacity: 0.8; transform: translateY(2px); }
 
         /* BOTTOM NAV */
         .bottom-nav {
@@ -662,17 +689,11 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="px-3 mb-4">
-            <div class="quick-actions-row">
-                <button class="action-btn" onclick="abrirScanner()">
-                    <div class="action-icon"><i class="fas fa-qrcode"></i></div>
-                    <span>Scanner</span>
-                </button>
-                <button class="action-btn" onclick="window.location.href='manutencao-mobile.html?maquina=GENERICA'">
-                    <div class="action-icon"><i class="fas fa-plus"></i></div>
-                    <span>Abrir Chamado</span>
-                </button>
-            </div>
+        <div class="px-3 mb-4 text-center">
+            <button class="action-btn w-100" onclick="abrirScanner()">
+                <div class="action-icon"><i class="fas fa-qrcode"></i></div>
+                <span>Escanear Máquina para Identificação</span>
+            </button>
         </div>
 
         <!-- Filter Tabs -->
@@ -839,8 +860,14 @@
                 const userDoc = await _db.collection('usuarios').doc(user.uid).get();
                 const data = userDoc.exists ? userDoc.data() : {};
                 
+                _userRealName = data.nome || '';
                 document.getElementById('user-name').textContent = data.nome || user.email;
                 document.getElementById('user-avatar').textContent = (data.nome || 'M').charAt(0).toUpperCase();
+                
+                // Atribui propriedades extras ao _user global
+                _user.isAdmin = data.isAdmin || false;
+                _user.isMecanico = data.isMecanico || false;
+                
                 showApp();
             } catch (e) {
                 console.error(e);
@@ -889,51 +916,106 @@
             document.getElementById('stat-urgentes').textContent = urgentes;
         }
 
+        function formatDate(timestamp) {
+            if (!timestamp) return '--';
+            try {
+                // Se for Timestamp do Firebase
+                if (timestamp.toDate) return timestamp.toDate().toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                // Se for objeto Date
+                if (timestamp instanceof Date) return timestamp.toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                // Se for string ISO
+                return new Date(timestamp).toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            } catch (e) {
+                return '--';
+            }
+        }
+
+        let _userRealName = ''; // Nome vindo do banco de dados
+
         function renderTickets() {
             const container = document.getElementById('tickets-list');
+            if (!container) return;
+
             let filtered = [];
             
-            // Se tiver maquinaId na URL, o filtro padrão muda para mostrar tudo daquela máquina (aberto ou em curso)
+            // Lógica de Filtro
+            const isAdmin = _user.isAdmin || false;
+            const myId = _user.uid;
+            const myName = _userRealName;
+
+            console.log(`🔍 DEBUG FILTRO:
+                - Filtro Ativo: ${_activeFilter}
+                - Meu ID: ${myId}
+                - Meu Nome no DB: ${myName}
+                - Sou Admin: ${isAdmin}
+                - Total de Chamados no BD: ${_tickets.length}
+            `);
+
             if (_maquinaIdParam) {
                 filtered = _tickets.filter(t => t.maquinaId === _maquinaIdParam && t.status !== 'Concluído');
+                if (filtered.length === 0) filtered = _tickets.filter(t => t.maquinaId === _maquinaIdParam);
                 
-                // Se não achar nada "vivo", mostra os concluídos daquela máquina
-                if (filtered.length === 0) {
-                    filtered = _tickets.filter(t => t.maquinaId === _maquinaIdParam);
-                }
-
-                // Adiciona um aviso de que está filtrado
-                const filterTitle = document.createElement('div');
-                filterTitle.className = 'px-3 mb-3 small text-dim d-flex justify-content-between align-items-center';
-                filterTitle.innerHTML = `
-                    <span>Exibindo chamados da máquina: <strong>${_maquinaIdParam}</strong></span>
-                    <a href="#" onclick="clearFilter(); return false;" class="text-primary text-decoration-none">Ver Todos</a>
-                `;
-                container.innerHTML = '';
-                container.appendChild(filterTitle);
-            } else {
-                if (_activeFilter === 'ativos') {
-                    filtered = _tickets.filter(t => t.status !== 'Concluído' && t.mecanicoResponsavelId === _user.uid);
-                } else if (_activeFilter === 'disponiveis') {
-                    filtered = _tickets.filter(t => t.status === 'Aberto' && !t.mecanicoResponsavelId);
-                } else {
-                    filtered = _tickets.filter(t => t.status === 'Concluído' && t.mecanicoResponsavelId === _user.uid);
-                }
-                container.innerHTML = '';
-            }
-
-            if (filtered.length === 0) {
-                container.innerHTML += `
-                    <div class="empty-state animate__animated animate__fadeIn">
-                        <div class="empty-icon"><i class="fas fa-clipboard-check"></i></div>
-                        <p class="empty-text">Nenhum chamado encontrado.</p>
+                container.innerHTML = `
+                    <div class="px-3 mb-3 small text-dim d-flex justify-content-between align-items-center">
+                        <span>Máquina: <strong>${_maquinaIdParam}</strong></span>
+                        <a href="#" onclick="clearFilter(); return false;" class="text-primary text-decoration-none">Ver Todos</a>
                     </div>
                 `;
+            } else {
+                container.innerHTML = '';
+                if (_activeFilter === 'ativos') {
+                    // Traz chamados em andamento atribuídos a mim OU todos se for Admin
+                    filtered = _tickets.filter(t => {
+                        const isAtivo = (t.status === 'Em Andamento' || t.status === 'Aberto');
+                        const isMeu = t.mecanicoResponsavelId === myId || (myName && t.mecanicoResponsavelNome === myName);
+                        
+                        // DEBUG para cada ticket se estiver em dúvida
+                        if (t.status === 'Em Andamento') {
+                            console.log(`Ticket ${t.id}: Status=${t.status}, RespID=${t.mecanicoResponsavelId}, RespNome=${t.mecanicoResponsavelNome}, isMeu=${isMeu}`);
+                        }
+
+                        return isAtivo && (isMeu || isAdmin);
+                    });
+                } else if (_activeFilter === 'disponiveis') {
+                    // Disponíveis são os ABERTOS que ninguém pegou ainda
+                    filtered = _tickets.filter(t => t.status === 'Aberto' && !t.mecanicoResponsavelId);
+                } else {
+                    // Histórico: Concluídos
+                    filtered = _tickets.filter(t => {
+                        const isEncerrado = t.status === 'Concluído' || t.status === 'Finalizado';
+                        const isMeu = t.mecanicoResponsavelId === myId || (myName && t.mecanicoResponsavelNome === myName);
+                        return isEncerrado && (isMeu || isAdmin);
+                    });
+                }
+            }
+            
+            console.log(`✅ Resultado do filtro: ${filtered.length} chamados encontrados.`);
+
+            if (filtered.length === 0) {
+                const abertosGeral = _tickets.filter(t => t.status === 'Aberto' && !t.mecanicoResponsavelId).length;
+                if (_activeFilter === 'ativos' && abertosGeral > 0 && !_maquinaIdParam) {
+                    container.innerHTML += `
+                        <div class="px-3 py-4 mb-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 text-center animate__animated animate__fadeIn">
+                            <i class="fas fa-info-circle text-primary mb-3 d-block fs-3"></i>
+                            <p class="mb-3 text-white">Você não tem chamados atribuídos no momento.</p>
+                            <button class="btn btn-primary px-4 rounded-pill" onclick="document.querySelector('[data-filter=disponiveis]').click()">
+                                Ver ${abertosGeral} Chamados Disponíveis
+                            </button>
+                        </div>
+                    `;
+                } else {
+                    container.innerHTML += `
+                        <div class="empty-state animate__animated animate__fadeIn">
+                            <div class="empty-icon"><i class="fas fa-clipboard-check"></i></div>
+                            <p class="empty-text">Nenhum chamado encontrado nesta categoria.</p>
+                        </div>
+                    `;
+                }
                 return;
             }
 
             const ticketsHtml = filtered.map(t => {
-                const date = t.dataAbertura?.toDate().toLocaleDateString('pt-BR', { hour: '2-digit', minute: '2-digit' }) || '--';
+                const date = formatDate(t.dataAbertura);
                 const statusClass = t.status === 'Aberto' ? 'status-aberto' : t.status === 'Em Andamento' ? 'status-andamento' : 'status-concluido';
                 const cardClass = t.prioridade === 'Urgente' ? 'ticket-card urgente' : t.status === 'Em Andamento' ? 'ticket-card andamento' : 'ticket-card';
 
