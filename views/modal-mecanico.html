@@ -1,0 +1,59 @@
+<!-- Modal para Cadastro/Edição de Mecânicos -->
+<div class="modal fade" id="modalMecanico" tabindex="-1" aria-labelledby="modalMecanicoTitle" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalMecanicoTitle">Novo Mecânico</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formMecanico">
+                    <input type="hidden" id="mecanicoId">
+
+                    <div class="mb-3">
+                        <label for="selectFuncionarioExistente" class="form-label">Vincular a Funcionário Existente</label>
+                        <select class="form-select" id="selectFuncionarioExistente">
+                            <option value="">-- Novo Mecânico --</option>
+                        </select>
+                        <div class="form-text">Selecione um funcionário para vincular ou deixe "-- Novo Mecânico --" para criar um novo registro.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="nomeMecanico" class="form-label">Nome do Mecânico</label>
+                        <input type="text" class="form-control" id="nomeMecanico" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="matriculaMecanico" class="form-label">Matrícula</label>
+                        <input type="text" class="form-control" id="matriculaMecanico">
+                    </div>
+                    <div class="mb-3">
+                        <label for="telefoneMecanico" class="form-label">Telefone (WhatsApp)</label>
+                        <input type="tel" class="form-control" id="telefoneMecanico" placeholder="Ex: 5542991234567">
+                    </div>
+                    <div class="mb-3">
+                        <label for="setorMecanico" class="form-label">Setor</label>
+                        <input type="text" class="form-control" id="setorMecanico">
+                    </div>
+                    <div class="mb-3">
+                        <label for="nivelMecanico" class="form-label">Nível de Acesso</label>
+                        <select class="form-select" id="nivelMecanico">
+                            <option value="mecanico">Mecânico Normal</option>
+                            <option value="gerente">Gerente de Manutenção</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="statusMecanico" class="form-label">Status</label>
+                        <select class="form-select" id="statusMecanico">
+                            <option value="Ativo">Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarMecanico()">Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>

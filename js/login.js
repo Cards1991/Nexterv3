@@ -33,10 +33,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // Mostrar loading
             const submitBtn = form.querySelector('button[type="submit"]');
             const btnText = submitBtn.querySelector('.btn-text');
-            const originalText = btnText.textContent;
+            const originalHTML = submitBtn.innerHTML;
             
-            btnText.textContent = 'Verificando acesso...';
-            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>' + submitBtn.innerHTML;
+            submitBtn.style.width = submitBtn.offsetWidth + 'px'; // Mantém a largura
+            submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
             submitBtn.disabled = true;
             
             // Efeito de desfoque no card
@@ -113,7 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Restaurar botão
                 if (!document.querySelector('.slide-out')) { // Só restaura se não estiver saindo
                     submitBtn.disabled = false;
-                    submitBtn.innerHTML = `<span class="btn-text">${originalText}</span>`;
+                    submitBtn.style.width = '';
+                    submitBtn.innerHTML = originalHTML;
                 }
             }
         });

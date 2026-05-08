@@ -102,6 +102,11 @@ async function showSection(sectionName) {
             window.inicializarLancamentoHorasExtras();
         }
 
+        // Carregar scripts necessários para a seção
+        if (typeof ScriptLoader !== 'undefined') {
+            await ScriptLoader.loadForSection(sectionName);
+        }
+
         // Carregar dados específicos da seção
         await carregarDadosSecao(sectionName);
     } else {
@@ -118,6 +123,11 @@ async function showSection(sectionName) {
         mainContent.innerHTML = '<div class="text-center mt-5"><i class="fas fa-spinner fa-spin fa-3x text-primary"></i><p class="mt-2 text-muted">Carregando módulo...</p></div>';
 
         try {
+            // Carregar scripts necessários para a seção
+            if (typeof ScriptLoader !== 'undefined') {
+                await ScriptLoader.loadForSection(sectionName);
+            }
+
             const resposta = await fetch(`views/${sectionName}.html`);
             if (!resposta.ok) {
                 mainContent.innerHTML = '<div class="alert alert-danger mt-5">Tela não encontrada ou não migrada.</div>';
@@ -744,7 +754,10 @@ if (typeof firebase === 'undefined') {
 // Carregar e exibir o logo da empresa
 async function carregarLogoEmpresa() {
     const logoEl = document.getElementById('sidebar-logo');
-    if (!logoEl) return;
+    if (!logoEl) {
+        console.warn('⚠️ Elemento #sidebar-logo não encontrado.');
+        return;
+    }
 
     try {
         const snapshot = await db.collection('empresas').where('logoUrl', '!=', '').limit(1).get();
@@ -752,8 +765,26 @@ async function carregarLogoEmpresa() {
             const empresa = snapshot.docs[0].data();
             const logoFilename = empresa.logoUrl;
             if (logoFilename) {
-                logoEl.src = `assets/logos/${logoFilename}`;
+                // Tenta carregar de assets/logos/ ou assets/
+                const possiblePaths = [
+                    `assets/logos/${logoFilename}`,
+                    `assets/${logoFilename}`,
+                    logoFilename // se for uma URL completa
+                ];
+                
+                // Por padrão, usa o primeiro, mas vamos validar se necessário
+                // Para simplificar, vamos usar o que parece mais provável dado o list_dir
+                logoEl.src = logoFilename.startsWith('http') ? logoFilename : `assets/${logoFilename}`;
+                
+                logoEl.onerror = () => {
+                    if (logoEl.src.includes('assets/')) {
+                        logoEl.src = `assets/logos/${logoFilename}`;
+                    }
+                };
             }
+        } else {
+            // Fallback para logo padrão se existir
+            logoEl.src = 'assets/LOGO.png';
         }
     } catch (error) {
         console.error('Erro ao carregar logo:', error);

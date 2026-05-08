@@ -1290,14 +1290,18 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
     --cor-mecanico-text: #e0e0e0;
 }
 
+/* Container Principal do Painel */
 .section-mecanico {
     background: linear-gradient(135deg, #1a1a2e 0%, #0f3460 100%);
-    border-radius: var(--border-radius-lg);
-    padding: 20px;
+    min-height: 100vh;
+    padding: 20px 15px 100px 15px; /* Padding inferior aumentado para evitar sobreposição do nav-bottom */
     color: #e0e0e0;
-    min-height: 80vh;
+    position: relative;
+    margin: -2rem -1.5rem; /* Compensa o padding do content-wrapper para ficar full-screen no mobile */
+    border-radius: 0;
 }
 
+/* Chips de Estatísticas em Grid Responsivo */
 .mecanico-stat-chip {
     background: rgba(22, 33, 62, 0.9);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1312,6 +1316,7 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
     display: block;
 }
 
+/* Cards de Chamados */
 .mecanico-card {
     background: rgba(22, 33, 62, 0.92);
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1326,12 +1331,23 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
     transform: translateY(-2px);
 }
 
-.mecanico-card.urgente {
-    border-left: 5px solid #dc3545;
+/* Prioridades nos Cards */
+.mecanico-card.urgente { border-left: 5px solid #dc3545; }
+.mecanico-card.alta { border-left: 5px solid #ffc107; }
+.mecanico-card.normal { border-left: 5px solid #198754; }
+
+/* Header do Card */
+.mecanico-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+    gap: 10px;
 }
 
 .mecanico-badge-status {
-    font-size: 0.7rem;
+    white-space: nowrap;
+    font-size: 0.65rem;
     padding: 4px 10px;
     border-radius: 20px;
     text-transform: uppercase;
@@ -1339,10 +1355,12 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
 }
 
 .filter-tab-mecanico {
-    background: rgba(255, 255, 255, 0.06);
+    flex: 1;
+    text-align: center;
+    background: rgba(255, 255, 255, 0.05);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 20px;
-    padding: 7px 15px;
+    border-radius: 12px;
+    padding: 10px 5px;
     cursor: pointer;
     font-size: 0.85rem;
     transition: 0.2s;
@@ -1356,4 +1374,43 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
 .mecanico-btn-action {
     border-radius: 10px;
     font-weight: 600;
+    width: 100%;
+    padding: 12px;
+    margin-top: 10px;
+}
+
+/* Bottom Nav Customizado para Mobile */
+.mecanico-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    height: 70px;
+    background: #16213e;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 1050;
+    box-shadow: 0 -5px 15px rgba(0,0,0,0.3);
+}
+
+.mecanico-nav-item {
+    color: #8b8b8b;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: 10px;
+    transition: 0.2s;
+}
+
+.mecanico-nav-item.active {
+    color: #e94560;
+}
+
+.mecanico-nav-item i {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
 }

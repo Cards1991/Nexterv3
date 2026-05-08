@@ -1038,92 +1038,88 @@ async function abrirModalChamado(chamadoId = null) {
         modalEl.id = modalId;
         modalEl.className = 'modal fade';
         modalEl.innerHTML = `
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header bg-primary text-white">
-                        <h5 class="modal-title">
-                            <i class="fas fa-tools"></i> ${chamadoId ? 'Editar' : 'Abrir'} Chamado de Manutenção
+            <div class="modal-dialog modal-lg modal-dialog-centered">
+                <div class="modal-content border-0 shadow-lg">
+                    <div class="modal-header bg-primary text-white border-0">
+                        <h5 class="modal-title d-flex align-items-center">
+                            <div class="bg-white text-primary rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="fas fa-tools"></i>
+                            </div>
+                            <span>${chamadoId ? 'Editar' : 'Abrir'} Chamado de Manutenção</span>
                         </h5>
                         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body">
+                    <div class="modal-body p-4">
                         <form id="form-chamado-manutencao">
                             <input type="hidden" id="chamado-id" value="${chamadoId || ''}">
-                            <div class="row">
-                                <div class="col-md-12 mb-3">
-                                    <label class="form-label">Máquina *</label>
-                                    <select class="form-select" id="chamado-maquina" required>
-                                        <option value="">Selecione uma máquina...</option>
+                            
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Máquina *</label>
+                                <select class="form-select form-select-lg" id="chamado-maquina" required>
+                                    <option value="">Selecione uma máquina...</option>
+                                </select>
+                                <div class="form-text mt-1"><i class="fas fa-info-circle me-1"></i> Selecione a máquina que necessita de intervenção.</div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Motivo da Manutenção *</label>
+                                <div id="chamado-motivos-frequentes" class="mb-2"></div>
+                                <input type="text" class="form-control" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
+                            </div>
+
+                            <div class="mb-4">
+                                <label class="form-label fw-bold">Observações Adicionais</label>
+                                <textarea class="form-control" id="chamado-obs" rows="3" placeholder="Detalhes que podem ajudar o mecânico..."></textarea>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <div class="card bg-light border-0 p-3 h-100">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
+                                            <label class="form-check-label fw-bold text-danger" for="chamado-maquina-parada">
+                                                <i class="fas fa-exclamation-triangle me-1"></i> A máquina está parada?
+                                            </label>
+                                        </div>
+                                        <p class="small text-muted mb-0 mt-2">Ative se a produção está interrompida.</p>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card bg-light border-0 p-3 h-100">
+                                        <div class="form-check form-switch mb-0">
+                                            <input class="form-check-input" type="checkbox" id="chamado-enviar-whatsapp" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''}>
+                                            <label class="form-check-label fw-bold text-success" for="chamado-enviar-whatsapp">
+                                                <i class="fab fa-whatsapp me-1"></i> Notificar via WhatsApp
+                                            </label>
+                                        </div>
+                                        <p class="small text-muted mb-0 mt-2">Informa a equipe via mensagem instantânea.</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="whatsapp-opcoes-container" class="mt-4 p-3 bg-opacity-10 bg-success rounded-3 border border-success border-opacity-25" style="display:none;">
+                                <h6 class="fw-bold mb-3 d-flex align-items-center">
+                                    <i class="fas fa-paper-plane me-2 text-success"></i> Destinatários da Notificação
+                                </h6>
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input" type="radio" name="whatsapp-destino" id="whatsapp-todos-mecanicos" value="todos" checked>
+                                    <label class="form-check-label small fw-semibold" for="whatsapp-todos-mecanicos">
+                                        📱 TODOS os Mecânicos (${await carregarListaMecanicosComTelefone().then(m => m.length) || 0})
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-bold">OU Mecânico Individual:</label>
+                                    <select class="form-select form-select-sm" id="select-mecanico-individual">
+                                        <option value="">-- Selecione um mecânico --</option>
                                     </select>
                                 </div>
                             </div>
-                            <div class="mb-3">
-                                <label class="form-label">Motivo da Manutenção *</label>
-                                <div id="chamado-motivos-frequentes"></div>
-                                <input type="text" class="form-control mt-1" id="chamado-motivo" placeholder="Ex: Vazamento de óleo, falha no motor" required>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Observações</label>
-                                <textarea class="form-control" id="chamado-obs" rows="3" placeholder="Detalhes adicionais..."></textarea>
-                            </div>
-                            <div class="row">
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
-                                        <label class="form-check-label" for="chamado-maquina-parada">
-                                            <strong><i class="fas fa-exclamation-triangle text-danger"></i> A máquina está parada?</strong>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="form-check form-switch mb-3">
-                                        <input class="form-check-input" type="checkbox" id="chamado-maquina-parada">
-                                        <label class="form-check-label" for="chamado-maquina-parada">
-                                            <strong><i class="fas fa-exclamation-triangle text-danger"></i> A máquina está parada?</strong>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <!-- ✅ NOVO: Opções WhatsApp Expandidas -->
-                                    <div class="mb-3">
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox" id="chamado-enviar-whatsapp" ${WHATSAPP_CONFIG.enabled ? 'checked' : ''}>
-                                            <label class="form-check-label" for="chamado-enviar-whatsapp">
-                                                <i class="fab fa-whatsapp ${WHATSAPP_CONFIG.enabled ? 'text-success' : 'text-muted'}"></i>
-                                                ${WHATSAPP_CONFIG.enabled ? 'Notificar via WhatsApp' : 'WhatsApp desativado'}
-                                            </label>
-                                        </div>
-                                    </div>
-                                    <div id="whatsapp-opcoes-container" style="display:none; margin-top:10px;">
-                                        <div class="form-check mb-2">
-                                            <input class="form-check-input" type="radio" name="whatsapp-destino" id="whatsapp-todos-mecanicos" value="todos">
-                                            <label class="form-check-label small" for="whatsapp-todos-mecanicos">
-                                                📱 <strong>TODOS os Mecânicos</strong> (${await carregarListaMecanicosComTelefone().then(m => m.length) || 0})
-                                            </label>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label class="form-label small fw-bold">OU Mecânico Individual:</label>
-                                            <select class="form-select form-select-sm" id="select-mecanico-individual">
-                                                <option value="">-- Selecione um mecânico --</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            ${WHATSAPP_CONFIG.enabled ? `
-                            <div class="alert alert-info">
-                                <small>
-                                    <i class="fas fa-info-circle"></i> 
-                                    Uma notificação será enviada ao gerente via WhatsApp se a opção estiver ativada.
-                                    ${WHATSAPP_CONFIG.gerenteNome ? `Destinatário: ${WHATSAPP_CONFIG.gerenteNome}` : ''}
-                                </small>
-                            </div>` : ''}
                         </form>
                     </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" onclick="salvarChamado()">
-                            <i class="fas fa-paper-plane"></i> ${chamadoId ? 'Atualizar' : 'Abrir'} Chamado
+                    <div class="modal-footer bg-light border-0 p-4">
+                        <button type="button" class="btn btn-outline-secondary px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-primary px-5 shadow-sm" onclick="salvarChamado()">
+                            <i class="fas fa-save me-2"></i> ${chamadoId ? 'Atualizar' : 'Confirmar e Abrir'} Chamado
                         </button>
                     </div>
                 </div>

@@ -11,466 +11,92 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
     <link rel="stylesheet" href="css/style.css">
     <link rel="stylesheet" href="css/modals.css">
+    <link rel="stylesheet" href="css/refined.css">
 
     <!-- Bootstrap Bundle -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-    <!-- Firebase -->
+    <!-- Firebase SDK (V8) -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-analytics.js"></script>
 
-    <!-- Configuração do Firebase e Fallback -->
+    <!-- Configuração do Firebase -->
     <script src="js/env-loader.js"></script>
     <script src="firebase-config.js"></script>
     <script>
-        // Garante a inicialização do Firebase se o firebase-config.js falhar
+        // Inicialização Global do Firebase
         if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
-            console.warn("⚠️ Inicializando Firebase via env-loader (fallback)...");
             firebase.initializeApp(window.__FIREBASE_CONFIG__);
         }
         if (firebase.apps.length && !window.db) {
             window.db = firebase.firestore();
             window.auth = firebase.auth();
-            console.log("✅ Firebase e DB inicializados globalmente.");
+            console.log("✅ Firebase Inicializado.");
         }
     </script>
 
-    <!-- Local Database for Offline Mode -->
-    <script src="js/local-db.js"></script>
-
-    <!-- View Loader para componentes dinâmicos -->
-    <script src="js/view-loader.js"></script>
-
-    <!-- PapaParse para processamento de CSV -->
+    <!-- Bibliotecas Externas Essenciais (Carregadas via CDN) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.2/papaparse.min.js"></script>
-    <!-- SheetJS (xlsx) para processamento de arquivos Excel -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- Leaflet CSS & JS -->
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <!-- Leaflet MarkerCluster -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <!-- Leaflet para Mapas -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
     <script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
-    <!-- Signature Pad para assinatura eletrônica -->
-    <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.0.0/dist/signature_pad.umd.min.js"></script>
 
-    <!-- HTML5 QRCode Scanner (Para câmera do celular) -->
-    <script src="https://unpkg.com/html5-qrcode"></script>
-
-    <!-- Three.js Import Map -->
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
-
-    <style>
-        /* Previne o "flash" da página antes do redirecionamento de login */
-        .app-container {
-            display: none;
-        }
-
-        /* Estilos para a barra de rolagem da agenda */
-        .agenda-cards {
-            max-height: 500px;
-            overflow-y: auto;
-            padding-right: 8px;
-        }
-
-        /* Scrollbar personalizada para tabelas */
-        .table-responsive::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        .table-responsive::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 4px;
-        }
-
-        .table-responsive::-webkit-scrollbar-thumb {
-            background: #888;
-            border-radius: 4px;
-        }
-
-        .table-responsive::-webkit-scrollbar-thumb:hover {
-            background: #555;
-        }
-
-        /* Header fixo (sticky) para tabelas */
-        .table-responsive table thead.sticky-top {
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            background-color: #f8f9fa;
-        }
-
-        .agenda-cards::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .agenda-cards::-webkit-scrollbar-track {
-            background: #f1f1f1;
-            border-radius: 10px;
-        }
-
-        .agenda-cards::-webkit-scrollbar-thumb {
-            background: #ccc;
-            border-radius: 10px;
-        }
-
-        .agenda-cards::-webkit-scrollbar-thumb:hover {
-            background: #aaa;
-        }
-
-        /* Animação de alerta para cards de manutenção */
-        @keyframes blink-alert {
-            0% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
-            }
-
-            50% {
-                transform: scale(1.05);
-                box-shadow: 0 0 20px 10px rgba(255, 255, 255, 0.5);
-            }
-
-            100% {
-                transform: scale(1);
-                box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.2);
-            }
-        }
-
-        .card-alert-blink {
-            animation: blink-alert 1.3s infinite ease-in-out;
-            z-index: 10;
-            position: relative;
-        }
-
-        /* Estilos para o Chat Inteligente */
-        .chat-fab {
-            position: fixed;
-            bottom: 25px;
-            right: 25px;
-            width: 60px;
-            height: 60px;
-            background-color: #0d6efd;
-            border-radius: 50%;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            z-index: 1050;
-            transition: transform 0.3s ease;
-        }
-
-        .chat-fab:hover {
-            transform: scale(1.1);
-        }
-
-        .chat-window {
-            display: none;
-            position: fixed;
-            bottom: 100px;
-            right: 25px;
-            width: 370px;
-            height: 500px;
-            background-color: white;
-            border-radius: 15px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            flex-direction: column;
-            z-index: 1040;
-            overflow: hidden;
-        }
-
-        .chat-window.open {
-            display: flex;
-        }
-
-        .chat-header {
-            background-color: #0d6efd;
-            color: white;
-            padding: 15px;
-            border-top-left-radius: 15px;
-            border-top-right-radius: 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .chat-header h5 {
-            margin: 0;
-            font-size: 1.1rem;
-        }
-
-        .chat-body {
-            flex-grow: 1;
-            padding: 15px;
-            overflow-y: auto;
-            background-color: #f8f9fa;
-        }
-
-        .chat-message {
-            margin-bottom: 15px;
-            display: flex;
-        }
-
-        .chat-message.user {
-            justify-content: flex-end;
-        }
-
-        .chat-message.assistant .message-bubble {
-            background-color: #e9ecef;
-            color: #333;
-            border-radius: 15px 15px 15px 0;
-        }
-
-        .chat-message.user .message-bubble {
-            background-color: #0d6efd;
-            color: white;
-            border-radius: 15px 15px 0 15px;
-        }
-
-        .message-bubble {
-            padding: 10px 15px;
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-
-        .chat-footer {
-            padding: 10px;
-            border-top: 1px solid #dee2e6;
-            display: flex;
-        }
-
-        .chat-footer input {
-            border-radius: 20px;
-            border: 1px solid #ced4da;
-            flex-grow: 1;
-            margin-right: 10px;
-        }
-
-        .chat-footer button {
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-        }
-    </style>
+    <!-- Sistema de Carregamento -->
+    <script src="js/script-loader.js"></script>
+    <script src="js/view-loader.js"></script>
+    <script src="js/local-db.js"></script>
 </head>
 
 <body class="sidebar-collapsed">
-    <div id="toast-container" style="position: fixed; top: 20px; right: 20px; z-index: 9999;"></div>
+    <div id="toast-container"></div>
+    
     <div class="app-container">
-        <!-- Sidebar: views/sidebar.html -->
+        <!-- Componentes Dinâmicos (Sidebar e Header) -->
         <div id="sidebar"></div>
+        
         <div class="main-content">
-            <!-- Header: views/header.html -->
             <div id="header-container"></div>
 
             <main class="content-wrapper">
-                <!-- Botão para correção de dados, visível apenas com #data-fix na URL -->
+                <!-- Botão de Correção (Oculto por padrão) -->
                 <div id="data-fix-wrapper" style="display: none; text-align: center; margin-bottom: 1rem;">
-                    <button class="btn btn-warning" onclick="fixMissingFuncoes()">Corrigir Funções Faltantes nas
-                        Empresas</button>
+                    <button class="btn btn-warning" onclick="fixMissingFuncoes()">
+                        Corrigir Funções Faltantes nas Empresas
+                    </button>
                 </div>
-                <!-- Seções são carregadas dinamicamente aqui pelo showSection() do app.js -->
+                
+                <!-- Conteúdo das Seções -->
                 <div id="dynamic-content"></div>
             </main>
         </div>
     </div>
-    <!-- Chat Inteligente (AI Assistant) -->
-    <div class="chat-fab" id="ai-chat-fab">
-        <i class="fas fa-robot"></i>
-    </div>
-    <div class="chat-window" id="ai-chat-window">
-        <div class="chat-header">
-            <h5>Assistente Inteligente</h5>
-            <button type="button" class="btn-close btn-close-white" id="ai-chat-close"></button>
-        </div>
-        <div class="chat-body" id="ai-chat-body">
-            <div class="chat-message assistant">
-                <div class="message-bubble">
-                    Olá! Sou seu assistente de gestão. Como posso ajudar hoje?
-                </div>
-            </div>
-        </div>
 
-<!-- Modal para Cadastro/Edição de Mecânicos -->
-<div class="modal fade" id="modalMecanico" tabindex="-1" aria-labelledby="modalMecanicoTitle" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="modalMecanicoTitle">Novo Mecânico</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="formMecanico">
-                    <input type="hidden" id="mecanicoId">
-
-                    <div class="mb-3">
-                        <label for="selectFuncionarioExistente" class="form-label">Vincular a Funcionário Existente</label>
-                        <select class="form-select" id="selectFuncionarioExistente">
-                            <option value="">-- Novo Mecânico --</option>
-                        </select>
-                        <div class="form-text">Selecione um funcionário para vincular ou deixe "-- Novo Mecânico --" para criar um novo registro.</div>
-                    </div>
-
-                    <div class="mb-3">
-                        <label for="nomeMecanico" class="form-label">Nome do Mecânico</label>
-                        <input type="text" class="form-control" id="nomeMecanico" required>
-                    </div>
-                    <div class="mb-3">
-                        <label for="matriculaMecanico" class="form-label">Matrícula</label>
-                        <input type="text" class="form-control" id="matriculaMecanico">
-                    </div>
-                    <div class="mb-3">
-                        <label for="telefoneMecanico" class="form-label">Telefone (WhatsApp)</label>
-                        <input type="tel" class="form-control" id="telefoneMecanico" placeholder="Ex: 5542991234567">
-                    </div>
-                    <div class="mb-3">
-                        <label for="setorMecanico" class="form-label">Setor</label>
-                        <input type="text" class="form-control" id="setorMecanico">
-                    </div>
-                    <div class="mb-3">
-                        <label for="nivelMecanico" class="form-label">Nível de Acesso</label>
-                        <select class="form-select" id="nivelMecanico">
-                            <option value="mecanico">Mecânico Normal</option>
-                            <option value="gerente">Gerente de Manutenção</option>
-                        </select>
-                    </div>
-                    <div class="mb-3">
-                        <label for="statusMecanico" class="form-label">Status</label>
-                        <select class="form-select" id="statusMecanico">
-                            <option value="Ativo">Ativo</option>
-                            <option value="Inativo">Inativo</option>
-                        </select>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarMecanico()">Salvar</button>
-            </div>
-        </div>
-    </div>
-</div>
-        <div class="chat-footer">
-            <input type="text" class="form-control" id="ai-chat-input" placeholder="Digite sua pergunta...">
-            <button class="btn btn-primary" id="ai-chat-send"><i class="fas fa-paper-plane"></i></button>
-        </div>
-    </div>
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.0/dist/chart.min.js"></script>
+    <!-- Scripts do Sistema (Base) -->
     <script src="js/utils-v4.js"></script>
     <script src="js/data-fix.js"></script>
-    <script src="js/afd-parser.js"></script>
-    <script src="js/empresas.js"></script>
-    <script src="js/setores.js"></script>
-    <script src="js/funcionarios.js"></script>
-    <script src="js/movimentacoes.js"></script>
-    <script src="js/painel-demitidos.js"></script>
-    <script src="js/transferencia.js"></script>
-    <script src="js/alteracao-funcao.js"></script>
-    <script src="js/faltas.js"></script>
-    <script src="js/afastamentos.js"></script>
-    <script src="js/atestados.js?v=1.2"></script>
-    <script src="js/controle-disciplinar.js"></script>
-    <script src="js/dp-calculos.js"></script>
-    <script src="js/controle-cestas.js"></script>
-    <script src="js/horas-extras.js"></script>
-    <script src="js/historico-colaborador.js"></script>
-    <script src="js/horas-extras-lancamento.js"></script>
-    <script src="js/solicitacao-horas-extras.js"></script>
-    <script src="js/autorizacao-horas.js"></script>
-    <script src="js/financeiro.js"></script>
-    <script src="js/custos.js"></script>
-    <script src="js/iso-maquinas.js"></script>
-    <script src="js/iso-mecanicos.js"></script>
-    <script src="js/cadastro-mecanicos.js"></script>
-    <script src="js/iso-manutencao.js"></script>
-    <script src="js/painel-mecanico.js"></script>
-    <script src="js/manutencao-mecanico.js"></script>
-    <script src="js/iso-organograma.js"></script>
-    <script src="js/iso-swot.js"></script>
-    <script src="js/iso-avaliacao-colaboradores.js"></script>
-    <script src="js/juridico-clientes.js"></script>
-    <script src="js/juridico-processos.js"></script>
-    <script src="js/juridico-dashboard.js"></script>
-    <script src="js/juridico-automacao.js"></script>
-    <script src="js/juridico-financeiro.js"></script>
-    <script src="js/juridico-documentos.js"></script>
-    <script src="js/juridico-analise-cpf.js"></script>
-    <script src="js/frota-controle.js"></script>
-    <script src="js/epi-controle.js"></script>
-    <script src="js/gestao-sumidos.js"></script>
-    <script src="js/agenda.js"></script>
-    <script src="js/saude-psicossocial.js"></script>
-    <script src="js/analise-pessoas.js"></script>
-    <script src="js/analise-rescisao.js"></script>
-    <script src="js/dashboard-atividades.js"></script>
-    <script src="js/dashboard-faltas.js"></script>
-    <script src="js/dashboard-manutencao.js"></script>
-    <script src="js/admin.js"></script>
-    <script src="js/treinamento.js" defer></script>
-    <script src="js/producao-gestao.js" defer></script>
-    <script src="js/avaliacao-experiencia.js" defer></script>
-    <script src="js/voice-commands.js"></script>
-    <script src="js/mapaColaboradores.js"></script>
-    <script src="js/controle-reunioes.js"></script>
     <script src="js/global-functions.js"></script>
     <script src="js/app.js"></script>
-    <script src="js/cid-manager.js"></script>
-    <script src="js/analise-atestados.js"></script>
-    <script src="js/indicadores-direcao.js"></script>
     <script src="js/ai-assistant.js"></script>
     <script src="js/auto-correction-agent.js"></script>
-    <script type="module" src="js/body-map-3d.js"></script>
-    <script src="js/ponto-pf.js" defer></script>
     <script src="js/custom-fixes.js" defer></script>
-    <script src="js/setor-macro.js"></script>
-    <script src="js/ocorrencias.js?v=5"></script>
-    <script src="js/manutencao-qr.js"></script>
-    <script src="js/experiencia-export.js"></script>
-    <script src="js/chamados-manutencao.js"></script>
-    <!-- Módulos de Segurança do Trabalho -->
-    <script src="js/gestao-cipa.js"></script>
-    <script src="js/brigada-incendio.js"></script>
-    <script src="js/controle-extintores.js"></script>
+
     <script>
-        // Mostra o botão de correção de dados se a URL tiver o hash #data-fix
+        // Check for data-fix hash
         if (window.location.hash === '#data-fix') {
             const fixWrapper = document.getElementById('data-fix-wrapper');
             if (fixWrapper) fixWrapper.style.display = 'block';
         }
-        // Garantir que a função toggleCampoVeiculo esteja disponível globalmente
-        window.toggleCampoVeiculo = window.toggleCampoVeiculo || function () {
-            const isPA = document.getElementById('ocorrencia-encaminhado-pa')?.checked;
-            const containerVeiculo = document.getElementById('container-veiculo-pa');
-            const campoVeiculo = document.getElementById('ocorrencia-veiculo');
-
-            if (!containerVeiculo || !campoVeiculo) return;
-
-            if (isPA) {
-                containerVeiculo.style.display = 'block';
-                campoVeiculo.setAttribute('required', 'required');
-            } else {
-                containerVeiculo.style.display = 'none';
-                campoVeiculo.removeAttribute('required');
-                campoVeiculo.value = '';
-            }
-        };
     </script>
 </body>
 

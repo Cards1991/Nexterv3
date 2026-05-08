@@ -16,38 +16,42 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
 
     <style>
+        /* ===== DESIGN SYSTEM ===== */
         :root {
-            --bg-dark: #0a0b10;
+            --bg-body: #0d1117;
             --surface: #161b22;
-            --surface-light: #21262d;
-            --primary: #3fb950;
-            --accent: #238636;
+            --surface-hover: #1c2128;
+            --surface-border: #30363d;
+            --primary: #2ea043;
+            --primary-glow: rgba(46, 160, 67, 0.15);
+            --info: #388bfd;
+            --info-glow: rgba(56, 139, 253, 0.15);
             --danger: #f85149;
+            --danger-glow: rgba(248, 81, 73, 0.15);
             --warning: #d29922;
-            --info: #58a6ff;
-            --text-main: #c9d1d9;
-            --text-dim: #8b949e;
-            --glass: rgba(22, 27, 34, 0.8);
-            --safe-bottom: env(safe-area-inset-bottom);
-        }
-
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-dim: #484f58;
+            --radius-lg: 24px;
+            --radius-md: 16px;
+            --shadow-sm: 0 4px 12px rgba(0,0,0,0.1);
+            --shadow-md: 0 8px 24px rgba(0,0,0,0.2);
         }
 
         body {
-            background-color: var(--bg-dark);
-            color: var(--text-main);
+            background: var(--bg-body);
+            color: var(--text-primary);
             font-family: 'Inter', sans-serif;
+            letter-spacing: -0.2px;
             margin: 0;
             padding: 0;
             overflow-x: hidden;
             min-height: 100vh;
         }
 
-        h1, h2, h3, .brand-title {
+        h1, h2, h3, h4, .brand-title {
             font-family: 'Outfit', sans-serif;
+            font-weight: 700;
         }
 
         /* ===== LOGIN VIEW ===== */
@@ -105,42 +109,42 @@
         }
 
         .action-btn {
-            background: var(--surface);
-            border: 1px solid var(--surface-light);
-            border-radius: 24px;
+            background: linear-gradient(145deg, #1c2128, #161b22);
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
             padding: 24px;
             display: flex;
-            flex-direction: row; /* Alterado para linha para melhor alinhamento */
             align-items: center;
             justify-content: center;
             gap: 16px;
             color: white;
-            transition: all 0.3s ease;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: var(--shadow-md);
             text-decoration: none;
+            width: 100%;
         }
 
         .action-btn:active {
-            transform: scale(0.97);
-            background: var(--surface-light);
+            transform: scale(0.96);
+            border-color: var(--primary);
         }
 
         .action-icon {
-            width: 54px;
-            height: 54px;
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            border-radius: 16px;
+            width: 50px;
+            height: 50px;
+            background: var(--primary-glow);
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            box-shadow: 0 4px 15px rgba(63, 185, 80, 0.3);
+            font-size: 22px;
+            color: var(--primary);
+            border: 1px solid rgba(46, 160, 67, 0.3);
         }
 
         .action-btn span {
             font-size: 16px;
             font-weight: 700;
-            letter-spacing: -0.3px;
         }
 
         .scanner-container {
@@ -235,18 +239,26 @@
         /* ===== MAIN APP LAYOUT ===== */
         #app-shell {
             display: none;
-            padding-bottom: 100px; /* Space for bottom nav */
+            /* evita overlap do conteúdo com o bottom-nav fixo */
+            padding-bottom: calc(120px + env(safe-area-inset-bottom, 0px));
         }
 
+        /* garante que a lista respeite o espaço do bottom-nav e permita scroll */
+        #tickets-list {
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+
+
         .app-header {
-            background: var(--glass);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 16px 20px;
+            background: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 18px 24px;
             position: sticky;
             top: 0;
             z-index: 1000;
-            border-bottom: 1px solid var(--surface-light);
+            border-bottom: 1px solid var(--surface-border);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -255,39 +267,47 @@
         .user-info {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
         }
 
         .avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: var(--primary);
+            width: 44px;
+            height: 44px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, var(--primary), #238636);
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             color: white;
             font-size: 18px;
+            box-shadow: 0 4px 12px rgba(46, 160, 67, 0.3);
         }
 
         .user-details h6 {
             margin: 0;
-            font-size: 14px;
+            font-size: 15px;
             color: white;
+            font-weight: 600;
         }
 
         .user-details span {
             font-size: 11px;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         .header-actions .btn-logout {
-            color: var(--text-dim);
+            color: var(--text-secondary);
             font-size: 20px;
             background: none;
             border: none;
+            transition: color 0.2s;
+        }
+
+        .header-actions .btn-logout:active {
+            color: var(--danger);
         }
 
         /* DASHBOARD STATS */
@@ -295,61 +315,72 @@
             display: grid;
             grid-template-columns: repeat(3, 1fr);
             gap: 16px;
-            padding: 8px 20px 24px;
+            padding: 24px 20px;
         }
 
         .stat-card {
             background: var(--surface);
-            border-radius: 16px;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-md);
             padding: 16px 12px;
             text-align: center;
-            border: 1px solid var(--surface-light);
+            transition: transform 0.2s;
         }
 
         .stat-value {
-            font-size: 24px;
-            font-weight: 700;
+            font-size: 26px;
+            font-weight: 800;
             display: block;
+            margin-bottom: 2px;
+            font-family: 'Outfit', sans-serif;
         }
 
         .stat-label {
             font-size: 10px;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             text-transform: uppercase;
+            font-weight: 600;
             letter-spacing: 0.5px;
-            margin-top: 4px;
-            display: block;
         }
 
         /* FILTER TABS */
         .filter-scroller {
+            position: sticky;
+            top: 80px; /* Logo abaixo do header */
+            z-index: 900;
+            background: rgba(13, 17, 23, 0.9);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
             overflow-x: auto;
-            padding: 0 20px 16px;
+            padding: 12px 20px 16px;
             display: flex;
-            gap: 10px;
+            gap: 12px;
             scrollbar-width: none;
+            border-bottom: 1px solid var(--surface-border);
+            margin-bottom: 8px;
         }
 
         .filter-scroller::-webkit-scrollbar { display: none; }
 
         .filter-tab {
-            background: var(--surface);
-            border: 1px solid var(--surface-light);
+            background: var(--surface-hover);
+            border: 1px solid var(--surface-border);
             border-radius: 100px;
-            padding: 8px 20px;
-            font-size: 13px;
+            padding: 10px 24px;
+            font-size: 14px;
             font-weight: 600;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             white-space: nowrap;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .filter-tab.active {
             background: var(--primary);
             color: white;
             border-color: var(--primary);
-            box-shadow: 0 4px 12px rgba(63, 185, 80, 0.3);
+            box-shadow: 0 4px 12px var(--primary-glow);
+            transform: translateY(-1px);
         }
 
         /* TICKET CARDS */
@@ -359,38 +390,33 @@
 
         .ticket-card {
             background: var(--surface);
-            border: 1px solid var(--surface-light);
-            border-radius: 20px;
-            padding: 20px;
-            margin-bottom: 16px;
-            position: relative;
+            border: 1px solid var(--surface-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 18px;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .ticket-card:active {
-            transform: scale(0.98);
-            background: var(--surface-light);
+            box-shadow: var(--shadow-sm);
         }
 
         .ticket-card.urgente {
-            border-left: 4px solid var(--danger);
+            border-left: 5px solid var(--danger);
+            background: linear-gradient(90deg, rgba(248, 81, 73, 0.03) 0%, var(--surface) 100%);
         }
 
         .ticket-card.andamento {
-            border-left: 4px solid var(--info);
+            border-left: 5px solid var(--info);
+            background: linear-gradient(90deg, rgba(56, 139, 253, 0.03) 0%, var(--surface) 100%);
         }
 
         .ticket-header {
             display: flex;
             justify-content: space-between;
             align-items: flex-start;
-            margin-bottom: 16px;
+            margin-bottom: 18px;
         }
 
         .machine-info h3 {
-            font-size: 18px;
-            font-weight: 700;
+            font-size: 19px;
             margin: 0 0 4px;
             color: white;
             letter-spacing: -0.5px;
@@ -398,61 +424,59 @@
 
         .machine-info p {
             font-size: 13px;
-            color: var(--text-dim);
+            color: var(--text-secondary);
             margin: 0;
-            font-family: 'Inter', sans-serif;
         }
 
         .status-badge {
-            font-size: 11px;
-            font-weight: 700;
+            font-size: 10px;
+            font-weight: 800;
             padding: 6px 12px;
-            border-radius: 12px;
+            border-radius: 10px;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.8px;
         }
 
-        .status-aberto { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
-        .status-andamento { background: rgba(88, 166, 255, 0.15); color: var(--info); }
-        .status-concluido { background: rgba(63, 185, 80, 0.15); color: var(--primary); }
+        .status-aberto { background: var(--danger-glow); color: var(--danger); }
+        .status-andamento { background: var(--info-glow); color: var(--info); }
+        .status-concluido { background: var(--primary-glow); color: var(--primary); }
 
         .ticket-body {
-            margin-bottom: 20px;
-            background: rgba(255,255,255,0.03);
-            padding: 12px;
-            border-radius: 12px;
+            margin-bottom: 22px;
         }
 
         .reason {
             display: flex;
-            gap: 10px;
-            margin-bottom: 12px;
-            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 14px;
         }
 
         .reason i {
-            margin-top: 3px;
-            font-size: 14px;
+            color: var(--text-secondary);
+            font-size: 15px;
+            margin-top: 2px;
         }
 
         .reason span {
-            font-size: 14px;
-            line-height: 1.5;
-            color: var(--text-main);
+            font-size: 15px;
+            line-height: 1.6;
+            color: var(--text-primary);
         }
 
         .meta-row {
             display: flex;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 16px;
+            padding-top: 14px;
+            border-top: 1px solid rgba(255,255,255,0.05);
         }
 
         .meta-item {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 8px;
             font-size: 12px;
-            color: var(--text-dim);
+            color: var(--text-secondary);
         }
 
         .ticket-actions {
@@ -463,29 +487,47 @@
         .btn-ticket {
             flex: 1;
             border: none;
-            border-radius: 14px;
-            padding: 12px;
+            border-radius: 16px;
+            padding: 14px;
             font-size: 14px;
-            font-weight: 600;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 8px;
-            transition: all 0.2s;
+            gap: 10px;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        .btn-view { background: var(--surface-light); color: var(--text-main); flex: 0 0 50px; }
-        .btn-start { background: var(--info); color: white; }
-        .btn-finish { background: var(--primary); color: white; }
+        .btn-view { 
+            background: var(--surface-border); 
+            color: white; 
+            flex: 0 0 54px; 
+        }
 
-        .btn-ticket:active { opacity: 0.8; transform: translateY(2px); }
+        .btn-start { 
+            background: var(--info); 
+            color: white;
+            box-shadow: 0 4px 12px var(--info-glow);
+        }
+
+        .btn-finish { 
+            background: var(--primary); 
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .btn-ticket:active { 
+            transform: translateY(2px);
+            filter: brightness(1.2);
+        }
 
         /* BOTTOM NAV */
-        .bottom-nav {
+.bottom-nav {
             position: fixed;
-            bottom: 0;
+            bottom: env(safe-area-inset-bottom, 0px);
             left: 0;
             right: 0;
+
             background: var(--glass);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
@@ -665,15 +707,16 @@
             <div class="user-profile">
                 <div class="avatar" id="user-avatar">M</div>
                 <div class="user-info">
-                    <p class="welcome">Olá,</p>
-                    <h2 id="user-name" class="user-name">Carregando...</h2>
+                    <p class="welcome" style="margin:0; font-size:11px; opacity:0.7;">Nexter Mobile <strong style="color:var(--primary)">V3.5</strong></p>
+                    <h2 id="user-name" class="user-name" style="margin:0; font-size:18px;">Carregando...</h2>
                 </div>
             </div>
             <button id="btn-logout" class="btn-icon-only"><i class="fas fa-sign-out-alt"></i></button>
         </header>
 
         <!-- Stats Overview -->
-        <div class="stats-grid animate__animated animate__fadeIn">
+        <div class="stats-grid animate__animated animate__fadeIn" style="margin-bottom: 6px;">
+
             <div class="stat-card">
                 <span class="stat-value" id="stat-abertos">0</span>
                 <span class="stat-label">Novos</span>
@@ -697,7 +740,7 @@
         </div>
 
         <!-- Filter Tabs -->
-        <div class="filter-tabs">
+        <div class="filter-scroller">
             <button class="filter-tab active" data-filter="ativos">Meus Chamados</button>
             <button class="filter-tab" data-filter="disponiveis">Disponíveis</button>
             <button class="filter-tab" data-filter="concluidos">Histórico</button>
