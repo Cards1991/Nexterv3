@@ -51,7 +51,26 @@ function setupFiltrosDisciplinares() {
         
         // Popula o filtro de funcionários
         if (typeof carregarSelectFuncionariosAtivos === 'function') {
-            carregarSelectFuncionariosAtivos('disciplinar-filtro-funcionario');
+            carregarSelectFuncionariosAtivos('disciplinar-filtro-funcionario').then(() => {
+                const select = document.getElementById('disciplinar-filtro-funcionario');
+                if (select && select.options.length > 0) {
+                    select.options[0].text = 'Todos';
+                }
+            });
+        } else {
+            // Fallback local se a função global não estiver carregada
+            const select = document.getElementById('disciplinar-filtro-funcionario');
+            db.collection('funcionarios').where('status', '==', 'Ativo').get().then(snapshot => {
+                select.innerHTML = '<option value="">Todos</option>';
+                const funcs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                funcs.sort((a, b) => a.nome.localeCompare(b.nome));
+                funcs.forEach(func => {
+                    const option = document.createElement('option');
+                    option.value = func.id;
+                    option.textContent = func.nome;
+                    select.appendChild(option);
+                });
+            });
         }
 
         document.getElementById('btn-filtrar-disciplinar').addEventListener('click', carregarDadosDisciplinares);
@@ -87,7 +106,8 @@ async function carregarDadosDisciplinares() {
         if (dataFim) query = query.where('dataOcorrencia', '<=', new Date(dataFim + 'T23:59:59'));
         if (funcId) query = query.where('funcionarioId', '==', funcId);
 
-        const querySnapshot = await query.orderBy('dataOcorrencia', 'desc').get();
+        // Busca os dados sem orderBy no Firestore para evitar erro de índice composto
+        const querySnapshot = await query.get();
 
         if (querySnapshot.empty) {
             gerarDashboardDisciplinar([]); // Gera dashboard vazio
@@ -95,11 +115,18 @@ async function carregarDadosDisciplinares() {
             return;
         }
 
+        // Ordenação manual em memória (data decrescente)
+        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        docs.sort((a, b) => {
+            const dataA = a.dataOcorrencia?.toDate ? a.dataOcorrencia.toDate() : new Date(a.dataOcorrencia);
+            const dataB = b.dataOcorrencia?.toDate ? b.dataOcorrencia.toDate() : new Date(b.dataOcorrencia);
+            return dataB - dataA;
+        });
+
         tbody.innerHTML = '';
-        querySnapshot.forEach(doc => {
-            const registro = doc.data();
+        docs.forEach(registro => {
             todosRegistros.push(registro); // Adiciona ao array para o dashboard
-            const dataOcorrencia = registro.dataOcorrencia?.toDate ? registro.dataOcorrencia.toDate() : new Date();
+            const dataOcorrencia = registro.dataOcorrencia?.toDate ? registro.dataOcorrencia.toDate() : new Date(registro.dataOcorrencia);
 
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -108,7 +135,7 @@ async function carregarDadosDisciplinares() {
                 <td>${formatarData(dataOcorrencia)}</td>
                 <td class="text-truncate" style="max-width: 300px;" title="${registro.descricao}">${registro.descricao}</td>
                 <td><span class="badge bg-warning text-dark">${registro.medidaAplicada}</span></td>
-                <td class="text-end"><button class="btn btn-sm btn-outline-info" onclick="visualizarRegistroDisciplinar('${doc.id}')" title="Visualizar"><i class="fas fa-eye"></i></button> <button class="btn btn-sm btn-outline-primary" onclick="editarRegistroDisciplinar('${doc.id}')" title="Editar"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="deletarRegistroDisciplinar('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button></td>
+                <td class="text-end"><button class="btn btn-sm btn-outline-info" onclick="visualizarRegistroDisciplinar('${registro.id}')" title="Visualizar"><i class="fas fa-eye"></i></button> <button class="btn btn-sm btn-outline-primary" onclick="editarRegistroDisciplinar('${registro.id}')" title="Editar"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="deletarRegistroDisciplinar('${registro.id}')" title="Excluir"><i class="fas fa-trash"></i></button></td>
             `;
             tbody.appendChild(row);
         });

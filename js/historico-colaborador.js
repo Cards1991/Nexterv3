@@ -1,7 +1,8 @@
-// js/historico-colaborador.js
+// js/historico-colaborador.js - v1.1 (Printing implemented)
 
 let __colaboradores_cache = [];
 let __all_history_cache = {}; // Cache para o histórico de cada colaborador
+let __current_funcionario_id = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     // A inicialização agora é chamada a partir do app.js quando a seção é exibida
@@ -12,7 +13,13 @@ document.addEventListener('DOMContentLoaded', () => {
  * Chamado pelo app.js quando a aba é selecionada.
  */
 async function inicializarHistoricoColaborador() {
-    console.log("Inicializando Histórico do Colaborador...");
+    console.log(">>> [DEBUG] Inicializando Histórico do Colaborador...");
+    const btnImprimir = document.getElementById('btn-imprimir-historico');
+    if (btnImprimir) {
+        console.log(">>> [DEBUG] Botão de impressão encontrado no DOM.");
+    } else {
+        console.error(">>> [DEBUG] Botão de impressão NÃO encontrado no DOM!");
+    }
     setupEventListeners();
     await fetchAndRenderCollaborators();
 }
@@ -68,16 +75,25 @@ function renderCollaboratorList(collaborators) {
     if (!listContainer) return;
 
     listContainer.innerHTML = collaborators.map(colab => {
-        const statusClass = colab.status === 'Ativo' ? 'text-success' : 'text-danger';
-        const statusIcon = colab.status === 'Ativo' ? 'fa-check-circle' : 'fa-times-circle';
-
+        const statusClass = colab.status === 'Ativo' ? 'bg-success' : 'bg-danger';
+        const inicial = colab.nome.charAt(0).toUpperCase();
+        
         return `
-            <a href="#" class="list-group-item list-group-item-action" data-id="${colab.id}">
-                <div class="d-flex w-100 justify-content-between">
-                    <h6 class="mb-1">${colab.nome}</h6>
-                    <small><i class="fas ${statusIcon} ${statusClass}"></i> ${colab.status}</small>
+            <a href="#" class="list-group-item list-group-item-action border-0 mb-2 rounded shadow-sm py-3 px-3 collaborator-item" data-id="${colab.id}">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-circle me-3 bg-primary bg-opacity-10 text-primary fw-bold d-flex align-items-center justify-content-center" style="width: 45px; height: 45px; border-radius: 50%; border: 2px solid var(--bs-primary-border-subtle);">
+                        ${inicial}
+                    </div>
+                    <div class="flex-grow-1 overflow-hidden">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <h6 class="mb-0 text-truncate fw-bold" title="${colab.nome}">${colab.nome}</h6>
+                            <span class="badge ${statusClass} rounded-pill" style="font-size: 0.65rem;">${colab.status}</span>
+                        </div>
+                        <div class="text-muted small text-truncate">
+                            <i class="fas fa-briefcase me-1 opacity-50"></i> ${colab.cargo || 'Cargo não informado'}
+                        </div>
+                    </div>
                 </div>
-                <small class="text-muted">${colab.cargo || 'Cargo não informado'}</small>
             </a>
         `;
     }).join('');
@@ -123,6 +139,10 @@ async function showCollaboratorHistory(funcionarioId) {
     if (colaborador) {
         header.innerHTML = `<i class="fas fa-history me-2"></i>Histórico de ${colaborador.nome}`;
     }
+
+    __current_funcionario_id = funcionarioId;
+    const btnImprimir = document.getElementById('btn-imprimir-historico');
+    if (btnImprimir) btnImprimir.disabled = false;
 
     timelineContainer.innerHTML = '<div class="text-center p-5"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Carregando histórico...</span></div></div>';
 
@@ -298,49 +318,308 @@ function renderTimeline(history) {
     }
 
     timelineContainer.innerHTML = history.map(item => `
-        <div class="timeline-item">
-            <div class="timeline-icon bg-${item.color}">
+        <div class="timeline-item mb-4">
+            <div class="timeline-marker bg-${item.color} shadow-sm">
                 <i class="fas ${item.icon}"></i>
             </div>
-            <div class="timeline-content">
-                <h5 class="timeline-title">${item.type}</h5>
-                <p class="timeline-date">${item.date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                <div class="timeline-description">
-                    ${item.description}
+            <div class="timeline-card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="d-flex justify-content-between align-items-center px-3 py-2 bg-light rounded-top border-bottom">
+                        <span class="badge bg-${item.color} bg-opacity-10 text-${item.color} fw-bold border border-${item.color} border-opacity-25">
+                            ${item.type}
+                        </span>
+                        <span class="text-muted small fw-medium">
+                            <i class="far fa-calendar-alt me-1"></i> ${item.date.toLocaleDateString('pt-BR')}
+                        </span>
+                    </div>
+                    <div class="p-3">
+                        <div class="timeline-description text-dark">
+                            ${item.description}
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     `).join('');
 }
 
-// Garante que a função de inicialização esteja no escopo global para ser chamada pelo app.js
-window.inicializarHistoricoColaborador = inicializarHistoricoColaborador;
+/**
+ * Imprime o histórico do colaborador selecionado com um layout profissional.
+ */
+function imprimirHistoricoColaborador() {
+    if (!__current_funcionario_id || !__all_history_cache[__current_funcionario_id]) {
+        alert("Selecione um colaborador e aguarde o carregamento do histórico.");
+        return;
+    }
 
-// Adiciona um pouco de estilo para a timeline
+    const funcionario = __colaboradores_cache.find(f => f.id === __current_funcionario_id);
+    const history = __all_history_cache[__current_funcionario_id];
+
+    if (!funcionario) return;
+
+    let html = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+                
+                @page {
+                    size: A4;
+                    margin: 15mm 15mm 15mm 15mm;
+                }
+
+                body {
+                    font-family: 'Inter', sans-serif;
+                    color: #1a1a1a;
+                    line-height: 1.4;
+                    margin: 0;
+                    padding: 0;
+                    background-color: #fff;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+                
+                .print-container {
+                    width: 100%;
+                    max-width: 180mm; /* A4 width (210mm) - margins (30mm) */
+                    margin: 0 auto;
+                }
+
+                .print-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-end;
+                    border-bottom: 2px solid #4361ee;
+                    padding-bottom: 10px;
+                    margin-bottom: 25px;
+                }
+                
+                .brand-title {
+                    font-size: 24px;
+                    font-weight: 800;
+                    color: #4361ee;
+                    margin: 0;
+                    line-height: 1;
+                }
+                
+                .report-title {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #444;
+                    margin: 4px 0 0 0;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .employee-card {
+                    background-color: #fcfcfc;
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 25px;
+                    display: grid;
+                    grid-template-columns: 2fr 1fr;
+                    gap: 10px;
+                    border: 1px solid #eee;
+                }
+                
+                .info-group {
+                    margin-bottom: 2px;
+                }
+                
+                .info-label {
+                    font-size: 10px;
+                    font-weight: 700;
+                    color: #999;
+                    text-transform: uppercase;
+                    display: block;
+                }
+                
+                .info-value {
+                    font-size: 13px;
+                    font-weight: 600;
+                    color: #222;
+                }
+                
+                .history-table {
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-top: 10px;
+                    table-layout: fixed;
+                }
+                
+                .history-table th {
+                    background-color: #f8f9fa;
+                    color: #4361ee;
+                    text-align: left;
+                    padding: 10px 12px;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    border-bottom: 2px solid #4361ee;
+                }
+                
+                .history-table td {
+                    padding: 10px 12px;
+                    border-bottom: 1px dotted #ddd;
+                    font-size: 12px;
+                    vertical-align: top;
+                    word-wrap: break-word;
+                }
+                
+                .type-badge {
+                    font-weight: 700;
+                    color: #333;
+                }
+                
+                .date-col {
+                    white-space: nowrap;
+                    font-weight: 600;
+                    color: #4361ee;
+                }
+                
+                .footer {
+                    position: fixed;
+                    bottom: 0;
+                    width: 100%;
+                    max-width: 180mm;
+                    text-align: center;
+                    font-size: 10px;
+                    color: #aaa;
+                    border-top: 1px solid #eee;
+                    padding-top: 10px;
+                    background: white;
+                }
+                
+                @media print {
+                    .no-print { display: none; }
+                    .history-table tr { page-break-inside: avoid; }
+                    .employee-card { break-inside: avoid; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="print-container">
+                <div class="print-header">
+                    <div>
+                        <h1 class="brand-title">NEXTER</h1>
+                        <p class="report-title">Histórico Funcional do Colaborador</p>
+                    </div>
+                    <div style="text-align: right; color: #666; font-size: 11px;">
+                        <strong>Emissão:</strong> ${new Date().toLocaleString('pt-BR')}
+                    </div>
+                </div>
+
+                <div class="employee-card">
+                    <div class="info-group">
+                        <span class="info-label">Nome Completo</span>
+                        <span class="info-value" style="font-size: 16px; color: #4361ee;">${funcionario.nome}</span>
+                    </div>
+                    <div class="info-group" style="text-align: right;">
+                        <span class="info-label">CPF</span>
+                        <span class="info-value">${funcionario.cpf || 'Não informado'}</span>
+                    </div>
+                    <div class="info-group">
+                        <span class="info-label">Cargo Atual</span>
+                        <span class="info-value">${funcionario.cargo || 'Não informado'}</span>
+                    </div>
+                    <div class="info-group" style="text-align: right;">
+                        <span class="info-label">Status</span>
+                        <span class="info-value" style="color: ${funcionario.status === 'Ativo' ? '#1a936f' : '#c1121f'}">${funcionario.status}</span>
+                    </div>
+                </div>
+
+                <table class="history-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 75px;">Data</th>
+                            <th style="width: 160px;">Tipo de Registro</th>
+                            <th>Descrição dos Fatos e Observações</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+    `;
+
+    history.forEach(item => {
+        html += `
+            <tr>
+                <td class="date-col">${item.date.toLocaleDateString('pt-BR')}</td>
+                <td class="type-badge">${item.type}</td>
+                <td>${item.description.replace(/<[^>]*>?/gm, ' ')}</td>
+            </tr>
+        `;
+    });
+
+    html += `
+                    </tbody>
+                </table>
+
+                <div class="footer">
+                    Este documento é para fins de consulta interna de RH. Gerado pelo sistema Nexter v3.0 em ${new Date().toLocaleDateString('pt-BR')}.
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Tenta usar a função global se existir, senão usa window.print
+    if (typeof openPrintWindow === 'function') {
+        openPrintWindow(html, { title: `Histórico - ${funcionario.nome}` });
+    } else {
+        const printWindow = window.open('', '_blank');
+        printWindow.document.write(html);
+        printWindow.document.close();
+        
+        // Pequeno delay para garantir carregamento de estilos/fontes
+        setTimeout(() => {
+            printWindow.print();
+        }, 500);
+    }
+}
+
+// Garante que as funções estejam no escopo global para serem chamadas pelo app.js e pelos eventos
+window.inicializarHistoricoColaborador = inicializarHistoricoColaborador;
+window.imprimirHistoricoColaborador = imprimirHistoricoColaborador;
+
+// Adiciona um pouco de estilo para a timeline e lista
 const style = document.createElement('style');
 style.innerHTML = `
+.collaborator-item {
+    transition: all 0.2s ease;
+    border-left: 4px solid transparent !important;
+}
+.collaborator-item:hover {
+    transform: translateX(5px);
+    background-color: var(--bs-light) !important;
+}
+.collaborator-item.active {
+    background-color: var(--bs-primary-bg-subtle) !important;
+    border-left-color: var(--bs-primary) !important;
+    z-index: 2;
+}
 .timeline {
     position: relative;
     padding: 20px 0;
+    margin-left: 20px;
 }
 .timeline::before {
     content: '';
     position: absolute;
     top: 0;
-    left: 18px;
+    left: 20px;
     height: 100%;
-    width: 4px;
+    width: 2px;
     background: #e9ecef;
 }
 .timeline-item {
     position: relative;
-    margin-bottom: 20px;
-    padding-left: 50px;
+    padding-left: 55px;
 }
-.timeline-icon {
+.timeline-marker {
     position: absolute;
     left: 0;
-    top: 0;
+    top: 5px;
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -349,44 +628,34 @@ style.innerHTML = `
     align-items: center;
     justify-content: center;
     z-index: 1;
+    border: 3px solid white;
 }
-.timeline-content {
-    background: #f8f9fa;
-    padding: 15px;
-    border-radius: 8px;
-    border-left: 3px solid;
+.timeline-card {
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease;
 }
-.timeline-content .timeline-title {
-    margin: 0 0 5px 0;
-    font-size: 1rem;
-    font-weight: 600;
+.timeline-card:hover {
+    transform: translateY(-2px);
 }
-.timeline-content .timeline-date {
-    font-size: 0.8rem;
-    color: #6c757d;
-    margin-bottom: 10px;
+.bg-purple { background-color: #6f42c1 !important; }
+.text-purple { color: #6f42c1 !important; }
+.border-purple { border-color: rgba(111, 66, 193, 0.25) !important; }
+
+/* Custom Scrollbar */
+#colaboradores-list::-webkit-scrollbar,
+#historico-container-body::-webkit-scrollbar {
+    width: 6px;
 }
-.timeline-content .timeline-description {
-    font-size: 0.9rem;
-    line-height: 1.5;
+#colaboradores-list::-webkit-scrollbar-thumb,
+#historico-container-body::-webkit-scrollbar-thumb {
+    background: #dee2e6;
+    border-radius: 10px;
 }
-.timeline-icon.bg-purple {
-    background-color: #6f42c1;
+#colaboradores-list::-webkit-scrollbar-track,
+#historico-container-body::-webkit-scrollbar-track {
+    background: transparent;
 }
-.timeline-item .bg-purple .fa {
-    color: white;
-}
-.timeline-content.border-purple {
-    border-color: #6f42c1;
-}
-.timeline-item .bg-primary .fa, .timeline-item .bg-success .fa, .timeline-item .bg-info .fa, .timeline-item .bg-warning .fa, .timeline-item .bg-danger .fa {
-    color: white;
-}
-.timeline-content { border-color: var(--bs-gray-300); }
-.timeline-content.border-primary { border-color: var(--bs-primary); }
-.timeline-content.border-success { border-color: var(--bs-success); }
-.timeline-content.border-info { border-color: var(--bs-info); }
-.timeline-content.border-warning { border-color: var(--bs-warning); }
-.timeline-content.border-danger { border-color: var(--bs-danger); }
 `;
 document.head.appendChild(style);

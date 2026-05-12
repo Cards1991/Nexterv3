@@ -1,38 +1,55 @@
-<div class="container-fluid mt-4">
-    <div class="row">
-        <!-- Coluna da Lista de Colaboradores -->
-        <div class="col-md-4">
-            <div class="card">
-                <div class="card-header">
-                    <h3><i class="fas fa-users me-2"></i>Colaboradores</h3>
-                    <input type="text" id="search-colaborador" class="form-control mt-2"
-                        placeholder="Pesquisar colaborador...">
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0">Histórico do Colaborador</h2>
+    <button id="btn-imprimir-historico" class="btn btn-primary shadow-sm" onclick="imprimirHistoricoColaborador()" disabled>
+        <i class="fas fa-print me-2"></i>Imprimir Histórico
+    </button>
+</div>
+
+<div class="row g-4">
+    <!-- Coluna da Lista de Colaboradores -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h5 class="mb-0 text-primary fw-bold"><i class="fas fa-users me-2"></i>Colaboradores</h5>
+            </div>
+            <div class="card-body p-0 d-flex flex-column">
+                <div class="p-3 bg-light border-bottom">
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" id="search-colaborador" class="form-control border-start-0 ps-0" placeholder="Pesquisar por nome...">
+                    </div>
                 </div>
-                <div class="card-body" style="max-height: 80vh; overflow-y: auto;">
-                    <div id="colaboradores-list" class="list-group">
-                        <!-- A lista de colaboradores será inserida aqui via JS -->
-                        <p class="text-center text-muted">Carregando...</p>
+                <div id="colaboradores-list" class="list-group list-group-flush p-3" style="max-height: 70vh; overflow-y: auto;">
+                    <div class="text-center p-5">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="text-muted small mt-3">Carregando...</p>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
 
-        <!-- Coluna do Histórico -->
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">
-                    <h3 id="historico-header">
-                        <i class="fas fa-history me-2"></i>Histórico do Colaborador
-                    </h3>
-                </div>
-                <div class="card-body" id="historico-container-body" style="max-height: 80vh; overflow-y: auto;">
-                    <div id="historico-timeline" class="timeline">
-                        <!-- O histórico será inserido aqui via JS -->
-                        <div class="text-center text-muted mt-5">
-                            <i class="fas fa-arrow-left fa-2x"></i>
-                            <p class="mt-2">Selecione um colaborador à esquerda para ver seu
-                                histórico.</p>
+    <!-- Coluna do Histórico -->
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm h-100">
+            <div class="card-header bg-white py-3">
+                <h5 id="historico-header" class="mb-0 text-primary fw-bold">
+                    <i class="fas fa-history me-2"></i>Histórico Detalhado
+                </h5>
+            </div>
+            <div class="card-body bg-light bg-opacity-50" id="historico-container-body" style="min-height: 500px; max-height: 80vh; overflow-y: auto;">
+                <div id="historico-timeline" class="timeline">
+                    <div class="text-center text-muted p-5">
+                        <div class="mb-4">
+                            <span class="fa-stack fa-3x">
+                                <i class="fas fa-circle fa-stack-2x text-primary opacity-10"></i>
+                                <i class="fas fa-user-clock fa-stack-1x text-primary opacity-50"></i>
+                            </span>
                         </div>
+                        <h5 class="fw-bold">Selecione um colaborador</h5>
+                        <p class="text-muted mx-auto" style="max-width: 300px;">
+                            Clique em um nome na lista ao lado para visualizar toda a trajetória e ocorrências do colaborador.
+                        </p>
                     </div>
                 </div>
             </div>
