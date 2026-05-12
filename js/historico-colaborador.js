@@ -159,7 +159,8 @@ async function showCollaboratorHistory(funcionarioId) {
             disciplinar: 'registros_disciplinares',
             alteracoes: 'alteracoes_funcao',
             epi: 'epi_consumo',
-            avaliacoes: 'avaliacoes_colaboradores'
+            avaliacoes: 'avaliacoes_colaboradores',
+            movimentacoes: 'movimentacoes'
         };
 
         // Query for occurrences separately due to different field name
@@ -176,7 +177,8 @@ async function showCollaboratorHistory(funcionarioId) {
             disciplinarSnap, 
             alteracoesSnap,
             epiSnap,
-            avaliacoesSnap
+            avaliacoesSnap,
+            movimentacoesSnap
         ] = await Promise.all([ocorrenciasPromise, ...otherPromises]);
 
         let combinedHistory = [];
@@ -280,6 +282,28 @@ async function showCollaboratorHistory(funcionarioId) {
                 color: 'purple', // Custom color
                 description: `Recebeu nota <strong>${data.nota}</strong>. Avaliador: ${data.avaliadorEmail || 'N/A'}.`
             });
+        });
+
+        // Processa Movimentações (Admissões e Rescisões)
+        movimentacoesSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.tipo === 'demissao') {
+                combinedHistory.push({
+                    date: (data.data)?.toDate(),
+                    type: 'Rescisão / Desligamento',
+                    icon: 'fa-user-slash',
+                    color: 'danger',
+                    description: `<strong>${data.motivo}</strong>: ${data.motivoDetalhado || ''}. ${data.detalhes ? `<br><small class="text-muted">Observações: ${data.detalhes}</small>` : ''}`
+                });
+            } else if (data.tipo === 'admissao') {
+                combinedHistory.push({
+                    date: (data.data)?.toDate(),
+                    type: 'Admissão',
+                    icon: 'fa-user-plus',
+                    color: 'success',
+                    description: `<strong>Admissão registrada</strong> no setor <strong>${data.setor}</strong> como <strong>${data.cargo}</strong>.`
+                });
+            }
         });
 
 

@@ -3,6 +3,8 @@
 // Descrição: Gerenciamento de controle disciplinar de funcionários
 // ========================================
 
+let lastInsightsHtml = ""; // Cache para visualização expandida
+
 // Função de inicialização do módulo
 function inicializarControleDisciplinar() {
     console.log('Módulo Controle Disciplinar carregado');
@@ -23,31 +25,36 @@ function inicializarControleDisciplinar() {
 window.inicializarControleDisciplinar = inicializarControleDisciplinar;
 
 function setupFiltrosDisciplinares() {
-    const tableContainer = document.getElementById('tabela-controle-disciplinar')?.closest('.table-responsive') || document.getElementById('tabela-controle-disciplinar')?.parentElement;
+    const filterRow = document.getElementById('disciplinar-filtro-container-row');
     
-    if (tableContainer && !document.getElementById('disciplinar-filtro-container')) {
-        const filterHTML = `
-            <div id="disciplinar-filtro-container" class="row g-2 mb-3 align-items-end bg-light p-2 rounded border">
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold">Data Início</label>
-                    <input type="date" id="disciplinar-filtro-data-inicio" class="form-control form-control-sm">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold">Data Fim</label>
-                    <input type="date" id="disciplinar-filtro-data-fim" class="form-control form-control-sm">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-bold">Funcionário</label>
-                    <select id="disciplinar-filtro-funcionario" class="form-select form-select-sm">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
-                    <button id="btn-filtrar-disciplinar" class="btn btn-primary btn-sm w-100"><i class="fas fa-filter"></i> Filtrar</button>
+    if (filterRow && !document.getElementById('disciplinar-filtro-data-inicio')) {
+        filterRow.innerHTML = `
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-0"><i class="fas fa-calendar-alt"></i></span>
+                    <input type="date" id="disciplinar-filtro-data-inicio" class="form-control border-0 bg-light" title="Data Início">
                 </div>
             </div>
+            <div class="col-md-3">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-0"><i class="fas fa-calendar-alt"></i></span>
+                    <input type="date" id="disciplinar-filtro-data-fim" class="form-control border-0 bg-light" title="Data Fim">
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-text bg-light border-0"><i class="fas fa-user"></i></span>
+                    <select id="disciplinar-filtro-funcionario" class="form-select border-0 bg-light">
+                        <option value="">Todos os Funcionários</option>
+                    </select>
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button id="btn-filtrar-disciplinar" class="btn btn-primary btn-sm w-100 shadow-sm">
+                    <i class="fas fa-search me-1"></i> Filtrar
+                </button>
+            </div>
         `;
-        tableContainer.insertAdjacentHTML('beforebegin', filterHTML);
         
         // Popula o filtro de funcionários
         if (typeof carregarSelectFuncionariosAtivos === 'function') {
@@ -125,17 +132,47 @@ async function carregarDadosDisciplinares() {
 
         tbody.innerHTML = '';
         docs.forEach(registro => {
-            todosRegistros.push(registro); // Adiciona ao array para o dashboard
+            todosRegistros.push(registro); 
             const dataOcorrencia = registro.dataOcorrencia?.toDate ? registro.dataOcorrencia.toDate() : new Date(registro.dataOcorrencia);
+
+            const initials = registro.funcionarioNome
+                ? registro.funcionarioNome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                : '??';
 
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td>${registro.funcionarioNome || 'N/A'}</td>
-                <td><span class="badge bg-secondary">${registro.classificacao || '-'}</span></td>
-                <td>${formatarData(dataOcorrencia)}</td>
-                <td class="text-truncate" style="max-width: 300px;" title="${registro.descricao}">${registro.descricao}</td>
-                <td><span class="badge bg-warning text-dark">${registro.medidaAplicada}</span></td>
-                <td class="text-end"><button class="btn btn-sm btn-outline-info" onclick="visualizarRegistroDisciplinar('${registro.id}')" title="Visualizar"><i class="fas fa-eye"></i></button> <button class="btn btn-sm btn-outline-primary" onclick="editarRegistroDisciplinar('${registro.id}')" title="Editar"><i class="fas fa-edit"></i></button> <button class="btn btn-sm btn-outline-danger" onclick="deletarRegistroDisciplinar('${registro.id}')" title="Excluir"><i class="fas fa-trash"></i></button></td>
+                <td class="ps-4">
+                    <div class="fw-bold text-dark">${dataOcorrencia.toLocaleDateString('pt-BR')}</div>
+                    <small class="text-muted">${dataOcorrencia.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold me-3" style="width: 38px; height: 38px; font-size: 0.8rem;">
+                            ${initials}
+                        </div>
+                        <span class="fw-bold text-dark">${registro.funcionarioNome || 'N/A'}</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="badge rounded-pill bg-light text-secondary border border-secondary border-opacity-25 px-2 py-1">
+                        Alínea ${registro.classificacao || '-'}
+                    </span>
+                </td>
+                <td class="text-truncate" style="max-width: 250px;" title="${registro.descricao}">
+                    <span class="text-dark small">${registro.descricao}</span>
+                </td>
+                <td>
+                    <span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25 px-3 py-2">
+                        ${registro.medidaAplicada}
+                    </span>
+                </td>
+                <td class="text-end pe-4">
+                    <div class="btn-group">
+                        <button class="btn btn-sm btn-light border shadow-sm text-info" onclick="visualizarRegistroDisciplinar('${registro.id}')" title="Visualizar"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-light border shadow-sm text-primary" onclick="editarRegistroDisciplinar('${registro.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-light border shadow-sm text-danger" onclick="deletarRegistroDisciplinar('${registro.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </div>
+                </td>
             `;
             tbody.appendChild(row);
         });
@@ -152,46 +189,322 @@ async function carregarDadosDisciplinares() {
 function gerarDashboardDisciplinar(registros) {
     const totalRegistrosEl = document.getElementById('disciplinar-total-registros');
     const analiseIAEl = document.getElementById('disciplinar-analise-ia');
+    const percentualEl = document.getElementById('disciplinar-percentual-mes');
     const resumoFuncionariosTbody = document.getElementById('tabela-resumo-funcionarios-disciplinar');
 
     if (!totalRegistrosEl || !analiseIAEl || !resumoFuncionariosTbody) return;
 
-    // 1. Métricas Gerais
+    // 1. Métricas Gerais e Comparativo
     totalRegistrosEl.textContent = registros.length;
+    
+    const hoje = new Date();
+    const esteMes = hoje.getMonth();
+    const esteAno = hoje.getFullYear();
+    
+    const registrosEsteMes = registros.filter(r => {
+        const d = r.dataOcorrencia?.toDate ? r.dataOcorrencia.toDate() : new Date(r.dataOcorrencia);
+        return d.getMonth() === esteMes && d.getFullYear() === esteAno;
+    }).length;
+
+    const registrosMesAnterior = registros.filter(r => {
+        const d = r.dataOcorrencia?.toDate ? r.dataOcorrencia.toDate() : new Date(r.dataOcorrencia);
+        let mesAnt = esteMes - 1;
+        let anoAnt = esteAno;
+        if (mesAnt < 0) { mesAnt = 11; anoAnt--; }
+        return d.getMonth() === mesAnt && d.getFullYear() === anoAnt;
+    }).length;
+
+    if (percentualEl) {
+        if (registrosMesAnterior > 0) {
+            const diff = ((registrosEsteMes - registrosMesAnterior) / registrosMesAnterior) * 100;
+            const cor = diff > 0 ? 'text-danger' : 'text-success';
+            const sinal = diff > 0 ? '+' : '';
+            percentualEl.innerHTML = `<span class="${cor} fw-bold">${sinal}${diff.toFixed(1)}%</span> vs mês anterior`;
+        } else {
+            percentualEl.textContent = "Primeiro mês com registros";
+        }
+    }
 
     // 2. Gráfico de Classificação de Ocorrências
     const contagemPorClassificacao = registros.reduce((acc, reg) => {
-        const classificacao = reg.classificacao || 'Não Classificado';
+        const classificacao = reg.classificacao || 'N/A';
         acc[classificacao] = (acc[classificacao] || 0) + 1;
         return acc;
     }, {});
 
     renderizarGraficoClassificacao(contagemPorClassificacao);
 
-    // 3. Análise com IA (Simulada)
-    let analiseTexto = '<ul>';
+    // 3. Análise com IA (Aprimorada)
+    let insights = [];
     if (registros.length === 0) {
-        analiseTexto += '<li>Nenhum registro encontrado para análise.</li>';
+        insights.push("Excelente! Não há registros disciplinares no período selecionado.");
     } else {
         const sortedClassificacoes = Object.entries(contagemPorClassificacao).sort(([, a], [, b]) => b - a);
         const maisComum = sortedClassificacoes[0];
         if (maisComum) {
-            analiseTexto += `<li>A ocorrência mais comum é a <strong>Alínea ${maisComum[0]}</strong>, com <strong>${maisComum[1]}</strong> registro(s).</li>`;
+            insights.push(`A <strong>Alínea ${maisComum[0]}</strong> é o motivo predominante das ocorrências (${maisComum[1]} casos).`);
         }
 
-        const reincidentes = Object.entries(registros.reduce((acc, reg) => {
-            acc[reg.funcionarioNome] = (acc[reg.funcionarioNome] || 0) + 1;
+        // Análise de Reincidência Específica (2+ Advertências Escritas pelo mesmo motivo)
+        const recorrenciasMesmoMotivo = registros.reduce((acc, reg) => {
+            if (reg.medidaAplicada === 'Advertência Escrita') {
+                const chave = `${reg.funcionarioId}|${reg.funcionarioNome}|${reg.classificacao}`;
+                acc[chave] = (acc[chave] || 0) + 1;
+            }
             return acc;
-        }, {})).filter(([, count]) => count > 2);
+        }, {});
 
-        if (reincidentes.length > 0) {
-            analiseTexto += `<li class="text-warning"><strong>Ponto de Atenção:</strong> ${reincidentes.length} funcionário(s) apresentam 3 ou mais registros. Recomenda-se uma conversa de feedback.</li>`;
+        // Análise de Rito Disciplinar (Saltos de Rito)
+        const ritoEsperado = [
+            'Advertência Escrita',
+            'Advertência Escrita',
+            'Advertência Escrita',
+            'Suspensão 1 dia',
+            'Suspensão 3 dias',
+            'Suspensão 5 dias',
+            'Suspensão 7 dias'
+        ];
+
+        // Agrupar registros por Funcionário e Alínea para verificar sequência
+        const historicoPorAlinea = registros.reduce((acc, reg) => {
+            const chave = `${reg.funcionarioNome}|${reg.classificacao}`;
+            if (!acc[chave]) acc[chave] = [];
+            acc[chave].push(reg);
+            return acc;
+        }, {});
+
+        const saltosDeRito = [];
+        Object.entries(historicoPorAlinea).forEach(([chave, regs]) => {
+            // Ordena do mais antigo para o mais novo para conferir a evolução
+            regs.sort((a, b) => {
+                const da = a.dataOcorrencia?.toDate ? a.dataOcorrencia.toDate() : new Date(a.dataOcorrencia);
+                const db = b.dataOcorrencia?.toDate ? b.dataOcorrencia.toDate() : new Date(b.dataOcorrencia);
+                return da - db;
+            });
+
+            let desvioEncontrado = false;
+            regs.forEach((reg, index) => {
+                if (desvioEncontrado) return; // Reporta apenas a primeira desconformidade para não poluir
+
+                const medidaAplicada = reg.medidaAplicada;
+                const medidaEsperada = ritoEsperado[index] || 'Fim do Rito Padronizado';
+                
+                // Se a medida aplicada for diferente da esperada para aquela posição no histórico
+                if (medidaAplicada !== medidaEsperada) {
+                    saltosDeRito.push({
+                        nome: chave.split('|')[0],
+                        alinea: chave.split('|')[1],
+                        aplicada: medidaAplicada,
+                        esperada: medidaEsperada,
+                        posicao: index + 1
+                    });
+                    desvioEncontrado = true;
+                }
+            });
+        });
+
+        if (saltosDeRito.length > 0) {
+            let saltosHtml = `
+                <div class="alert alert-danger border-0 shadow-sm p-2 mb-2" style="font-size: 0.75rem; border-left: 4px solid #dc3545 !important;">
+                    <div class="fw-bold text-danger mb-1"><i class="fas fa-exclamation-triangle me-1"></i>DESVIOS DE RITO (DESCONFORMIDADE):</div>
+                    <ul class="mb-0 ps-3">
+                        ${saltosDeRito.map(s => `<li><strong>${s.nome}</strong>: Na ${s.posicao}ª ocorrência (Alínea ${s.alinea}), aplicou <em>${s.aplicada}</em>, mas o esperado era <strong>${s.esperada}</strong>.</li>`).join('')}
+                    </ul>
+                </div>
+            `;
+            insights.push(saltosHtml);
+        }
+
+        if (Object.keys(recorrenciasMesmoMotivo).length > 0) {
+            const rankingData = Object.entries(recorrenciasMesmoMotivo)
+                .map(([chave, count]) => {
+                    const [id, nome, alinea] = chave.split('|');
+                    return { id, nome, alinea, count };
+                })
+                .sort((a, b) => b.count - a.count || a.nome.localeCompare(b.nome));
+
+            let tableHtml = `
+                <table class="table table-sm table-borderless mb-0" style="font-size: 0.7rem;">
+                    <thead>
+                        <tr class="text-muted border-bottom">
+                            <th>Colaborador</th>
+                            <th class="text-center">Alínea</th>
+                            <th class="text-center">Qtd</th>
+                            <th class="text-end">Ação</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            rankingData.forEach(item => {
+                const isCritical = item.count >= 2;
+                tableHtml += `
+                    <tr class="${isCritical ? 'bg-danger bg-opacity-10' : ''}">
+                        <td class="fw-bold text-dark text-truncate" style="max-width: 100px;">${item.nome}</td>
+                        <td class="text-center"><span class="badge bg-light text-dark border">Art. 482 ${item.alinea}</span></td>
+                        <td class="text-center fw-bold ${isCritical ? 'text-danger' : ''}">${item.count}</td>
+                        <td class="text-end">
+                            <button class="btn btn-xs btn-link p-0 text-primary" onclick="verHistoricoEspecifico('${item.id}', '${item.alinea}')" title="Ver Histórico">
+                                <i class="fas fa-history"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            tableHtml += `</tbody></table>`;
+            
+            insights.push(`<div class="mb-2"><span class="text-danger fw-bold small"><i class="fas fa-exclamation-triangle me-1"></i>RANKING DE REINCIDÊNCIA:</span></div>${tableHtml}`);
         } else {
-            analiseTexto += '<li>Não foram identificados padrões de reincidência significativos.</li>';
+            insights.push("Nenhuma advertência escrita detectada no período.");
         }
     }
-    analiseTexto += '</ul>';
-    analiseIAEl.innerHTML = analiseTexto;
+    
+    lastInsightsHtml = insights.map(i => `<div class="mb-3 border-bottom pb-3">${i}</div>`).join('');
+    analiseIAEl.innerHTML = lastInsightsHtml;
+
+function expandirInsightsDisciplinar() {
+    if (!lastInsightsHtml) return;
+
+    const modalId = 'modal-insights-expandido';
+    let modalEl = document.getElementById(modalId);
+    
+    if (!modalEl) {
+        const modalHTML = `
+            <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                        <div class="modal-header bg-info text-white border-0 py-3">
+                            <h5 class="modal-title fw-bold"><i class="fas fa-robot me-2"></i>Nexter AI Insights - Visão Completa</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4" id="conteudo-insights-expandido"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        modalEl = document.getElementById(modalId);
+    }
+
+    document.getElementById('conteudo-insights-expandido').innerHTML = lastInsightsHtml;
+    
+    // Ajustar a tabela no modal para ficar maior
+    const tableNoModal = document.getElementById('conteudo-insights-expandido').querySelector('table');
+    if (tableNoModal) {
+        tableNoModal.style.fontSize = '0.9rem';
+        tableNoModal.classList.remove('table-borderless');
+        tableNoModal.classList.add('table-hover');
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+window.expandirInsightsDisciplinar = expandirInsightsDisciplinar;
+
+/**
+ * Abre um modal com o histórico completo de um colaborador
+ */
+async function verHistoricoEspecifico(funcionarioId, alinea) {
+    try {
+        mostrarMensagem("Carregando histórico detalhado...", "info");
+        
+        // Busca todos os registros do funcionário
+        const snapshot = await db.collection('registros_disciplinares')
+            .where('funcionarioId', '==', funcionarioId)
+            .get();
+        
+        if (snapshot.empty) {
+            mostrarMensagem("Nenhum registro encontrado para este colaborador.", "warning");
+            return;
+        }
+
+        const registros = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        registros.sort((a, b) => {
+            const dataA = a.dataOcorrencia?.toDate ? a.dataOcorrencia.toDate() : new Date(a.dataOcorrencia);
+            const dataB = b.dataOcorrencia?.toDate ? b.dataOcorrencia.toDate() : new Date(b.dataOcorrencia);
+            return dataB - dataA;
+        });
+
+        const funcionarioNome = registros[0].funcionarioNome;
+        const modalId = 'modal-historico-individual';
+        let modalEl = document.getElementById(modalId);
+        
+        if (!modalEl) {
+            const modalHTML = `
+                <div class="modal fade" id="${modalId}" tabindex="-1" aria-hidden="true">
+                    <div class="modal-dialog modal-xl modal-dialog-centered">
+                        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+                            <div class="modal-header bg-dark text-white border-0 py-3">
+                                <div class="d-flex align-items-center">
+                                    <div class="bg-white bg-opacity-25 rounded-circle p-2 me-3">
+                                        <i class="fas fa-user-clock"></i>
+                                    </div>
+                                    <div>
+                                        <h5 class="modal-title fw-bold mb-0">Linha do Tempo Disciplinar</h5>
+                                        <small class="opacity-75" id="nome-funcionario-modal-hist"></small>
+                                    </div>
+                                </div>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body p-0">
+                                <div class="table-responsive" style="max-height: 70vh;">
+                                    <table class="table table-hover align-middle mb-0">
+                                        <thead class="bg-light sticky-top">
+                                            <tr class="small text-muted">
+                                                <th class="ps-4">Data</th>
+                                                <th>Classificação</th>
+                                                <th>Descrição</th>
+                                                <th>Medida</th>
+                                                <th class="text-end pe-4">Ação</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="corpo-tabela-historico-modal"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            modalEl = document.getElementById(modalId);
+        }
+
+        document.getElementById('nome-funcionario-modal-hist').textContent = funcionarioNome;
+        const tbody = document.getElementById('corpo-tabela-historico-modal');
+        
+        tbody.innerHTML = registros.map(reg => {
+            const data = reg.dataOcorrencia?.toDate ? reg.dataOcorrencia.toDate() : new Date(reg.dataOcorrencia);
+            const destaque = reg.classificacao === alinea ? 'bg-warning bg-opacity-10' : '';
+            
+            return `
+                <tr class="${destaque}">
+                    <td class="ps-4">
+                        <div class="fw-bold">${data.toLocaleDateString('pt-BR')}</div>
+                        <small class="text-muted">${data.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</small>
+                    </td>
+                    <td><span class="badge bg-light text-dark border">Alínea ${reg.classificacao}</span></td>
+                    <td class="small" style="max-width: 350px;">${reg.descricao}</td>
+                    <td><span class="badge bg-warning bg-opacity-10 text-warning border border-warning border-opacity-25">${reg.medidaAplicada}</span></td>
+                    <td class="text-end pe-4">
+                        <button class="btn btn-sm btn-outline-primary border-0" onclick="visualizarRegistroDisciplinar('${reg.id}')">
+                            <i class="fas fa-file-pdf"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    } catch (error) {
+        console.error("Erro ao carregar histórico modal:", error);
+        mostrarMensagem("Erro ao carregar histórico.", "danger");
+    }
+}
+window.verHistoricoEspecifico = verHistoricoEspecifico;
 
     // 4. Tabela de Resumo por Funcionário
     const resumoPorFuncionario = registros.reduce((acc, reg) => {
@@ -199,7 +512,7 @@ function gerarDashboardDisciplinar(registros) {
             acc[reg.funcionarioNome] = { count: 0, ultimaData: new Date(0) };
         }
         acc[reg.funcionarioNome].count++;
-        const dataOcorrencia = reg.dataOcorrencia.toDate();
+        const dataOcorrencia = reg.dataOcorrencia?.toDate ? reg.dataOcorrencia.toDate() : new Date(reg.dataOcorrencia);
         if (dataOcorrencia > acc[reg.funcionarioNome].ultimaData) {
             acc[reg.funcionarioNome].ultimaData = dataOcorrencia;
         }
@@ -209,13 +522,13 @@ function gerarDashboardDisciplinar(registros) {
     const resumoArray = Object.entries(resumoPorFuncionario).sort(([, a], [, b]) => b.count - a.count);
 
     if (resumoArray.length === 0) {
-        resumoFuncionariosTbody.innerHTML = '<tr><td colspan="3" class="text-center">Nenhum funcionário com registros.</td></tr>';
+        resumoFuncionariosTbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">Nenhum dado disponível</td></tr>';
     } else {
         resumoFuncionariosTbody.innerHTML = resumoArray.map(([nome, dados]) => `
             <tr>
-                <td>${nome}</td>
-                <td><span class="badge bg-danger">${dados.count}</span></td>
-                <td>${formatarData(dados.ultimaData)}</td>
+                <td class="ps-3 fw-bold text-dark">${nome}</td>
+                <td class="text-center"><span class="badge bg-danger rounded-pill">${dados.count}</span></td>
+                <td class="text-muted small">${dados.ultimaData.getFullYear() > 1970 ? dados.ultimaData.toLocaleDateString('pt-BR') : '-'}</td>
             </tr>
         `).join('');
     }

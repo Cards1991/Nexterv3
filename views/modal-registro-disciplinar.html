@@ -1,72 +1,95 @@
 <!-- Modal Novo Registro Disciplinar -->
 <div class="modal fade" id="registroDisciplinarModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="registroDisciplinarModalTitle"><i
-                        class="fas fa-exclamation-triangle me-2"></i>Novo Registro Disciplinar</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg overflow-hidden" style="border-radius: 15px;">
+            <div class="modal-header bg-danger text-white py-3 border-0">
+                <div class="d-flex align-items-center">
+                    <div class="bg-white bg-opacity-25 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                        <i class="fas fa-gavel fa-lg"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="registroDisciplinarModalTitle">Registro Disciplinar</h5>
+                        <p class="mb-0 opacity-75 small text-uppercase" style="letter-spacing: 0.5px; font-size: 0.65rem;">Conformidade & Conduta</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-4 bg-light bg-opacity-50">
                 <form id="form-registro-disciplinar">
                     <input type="hidden" id="registro-disciplinar-id">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label for="disciplinar-funcionario" class="form-label">Funcionário</label>
-                            <select class="form-select" id="disciplinar-funcionario" required>
-                                <option value="">Selecione o funcionário</option>
-                            </select>
+                    
+                    <!-- Cabeçalho do Registro -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-md-7">
+                                    <label class="form-label fw-bold text-dark small mb-2"><i class="fas fa-user-tie me-1 text-danger"></i> Colaborador</label>
+                                    <select class="form-select border-0 bg-light shadow-none py-2" id="disciplinar-funcionario" required style="border-radius: 8px;">
+                                        <option value="">Selecione o funcionário</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-5">
+                                    <label class="form-label fw-bold text-dark small mb-2"><i class="fas fa-calendar-alt me-1 text-danger"></i> Data do Incidente</label>
+                                    <input type="date" class="form-control border-0 bg-light shadow-none py-2" id="disciplinar-data" required style="border-radius: 8px;">
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="disciplinar-data" class="form-label">Data da Ocorrência</label>
-                            <input type="date" class="form-control" id="disciplinar-data" required>
+                    </div>
+
+                    <!-- Classificação e Medida -->
+                    <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; border-left: 4px solid #dc3545 !important;">
+                        <div class="card-body p-3">
+                            <div class="row g-3">
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold text-danger small mb-2 text-uppercase">Fundamentação Legal (Art. 482 CLT)</label>
+                                    <select class="form-select border-0 bg-light py-2 shadow-none" id="disciplinar-classificacao" required style="border-radius: 8px;">
+                                        <option value="">Selecione a classificação...</option>
+                                        <option value="A">Alínea A - Ato de improbidade</option>
+                                        <option value="B">Alínea B - Incontinência de conduta ou mau procedimento</option>
+                                        <option value="C">Alínea C - Negociação habitual sem permissão</option>
+                                        <option value="D">Alínea D - Condenação criminal</option>
+                                        <option value="E">Alínea E - Desídia no desempenho das funções</option>
+                                        <option value="F">Alínea F - Embriaguez habitual ou em serviço</option>
+                                        <option value="G">Alínea G - Violação de segredo da empresa</option>
+                                        <option value="H">Alínea H - Ato de indisciplina ou de insubordinação</option>
+                                        <option value="I">Alínea I - Abandono de emprego</option>
+                                        <option value="J">Alínea J - Ato lesivo da honra ou da boa fama</option>
+                                        <option value="K">Alínea K - Ato lesivo da honra (contra superior)</option>
+                                        <option value="L">Alínea L - Prática constante de jogos de azar</option>
+                                        <option value="M">Alínea M - Perda da habilitação profissional</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-12">
+                                    <label class="form-label fw-bold text-dark small mb-2">Medida Disciplinar Aplicada</label>
+                                    <select class="form-select border-0 bg-light py-2 shadow-none" id="disciplinar-tipo" required style="border-radius: 8px;">
+                                        <option value="">Selecione a medida</option>
+                                        <option value="Advertência Verbal">Advertência Verbal</option>
+                                        <option value="Advertência Escrita">Advertência Escrita</option>
+                                        <option value="Suspensão 1 dia">Suspensão (1 dia)</option>
+                                        <option value="Suspensão 3 dias">Suspensão (3 dias)</option>
+                                        <option value="Suspensão 5 dias">Suspensão (5 dias)</option>
+                                        <option value="Suspensão 7 dias">Suspensão (7 dias)</option>
+                                        <option value="Justa Causa">Rescisão por Justa Causa</option>
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-12">
-                            <label for="disciplinar-classificacao" class="form-label">Classificação da Ocorrência
-                                (Art. 482 CLT)</label>
-                            <select class="form-select" id="disciplinar-classificacao" required>
-                                <option value="">Selecione a classificação...</option>
-                                <option value="A">A) Ato de improbidade</option>
-                                <option value="B">B) Incontinência de conduta ou mau procedimento</option>
-                                <option value="C">C) Negociação habitual sem permissão</option>
-                                <option value="D">D) Condenação criminal</option>
-                                <option value="E">E) Desídia no desempenho das funções</option>
-                                <option value="F">F) Embriaguez habitual ou em serviço</option>
-                                <option value="G">G) Violação de segredo da empresa</option>
-                                <option value="H">H) Ato de indisciplina ou de insubordinação</option>
-                                <option value="I">I) Abandono de emprego</option>
-                                <option value="J">J) Ato lesivo da honra ou da boa fama (contra qualquer pessoa)
-                                </option>
-                                <option value="K">K) Ato lesivo da honra ou da boa fama (contra
-                                    empregador/superiores)</option>
-                                <option value="L">L) Prática constante de jogos de azar</option>
-                                <option value="M">M) Perda da habilitação profissional</option>
-                            </select>
-                        </div>
-                        <div class="col-md-12">
-                            <label for="disciplinar-tipo" class="form-label">Medida Aplicada</label>
-                            <select class="form-select" id="disciplinar-tipo" required>
-                                <option value="">Selecione a medida</option>
-                                <option value="Advertência Verbal">Advertência Verbal</option>
-                                <option value="Advertência Escrita">Advertência Escrita</option>
-                                <option value="Suspensão 1 dia">Suspensão 1 dia</option>
-                                <option value="Suspensão 2 dias">Suspensão 2 dias</option>
-                                <option value="Suspensão 3 dias">Suspensão 3 dias</option>
-                                <option value="Outro">Outro</option>
-                            </select>
-                        </div>
-                        <div class="col-12">
-                            <label for="disciplinar-ocorrencia" class="form-label">Descrição da Ocorrência</label>
-                            <textarea class="form-control" id="disciplinar-ocorrencia" rows="4"
-                                placeholder="Descreva detalhadamente o que aconteceu..." required></textarea>
-                        </div>
+                    </div>
+
+                    <!-- Descrição -->
+                    <div class="col-12">
+                        <label class="form-label fw-bold text-dark small mb-2">Relato Detalhado dos Fatos</label>
+                        <textarea class="form-control border-0 bg-white shadow-sm p-3" id="disciplinar-ocorrencia" rows="4" 
+                            placeholder="Descreva minuciosamente o ocorrido, citando testemunhas, local e circunstâncias..." 
+                            required style="border-radius: 12px; resize: none;"></textarea>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarRegistroDisciplinar()">Salvar
-                    Registro</button>
+            <div class="modal-footer bg-white border-0 p-4 pt-0">
+                <button type="button" class="btn btn-light px-4 py-2 text-muted fw-bold border-0" data-bs-dismiss="modal" style="border-radius: 10px;">Cancelar</button>
+                <button type="button" class="btn btn-danger px-4 py-2 shadow-sm fw-bold d-flex align-items-center" onclick="salvarRegistroDisciplinar()" style="border-radius: 10px;">
+                    <i class="fas fa-save me-2"></i>Salvar e Gerar Termo
+                </button>
             </div>
         </div>
     </div>

@@ -416,8 +416,14 @@ async function carregarHistoricoConsumoEPI() {
     try {
         let query = db.collection('epi_consumo').orderBy('dataEntrega', 'desc');
 
-        if (dataInicio) query = query.where('dataEntrega', '>=', new Date(dataInicio + 'T00:00:00'));
-        if (dataFim) query = query.where('dataEntrega', '<=', new Date(dataFim + 'T23:59:59'));
+        if (dataInicio) {
+            const [y, m, d] = dataInicio.split('-');
+            query = query.where('dataEntrega', '>=', new Date(y, m - 1, d, 0, 0, 0));
+        }
+        if (dataFim) {
+            const [y, m, d] = dataFim.split('-');
+            query = query.where('dataEntrega', '<=', new Date(y, m - 1, d, 23, 59, 59));
+        }
 
         const snapshot = await query.limit(200).get(); // Increased limit for better filtering
 
@@ -427,6 +433,11 @@ async function carregarHistoricoConsumoEPI() {
         }
 
         let html = '';
+        let totalEntregas = 0;
+        let custoTotal = 0;
+        const contagemEpi = {};
+        const contagemSetor = {};
+
         snapshot.forEach(doc => {
             const consumo = doc.data();
             const dataEntrega = consumo.dataEntrega?.toDate ? consumo.dataEntrega.toDate() : new Date(consumo.dataEntrega);
@@ -436,41 +447,143 @@ async function carregarHistoricoConsumoEPI() {
                 return;
             }
 
+            // Acumular dados para o dashboard baseados no que está sendo listado
+            const qtd = parseInt(consumo.quantidade) || 0;
+            totalEntregas += qtd;
+            custoTotal += (parseFloat(consumo.custoUnitario) || 0) * qtd;
+
+            if (consumo.epiDescricao) {
+                contagemEpi[consumo.epiDescricao] = (contagemEpi[consumo.epiDescricao] || 0) + qtd;
+            }
+            if (consumo.setor) {
+                contagemSetor[consumo.setor] = (contagemSetor[consumo.setor] || 0) + qtd;
+            }
+
+            const initials = consumo.funcionarioNome
+                ? consumo.funcionarioNome.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()
+                : '??';
+
             html += `
                 <tr>
-                    <td>${dataEntrega.toLocaleDateString('pt-BR')}</td>
-                    <td>${consumo.funcionarioNome}</td>
-                    <td>${consumo.epiDescricao}</td>
-                    <td>${consumo.epiCA}</td>
-                    <td><span class="badge bg-primary rounded-pill">${consumo.quantidade}</span></td>
-                    <td><small class="text-muted">${consumo.responsavelNome || 'Sistema'}</small></td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-warning" onclick="atualizarCustoConsumoIndividual('${doc.id}')" title="Atualizar Custo com Valor Atual do Estoque">
-                            <i class="fas fa-sync-alt"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="editarConsumoEPI('${doc.id}')" title="Editar Registro">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="devolverItemEPI('${doc.id}', ${consumo.quantidade}, '${consumo.epiDescricao}')" title="Devolver/Estornar">
-                            <i class="fas fa-undo"></i>
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirConsumoEPI('${doc.id}')" title="Excluir Registro">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                    <td class="ps-4">
+                        <div class="d-flex flex-column">
+                            <span class="fw-bold text-dark">${dataEntrega.toLocaleDateString('pt-BR')}</span>
+                            <small class="text-muted">${dataEntrega.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</small>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center fw-bold me-3" style="width: 38px; height: 38px; font-size: 0.8rem;">
+                                ${initials}
+                            </div>
+                            <div class="d-flex flex-column">
+                                <span class="fw-bold">${consumo.funcionarioNome}</span>
+                                <small class="text-muted">${consumo.setor || 'Setor não informado'}</small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex flex-column">
+                            <span class="text-dark fw-medium">${consumo.epiDescricao}</span>
+                            <small class="text-muted">Motivo: ${consumo.motivo || 'N/A'}</small>
+                        </div>
+                    </td>
+                    <td><code class="text-primary fw-bold">${consumo.epiCA}</code></td>
+                    <td class="text-center">
+                        <span class="badge bg-light text-primary border border-primary border-opacity-25 px-3 py-2 rounded-pill">
+                            ${consumo.quantidade} un
+                        </span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <i class="fas fa-user-check me-2 text-success opacity-50"></i>
+                            <span class="small text-muted">${consumo.responsavelNome || 'Sistema'}</span>
+                        </div>
+                    </td>
+                    <td class="text-end pe-4">
+                        <div class="btn-group">
+                            <button class="btn btn-sm btn-light text-primary border shadow-sm" onclick="editarConsumoEPI('${doc.id}')" title="Editar">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light text-warning border shadow-sm" onclick="devolverItemEPI('${doc.id}', ${consumo.quantidade}, '${consumo.epiDescricao}')" title="Devolver">
+                                <i class="fas fa-undo"></i>
+                            </button>
+                            <button class="btn btn-sm btn-light text-danger border shadow-sm" onclick="excluirConsumoEPI('${doc.id}')" title="Excluir">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
                     </td>
                 </tr>
             `;
         });
 
         if (!html) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">Nenhum registro encontrado com o filtro aplicado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-5 text-muted">Nenhum registro encontrado para este filtro.</td></tr>';
         } else {
             tbody.innerHTML = html;
         }
 
+        // Atualizar os cards do Dashboard com base no que foi carregado na tabela
+        atualizarCardsDashboardEPI(totalEntregas, custoTotal, contagemEpi, contagemSetor);
+
     } catch (error) {
         console.error("Erro ao carregar histórico de consumo:", error);
         tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
+    }
+}
+
+/**
+ * Atualiza os cards da UI com base nos dados fornecidos
+ */
+function atualizarCardsDashboardEPI(totalEntregas, custoTotal, contagemEpi, contagemSetor) {
+    const elTotal = document.getElementById('dash-epi-total-entregas');
+    const elCusto = document.getElementById('dash-epi-custo-total');
+    const elMaisEntregue = document.getElementById('dash-epi-mais-entregue');
+    const elSetor = document.getElementById('dash-epi-setor-consumo');
+
+    if (elTotal) elTotal.textContent = totalEntregas.toLocaleString('pt-BR');
+    if (elCusto) elCusto.textContent = `R$ ${custoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+
+    // Encontra o mais entregue
+    let maisEntregue = '---';
+    let maxEpi = 0;
+    for (const [nome, qtd] of Object.entries(contagemEpi)) {
+        if (qtd > maxEpi) {
+            maxEpi = qtd;
+            maisEntregue = nome;
+        }
+    }
+    if (elMaisEntregue) elMaisEntregue.textContent = maisEntregue.length > 20 ? maisEntregue.substring(0, 18) + '...' : maisEntregue;
+
+    // Encontra o setor
+    let setorConsumo = '---';
+    let maxSetor = 0;
+    for (const [nome, qtd] of Object.entries(contagemSetor)) {
+        if (qtd > maxSetor) {
+            maxSetor = qtd;
+            setorConsumo = nome;
+        }
+    }
+    if (elSetor) elSetor.textContent = setorConsumo;
+}
+
+/**
+ * Carrega indicadores que exigem consultas separadas (ex: CAs vencidos)
+ */
+async function carregarDashboardConsumoEPI() {
+    const elVencidos = document.getElementById('dash-epi-vencimentos-hoje');
+    if (!elVencidos) return;
+
+    try {
+        const hoje = new Date();
+        const hojeStr = hoje.toISOString().split('T')[0];
+        const estoqueSnap = await db.collection('epi_estoque')
+            .where('validadeCA', '<=', hojeStr)
+            .get();
+        
+        elVencidos.textContent = estoqueSnap.size;
+    } catch (error) {
+        console.error(">>> [EPI Dashboard] ERRO ao carregar CAs vencidos:", error);
     }
 }
 
@@ -676,98 +789,109 @@ async function abrirModalConsumoEPI() {
     // Se o modal não existir, criá-lo dinamicamente
     if (!modalEl) {
         const modalHTML = `
-            <div class="modal fade" id="modalConsumoEPI" tabindex="-1" aria-labelledby="modalConsumoEPILabel" aria-hidden="true">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content">
-                        <div class="modal-header bg-primary text-white">
-                            <h5 class="modal-title" id="modalConsumoEPILabel"><i class="fas fa-hard-hat me-2"></i> Registrar Entrega de EPI</h5>
+            <div class="modal fade" id="modalConsumoEPI" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg overflow-hidden" style="border-radius: 15px;">
+                        <div class="modal-header bg-primary text-white py-3 border-0">
+                            <div class="d-flex align-items-center">
+                                <div class="bg-white bg-opacity-25 rounded-circle p-3 me-3 d-flex align-items-center justify-content-center" style="width: 45px; height: 45px;">
+                                    <i class="fas fa-hand-holding-medical fa-lg"></i>
+                                </div>
+                                <div>
+                                    <h5 class="modal-title fw-bold mb-0">Registrar Entrega de EPI</h5>
+                                    <p class="mb-0 opacity-75 small">Controle de Segurança do Trabalho</p>
+                                </div>
+                            </div>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
                         </div>
-                        <div class="modal-body">
+                        <div class="modal-body p-4 bg-light bg-opacity-50">
                             <form id="form-consumo-epi">
-                                <!-- Dados Gerais -->
-                                <div class="mb-3">
-                                    <label for="consumo-funcionario" class="form-label">Colaborador *</label>
-                                    <select class="form-select" id="consumo-funcionario" required></select>
-                                    <div class="d-grid mt-2">
-                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="identificarPorBiometria()"><i class="fas fa-fingerprint"></i> Identificar por Digital</button>
-                                    </div>
-                                </div>
-                                <div class="row g-3 mb-4 align-items-end">
-                                    <div class="col-md-4">
-                                        <label for="consumo-data" class="form-label">Data Entrega *</label>
-                                        <input type="date" class="form-control" id="consumo-data" required>
-                                    </div>
-                                    <div class="col-md-8">
-                                        <label for="consumo-responsavel" class="form-label">Responsável</label>
-                                        <input type="text" class="form-control bg-light" id="consumo-responsavel" readonly>
-                                    </div>
-                                </div>
-                                
-                                <hr>
-                                
-                                <!-- Adicionar Item -->
-                                <div class="card bg-light mb-4">
-                                    <div class="card-body">
-                                        <h6 class="card-title mb-3 text-primary"><i class="fas fa-plus-circle"></i> Adicionar Item</h6>
-                                        <div class="mb-3">
-                                            <label for="consumo-epi-select" class="form-label">EPI / Equipamento</label>
-                                            <select class="form-select" id="consumo-epi-select"></select>
-                                        </div>
-                                        <div class="row g-3 align-items-end">
-                                            <div class="col-md-3">
-                                                <label for="consumo-quantidade" class="form-label">Quantidade</label>
-                                                <input type="number" class="form-control" id="consumo-quantidade" value="1" min="1">
+                                <!-- Dados do Colaborador e Data -->
+                                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px;">
+                                    <div class="card-body p-3">
+                                        <div class="row g-3">
+                                            <div class="col-md-7">
+                                                <label class="form-label fw-bold text-dark small mb-2"><i class="fas fa-user-tie me-1 text-primary"></i> Selecione o Colaborador</label>
+                                                <select class="form-select border-0 bg-light shadow-none py-2" id="consumo-funcionario" required style="border-radius: 8px;"></select>
                                             </div>
-                                            <div class="col-md-6">
-                                                <label for="consumo-motivo" class="form-label">Motivo</label>
-                                                <select class="form-select" id="consumo-motivo">
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-bold text-dark small mb-2"><i class="fas fa-calendar-check me-1 text-primary"></i> Data da Entrega</label>
+                                                <input type="date" class="form-control border-0 bg-light shadow-none py-2" id="consumo-data" required style="border-radius: 8px;">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Seletor de Itens (Design Moderno) -->
+                                <div class="card border-0 shadow-sm mb-4" style="border-radius: 12px; border-left: 4px solid #0d6efd !important;">
+                                    <div class="card-body p-3">
+                                        <h6 class="fw-bold text-primary small mb-3">INCLUIR EQUIPAMENTOS</h6>
+                                        <div class="row g-2 align-items-end">
+                                            <div class="col-md-5">
+                                                <label class="form-label text-muted small mb-1">EPI / Equipamento</label>
+                                                <select class="form-select border-0 bg-light py-2" id="consumo-epi-select" style="border-radius: 8px;"></select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label text-muted small mb-1">Qtd</label>
+                                                <input type="number" class="form-control border-0 bg-light py-2" id="consumo-quantidade" value="1" min="1" style="border-radius: 8px;">
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label text-muted small mb-1">Motivo da Entrega</label>
+                                                <select class="form-select border-0 bg-light py-2" id="consumo-motivo" style="border-radius: 8px;">
                                                     <option value="Admissão">Admissão</option>
-                                                    <option value="Prazo de Troca">Prazo de Troca</option>
-                                                    <option value="Perda">Perda</option>
-                                                    <option value="EPI Danificado">EPI Danificado</option>
+                                                    <option value="Prazo de Troca">Troca Periódica</option>
+                                                    <option value="Perda">Extravio / Perda</option>
+                                                    <option value="EPI Danificado">Danificado</option>
                                                     <option value="Outros">Outros</option>
                                                 </select>
                                             </div>
-                                            <div class="col-md-3">
-                                                <button type="button" class="btn btn-success w-100 shadow-sm fw-bold" style="height: 38px;" onclick="adicionarItemEPI()">
-                                                    <i class="fas fa-plus-circle me-2"></i> INCLUIR ITEM
+                                            <div class="col-md-2">
+                                                <button type="button" class="btn btn-primary w-100 py-2 fw-bold" onclick="adicionarItemEPI()" style="border-radius: 8px;">
+                                                    <i class="fas fa-plus me-1"></i>
                                                 </button>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 
-                                <!-- Lista de Itens -->
-                                <div class="card">
-                                    <div class="card-header d-flex justify-content-between align-items-center">
-                                        <span>Itens Selecionados</span>
-                                        <span class="badge bg-secondary">Total: <span id="total-itens-epi">0</span></span>
+                                <!-- Lista de Itens Adicionados -->
+                                <div class="card border-0 shadow-sm overflow-hidden" style="border-radius: 12px;">
+                                    <div class="card-header bg-white py-2 border-0 d-flex justify-content-between align-items-center">
+                                        <span class="fw-bold small text-muted">ITENS SELECIONADOS</span>
+                                        <span class="badge bg-primary rounded-pill" id="total-itens-epi-badge">0 itens</span>
                                     </div>
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th>Descrição</th>
-                                                    <th>CA</th>
-                                                    <th>Lote</th>
-                                                    <th class="text-center">Qtd</th>
-                                                    <th>Motivo</th>
-                                                    <th class="text-end">Ação</th>
+                                    <div class="table-responsive" style="max-height: 180px;">
+                                        <table class="table table-hover mb-0 align-middle">
+                                            <thead class="bg-light">
+                                                <tr class="small text-muted" style="font-size: 0.75rem;">
+                                                    <th class="ps-3 py-2">DESCRIÇÃO DO EPI</th>
+                                                    <th class="py-2 text-center">C.A</th>
+                                                    <th class="py-2 text-center">QTD</th>
+                                                    <th class="py-2 text-end pe-3">AÇÃO</th>
                                                 </tr>
                                             </thead>
-                                            <tbody id="tabela-itens-entrega">
-                                                <tr><td colspan="6" class="text-center text-muted">Nenhum item adicionado.</td></tr>
+                                            <tbody id="tabela-itens-entrega" style="font-size: 0.85rem;">
+                                                <tr><td colspan="4" class="text-center py-4 text-muted small opacity-50">Nenhum item na lista de entrega.</td></tr>
                                             </tbody>
                                         </table>
                                     </div>
                                 </div>
                             </form>
                         </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                            <button type="button" class="btn btn-primary" onclick="salvarEntregaEPI()">
-                                <i class="fas fa-save"></i> Registrar e Imprimir
+                        <div class="modal-footer bg-white border-0 p-4 pt-0">
+                            <div class="me-auto">
+                                <div class="d-flex align-items-center bg-light px-3 py-2 rounded-pill">
+                                    <i class="fas fa-user-shield text-success me-2"></i>
+                                    <div class="lh-1">
+                                        <small class="text-muted d-block" style="font-size: 0.65rem;">RESPONSÁVEL</small>
+                                        <span id="consumo-responsavel-badge" class="fw-bold small text-dark">...</span>
+                                    </div>
+                                </div>
+                                <input type="hidden" id="consumo-responsavel">
+                            </div>
+                            <button type="button" class="btn btn-light px-4 py-2 text-muted fw-bold border-0" data-bs-dismiss="modal" style="border-radius: 10px;">Cancelar</button>
+                            <button type="button" class="btn btn-primary px-4 py-2 shadow-sm fw-bold d-flex align-items-center" onclick="salvarEntregaEPI()" style="border-radius: 10px;">
+                                <i class="fas fa-print me-2"></i>Finalizar e Imprimir
                             </button>
                         </div>
                     </div>
@@ -796,6 +920,8 @@ async function abrirModalConsumoEPI() {
         responsavelNome = currentUser.displayName || currentUser.email || 'Usuário Logado';
     }
     document.getElementById('consumo-responsavel').value = responsavelNome;
+    const badge = document.getElementById('consumo-responsavel-badge');
+    if (badge) badge.textContent = responsavelNome;
 
     // Carregar Funcionários
     const funcSelect = document.getElementById('consumo-funcionario');
@@ -900,10 +1026,10 @@ function atualizarTabelaItensEntrega() {
 }
 
 function calcularTotalItens() {
-    const totalElement = document.getElementById('total-itens-epi');
+    const totalElement = document.getElementById('total-itens-epi-badge');
     if (totalElement) {
-        const total = itensEntregaAtual.reduce((sum, item) => sum + (item.quantidade || 0), 0);
-        totalElement.textContent = total.toLocaleString('pt-BR');
+        const total = itensEntregaAtual.length;
+        totalElement.textContent = `${total} item${total !== 1 ? 's' : ''}`;
     }
 }
 
@@ -2092,12 +2218,11 @@ async function inicializarConsumoEPI() {
     if (filtroInicio && !filtroInicio.value) filtroInicio.value = inicioMes;
     if (filtroFim && !filtroFim.value) filtroFim.value = fimMes;
 
-    await carregarHistoricoConsumoEPI();
-    
-    // Preencher filtros do dashboard
-    await carregarSelectEmpresas('dash-epi-empresa');
-    // Setores podem ser carregados dinamicamente ou todos de uma vez
-    // carregarDashboardConsumoEPI(); // Opcional: carregar ao iniciar
+    // Carrega em paralelo para melhor performance
+    await Promise.all([
+        carregarHistoricoConsumoEPI(),
+        carregarDashboardConsumoEPI()
+    ]);
 }
 
 // ========================================
@@ -2182,13 +2307,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Se a seção de consumo EPI ficou visível
                 if (target.id === 'consumo-epi' && !target.classList.contains('d-none')) {
-                    // A inicialização agora é chamada pelo app.js, então apenas recarregamos o dashboard
-                    // que redesenha os gráficos com as novas configurações.
-                    if (typeof carregarDashboardConsumoEPI === 'function') {
-                        carregarDashboardConsumoEPI();
-                    } else {
-                        inicializarConsumoEPI();
-                    }
+                    inicializarConsumoEPI();
                 }
 
                 // Se a seção de compras EPI ficou visível
