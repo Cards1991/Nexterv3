@@ -14,6 +14,8 @@ const ScriptLoader = {
         'setores': ['js/setores.js'],
         'funcionarios': ['js/funcionarios.js'],
         'movimentacoes': ['js/movimentacoes.js'],
+        'admissao': ['js/movimentacoes.js'],
+        'demissao': ['js/movimentacoes.js'],
         'painel-demitidos': ['js/painel-demitidos.js'],
         'transferencia': ['js/transferencia.js'],
         'alteracao-funcao': ['js/alteracao-funcao.js'],

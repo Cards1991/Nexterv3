@@ -25,8 +25,8 @@ async function carregarFatoresSwot() {
             if (snap.empty) {
                 container.innerHTML = `<tr><td colspan="6" class="text-center text-muted">Nenhum fator adicionado.</td></tr>`;
                 // Mesmo vazio, zera os totais para o cálculo da classificação
-                document.getElementById(`swot-total-relevancia-${tipo}`).textContent = '0%';
-                document.getElementById(`swot-total-resultado-${tipo}`).textContent = '0.00';
+                document.getElementById(`swot-total-relevancia-${tipo}`)?.textContent = '0%';
+                document.getElementById(`swot-total-resultado-${tipo}`)?.textContent = '0.00';
                 totais[tipo] = 0;
                 continue;
             }
@@ -117,6 +117,11 @@ function calcularEExibirClassificacao(totais) {
 
 async function carregarHistoricoSwot() {
     const tbody = document.getElementById('tabela-historico-swot');
+    if (!tbody) {
+        console.warn("Elemento 'tabela-historico-swot' não encontrado. Pulando carregamento do histórico.");
+        return;
+    }
+    
     tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
@@ -154,7 +159,13 @@ async function carregarHistoricoSwot() {
 }
 
 function renderizarGraficoHistorico(historico) {
-    const ctx = document.getElementById('grafico-historico-swot')?.getContext('2d');
+    const canvas = document.getElementById('grafico-historico-swot');
+    if (!canvas) {
+        console.warn("Elemento 'grafico-historico-swot' não encontrado. Pulando renderização do gráfico.");
+        return;
+    }
+    
+    const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const labels = historico.map(item => item.ano);

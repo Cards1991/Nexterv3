@@ -86,6 +86,8 @@
     </div>
 </div>
 
+
+
 <div class="row">
     <!-- Oportunidades -->
     <div class="col-lg-6 mb-4">
@@ -153,6 +155,41 @@
                         class="fw-bold">0.00</span></span>
                 <span><strong>Total Relevância:</strong> <span id="swot-total-relevancia-ameaca"
                         class="fw-bold">0%</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Card de Histórico Anual -->
+<div class="card mt-4">
+    <div class="card-header bg-dark text-white">
+        <h5 class="mb-0"><i class="fas fa-history"></i> Histórico e Comparativo Anual</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-7 mb-4">
+                <h6>Gráfico de Evolução da Classificação</h6>
+                <div style="position: relative; height: 250px;">
+                    <canvas id="grafico-historico-swot"></canvas>
+                </div>
+            </div>
+            <div class="col-lg-5">
+                <h6>Resultados Salvos</h6>
+                <div class="table-responsive" style="max-height: 250px; overflow-y: auto;">
+                    <table class="table table-sm table-hover">
+                        <thead>
+                            <tr>
+                                <th>Ano</th>
+                                <th>Score</th>
+                                <th>Classificação</th>
+                                <th class="text-end">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabela-historico-swot">
+                            <!-- Dados do histórico serão inseridos aqui -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
