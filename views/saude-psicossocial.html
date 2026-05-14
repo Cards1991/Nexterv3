@@ -1,63 +1,251 @@
-<h2 class="page-title">Gestão de Saúde Psicossocial</h2>
-<p class="text-muted">Acompanhamento de casos relacionados a CIDs psicossociais (F00-F99, Z65).</p>
+<style>
+    /* Estilos Premium para Saúde Psicossocial */
+    .psicossocial-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: white;
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 15px rgba(30, 60, 114, 0.2);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .psicossocial-kpi-card {
+        border-radius: 16px;
+        border: none;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        background: white;
+    }
+    
+    .psicossocial-kpi-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    
+    .psicossocial-kpi-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 4px;
+    }
+    
+    .psicossocial-kpi-primary::before { background: linear-gradient(90deg, #4776E6 0%, #8E54E9 100%); }
+    .psicossocial-kpi-warning::before { background: linear-gradient(90deg, #F2994A 0%, #F2C94C 100%); }
+    .psicossocial-kpi-danger::before { background: linear-gradient(90deg, #eb3349 0%, #f45c43 100%); }
+    
+    .psicossocial-kpi-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.5rem;
+        margin-bottom: 15px;
+    }
+    
+    .bg-icon-primary { background: rgba(71, 118, 230, 0.1); color: #4776E6; }
+    .bg-icon-warning { background: rgba(242, 153, 74, 0.1); color: #F2994A; }
+    .bg-icon-danger { background: rgba(235, 51, 73, 0.1); color: #eb3349; }
+    
+    .psicossocial-kpi-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #2c3e50;
+        line-height: 1.2;
+        margin-bottom: 5px;
+    }
+    
+    .psicossocial-kpi-label {
+        color: #6c757d;
+        font-size: 0.9rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
 
-<!-- KPIs -->
-<div class="row mb-4">
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card stat-card h-100">
-            <div class="card-body"><i class="fas fa-notes-medical text-primary"></i>
-                <div class="number" id="psico-kpi-total-casos">0</div>
-                <div class="label">Total de Casos</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card stat-card h-100">
-            <div class="card-body"><i class="fas fa-folder-open text-warning"></i>
-                <div class="number" id="psico-kpi-casos-abertos">0</div>
-                <div class="label">Casos em Aberto</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-4 col-md-6 mb-3">
-        <div class="card stat-card h-100">
-            <div class="card-body"><i class="fas fa-calendar-day text-danger"></i>
-                <div class="number" id="psico-kpi-media-dias">0</div>
-                <div class="label">Média de Dias de Afastamento</div>
-            </div>
-        </div>
-    </div>
-</div>
+    .psicossocial-card {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+        background: #ffffff;
+        margin-bottom: 30px;
+    }
 
-<div class="row">
-    <div class="col-lg-12 mb-4">
-        <div class="card">
-            <div class="card-header">Casos Registrados</div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Colaborador</th>
-                                <th>CID</th>
-                                <th>Data do Atestado</th>
-                                <th>Dias</th>
-                                <th>Estágio do Acompanhamento</th>
-                                <th class="text-end">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tabela-casos-psicossociais">
-                            <!-- Conteúdo será carregado via JS -->
-                        </tbody>
-                    </table>
+    .psicossocial-card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(0,0,0,0.05);
+        padding: 20px 24px;
+        font-weight: 700;
+        font-size: 1.1rem;
+        color: #2c3e50;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .psicossocial-table th {
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.8rem;
+        letter-spacing: 0.5px;
+        color: #6c757d;
+        border-bottom: 2px solid #f8f9fa;
+        padding: 15px;
+    }
+
+    .psicossocial-table td {
+        padding: 15px;
+        vertical-align: middle;
+        border-bottom: 1px solid #f8f9fa;
+        color: #495057;
+    }
+    
+    .psicossocial-table tbody tr {
+        transition: background-color 0.2s;
+    }
+    
+    .psicossocial-table tbody tr:hover {
+        background-color: #f8faff;
+    }
+    
+    /* Tonalidades de Status */
+    .badge-estagio {
+        padding: 8px 12px;
+        border-radius: 30px;
+        font-weight: 600;
+        font-size: 0.8rem;
+    }
+    
+    .badge-estagio-inicial { background: #e3f2fd; color: #1976d2; }
+    .badge-estagio-andamento { background: #fff3e0; color: #f57c00; }
+    .badge-estagio-concluido { background: #e8f5e9; color: #388e3c; }
+
+</style>
+
+<div class="container-fluid animate__animated animate__fadeIn">
+    
+    <!-- Header -->
+    <div class="psicossocial-header">
+        <div>
+            <h2 class="mb-1 fw-bold" style="letter-spacing: -0.5px;">
+                <i class="fas fa-brain me-2 opacity-75"></i> Gestão de Saúde Psicossocial
+            </h2>
+            <p class="mb-0 text-white-50" style="font-weight: 500;">
+                Acompanhamento e monitoramento ativo de casos com CIDs psicossociais (F00-F99, Z65).
+            </p>
+        </div>
+        <div>
+            <!-- Botão de Ação Opcional -->
+            <button class="btn btn-light text-primary fw-bold rounded-pill shadow-sm px-4">
+                <i class="fas fa-file-export me-2"></i> Relatório Completo
+            </button>
+        </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="row mb-4">
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="psicossocial-kpi-card psicossocial-kpi-primary p-4">
+                <div class="psicossocial-kpi-icon bg-icon-primary">
+                    <i class="fas fa-notes-medical"></i>
+                </div>
+                <div class="psicossocial-kpi-value" id="psico-kpi-total-casos">0</div>
+                <div class="psicossocial-kpi-label">Total de Casos Identificados</div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="psicossocial-kpi-card psicossocial-kpi-warning p-4">
+                <div class="psicossocial-kpi-icon bg-icon-warning">
+                    <i class="fas fa-folder-open"></i>
+                </div>
+                <div class="psicossocial-kpi-value" id="psico-kpi-casos-abertos">0</div>
+                <div class="psicossocial-kpi-label">Casos em Aberto (Ativos)</div>
+            </div>
+        </div>
+        
+        <div class="col-lg-4 col-md-6 mb-4">
+            <div class="psicossocial-kpi-card psicossocial-kpi-danger p-4">
+                <div class="psicossocial-kpi-icon bg-icon-danger">
+                    <i class="fas fa-calendar-day"></i>
+                </div>
+                <div class="psicossocial-kpi-value" id="psico-kpi-media-dias">0</div>
+                <div class="psicossocial-kpi-label">Média de Dias de Afastamento</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- Tabela de Casos -->
+        <div class="col-lg-12">
+            <div class="psicossocial-card">
+                <div class="psicossocial-card-header d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                    <div>
+                        <i class="fas fa-users text-primary"></i>
+                        Casos Registrados
+                    </div>
+                    <div class="d-flex flex-column flex-md-row gap-2">
+                        <div class="input-group input-group-sm" style="width: 250px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="filtro-nome-psicossocial" class="form-control border-start-0 ps-0 bg-light" placeholder="Filtrar por Colaborador...">
+                        </div>
+                        <select class="form-select form-select-sm bg-light" id="filtro-estagio-psicossocial" style="width: 200px;">
+                            <option value="">Todos os Estágios</option>
+                            <option value="Triagem Inicial">Triagem Inicial</option>
+                            <option value="Em Acompanhamento">Em Acompanhamento</option>
+                            <option value="Retorno Gradual">Retorno Gradual</option>
+                            <option value="Alta/Concluído">Alta/Concluído</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table psicossocial-table mb-0">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Colaborador</th>
+                                    <th>CID-10</th>
+                                    <th>Data do Atestado</th>
+                                    <th>Dias de Afastamento</th>
+                                    <th>Estágio do Acompanhamento</th>
+                                    <th class="text-end pe-4">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-casos-psicossociais">
+                                <tr>
+                                    <td colspan="6" class="text-center py-5 text-muted">
+                                        <div class="spinner-border text-primary mb-3" role="status"></div>
+                                        <p class="mb-0 fw-semibold">Carregando dados dos prontuários...</p>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-    <div class="col-lg-12">
-        <div class="card">
-            <div class="card-header">Tendência de Casos (Últimos 6 meses)</div>
-            <div class="card-body" style="height: 300px;"><canvas id="grafico-tendencia-psicossocial"></canvas></div>
+        
+        <!-- Gráfico de Tendências -->
+        <div class="col-lg-12">
+            <div class="psicossocial-card">
+                <div class="psicossocial-card-header">
+                    <i class="fas fa-chart-area text-primary"></i>
+                    Tendência de Ocorrências Psicossociais (Últimos 6 meses)
+                </div>
+                <div class="card-body p-4">
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="grafico-tendencia-psicossocial"></canvas>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>

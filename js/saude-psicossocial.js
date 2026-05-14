@@ -117,6 +117,18 @@ SaudePsicossocial.mostrarMensagem = function (texto, tipo) {
 
 SaudePsicossocial.inicializar = async function () {
     console.log("Inicializando Gestão de Saúde Psicossocial...");
+    
+    // Configurar event listeners para os filtros
+    const inputNome = document.getElementById('filtro-nome-psicossocial');
+    const selectEstagio = document.getElementById('filtro-estagio-psicossocial');
+    
+    if (inputNome) {
+        inputNome.addEventListener('input', () => SaudePsicossocial.renderizarTabela());
+    }
+    if (selectEstagio) {
+        selectEstagio.addEventListener('change', () => SaudePsicossocial.renderizarTabela());
+    }
+    
     await SaudePsicossocial.carregarDados();
 };
 
@@ -192,10 +204,38 @@ SaudePsicossocial.renderizarTabela = function () {
     const tbody = document.getElementById('tabela-casos-psicossociais');
     if (!tbody) return;
 
-    const casos = SaudePsicossocial.state.cache.casos;
+    let casos = SaudePsicossocial.state.cache.casos;
 
     if (!casos.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center">Nenhum caso psicossocial encontrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Nenhum caso psicossocial encontrado</td></tr>';
+        return;
+    }
+    
+    // Aplicar Filtros
+    const filtroNome = document.getElementById('filtro-nome-psicossocial')?.value.toLowerCase().trim() || '';
+    const filtroEstagio = document.getElementById('filtro-estagio-psicossocial')?.value || '';
+    
+    casos = casos.filter(c => {
+        const primeiro = c.atestados[0];
+        const estagio = primeiro?.investigacaoPsicossocial?.estagio || 'Não iniciado';
+        
+        const matchNome = c.nome.toLowerCase().includes(filtroNome);
+        
+        let matchEstagio = true;
+        if (filtroEstagio) {
+            // Mapeamento dos estágios do select para os estágios reais do banco de dados
+            if (filtroEstagio === 'Triagem Inicial' && (estagio !== 'Análise Inicial' && estagio !== 'Não iniciado')) matchEstagio = false;
+            else if (filtroEstagio === 'Em Acompanhamento' && (estagio !== 'Conversa Agendada' && estagio !== 'Conversado com Funcionário')) matchEstagio = false;
+            else if (filtroEstagio === 'Retorno Gradual' && estagio !== 'Plano de Ação Definido') matchEstagio = false;
+            else if (filtroEstagio === 'Alta/Concluído' && estagio !== 'Caso Encerrado') matchEstagio = false;
+        }
+        
+        return matchNome && matchEstagio;
+    });
+
+    if (!casos.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum caso encontrado para os filtros atuais.</td></tr>';
+        SaudePsicossocial.renderizarMetricas(casos);
         return;
     }
 
@@ -236,22 +276,36 @@ SaudePsicossocial.renderizarTabela = function () {
             </tr>
         `;
     }).join('');
+    
+    // Atualizar métricas baseado nos casos filtrados
+    SaudePsicossocial.renderizarMetricas(casos);
 };
 
-SaudePsicossocial.renderizarMetricas = function () {
+SaudePsicossocial.renderizarMetricas = function (casosFiltrados) {
     const total = document.getElementById('psico-kpi-total-casos');
     const abertos = document.getElementById('psico-kpi-casos-abertos');
     const media = document.getElementById('psico-kpi-media-dias');
 
     if (total && abertos && media) {
-        const numAbertos = SaudePsicossocial.state.cache.casos.filter(c =>
+        const casos = casosFiltrados || SaudePsicossocial.state.cache.casos;
+        
+        const numAbertos = casos.filter(c =>
             c.atestados[0]?.investigacaoPsicossocial?.estagio !== 'Caso Encerrado'
         ).length;
 
-        const totalDias = SaudePsicossocial.state.cache.atestados.reduce((acc, a) => acc + (a.dias || 0), 0);
-        const mediaDias = SaudePsicossocial.state.cache.atestados.length ? (totalDias / SaudePsicossocial.state.cache.atestados.length).toFixed(1) : '0.0';
+        // Calcula total de dias apenas para os casos exibidos na tela
+        let totalDias = 0;
+        let numAtestados = 0;
+        casos.forEach(c => {
+            c.atestados.forEach(a => {
+                totalDias += (a.dias || 0);
+                numAtestados++;
+            });
+        });
+        
+        const mediaDias = numAtestados ? (totalDias / numAtestados).toFixed(1) : '0.0';
 
-        total.textContent = SaudePsicossocial.state.cache.casos.length;
+        total.textContent = casos.length;
         abertos.textContent = numAbertos;
         media.textContent = mediaDias;
     }
