@@ -1281,9 +1281,9 @@ window.abrirModalGerarFicha = async () => {
     
     document.getElementById('gf-data').value = new Date().toISOString().split('T')[0];
     document.getElementById('gf-obs').value = '';
-    document.getElementById('gf-lista-colaboradores').innerHTML = '<li class="list-group-item text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Carregando máquinas...</li>';
-    document.getElementById('gf-lista-produtos-busca').innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Digite referência ou nome...</li>';
-    document.getElementById('gf-lista-produtos-selecionados').innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum selecionado</li>';
+    document.getElementById('gf-lista-colaboradores').innerHTML = '<li class="list-group-item text-center py-3 bg-transparent border-0 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Carregando máquinas...</li>';
+    document.getElementById('gf-lista-produtos-busca').innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Digite referência ou nome...</li>';
+    document.getElementById('gf-lista-produtos-selecionados').innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Nenhum selecionado</li>';
     
     // Forçar carregamento das máquinas e produtos (cache)
     console.log("Abrindo modal: Carregando máquinas e produtos...");
@@ -1313,7 +1313,7 @@ window.filtrarProdutosFicha = () => {
     const lista = document.getElementById('gf-lista-produtos-busca');
     
     if (!termo) {
-        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Digite para buscar...</li>';
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Digite para buscar...</li>';
         return;
     }
 
@@ -1323,17 +1323,17 @@ window.filtrarProdutosFicha = () => {
     ).slice(0, 10); // Limitar a 10 resultados para performance
 
     if (filtrados.length === 0) {
-        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum produto encontrado</li>';
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Nenhum produto encontrado</li>';
         return;
     }
 
     lista.innerHTML = filtrados.map(p => `
-        <li class="list-group-item py-1 d-flex justify-content-between align-items-center">
+        <li class="list-group-item py-2 d-flex justify-content-between align-items-center bg-transparent border-bottom mb-1 transition-hover">
             <div>
-                <div class="small fw-bold">${p.descricao}</div>
-                <div class="text-muted" style="font-size: 0.7rem;">Cod: ${p.codigo} | Tam: ${p.tamanho}</div>
+                <div class="small fw-bold text-dark">${p.descricao}</div>
+                <div class="text-muted" style="font-size: 0.7rem;"><i class="fas fa-barcode me-1"></i>${p.codigo} | <i class="fas fa-ruler-horizontal mx-1"></i>Tam: ${p.tamanho}</div>
             </div>
-            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="adicionarProdutoFicha('${p.codigo}', '${p.descricao}', '${p.tamanho}')">
+            <button class="btn btn-sm btn-outline-primary rounded-pill py-0 px-3 shadow-sm transition-hover" onclick="adicionarProdutoFicha('${p.codigo}', '${p.descricao}', '${p.tamanho}')">
                 <i class="fas fa-plus"></i>
             </button>
         </li>
@@ -1372,7 +1372,7 @@ async function carregarMaquinasFicha() {
         const lista = document.getElementById('gf-lista-colaboradores');
         
         if (snap.empty) {
-            lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhuma máquina configurada para produção</li>';
+            lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Nenhuma máquina configurada para produção</li>';
             return;
         }
 
@@ -1380,9 +1380,9 @@ async function carregarMaquinasFicha() {
         snap.forEach(doc => {
             const m = doc.data();
             lista.innerHTML += `
-                <li class="list-group-item py-1">
-                    <div class="form-check">
-                        <input class="form-check-input check-colab-ficha" type="checkbox" 
+                <li class="list-group-item py-2 bg-transparent border-bottom mb-1 transition-hover">
+                    <div class="form-check d-flex align-items-center mb-0">
+                        <input class="form-check-input check-colab-ficha cursor-pointer shadow-none me-3 mt-0" type="checkbox" 
                                value="${doc.id}" 
                                data-tipo="maquina"
                                data-maquina-id="${doc.id}"
@@ -1391,20 +1391,20 @@ async function carregarMaquinasFicha() {
                                data-operador-id="${m.operadorId || ''}"
                                data-operador-nome="${m.operadorNome && m.operadorNome !== 'Nenhum operador vinculado' ? m.operadorNome : 'S/ Operador'}"
                                data-setor-nome="${m.setor || 'N/A'}"
-                               onchange="atualizarContagemFicha()">
-                        <label class="form-check-label small w-100">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <span class="fw-bold text-primary">${m.codigo}</span>
-                                <span class="badge bg-light text-dark border">${m.setor || 'S/ Setor'}</span>
+                               onchange="atualizarContagemFicha()"
+                               style="width: 1.2rem; height: 1.2rem;">
+                        <label class="form-check-label small w-100 cursor-pointer">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <span class="fw-bold text-primary"><i class="fas fa-cog me-1"></i>${m.codigo}</span>
+                                <span class="badge bg-light text-dark border rounded-pill px-2">${m.setor || 'S/ Setor'}</span>
                             </div>
-                            <div class="text-dark">${m.nome} ${m.apelido ? `<small class="text-muted">(${m.apelido})</small>` : ''}</div>
-                            <div class="mt-1">
-                                <span class="badge bg-info text-white" style="font-size: 0.65rem;">
+                            <div class="text-dark fw-semibold mb-1">${m.nome} ${m.apelido ? `<span class="text-muted small fw-normal ms-1">(${m.apelido})</span>` : ''}</div>
+                            <div>
+                                <span class="badge ${m.operadorNome && m.operadorNome !== 'Nenhum operador vinculado' ? 'bg-info' : 'bg-secondary'} text-white rounded-pill px-2 py-1" style="font-size: 0.65rem;">
                                     <i class="fas fa-user me-1"></i>${m.operadorNome && m.operadorNome !== 'Nenhum operador vinculado' ? m.operadorNome : 'Não vinculado'}
                                 </span>
                             </div>
                         </label>
-
                     </div>
                 </li>
             `;
@@ -1433,17 +1433,17 @@ function renderizarProdutosSelecionadosFicha() {
     const lista = document.getElementById('gf-lista-produtos-selecionados');
     if (!lista) return;
     if (__FICHA_PRODUTOS.length === 0) {
-        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum selecionado</li>';
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Nenhum selecionado</li>';
         return;
     }
 
     lista.innerHTML = __FICHA_PRODUTOS.map(p => `
-        <li class="list-group-item py-1 d-flex justify-content-between align-items-center bg-light">
+        <li class="list-group-item py-2 d-flex justify-content-between align-items-center bg-white border rounded-3 mb-2 shadow-sm">
             <div>
-                <div class="small fw-bold">${p.descricao}</div>
-                <div class="text-muted" style="font-size: 0.6rem;">${p.codigo} | Tam: ${p.tamanho}</div>
+                <div class="small fw-bold text-primary">${p.descricao}</div>
+                <div class="text-muted" style="font-size: 0.65rem;"><i class="fas fa-barcode me-1"></i>${p.codigo} | <i class="fas fa-ruler-horizontal mx-1"></i>Tam: ${p.tamanho}</div>
             </div>
-            <button class="btn btn-sm btn-link text-danger py-0" onclick="removerProdutoFicha('${p.codigo}')">
+            <button class="btn btn-sm btn-outline-danger rounded-pill py-0 px-2 transition-hover border-0 bg-light" onclick="removerProdutoFicha('${p.codigo}')">
                 <i class="fas fa-times"></i>
             </button>
         </li>
