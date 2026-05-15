@@ -1,81 +1,77 @@
 <!-- views/producao-lancamento.html -->
-<div class="container-fluid py-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
+<div class="container-fluid py-3 px-2 px-md-4">
+
+    <!-- Header responsivo -->
+    <div class="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center mb-3 gap-2">
         <div>
-            <h2 class="page-title mb-1"><i class="fas fa-edit me-2"></i>Lançar Produção Diária</h2>
-            <p class="text-muted small mb-0">Registre os resultados de produção por setor e turno</p>
+            <h2 class="page-title mb-0 fs-5 fs-md-4"><i class="fas fa-edit me-2"></i>Lançar Produção Diária</h2>
+            <p class="text-muted small mb-0">Gerencie as fichas de produção por máquina</p>
         </div>
-        <div class="d-flex gap-2">
-            <button class="btn btn-outline-secondary" onclick="showSection('producao-gestao')">
-                <i class="fas fa-chart-line me-1"></i> Ir para Dashboard
+        <div class="d-flex flex-wrap gap-2 w-100 w-sm-auto">
+            <button class="btn btn-primary flex-fill flex-sm-grow-0 btn-sm btn-md-normal" onclick="abrirPainelAuditoriaFicha()">
+                <i class="fas fa-barcode me-1"></i> Lançar
             </button>
-            <button class="btn btn-primary" onclick="salvarLoteProducao()">
-                <i class="fas fa-save me-1"></i> Salvar Lançamentos
+            <button class="btn btn-outline-info flex-fill flex-sm-grow-0 btn-sm" onclick="abrirModalGerarFicha()">
+                <i class="fas fa-file-invoice me-1"></i> Gerar Ficha
+            </button>
+            <button class="btn btn-outline-secondary flex-fill flex-sm-grow-0 btn-sm" onclick="showSection('producao-gestao')">
+                <i class="fas fa-chart-line me-1"></i> Dashboard
             </button>
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body bg-light rounded shadow-inner">
-            <div class="row g-3 align-items-end">
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted">Data da Produção</label>
-                    <input type="date" class="form-control" id="form-lp-data-lote" onchange="verificarLancamentosExistentes()">
+    <!-- Filtro de data -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body py-2 px-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-12 col-sm-5 col-md-4">
+                    <label class="form-label small fw-bold text-muted mb-1">Data da Produção</label>
+                    <input type="date" class="form-control form-control-sm" id="form-lp-data-lote" onchange="verificarLancamentosExistentes()">
                 </div>
-                <div class="col-md-3">
-                    <label class="form-label small fw-bold text-muted">Turno Predominante</label>
-                    <select class="form-select" id="form-lp-turno-lote">
-                        <option value="1º Turno">1º Turno (Manhã)</option>
-                        <option value="2º Turno">2º Turno (Tarde)</option>
-                        <option value="3º Turno">3º Turno (Noite)</option>
-                        <option value="Geral">Geral / Comercial</option>
-                    </select>
-                </div>
-                <div class="col-md-6 text-end">
-                    <button class="btn btn-warning btn-sm me-2" onclick="abrirModalLancamentoProducao()">
-                        <i class="fas fa-plus me-1"></i> Lançamento Manual (Unitário)
-                    </button>
-                    <div class="alert alert-warning d-inline-block py-1 px-3 mb-0 small border-0" id="aviso-lancamento">
-                        <i class="fas fa-info-circle me-1"></i> Preencha o volume produzido para cada setor abaixo.
+                <div class="col-12 col-sm-7 col-md-8 d-flex align-items-center justify-content-sm-end gap-2 flex-wrap">
+                    <div class="alert alert-warning d-inline-flex align-items-center py-1 px-2 mb-0 small border-0" id="aviso-lancamento" style="font-size:0.75rem;">
+                        <i class="fas fa-info-circle me-1"></i> Selecione uma data para carregar as fichas.
                     </div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Tabela de Lançamento em Massa -->
-    <div class="card border-0 shadow-sm overflow-hidden">
+    <!-- Fichas em CARDS (mobile-first) -->
+    <div id="lista-fichas-dia-cards" class="d-block d-md-none mb-3">
+        <div class="text-center py-5 text-muted small">
+            <i class="fas fa-calendar-alt fa-2x mb-2 d-block opacity-50"></i>
+            Selecione uma data para carregar as fichas...
+        </div>
+    </div>
+
+    <!-- Tabela (desktop) -->
+    <div class="card border-0 shadow-sm overflow-hidden d-none d-md-block">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="bg-dark text-white">
                     <tr>
-                        <th class="ps-3" style="width: 300px;">Setor / Equipe</th>
-                        <th class="text-center">Meta Diária (Est.)</th>
-                        <th class="text-center" style="width: 250px;">Produção Realizada</th>
-                        <th>Status</th>
-                        <th class="text-end pe-3">Observações do Turno</th>
+                        <th class="ps-3" style="width:160px;">Código Ficha</th>
+                        <th>Máquina / Setor</th>
+                        <th>Operador</th>
+                        <th class="text-center">Data</th>
+                        <th class="text-center">Total</th>
+                        <th class="text-center">Status</th>
+                        <th class="text-end pe-3">Ações</th>
                     </tr>
                 </thead>
-                <tbody id="lista-setores-lancamento">
-                    <!-- Dinamicamente preenchido -->
-                    <tr><td colspan="5" class="text-center py-5">Carregando setores ativos...</td></tr>
+                <tbody id="lista-fichas-dia">
+                    <tr><td colspan="7" class="text-center py-5 text-muted">Selecione uma data para carregar as fichas...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Histórico Rápido do Dia -->
-    <div class="mt-4">
-        <h5 class="fw-bold mb-3"><i class="fas fa-history me-2"></i>Lançamentos Realizados Recentemente</h5>
-        <div id="historico-lançamentos-dia" class="row g-3">
-            <!-- Cards de histórico aqui -->
-        </div>
-    </div>
 </div>
 
 <!-- Modal: Lançar Produção (Manual) -->
 <div class="modal fade" id="modalLancamentoProducao" tabindex="-1">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-fullscreen-sm-down">
         <div class="modal-content border-0 shadow">
             <div class="modal-header bg-dark text-white">
                 <h5 class="modal-title"><i class="fas fa-edit me-2"></i>Lançamento Manual</h5>
@@ -87,19 +83,9 @@
                         <label class="form-label small fw-bold">Setor / Equipe</label>
                         <select class="form-select" id="lp-setor" required></select>
                     </div>
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">Data</label>
-                            <input type="date" class="form-control" id="lp-data" required>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label small fw-bold">Turno</label>
-                            <select class="form-select" id="lp-turno" required>
-                                <option value="1º Turno">1º Turno</option>
-                                <option value="2º Turno">2º Turno</option>
-                                <option value="3º Turno">3º Turno</option>
-                            </select>
-                        </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold">Data</label>
+                        <input type="date" class="form-control" id="lp-data" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label small fw-bold">Quantidade Produzida</label>
@@ -119,7 +105,206 @@
     </div>
 </div>
 
+<!-- Modal: Gerar Ficha de Produção -->
+<div class="modal fade" id="modalGerarFicha" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-file-invoice me-2"></i>Gerar Ficha de Produção</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light overflow-auto">
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Data da Produção</label>
+                    <input type="date" class="form-control border-0 shadow-sm" id="gf-data">
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted">Buscar Máquina ou Operador</label>
+                    <div class="input-group shadow-sm">
+                        <span class="input-group-text bg-white border-0 text-muted"><i class="fas fa-search"></i></span>
+                        <input type="text" class="form-control border-0" id="gf-busca-maquina"
+                               placeholder="Código ou nome do operador..." onkeyup="window.filtrarMaquinasFicha()">
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <!-- Máquinas -->
+                    <div class="col-12 col-md-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center">
+                                <span class="fw-bold small text-muted">1. Selecione as Máquinas</span>
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" type="checkbox" id="gf-select-all-colabs" onchange="window.selecionarTodosColaboradoresFicha(this)">
+                                    <label class="form-check-label small" for="gf-select-all-colabs">Todas</label>
+                                </div>
+                            </div>
+                            <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
+                                <ul class="list-group list-group-flush" id="gf-lista-colaboradores">
+                                    <!-- Preenchido via JS -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Produtos -->
+                    <div class="col-12 col-md-6">
+                        <div class="card border-0 shadow-sm">
+                            <div class="card-header bg-white py-2">
+                                <span class="fw-bold small text-muted">2. Selecione os Produtos</span>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="input-group input-group-sm mb-2">
+                                    <input type="text" class="form-control" id="gf-busca-produto"
+                                           placeholder="Buscar referência..." onkeyup="window.filtrarProdutosFicha()">
+                                    <span class="input-group-text bg-white"><i class="fas fa-search"></i></span>
+                                </div>
+                                <div style="max-height: 140px; overflow-y: auto;" class="mb-2">
+                                    <ul class="list-group list-group-flush small" id="gf-lista-produtos-busca">
+                                        <li class="list-group-item text-center text-muted py-3 small">Digite para buscar...</li>
+                                    </ul>
+                                </div>
+                                <hr class="my-1">
+                                <span class="fw-bold small text-muted d-block mb-1">Selecionados:</span>
+                                <div style="max-height: 120px; overflow-y: auto;">
+                                    <ul class="list-group list-group-flush small" id="gf-lista-produtos-selecionados">
+                                        <li class="list-group-item text-center text-muted py-2 small">Nenhum selecionado</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-3">
+                    <label class="form-label small fw-bold text-muted">Observações da Ficha</label>
+                    <textarea class="form-control border-0 shadow-sm" id="gf-obs" rows="2" placeholder="Opcional..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light d-flex justify-content-between">
+                <span class="badge bg-secondary" id="gf-contagem-selecionados">0 Máq. | 0 Produtos</span>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary btn-sm px-3" onclick="gerarSalvarFichaProducao()">
+                        <i class="fas fa-print me-1"></i>Gerar e Imprimir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Auditar / Baixar Ficha -->
+<div class="modal fade" id="modalAuditoriaFicha" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-warning text-dark border-0 py-2">
+                <h5 class="modal-title fw-bold fs-6"><i class="fas fa-qrcode me-2"></i>Baixa de Ficha</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body bg-light p-2 p-md-3">
+                <!-- Busca -->
+                <div class="card border-0 shadow-sm mb-3">
+                    <div class="card-body py-3 text-center">
+                        <label class="form-label fw-bold small mb-2">Escaneie o QR Code ou Digite o Código</label>
+                        <div class="input-group mx-auto" style="max-width: 420px;">
+                            <span class="input-group-text bg-white"><i class="fas fa-barcode"></i></span>
+                            <input type="text" class="form-control text-center fw-bold" id="af-codigo-ficha"
+                                   placeholder="FCH-XXXX-XXXX"
+                                   onkeypress="if(event.key === 'Enter') buscarFichaAuditoria()"
+                                   style="font-size: 0.9rem;">
+                            <button class="btn btn-dark btn-sm" onclick="buscarFichaAuditoria()">Buscar</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resultado -->
+                <div id="af-resultado-ficha" class="d-none">
+                    <div class="card border-0 shadow-sm">
+                        <!-- Info da ficha -->
+                        <div class="card-header bg-white py-2 d-flex justify-content-between align-items-center flex-wrap gap-1">
+                            <h6 class="mb-0 fw-bold small" id="af-info-header">Ficha: --</h6>
+                            <span class="badge bg-primary" id="af-status">Aberto</span>
+                        </div>
+
+                        <!-- Resumo -->
+                        <div class="card-body p-2">
+                            <div class="row g-2 mb-3 text-center">
+                                <div class="col-4">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted" style="font-size:0.65rem;">MÁQUINA</div>
+                                        <div class="fw-bold small" id="af-info-setor">--</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted" style="font-size:0.65rem;">DATA</div>
+                                        <div class="fw-bold small" id="af-info-data">--</div>
+                                    </div>
+                                </div>
+                                <div class="col-4">
+                                    <div class="bg-light rounded p-2">
+                                        <div class="text-muted" style="font-size:0.65rem;">OPERADOR</div>
+                                        <div class="fw-bold small" id="af-info-equipe">--</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h6 class="fw-bold mb-2 small">Informe as quantidades produzidas:</h6>
+                            <div class="table-responsive border rounded" style="max-height: 380px; overflow-y: auto; -webkit-overflow-scrolling: touch;">
+                                <table class="table table-sm table-hover align-middle mb-0" id="af-tabela-lancamento">
+                                    <thead class="table-dark sticky-top">
+                                        <tr id="af-header-produtos"></tr>
+                                    </thead>
+                                    <tbody id="af-grid-colaboradores">
+                                        <!-- Matriz de inputs preenchida via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-2 text-muted small">
+                                <i class="fas fa-info-circle me-1"></i> Role horizontalmente se houver muitos produtos.
+                            </div>
+                        </div>
+
+                        <div class="card-footer bg-white d-flex justify-content-between align-items-center py-2">
+                            <span class="text-muted small"><i class="fas fa-lock me-1"></i>Dados salvos no Firebase</span>
+                            <button type="button" class="btn btn-success btn-sm px-4" id="af-btn-salvar" onclick="salvarBaixaFicha()">
+                                <i class="fas fa-check-circle me-1"></i> Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Motivo de Substituição de Ficha -->
+<div class="modal fade" id="modalMotivoSubstituicao" tabindex="-1">
+    <div class="modal-dialog modal-fullscreen-sm-down">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold fs-6"><i class="fas fa-exclamation-triangle me-2"></i>Motivo da Substituição</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="small">Você está relançando uma ficha já concluída. Informe o motivo.</p>
+                <div class="mb-3">
+                    <label class="form-label small fw-bold">Descreva o motivo</label>
+                    <textarea class="form-control" id="ms-motivo" rows="3"
+                              placeholder="Ex: Erro na contagem manual, troca de referência..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger px-4" onclick="confirmarSubstituicaoFicha()">Confirmar e Salvar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
+    /* ===== Produção Mobile ===== */
     .input-producao-lote {
         font-weight: bold;
         text-align: center;
@@ -132,11 +317,40 @@
         border-color: #0d6efd;
         box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1);
     }
-    .status-indicador {
-        width: 12px;
-        height: 12px;
-        border-radius: 50%;
-        display: inline-block;
-        margin-right: 6px;
+
+    /* Ficha Card (mobile view) */
+    .ficha-card-mobile {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+        padding: 12px 14px;
+        margin-bottom: 10px;
+        border-left: 4px solid #0d6efd;
+        transition: transform 0.15s;
+    }
+    .ficha-card-mobile.concluida { border-left-color: #198754; }
+    .ficha-card-mobile.cancelada { border-left-color: #dc3545; }
+    .ficha-card-mobile:active { transform: scale(0.99); }
+    .ficha-card-mobile .ficha-id { font-size: 0.7rem; font-family: monospace; color: #6c757d; }
+    .ficha-card-mobile .ficha-maquina { font-weight: 700; font-size: 0.95rem; }
+    .ficha-card-mobile .ficha-operador { font-size: 0.78rem; color: #555; }
+    .ficha-card-mobile .ficha-total { font-size: 1.5rem; font-weight: 800; color: #198754; line-height: 1; }
+    .ficha-card-mobile .ficha-acoes { display: flex; gap: 6px; margin-top: 10px; }
+    .ficha-card-mobile .ficha-acoes .btn { flex: 1; font-size: 0.78rem; padding: 6px 4px; }
+
+    /* Input grid mobile */
+    .input-grid-ficha {
+        min-width: 70px;
+        width: 70px;
+        font-size: 1rem;
+        font-weight: 700;
+        text-align: center;
+        padding: 6px 4px;
+    }
+
+    @media (max-width: 576px) {
+        .page-title { font-size: 1.1rem; }
+        #af-tabela-lancamento th, #af-tabela-lancamento td { font-size: 0.75rem; padding: 6px 4px; }
+        .modal-footer { flex-wrap: wrap; gap: 8px; }
     }
 </style>

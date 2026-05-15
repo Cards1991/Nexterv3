@@ -37,8 +37,9 @@ async function carregarSectoresProducao() {
     try {
         const snapshot = await db.collection('setores').get({ source: 'server' });
         __PRODUCAO_CONFIG.setores = snapshot.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(s => s.controlaProducao === true);
+            .map(doc => ({ id: doc.id, ...doc.data() }));
+            // .filter(s => s.controlaProducao === true); // Comentado para trazer todos os setores conforme solicitado
+
         
         // Preencher select de setores nos filtros e modais
         const selectFiltro = document.getElementById('filtro-producao-setor');
@@ -400,35 +401,154 @@ async function inicializarLancamentoLote() {
     const dataInput = document.getElementById('form-lp-data-lote');
     if (!dataInput) return;
     
-    dataInput.value = new Date().toISOString().split('T')[0];
+    if (!dataInput.value) {
+        dataInput.value = new Date().toISOString().split('T')[0];
+    }
     
     // Carregar Setores se necessário
     if (__PRODUCAO_CONFIG.setores.length === 0) await carregarSectoresProducao();
     
-    renderizarListaSetoresLancamento();
-    await verificarLancamentosExistentes();
+    await carregarFichasDia();
 }
 
-function renderizarListaSetoresLancamento() {
-    const tbody = document.getElementById('lista-setores-lancamento');
-    if (!tbody) return;
-    
-    tbody.innerHTML = __PRODUCAO_CONFIG.setores.map(s => `
-        <tr data-setor-id="${s.id}" data-setor-nome="${s.descricao}">
-            <td class="ps-3 fw-bold">${s.descricao}</td>
-            <td class="text-center text-muted small">--</td>
-            <td class="text-center">
-                <input type="number" class="form-control input-producao-lote" 
-                       placeholder="0" data-setor-id="${s.id}">
-            </td>
-            <td><span class="badge bg-secondary opacity-50">Pendente</span></td>
-            <td class="text-end pe-3">
-                <input type="text" class="form-control form-control-sm input-obs-lote" 
-                       placeholder="obs...">
-            </td>
-        </tr>
-    `).join('');
+window.verificarLancamentosExistentes = async () => {
+    await carregarFichasDia();
+};
+
+async function carregarFichasDia() {
+
+    const tbody = document.getElementById('lista-fichas-dia');
+    const cardsContainer = document.getElementById('lista-fichas-dia-cards');
+    const data = document.getElementById('form-lp-data-lote')?.value;
+    if (!data) return;
+
+    const loadingRow = '<tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Carregando fichas...</td></tr>';
+    const loadingCards = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i>Carregando fichas...</div>';
+    if (tbody) tbody.innerHTML = loadingRow;
+    if (cardsContainer) cardsContainer.innerHTML = loadingCards;
+
+    try {
+        const snap = await db.collection('producao_fichas')
+            .where('data', '==', data)
+            .get();
+
+        if (snap.empty) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma ficha para esta data.</td></tr>';
+            if (cardsContainer) cardsContainer.innerHTML = '<div class="text-center py-5 text-muted small"><i class="fas fa-inbox fa-2x mb-2 d-block opacity-50"></i>Nenhuma ficha para esta data.</div>';
+            return;
+        }
+
+        let tableHtml = '';
+        let cardsHtml = '';
+
+        snap.forEach(doc => {
+            const f = doc.data();
+            const isConcluida = f.status === 'Concluída';
+            const statusClass = f.status === 'Aberta' ? 'bg-primary' : (isConcluida ? 'bg-success' : 'bg-danger');
+            const cardBorder = isConcluida ? 'concluida' : (f.status === 'Cancelada' ? 'cancelada' : '');
+            const operador = f.colaboradores?.[0]?.nome || 'N/A';
+            const maquina = f.maquinaCodigo || 'S/M';
+            const setor = (f.setorNome || '').split('(')[0].trim();
+            const dataFmt = (f.data || '').split('-').reverse().join('/');
+
+            // ---- Linha da tabela (desktop) ----
+            tableHtml += `
+                <tr>
+                    <td class="ps-3 fw-bold text-primary" style="font-size:0.8rem;">${f.id}</td>
+                    <td>
+                        <div class="fw-bold small">${maquina}</div>
+                        <div class="text-muted" style="font-size:0.7rem;">${setor}</div>
+                    </td>
+                    <td><span class="badge bg-info text-white" style="font-size:0.7rem;"><i class="fas fa-user me-1"></i>${operador}</span></td>
+                    <td class="text-center small">${dataFmt}</td>
+                    <td class="text-center fw-bold text-success" style="font-size:1.1rem;">${f.totalProduzido || 0}</td>
+                    <td class="text-center"><span class="badge ${statusClass}">${f.status}</span></td>
+                    <td class="text-end pe-3">
+                        <div class="d-flex gap-1 justify-content-end">
+                            <button class="btn btn-outline-primary btn-sm" onclick="abrirAuditoriaComCodigo('${f.id}')" title="Lançar"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-dark btn-sm" onclick="visualizarFichaImpressa('${f.id}')" title="Imprimir"><i class="fas fa-print"></i></button>
+                            <button class="btn btn-outline-danger btn-sm" onclick="excluirFichaProducao('${f.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </td>
+                </tr>`;
+
+            // ---- Card (mobile) ----
+            cardsHtml += `
+                <div class="ficha-card-mobile ${cardBorder}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <div class="ficha-maquina">${maquina} <span class="text-muted fw-normal" style="font-size:0.8rem;">${setor}</span></div>
+                            <div class="ficha-operador"><i class="fas fa-user me-1 text-info"></i>${operador}</div>
+                            <div class="ficha-id mt-1">${f.id}</div>
+                        </div>
+                        <div class="text-end">
+                            <div class="ficha-total">${f.totalProduzido || 0}</div>
+                            <div style="font-size:0.65rem;" class="text-muted">produzidos</div>
+                            <span class="badge ${statusClass} mt-1">${f.status}</span>
+                        </div>
+                    </div>
+                    <div class="ficha-acoes">
+                        <button class="btn btn-primary btn-sm" onclick="abrirAuditoriaComCodigo('${f.id}')">
+                            <i class="fas fa-eye me-1"></i>Lançar
+                        </button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="visualizarFichaImpressa('${f.id}')">
+                            <i class="fas fa-print me-1"></i>Imprimir
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="excluirFichaProducao('${f.id}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>`;
+        });
+
+        if (tbody) tbody.innerHTML = tableHtml;
+        if (cardsContainer) cardsContainer.innerHTML = cardsHtml;
+
+    } catch (e) {
+        console.error(e);
+        if (tbody) tbody.innerHTML = '<tr><td colspan="7" class="text-center text-danger">Erro ao carregar fichas.</td></tr>';
+        if (cardsContainer) cardsContainer.innerHTML = '<div class="text-center text-danger p-3">Erro ao carregar fichas.</div>';
+    }
 }
+
+
+
+window.visualizarFichaImpressa = async (fichaId) => {
+    try {
+        const doc = await db.collection('producao_fichas').doc(fichaId).get();
+        if (doc.exists) imprimirViewFicha(doc.data());
+    } catch (e) { alert(e.message); }
+};
+
+window.abrirAuditoriaComCodigo = (codigo) => {
+    abrirPainelAuditoriaFicha();
+    document.getElementById('af-codigo-ficha').value = codigo;
+    buscarFichaAuditoria();
+};
+
+window.excluirFichaProducao = async (id) => {
+    if (confirm(`Deseja realmente excluir a ficha ${id}? Isso removerá os registros de produção vinculados a ela.`)) {
+        try {
+            // 1. Remover lançamentos vinculados
+            const lancs = await db.collection('producao_lancamentos').where('fichaId', '==', id).get();
+            const batch = db.batch();
+            lancs.forEach(doc => batch.delete(doc.ref));
+            
+            // 2. Remover a ficha
+            batch.delete(db.collection('producao_fichas').doc(id));
+            
+            await batch.commit();
+            mostrarMensagem("Ficha excluída com sucesso!", "success");
+            await carregarFichasDia();
+        } catch (e) {
+            alert("Erro ao excluir: " + e.message);
+        }
+    }
+};
+
+
+
+
 
 window.verificarLancamentosExistentes = async () => {
     const data = document.getElementById('form-lp-data-lote').value;
@@ -782,9 +902,19 @@ async function processarLeitura(codigo, funcionarioId = null, funcionarioNome = 
     
     if (msg) msg.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Validando código...';
     
+    // NOVO: Se for um código de FICHA (FCH-...), abre o painel de lançamento da ficha
+    if (codigo.startsWith('FCH-')) {
+        if (somOk) somOk.play().catch(e => {});
+        window.abrirAuditoriaComCodigo(codigo);
+        if (msg) msg.innerHTML = '<i class="fas fa-check-circle"></i> Ficha identificada!';
+        return;
+    }
+
+
     try {
         // 1. Buscar produto pelo código
         const docProd = await db.collection('producao_produtos').doc(codigo).get();
+
         
         if (!docProd.exists) {
             if (somErro) {
@@ -1137,3 +1267,672 @@ window.aprovarBonusLote = async () => {
     }
 };
 
+// ==========================================
+// 11. GERADOR E AUDITORIA DE FICHA DE PRODUÇÃO
+// ==========================================
+
+let __FICHA_COLABORADORES = [];
+let __FICHA_PRODUTOS = [];
+
+window.abrirModalGerarFicha = async () => {
+    // limpar estados
+    __FICHA_COLABORADORES = [];
+    __FICHA_PRODUTOS = [];
+    
+    document.getElementById('gf-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('gf-obs').value = '';
+    document.getElementById('gf-lista-colaboradores').innerHTML = '<li class="list-group-item text-center py-3"><i class="fas fa-spinner fa-spin me-2"></i>Carregando máquinas...</li>';
+    document.getElementById('gf-lista-produtos-busca').innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Digite referência ou nome...</li>';
+    document.getElementById('gf-lista-produtos-selecionados').innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum selecionado</li>';
+    
+    // Forçar carregamento das máquinas e produtos (cache)
+    console.log("Abrindo modal: Carregando máquinas e produtos...");
+    await carregarMaquinasFicha();
+    await carregarCacheProdutosFicha();
+    atualizarContagemFicha();
+
+
+    new bootstrap.Modal(document.getElementById('modalGerarFicha')).show();
+};
+
+let __CACHE_PRODUTOS_FICHA = [];
+
+async function carregarCacheProdutosFicha() {
+    try {
+        const snap = await db.collection('producao_produtos').get();
+        __CACHE_PRODUTOS_FICHA = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log(`Cache de produtos carregado: ${__CACHE_PRODUTOS_FICHA.length} itens`);
+    } catch (e) { 
+        console.error("Erro ao carregar cache de produtos:", e);
+    }
+}
+
+
+window.filtrarProdutosFicha = () => {
+    const termo = document.getElementById('gf-busca-produto').value.toLowerCase().trim();
+    const lista = document.getElementById('gf-lista-produtos-busca');
+    
+    if (!termo) {
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Digite para buscar...</li>';
+        return;
+    }
+
+    const filtrados = __CACHE_PRODUTOS_FICHA.filter(p => 
+        (p.descricao || "").toLowerCase().includes(termo) || 
+        (p.codigo || "").toLowerCase().includes(termo)
+    ).slice(0, 10); // Limitar a 10 resultados para performance
+
+    if (filtrados.length === 0) {
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum produto encontrado</li>';
+        return;
+    }
+
+    lista.innerHTML = filtrados.map(p => `
+        <li class="list-group-item py-1 d-flex justify-content-between align-items-center">
+            <div>
+                <div class="small fw-bold">${p.descricao}</div>
+                <div class="text-muted" style="font-size: 0.7rem;">Cod: ${p.codigo} | Tam: ${p.tamanho}</div>
+            </div>
+            <button class="btn btn-sm btn-outline-primary py-0 px-2" onclick="adicionarProdutoFicha('${p.codigo}', '${p.descricao}', '${p.tamanho}')">
+                <i class="fas fa-plus"></i>
+            </button>
+        </li>
+    `).join('');
+};
+
+
+window.filtrarMaquinasFicha = () => {
+    const termo = document.getElementById('gf-busca-maquina').value.toLowerCase().trim();
+    const itens = document.querySelectorAll('#gf-lista-colaboradores li');
+    
+    itens.forEach(item => {
+        // Captura todo o texto visível e os atributos de dados para garantir a busca
+        const texto = item.innerText.toLowerCase();
+        const input = item.querySelector('input');
+        const operador = input ? (input.dataset.operadorNome || "").toLowerCase() : "";
+        const apelido = input ? (input.dataset.maquinaApelido || "").toLowerCase() : "";
+        const codigo = input ? (input.dataset.maquinaCodigo || "").toLowerCase() : "";
+
+        if (texto.includes(termo) || operador.includes(termo) || apelido.includes(termo) || codigo.includes(termo)) {
+            item.style.setProperty('display', 'block', 'important');
+        } else {
+            item.style.setProperty('display', 'none', 'important');
+        }
+    });
+};
+
+
+
+// Função alternarModoGeracaoFicha removida pois agora é apenas por máquina
+
+
+async function carregarMaquinasFicha() {
+    try {
+        const snap = await db.collection('maquinas').where('controlaProducao', '==', true).get();
+        const lista = document.getElementById('gf-lista-colaboradores');
+        
+        if (snap.empty) {
+            lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhuma máquina configurada para produção</li>';
+            return;
+        }
+
+        lista.innerHTML = '';
+        snap.forEach(doc => {
+            const m = doc.data();
+            lista.innerHTML += `
+                <li class="list-group-item py-1">
+                    <div class="form-check">
+                        <input class="form-check-input check-colab-ficha" type="checkbox" 
+                               value="${doc.id}" 
+                               data-tipo="maquina"
+                               data-maquina-id="${doc.id}"
+                               data-maquina-codigo="${m.codigo}"
+                               data-maquina-apelido="${m.apelido || ''}"
+                               data-operador-id="${m.operadorId || ''}"
+                               data-operador-nome="${m.operadorNome && m.operadorNome !== 'Nenhum operador vinculado' ? m.operadorNome : 'S/ Operador'}"
+                               data-setor-nome="${m.setor || 'N/A'}"
+                               onchange="atualizarContagemFicha()">
+                        <label class="form-check-label small w-100">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="fw-bold text-primary">${m.codigo}</span>
+                                <span class="badge bg-light text-dark border">${m.setor || 'S/ Setor'}</span>
+                            </div>
+                            <div class="text-dark">${m.nome} ${m.apelido ? `<small class="text-muted">(${m.apelido})</small>` : ''}</div>
+                            <div class="mt-1">
+                                <span class="badge bg-info text-white" style="font-size: 0.65rem;">
+                                    <i class="fas fa-user me-1"></i>${m.operadorNome && m.operadorNome !== 'Nenhum operador vinculado' ? m.operadorNome : 'Não vinculado'}
+                                </span>
+                            </div>
+                        </label>
+
+                    </div>
+                </li>
+            `;
+        });
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+
+window.adicionarProdutoFicha = (codigo, descricao, tamanho) => {
+    if (!__FICHA_PRODUTOS.find(p => p.codigo === codigo)) {
+        __FICHA_PRODUTOS.push({ codigo, descricao, tamanho });
+        renderizarProdutosSelecionadosFicha();
+        atualizarContagemFicha();
+    }
+};
+
+window.removerProdutoFicha = (codigo) => {
+    __FICHA_PRODUTOS = __FICHA_PRODUTOS.filter(p => p.codigo !== codigo);
+    renderizarProdutosSelecionadosFicha();
+    atualizarContagemFicha();
+};
+
+function renderizarProdutosSelecionadosFicha() {
+    const lista = document.getElementById('gf-lista-produtos-selecionados');
+    if (!lista) return;
+    if (__FICHA_PRODUTOS.length === 0) {
+        lista.innerHTML = '<li class="list-group-item text-center text-muted py-3 small">Nenhum selecionado</li>';
+        return;
+    }
+
+    lista.innerHTML = __FICHA_PRODUTOS.map(p => `
+        <li class="list-group-item py-1 d-flex justify-content-between align-items-center bg-light">
+            <div>
+                <div class="small fw-bold">${p.descricao}</div>
+                <div class="text-muted" style="font-size: 0.6rem;">${p.codigo} | Tam: ${p.tamanho}</div>
+            </div>
+            <button class="btn btn-sm btn-link text-danger py-0" onclick="removerProdutoFicha('${p.codigo}')">
+                <i class="fas fa-times"></i>
+            </button>
+        </li>
+    `).join('');
+}
+
+
+window.atualizarContagemFicha = () => {
+    const colabs = document.querySelectorAll('.check-colab-ficha:checked');
+    document.getElementById('gf-contagem-selecionados').innerText = `${colabs.length} Colab. | ${__FICHA_PRODUTOS.length} Produtos`;
+};
+
+window.gerarSalvarFichaProducao = async () => {
+    const data = document.getElementById('gf-data').value;
+    const turno = 'Geral'; // Turno fixo/comercial conforme solicitado
+    const obs = document.getElementById('gf-obs').value;
+    const modo = 'maquina'; 
+    
+    if (!data) return alert("Informe a data.");
+    
+    const checksColab = document.querySelectorAll('.check-colab-ficha:checked');
+    if (checksColab.length === 0) return alert("Selecione ao menos uma máquina.");
+
+    if (__FICHA_PRODUTOS.length === 0) return alert("Adicione ao menos um produto.");
+
+    try {
+        const batch = db.batch();
+        const idsGerados = [];
+
+        if (true) { // Modo máquina é o único
+            // Gerar UMA FICHA POR MÁQUINA
+            checksColab.forEach(check => {
+                const maquinaId = check.dataset.maquinaId;
+                const maquinaCodigo = check.dataset.maquinaCodigo;
+                const operadorId = check.dataset.operadorId;
+                const operadorNome = check.dataset.operadorNome;
+                const setorNome = check.dataset.setorNome;
+
+                // ID mais robusto: FCH-COD-DATA-ALEAT
+                const dataFicha = data.replace(/-/g, '').slice(4); // MMDD
+                const idFicha = `FCH-${maquinaCodigo}-${dataFicha}-${Math.floor(1000 + Math.random() * 9000)}`;
+
+                const ref = db.collection('producao_fichas').doc(idFicha);
+                
+                const dadosFicha = {
+                    id: idFicha,
+                    data, turno, obs,
+                    setorId: 'MAQUINA_' + maquinaId,
+                    setorNome: `${setorNome} (MÁQ: ${maquinaCodigo})`,
+                    maquinaId,
+                    maquinaCodigo,
+                    maquinaApelido: check.dataset.maquinaApelido || '',
+                    colaboradores: [{ id: operadorId, nome: operadorNome }],
+
+                    produtos: __FICHA_PRODUTOS,
+                    status: 'Aberta',
+                    geradaEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    geradaPor: auth.currentUser?.email || 'Sistema'
+                };
+                
+                batch.set(ref, dadosFicha);
+                idsGerados.push(dadosFicha);
+            });
+        }
+
+
+        await batch.commit();
+        mostrarMensagem(`${idsGerados.length} ficha(s) gerada(s) com sucesso!`, 'success');
+        bootstrap.Modal.getInstance(document.getElementById('modalGerarFicha')).hide();
+        
+        // Imprimir a(s) ficha(s)
+        idsGerados.forEach(f => imprimirViewFicha(f));
+        
+        await carregarFichasDia();
+    } catch (e) {
+        alert("Erro ao gerar ficha: " + e.message);
+    }
+};
+
+
+function imprimirViewFicha(ficha) {
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ficha.id}`;
+    const logoSrc = document.getElementById('sidebar-logo')?.src || 'assets/LOGO.png';
+    const colabPrincipal = ficha.colaboradores?.[0]?.nome || 'Colaborador não identificado';
+    
+    const html = `
+        <html>
+        <head>
+            <title>Ficha ${ficha.id}</title>
+            <style>
+                @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+                @page { size: A4 portrait; margin: 5mm; }
+                body { font-family: 'Outfit', sans-serif; margin: 0; padding: 0; color: #000; font-size: 12px; }
+                .container { padding: 10px; border: 2px solid #000; height: 98%; position: relative; }
+                
+                .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
+                .header-left { display: flex; gap: 15px; align-items: center; }
+                .logo { height: 45px; }
+                .ficha-info { text-align: right; }
+                .ficha-title { font-size: 20px; font-weight: 800; margin: 0; }
+                .ficha-id { font-size: 14px; font-weight: 600; background: #000; color: #fff; padding: 2px 10px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+
+                .colab-banner { background: #eee; padding: 8px 15px; font-size: 18px; font-weight: 800; text-transform: uppercase; border: 1px solid #000; margin-bottom: 10px; }
+                
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+                .info-item { border: 1px solid #ccc; padding: 5px; }
+                .info-label { font-size: 9px; font-weight: 700; color: #555; text-transform: uppercase; display: block; }
+                .info-value { font-size: 12px; font-weight: 600; }
+
+                table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+                th { background: #f0f0f0; border: 1px solid #000; padding: 6px; font-size: 10px; text-transform: uppercase; }
+                td { border: 1px solid #000; padding: 8px; font-size: 12px; }
+                .col-check { width: 100px; height: 35px; }
+
+                .footer { position: absolute; bottom: 10px; width: calc(100% - 20px); display: grid; grid-template-columns: 100px 1fr 1fr; gap: 20px; align-items: end; }
+                .qr-box img { width: 90px; height: 90px; border: 1px solid #eee; }
+                .sig-box { border-top: 1px solid #000; text-align: center; font-size: 10px; font-weight: 700; padding-top: 5px; }
+                
+                .downtime-section { border: 1px solid #000; padding: 10px; margin-top: 10px; }
+                .downtime-title { font-weight: 800; font-size: 11px; text-transform: uppercase; margin-bottom: 5px; color: #d63031; }
+
+                @media print { .no-print { display: none; } }
+                .btn-print { position: fixed; bottom: 20px; right: 20px; background: #000; color: #fff; border: none; padding: 10px 20px; border-radius: 4px; font-weight: 800; cursor: pointer; }
+            </style>
+        </head>
+        <body>
+            <button class="btn-print no-print" onclick="window.print()">IMPRIMIR AGORA</button>
+            <div class="container">
+                <div class="header">
+                    <div class="header-left">
+                        <img src="${logoSrc}" class="logo">
+                        <div>
+                            <div style="font-weight: 800; font-size: 14px;">CONTROLE DE PRODUÇÃO</div>
+                            <div style="font-size: 10px;">Nexter ERP v3 | ISO 9001 Integration</div>
+                        </div>
+                    </div>
+                    <div class="ficha-info">
+                        <div class="ficha-title">FICHA TÉCNICA</div>
+                        <div class="ficha-id">${ficha.id}</div>
+                    </div>
+                </div>
+
+                <div class="colab-banner">${colabPrincipal}</div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <span class="info-label">Máquina / Equipamento</span>
+                        <span class="info-value">${ficha.maquinaCodigo} ${ficha.maquinaApelido ? `(${ficha.maquinaApelido})` : ''}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Setor</span>
+                        <span class="info-value">${ficha.setorNome.split('(')[0]}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Data Operação</span>
+                        <span class="info-value">${ficha.data.split('-').reverse().join('/')}</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Turno</span>
+                        <span class="info-value">${ficha.turno}</span>
+                    </div>
+                </div>
+
+                <table>
+                    <thead>
+                        <tr>
+                            <th style="width: 120px;">Cód. Referência</th>
+                            <th>Descrição do Produto</th>
+                            <th style="width: 60px;">Tam.</th>
+                            <th style="width: 120px;">Qtde Produzida</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${ficha.produtos.map(p => `
+                            <tr>
+                                <td style="font-weight: 800;">${p.codigo}</td>
+                                <td>${p.descricao}</td>
+                                <td style="text-align: center; font-weight: 800; font-size: 14px;">${p.tamanho}</td>
+                                <td class="col-check"></td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+
+                <div class="downtime-section">
+                    <div class="downtime-title">Registro de Parada de Máquina (Uso da Manutenção)</div>
+                    <div style="display: flex; gap: 20px;">
+                        <div style="flex: 1;">
+                            <span class="info-label">Tempo Total de Parada (minutos)</span>
+                            <div style="height: 25px; border-bottom: 1px dashed #000; margin-top: 5px;"></div>
+                        </div>
+                        <div style="flex: 2;">
+                            <span class="info-label">Motivo / Causa da Ocorrência</span>
+                            <div style="height: 25px; border-bottom: 1px dashed #000; margin-top: 5px;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                ${ficha.obs ? `<div style="margin-top: 10px; font-size: 10px; border: 1px solid #eee; padding: 5px;"><strong>OBSERVAÇÕES:</strong> ${ficha.obs}</div>` : ''}
+
+                <div class="footer">
+                    <div class="qr-box">
+                        <img src="${qrUrl}">
+                        <div style="font-size: 7px; text-align: center; font-weight: 800;">VALIDAÇÃO DIGITAL</div>
+                    </div>
+                    <div class="sig-box">ASSINATURA DO OPERADOR</div>
+                    <div class="sig-box">VISTO SUPERVISÃO</div>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+
+    const win = window.open('', '_blank');
+    win.document.write(html);
+    win.document.close();
+}
+
+
+
+
+// --- AUDITORIA DA FICHA ---
+
+let __FICHA_AUDITORIA_ATUAL = null;
+
+window.abrirPainelAuditoriaFicha = () => {
+    document.getElementById('af-codigo-ficha').value = '';
+    document.getElementById('af-resultado-ficha').classList.add('d-none');
+    new bootstrap.Modal(document.getElementById('modalAuditoriaFicha')).show();
+    setTimeout(() => { document.getElementById('af-codigo-ficha').focus(); }, 500);
+};
+
+window.abrirAuditoriaComCodigo = (codigo) => {
+    window.abrirPainelAuditoriaFicha();
+    const input = document.getElementById('af-codigo-ficha');
+    if (input) {
+        input.value = codigo;
+        window.buscarFichaAuditoria();
+    }
+};
+
+window.buscarFichaAuditoria = async () => {
+    const input = document.getElementById('af-codigo-ficha');
+    let codigo = input.value.trim().toUpperCase();
+    if (!codigo) return;
+    
+    // Limpar resultados anteriores
+
+    try {
+        // 1. Tentar busca direta pelo ID do documento
+        let docFicha = await db.collection('producao_fichas').doc(codigo).get();
+        
+        // 2. Se não encontrar, tentar busca por substring no ID (para quando digitam incompleto ou com erro de sufixo)
+        if (!docFicha.exists) {
+            const snap = await db.collection('producao_fichas')
+                .where('id', '>=', codigo)
+                .where('id', '<=', codigo + '\uf8ff')
+                .limit(1).get();
+            if (!snap.empty) docFicha = snap.docs[0];
+        }
+
+        // 3. Busca ainda mais flexível: se contiver o código no meio do ID
+        if (!docFicha || !docFicha.exists) {
+            const snap = await db.collection('producao_fichas').get(); // Cuidado com escala, mas útil para debug/pequenos volumes
+            docFicha = snap.docs.find(d => d.id.includes(codigo));
+        }
+
+        if (!docFicha || !docFicha.exists) {
+            alert("Ficha não encontrada: " + codigo + "\nVerifique se o código está correto.");
+            return;
+        }
+        
+        __FICHA_AUDITORIA_ATUAL = docFicha.data();
+        renderizarFichaAuditoria();
+        document.getElementById('af-resultado-ficha').classList.remove('d-none');
+        input.value = ''; 
+    } catch (e) {
+        alert("Erro ao buscar ficha: " + e.message);
+    }
+};
+
+
+
+function renderizarFichaAuditoria() {
+    const f = __FICHA_AUDITORIA_ATUAL;
+    document.getElementById('af-info-header').innerText = `Ficha: ${f.id} ${f.tipo === 'Substituta' ? '(SUBSTITUTA)' : ''}`;
+    document.getElementById('af-info-setor').innerText = f.setorNome;
+    document.getElementById('af-info-data').innerText = `${f.data.split('-').reverse().join('/')} - ${f.turno}`;
+    document.getElementById('af-info-equipe').innerText = f.colaboradores.length + ' Colab.';
+    
+    const badge = document.getElementById('af-status');
+    if (f.status === 'Aberta') {
+        badge.className = 'badge bg-primary';
+        badge.innerText = 'Aberta';
+    } else {
+        badge.className = 'badge bg-success';
+        badge.innerText = 'Concluída';
+    }
+    
+    // Renderizar Grid de Lançamento
+    const headerRow = document.getElementById('af-header-produtos');
+    const gridBody = document.getElementById('af-grid-colaboradores');
+    
+    // Header com produtos
+    let headerHtml = '<th>Colaborador</th>';
+    f.produtos.forEach(p => {
+        headerHtml += `<th class="text-center small">${p.tamanho}<br><span style="font-size:0.6rem; font-weight:normal;">${p.codigo}</span></th>`;
+    });
+    headerRow.innerHTML = headerHtml;
+
+    // Linhas com colaboradores
+    let gridHtml = '';
+    f.colaboradores.forEach(c => {
+        const colabId = c.id || 'sem_id';
+        gridHtml += `<tr><td class="fw-bold small">${c.nome}</td>`;
+        f.produtos.forEach(p => {
+            // Tenta buscar por ID ou pelo nome do colaborador (fallback)
+            const valAnterior = f.detalhesLancamento?.[`${colabId}_${p.codigo}`] || 
+                               f.detalhesLancamento?.[`${c.nome}_${p.codigo}`] || '';
+            
+            gridHtml += `
+                <td>
+                    <input type="number" class="form-control form-control-sm text-center input-grid-ficha" 
+                           data-colab-id="${colabId}" 
+                           data-colab-nome="${c.nome}"
+                           data-prod-codigo="${p.codigo}"
+                           value="${valAnterior}"
+                           placeholder="0">
+                </td>`;
+        });
+        gridHtml += `</tr>`;
+    });
+
+    gridBody.innerHTML = gridHtml;
+
+}
+
+
+
+window.salvarBaixaFicha = async () => {
+    if (!__FICHA_AUDITORIA_ATUAL) return;
+
+    // Buscar status ATUALIZADO do Firestore para evitar dados desatualizados em memória
+    const docAtualizado = await db.collection('producao_fichas').doc(__FICHA_AUDITORIA_ATUAL.id).get();
+    if (!docAtualizado.exists) return alert('Ficha não encontrada no banco de dados.');
+
+    const statusAtual = docAtualizado.data().status || '';
+    const f = { ...__FICHA_AUDITORIA_ATUAL, status: statusAtual };
+    __FICHA_AUDITORIA_ATUAL = f;
+
+    if (statusAtual === 'Concluída') {
+        // Ficha já finalizada: perguntar antes de substituir
+        const confirmar = confirm(
+            `Esta ficha já foi concluída anteriormente.\n\nDeseja relançar e substituir os dados anteriores?`
+        );
+        if (!confirmar) return;
+        new bootstrap.Modal(document.getElementById('modalMotivoSubstituicao')).show();
+        return;
+    }
+
+    await executarSalvarBaixa(f);
+};
+
+
+async function executarSalvarBaixa(f, motivo = null) {
+    const inputs = document.querySelectorAll('.input-grid-ficha');
+    let totalLancado = 0;
+    const detalhes = {};
+    const promises = [];
+    const semanaISO = converterDataParaSemanaISO(f.data);
+    
+    inputs.forEach(input => {
+        const qtd = parseInt(input.value) || 0;
+        const colabId = input.dataset.colabId;
+        const colabNome = input.dataset.colabNome;
+        const prodCodigo = input.dataset.prodCodigo;
+
+        if (qtd > 0) {
+            totalLancado += qtd;
+            detalhes[`${colabId}_${prodCodigo}`] = qtd;
+
+            const idDocLancamento = `prod_fch_${f.id}_${colabId}_${prodCodigo}`;
+            promises.push(db.collection('producao_lancamentos').doc(idDocLancamento).set({
+                fichaId: f.id,
+                setorId: f.setorId,
+                setorNome: f.setorNome,
+                data: f.data,
+                turno: f.turno,
+                semana: semanaISO,
+                quantidade: qtd,
+                produtoCodigo: prodCodigo,
+                colaboradorId: colabId,
+                colaboradorNome: colabNome,
+                tipo: f.tipo || 'Original',
+                obs: motivo ? `SUBSTITUTA: ${motivo}` : `Lançamento via Ficha: ${f.id}`,
+                registradoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                registradoPor: auth.currentUser?.email || 'Sistema'
+            }));
+        }
+    });
+    
+    if (totalLancado === 0) return alert("Informe as quantidades produzidas.");
+
+    // Se for uma substituição, precisamos estornar o estoque da ficha anterior? 
+    // Por simplicidade neste fluxo, vamos apenas registrar o saldo da nova ficha.
+
+
+    try {
+
+
+        const updates = {
+            status: 'Concluída',
+            concluidaEm: firebase.firestore.FieldValue.serverTimestamp(),
+            concluidaPor: auth.currentUser?.email || 'Sistema',
+            totalProduzido: totalLancado,
+            detalhesLancamento: detalhes
+        };
+
+
+
+        if (motivo) {
+            updates.tipo = 'Substituta';
+            updates.motivoSubstituicao = motivo;
+            updates.fichaOriginalId = f.id;
+        }
+
+        promises.push(db.collection('producao_fichas').doc(f.id).update(updates));
+        
+        // --- CONTROLE DE ESTOQUE ---
+        // Para cada produto lançado, atualizamos o estoque
+        const prodCodigos = [...new Set(Array.from(inputs).map(i => i.dataset.prodCodigo))];
+        for (const cod of prodCodigos) {
+            let totalProd = 0;
+            inputs.forEach(i => { if(i.dataset.prodCodigo === cod) totalProd += (parseInt(i.value) || 0); });
+            
+            if (totalProd > 0) {
+                promises.push(registrarMovimentacaoEstoque(cod, totalProd, 'ENTRADA', f.id));
+            }
+        }
+
+        
+        await Promise.all(promises);
+        mostrarMensagem(motivo ? 'Ficha substituída com sucesso!' : 'Ficha baixada com sucesso!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('modalAuditoriaFicha')).hide();
+        if (motivo) bootstrap.Modal.getInstance(document.getElementById('modalMotivoSubstituicao')).hide();
+        
+        await carregarFichasDia();
+    } catch(e) {
+        alert("Erro ao salvar: " + e.message);
+    }
+}
+
+window.confirmarSubstituicaoFicha = async () => {
+    const motivo = document.getElementById('ms-motivo').value.trim();
+    if (!motivo) return alert("Informe o motivo da substituição.");
+    await executarSalvarBaixa(__FICHA_AUDITORIA_ATUAL, motivo);
+};
+
+async function registrarMovimentacaoEstoque(codigo, qtd, tipo, fichaId) {
+    try {
+        // 1. Localizar produto para pegar o ID do documento
+        const snapProd = await db.collection('producao_produtos').where('codigo', '==', codigo).limit(1).get();
+        if (snapProd.empty) return;
+        
+        const prodDoc = snapProd.docs[0];
+        const prodId = prodDoc.id;
+        const p = prodDoc.data();
+
+        // 2. Atualizar Saldo no Produto
+        const incremento = tipo === 'ENTRADA' ? qtd : -qtd;
+        await db.collection('producao_produtos').doc(prodId).update({
+            estoqueAtual: firebase.firestore.FieldValue.increment(incremento),
+            ultimaMovimentacao: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 3. Registrar Log de Movimentação
+        await db.collection('producao_estoque_movimentos').add({
+            produtoId: prodId,
+            produtoCodigo: codigo,
+            produtoDesc: p.descricao,
+            quantidade: qtd,
+            tipo: tipo, // ENTRADA / SAIDA
+            origem: 'Produção',
+            referenciaId: fichaId,
+            data: new Date().toISOString().split('T')[0],
+            registradoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            registradoPor: auth.currentUser?.email || 'Sistema'
+        });
+    } catch (e) {
+        console.error("Erro no estoque:", e);
+    }
+}

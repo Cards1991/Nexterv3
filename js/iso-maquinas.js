@@ -102,9 +102,11 @@ async function carregarMaquinas() {
                         </div>
                     </td>
                     <td class="text-end">
+                        ${maquina.controlaProducao ? '<span class="badge bg-info me-1"><i class="fas fa-chart-bar"></i> Produção</span>' : ''}
                         <button class="btn btn-sm btn-outline-primary" title="Alterar" onclick="abrirModalMaquina('${doc.id}')"><i class="fas fa-edit"></i></button>
                         <button class="btn btn-sm btn-outline-danger" title="Excluir" onclick="excluirMaquina('${doc.id}')"><i class="fas fa-trash"></i></button>
                     </td>
+
                 </tr>
             `;
             tbody.innerHTML += row;
@@ -149,9 +151,25 @@ async function abrirModalMaquina(maquinaId = null) {
                             <div class="mb-3"><label class="form-label">Empresa</label><select class="form-select" id="maquina-empresa" required></select></div>
                             <div class="mb-3"><label class="form-label">Setor</label><select class="form-select" id="maquina-setor" required></select></div>
                             <div class="mb-3"><label class="form-label">Código Identificador</label><input type="text" class="form-control" id="maquina-codigo" placeholder="Ex: INJ-001" required></div>
-                            <div class="mb-3"><label class="form-label">Nome da Máquina</label><input type="text" class="form-control" id="maquina-nome" required></div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome da Máquina</label>
+                                    <input type="text" class="form-control" id="maquina-nome" required>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Apelido (Nome Popular)</label>
+                                    <input type="text" class="form-control" id="maquina-apelido" placeholder="Ex: A Bruta, Vermelhinha">
+                                </div>
+                            </div>
+
                             <div class="mb-3"><label class="form-label">Número do Patrimônio</label><input type="text" class="form-control" id="maquina-patrimonio"></div>
-                            <div class="mb-3"><label class="form-label">Gerente Responsável</label><input type="text" class="form-control" id="maquina-gerente"></div>
+                            <div class="mb-3">
+                                <label class="form-label">Gerente Responsável</label>
+                                <select class="form-select" id="maquina-gerente">
+                                    <option value="">Selecione o gerente...</option>
+                                </select>
+                            </div>
+
                             
                             <hr>
                             <h6 class="mb-2 fw-bold text-secondary">Principais Motivos de Abertura (Até 5)</h6>
@@ -162,10 +180,26 @@ async function abrirModalMaquina(maquinaId = null) {
                             <div class="mb-3"><input type="text" class="form-control form-control-sm" id="maquina-motivo-5" placeholder="Motivo 5 (Ex: Peça quebrada)"></div>
                             <hr>
 
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-8">
+                                    <label class="form-label small fw-bold">Operador Responsável</label>
+                                    <select class="form-select form-select-sm" id="maquina-operador">
+                                        <option value="">Nenhum operador vinculado</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 d-flex align-items-end">
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="maquina-controla-producao">
+                                        <label class="form-check-label small fw-bold" for="maquina-controla-producao">Controla Produção</label>
+                                    </div>
+                                </div>
+                            </div>
+
                             <div class="form-check mb-3">
                                 <input class="form-check-input" type="checkbox" id="maquina-critica">
                                 <label class="form-check-label" for="maquina-critica">Máquina Crítica (Prioridade em manutenções)</label>
                             </div>
+
                         </form>
                     </div>
                     <div class="modal-footer">
@@ -189,6 +223,10 @@ async function abrirModalMaquina(maquinaId = null) {
     document.querySelector(`#${modalId} .modal-title`).textContent = maquinaId ? 'Alterar Máquina' : 'Nova Máquina';
 
     await carregarSelectEmpresas('maquina-empresa');
+    await carregarSelectOperadores('maquina-operador');
+    await carregarSelectOperadores('maquina-gerente'); // Reusando a mesma lógica para gerentes
+
+
 
     if (maquinaId) {
         try {
@@ -200,8 +238,14 @@ async function abrirModalMaquina(maquinaId = null) {
                 document.getElementById('maquina-setor').value = data.setor;
                 document.getElementById('maquina-codigo').value = data.codigo;
                 document.getElementById('maquina-nome').value = data.nome;
+                document.getElementById('maquina-apelido').value = data.apelido || '';
                 document.getElementById('maquina-patrimonio').value = data.patrimonio || '';
-                document.getElementById('maquina-gerente').value = data.gerente || '';
+
+                
+                // Carregar selects
+                await carregarSelectOperadores('maquina-gerente', data.gerenteId);
+                await carregarSelectOperadores('maquina-operador', data.operadorId);
+
                 
                 // Carregar motivos se existirem
                 const motivos = data.motivos || [];
@@ -212,7 +256,12 @@ async function abrirModalMaquina(maquinaId = null) {
                 document.getElementById('maquina-motivo-5').value = motivos[4] || '';
                 
                 document.getElementById('maquina-critica').checked = data.isCritica || false;
+                document.getElementById('maquina-controla-producao').checked = data.controlaProducao || false;
+                
+                // Carregar operadores e selecionar o atual
+                await carregarSelectOperadores('maquina-operador', data.operadorId);
             }
+
         } catch (error) {
             console.error("Erro ao carregar dados da máquina:", error);
             mostrarMensagem("Erro ao carregar dados da máquina", "error");
@@ -244,11 +293,19 @@ async function salvarMaquina() {
         setor: document.getElementById('maquina-setor').value,
         codigo: document.getElementById('maquina-codigo').value.trim().toUpperCase(),
         nome: document.getElementById('maquina-nome').value.trim(),
+        apelido: document.getElementById('maquina-apelido').value.trim(),
         patrimonio: document.getElementById('maquina-patrimonio').value.trim(),
-        gerente: document.getElementById('maquina-gerente').value.trim(),
+
+        gerenteId: document.getElementById('maquina-gerente').value,
+        gerente: document.getElementById('maquina-gerente').options[document.getElementById('maquina-gerente').selectedIndex]?.text || '',
         motivos: motivos,
-        isCritica: document.getElementById('maquina-critica').checked
+
+        isCritica: document.getElementById('maquina-critica').checked,
+        controlaProducao: document.getElementById('maquina-controla-producao').checked,
+        operadorId: document.getElementById('maquina-operador').value,
+        operadorNome: document.getElementById('maquina-operador').options[document.getElementById('maquina-operador').selectedIndex]?.text || ''
     };
+
 
     if (!dados.empresaId || !dados.setor || !dados.codigo || !dados.nome) {
         mostrarMensagem("Preencha todos os campos obrigatórios.", "warning");
@@ -329,7 +386,26 @@ async function carregarSelectEmpresas(selectId) {
     }
 }
 
+async function carregarSelectOperadores(selectId, selectedId = null) {
+    if (!__db) return;
+    const select = document.getElementById(selectId);
+    if (!select) return;
+
+    try {
+        const snap = await __db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        let html = '<option value="">Selecione o operador...</option>';
+        snap.forEach(doc => {
+            const f = doc.data();
+            html += `<option value="${doc.id}" ${doc.id === selectedId ? 'selected' : ''}>${f.nome}</option>`;
+        });
+        select.innerHTML = html;
+    } catch (e) {
+        console.error(e);
+    }
+}
+
 async function carregarSetoresPorEmpresa(empresaId, selectId) {
+
     if (!__db || !empresaId) return;
     
     const select = document.getElementById(selectId);
