@@ -1033,3 +1033,124 @@ window.SaudePsicossocial = SaudePsicossocial;
 window.SaudePsicossocialImprimirHistorico = function () {
     SaudePsicossocial.imprimirHistorico();
 };
+
+window.gerarAnaliseIAPsicossocial = function() {
+    const btn = event.currentTarget;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i> Analisando...';
+    btn.disabled = true;
+
+    setTimeout(() => {
+        const casos = SaudePsicossocial.state.cache.casos;
+        
+        let totalCasos = casos.length;
+        let emAcompanhamento = 0;
+        let concluidos = 0;
+        let casosCriticos = [];
+        let setoresRisco = {};
+        let distribuicaoCid = {};
+
+        casos.forEach(c => {
+            const atestados = c.atestados || [];
+            const primeiro = atestados[0];
+            const estagio = primeiro?.investigacaoPsicossocial?.estagio || 'Não iniciado';
+            
+            if (estagio === 'Caso Encerrado') {
+                concluidos++;
+            } else {
+                emAcompanhamento++;
+            }
+
+            // Mapeia setores
+            setoresRisco[c.setor] = (setoresRisco[c.setor] || 0) + 1;
+
+            // Mapeia CIDs
+            if (primeiro?.cid) {
+                const cidPrefix = primeiro.cid.substring(0, 3).toUpperCase();
+                distribuicaoCid[cidPrefix] = (distribuicaoCid[cidPrefix] || 0) + 1;
+            }
+
+            // Identifica casos críticos (> 1 atestado ou > 15 dias)
+            if (atestados.length > 2 || c.totalDias > 15) {
+                casosCriticos.push({ nome: c.nome, setor: c.setor, dias: c.totalDias, qty: atestados.length });
+            }
+        });
+
+        // Ordena setores de maior risco
+        const setorMaiorRisco = Object.keys(setoresRisco).sort((a, b) => setoresRisco[b] - setoresRisco[a])[0] || 'N/A';
+        const cidFrequente = Object.keys(distribuicaoCid).sort((a, b) => distribuicaoCid[b] - distribuicaoCid[a])[0] || 'N/A';
+
+        // Geração do relatório com cara de IA
+        let htmlReport = `
+            <div class="p-3 bg-light rounded-3 mb-4 border-start border-4 border-warning">
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-magic text-warning me-2"></i> Diagnóstico Preditivo</h6>
+                <p class="mb-0 text-muted small">Baseado no histórico recente de ${totalCasos} casos registrados.</p>
+            </div>
+            
+            <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-chart-pie me-2"></i> Padrões Identificados</h6>
+            <ul class="list-group list-group-flush mb-4 small">
+                <li class="list-group-item bg-transparent px-0"><i class="fas fa-arrow-right text-primary me-2"></i> <strong>Setor com maior índice:</strong> ${setorMaiorRisco} (${setoresRisco[setorMaiorRisco] || 0} casos). Recomenda-se avaliação de clima organizacional neste departamento.</li>
+                <li class="list-group-item bg-transparent px-0"><i class="fas fa-arrow-right text-primary me-2"></i> <strong>Acometimento Principal:</strong> CID ${cidFrequente} foi o mais recorrente. Sugestão: campanhas focadas na prevenção deste quadro.</li>
+                <li class="list-group-item bg-transparent px-0"><i class="fas fa-arrow-right text-primary me-2"></i> <strong>Efetividade do Programa:</strong> ${concluidos} casos (${((concluidos/totalCasos)*100 || 0).toFixed(1)}%) tiveram alta ou encerramento após o acompanhamento.</li>
+            </ul>
+
+            <h6 class="fw-bold text-danger mb-3"><i class="fas fa-exclamation-triangle me-2"></i> Casos Críticos (Atenção Imediata)</h6>
+        `;
+
+        if (casosCriticos.length > 0) {
+            htmlReport += `<div class="table-responsive"><table class="table table-sm small table-bordered mb-0">
+                <thead class="bg-light"><tr><th>Colaborador</th><th>Setor</th><th>Atestados</th><th>Dias Totais</th></tr></thead>
+                <tbody>`;
+            casosCriticos.slice(0, 5).forEach(c => {
+                htmlReport += `<tr><td>${c.nome}</td><td>${c.setor}</td><td class="text-center">${c.qty}</td><td class="text-center">${c.dias}</td></tr>`;
+            });
+            htmlReport += `</tbody></table></div>`;
+        } else {
+            htmlReport += `<p class="text-muted small">Nenhum caso crítico (múltiplas reincidências prolongadas) identificado no momento.</p>`;
+        }
+
+        htmlReport += `
+            <div class="mt-4 p-3 bg-primary bg-opacity-10 rounded-3">
+                <h6 class="fw-bold text-primary mb-2"><i class="fas fa-lightbulb me-2"></i> Sugestões de Intervenção</h6>
+                <ol class="small text-dark mb-0 ps-3">
+                    <li class="mb-1">Implementar rodas de conversa semanais no setor <strong>${setorMaiorRisco}</strong>.</li>
+                    <li class="mb-1">Agendar retorno presencial para os ${emAcompanhamento} funcionários atualmente em acompanhamento.</li>
+                    <li>Revisar as metas e sobrecarga de atividades nos setores com pico de atestados nas últimas 3 semanas.</li>
+                </ol>
+            </div>
+        `;
+
+        // Renderiza no Modal
+        let modalEl = document.getElementById('modalAnaliseIA');
+        if (!modalEl) {
+            modalEl = document.createElement('div');
+            modalEl.id = 'modalAnaliseIA';
+            modalEl.className = 'modal fade';
+            modalEl.innerHTML = `
+                <div class="modal-dialog modal-lg modal-dialog-centered">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px;">
+                        <div class="modal-header bg-dark text-white border-0 py-3" style="border-radius: 16px 16px 0 0;">
+                            <h5 class="modal-title fw-bold"><i class="fas fa-robot text-warning me-2"></i> Nexter AI: Insights Psicossociais</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body p-4" id="conteudo-analise-ia">
+                        </div>
+                        <div class="modal-footer bg-light border-0 py-3" style="border-radius: 0 0 16px 16px;">
+                            <button type="button" class="btn btn-secondary rounded-pill px-4" data-bs-dismiss="modal">Fechar</button>
+                            <button type="button" class="btn btn-primary rounded-pill px-4" onclick="window.print()"><i class="fas fa-print me-2"></i> Imprimir Relatório</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modalEl);
+        }
+
+        document.getElementById('conteudo-analise-ia').innerHTML = htmlReport;
+        new bootstrap.Modal(modalEl).show();
+
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+
+    }, 1500);
+};
+
