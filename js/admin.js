@@ -6,6 +6,8 @@ async function inicializarAdmin() {
 
 async function carregarUsuariosAdmin() {
     const tbody = document.getElementById('tabela-usuarios-admin');
+    if (!tbody) return;
+    
     tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
