@@ -406,20 +406,29 @@ async function carregarSelectOperadores(selectId, selectedId = null) {
 
 async function carregarSetoresPorEmpresa(empresaId, selectId) {
 
-    if (!__db || !empresaId) return;
+    if (!__db) return;
     
     const select = document.getElementById(selectId);
     if (!select) return;
     
     try {
-        const empresaDoc = await __db.collection('empresas').doc(empresaId).get();
-        if (empresaDoc.exists) {
-            const setores = empresaDoc.data().setores || [];
-            select.innerHTML = '<option value="">Selecione um setor</option>';
-            setores.forEach(setor => {
-                select.innerHTML += `<option value="${setor}">${setor}</option>`;
-            });
-        }
+        const empresasSnap = await __db.collection('empresas').get();
+        let todosSetores = new Set();
+        
+        empresasSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.setores && Array.isArray(data.setores)) {
+                data.setores.forEach(setor => todosSetores.add(setor));
+            }
+        });
+        
+        // Converter Set para array e ordenar alfabeticamente
+        const setoresOrdenados = Array.from(todosSetores).sort();
+
+        select.innerHTML = '<option value="">Selecione um setor</option>';
+        setoresOrdenados.forEach(setor => {
+            select.innerHTML += `<option value="${setor}">${setor}</option>`;
+        });
     } catch (error) {
         console.error("Erro ao carregar setores:", error);
         select.innerHTML = '<option value="">Erro ao carregar</option>';
