@@ -1515,7 +1515,7 @@ window.gerarSalvarFichaProducao = async () => {
         bootstrap.Modal.getInstance(document.getElementById('modalGerarFicha')).hide();
         
         // Imprimir a(s) ficha(s)
-        idsGerados.forEach(f => imprimirViewFicha(f));
+        idsGerados.forEach(f => visualizarFichaImpressa(f));
         
         await carregarFichasDia();
     } catch (e) {
@@ -1523,21 +1523,126 @@ window.gerarSalvarFichaProducao = async () => {
     }
 };
 
+async function visualizarFichaImpressa(ficha) {
+    let chamados = [];
+    if (ficha.status === 'Concluída') {
+        const snap = await db.collection('manutencao_chamados')
+            .where('maquinaId', '==', ficha.maquinaId)
+            .where('data', '==', ficha.data)
+            .get();
+        chamados = snap.docs.map(d => d.data());
+    }
+    imprimirViewFicha(ficha, chamados);
+}
 
-function imprimirViewFicha(ficha) {
+function imprimirViewFicha(ficha, chamados = []) {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${ficha.id}`;
     const logoSrc = document.getElementById('sidebar-logo')?.src || 'assets/LOGO.png';
     const colabPrincipal = ficha.colaboradores?.[0]?.nome || 'Colaborador não identificado';
-    
+    const dataFmt = (ficha.data || '').split('-').reverse().join('/');
+    const isConcluida = ficha.status === 'Concluída';
+
+    // =====================================================
+    // BLOCO DE PRODUTOS — diferente para aberta/concluída
+    // =====================================================
+    let produtosHtml = '';
+    if (isConcluida && ficha.detalhesLancamento) {
+        // Agrupa quantidades por produto (pode haver múltiplos colaboradores)
+        const totaisPorProd = {};
+        Object.entries(ficha.detalhesLancamento).forEach(([key, qtd]) => {
+            const partes = key.split('_');
+            const prodCod = partes[partes.length - 1];
+            totaisPorProd[prodCod] = (totaisPorProd[prodCod] || 0) + qtd;
+        });
+
+        ficha.produtos.forEach(p => {
+            const qtd = totaisPorProd[p.codigo] || 0;
+            produtosHtml += `
+                <tr>
+                    <td style="font-weight:800;">${p.codigo}</td>
+                    <td>${p.descricao}</td>
+                    <td style="text-align:center;font-weight:800;font-size:14px;">${p.tamanho}</td>
+                    <td style="text-align:center;font-weight:900;font-size:16px;background:${qtd > 0 ? '#f0fff4' : '#fff'};color:${qtd > 0 ? '#198754' : '#999'};">${qtd > 0 ? qtd : '—'}</td>
+                </tr>`;
+        });
+    } else {
+        // Ficha em branco para preenchimento manual
+        ficha.produtos.forEach(p => {
+            produtosHtml += `
+                <tr>
+                    <td style="font-weight:800;">${p.codigo}</td>
+                    <td>${p.descricao}</td>
+                    <td style="text-align:center;font-weight:800;font-size:14px;">${p.tamanho}</td>
+                    <td class="col-check"></td>
+                </tr>`;
+        });
+    }
+
+    // =====================================================
+    // BLOCO DE MANUTENÇÃO
+    // =====================================================
+    let manutencaoHtml = '';
+    if (isConcluida && chamados.length > 0) {
+        // Ficha concluída: mostrar chamados reais
+        manutencaoHtml = `
+            <div class="downtime-section" style="border-color:#dc3545;">
+                <div class="downtime-title" style="color:#dc3545;">⚠ Chamados de Manutenção na Data</div>
+                <table style="font-size:10px;margin-bottom:0;">
+                    <thead>
+                        <tr>
+                            <th>Motivo</th>
+                            <th style="width:100px;">Status</th>
+                            <th style="width:100px;">Tempo Parada</th>
+                            <th style="width:120px;">Mecânico</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${chamados.map(c => `
+                            <tr>
+                                <td>${c.motivo || c.motivoManutencao || '—'}</td>
+                                <td style="text-align:center;font-weight:700;">${c.status}</td>
+                                <td style="text-align:center;">${c.tempoParada || '—'}</td>
+                                <td>${c.mecanico || c.createdByNome || '—'}</td>
+                            </tr>`).join('')}
+                    </tbody>
+                </table>
+            </div>`;
+    } else {
+        // Ficha em branco: espaço para anotação manual
+        manutencaoHtml = `
+            <div class="downtime-section">
+                <div class="downtime-title">Registro de Parada de Máquina (Uso da Manutenção)</div>
+                <div style="display:flex;gap:20px;">
+                    <div style="flex:1;">
+                        <span class="info-label">Tempo Total de Parada (minutos)</span>
+                        <div style="height:25px;border-bottom:1px dashed #000;margin-top:5px;"></div>
+                    </div>
+                    <div style="flex:2;">
+                        <span class="info-label">Motivo / Causa da Ocorrência</span>
+                        <div style="height:25px;border-bottom:1px dashed #000;margin-top:5px;"></div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // =====================================================
+    // STATUS BADGE (apenas para concluída)
+    // =====================================================
+    const statusBanner = isConcluida ? `
+        <div style="background:#198754;color:#fff;padding:5px 15px;text-align:right;font-size:11px;font-weight:800;margin-bottom:8px;border-radius:4px;">
+            ✅ CONCLUÍDA — ${ficha.totalProduzido || 0} unidades produzidas
+            ${ficha.concluidaEm ? ` | Encerrado em: ${new Date(ficha.concluidaEm.seconds * 1000).toLocaleString('pt-BR')}` : ''}
+        </div>` : '';
+
     const html = `
         <html>
         <head>
-            <title>Ficha ${ficha.id}</title>
+            <title>Ficha ${ficha.id}${isConcluida ? ' — COMPROVANTE' : ''}</title>
             <style>
                 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
                 @page { size: A4 portrait; margin: 5mm; }
                 body { font-family: 'Outfit', sans-serif; margin: 0; padding: 0; color: #000; font-size: 12px; }
-                .container { padding: 10px; border: 2px solid #000; height: 98%; position: relative; }
+                .container { padding: 10px; border: 2px solid #000; min-height: 98%; position: relative; }
                 
                 .header { display: flex; justify-content: space-between; align-items: start; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 10px; }
                 .header-left { display: flex; gap: 15px; align-items: center; }
@@ -1548,17 +1653,17 @@ function imprimirViewFicha(ficha) {
 
                 .colab-banner { background: #eee; padding: 8px 15px; font-size: 18px; font-weight: 800; text-transform: uppercase; border: 1px solid #000; margin-bottom: 10px; }
                 
-                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5px; margin-bottom: 10px; }
                 .info-item { border: 1px solid #ccc; padding: 5px; }
                 .info-label { font-size: 9px; font-weight: 700; color: #555; text-transform: uppercase; display: block; }
                 .info-value { font-size: 12px; font-weight: 600; }
 
-                table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
                 th { background: #f0f0f0; border: 1px solid #000; padding: 6px; font-size: 10px; text-transform: uppercase; }
                 td { border: 1px solid #000; padding: 8px; font-size: 12px; }
                 .col-check { width: 100px; height: 35px; }
 
-                .footer { position: absolute; bottom: 10px; width: calc(100% - 20px); display: grid; grid-template-columns: 100px 1fr 1fr; gap: 20px; align-items: end; }
+                .footer { display: grid; grid-template-columns: 100px 1fr 1fr; gap: 20px; align-items: end; margin-top: 15px; }
                 .qr-box img { width: 90px; height: 90px; border: 1px solid #eee; }
                 .sig-box { border-top: 1px solid #000; text-align: center; font-size: 10px; font-weight: 700; padding-top: 5px; }
                 
@@ -1576,81 +1681,58 @@ function imprimirViewFicha(ficha) {
                     <div class="header-left">
                         <img src="${logoSrc}" class="logo">
                         <div>
-                            <div style="font-weight: 800; font-size: 14px;">CONTROLE DE PRODUÇÃO</div>
-                            <div style="font-size: 10px;">Nexter ERP v3 | ISO 9001 Integration</div>
+                            <div style="font-weight:800;font-size:14px;">CONTROLE DE PRODUÇÃO</div>
+                            <div style="font-size:10px;">Nexter ERP v3 | ISO 9001 Integration</div>
                         </div>
                     </div>
                     <div class="ficha-info">
-                        <div class="ficha-title">FICHA TÉCNICA</div>
+                        <div class="ficha-title">${isConcluida ? 'COMPROVANTE' : 'FICHA TÉCNICA'}</div>
                         <div class="ficha-id">${ficha.id}</div>
                     </div>
                 </div>
+
+                ${statusBanner}
 
                 <div class="colab-banner">${colabPrincipal}</div>
 
                 <div class="info-grid">
                     <div class="info-item">
                         <span class="info-label">Máquina / Equipamento</span>
-                        <span class="info-value">${ficha.maquinaCodigo} ${ficha.maquinaApelido ? `(${ficha.maquinaApelido})` : ''}</span>
+                        <span class="info-value">${ficha.maquinaCodigo || '—'} ${ficha.maquinaApelido ? `(${ficha.maquinaApelido})` : ''}</span>
                     </div>
                     <div class="info-item">
                         <span class="info-label">Setor</span>
-                        <span class="info-value">${ficha.setorNome.split('(')[0]}</span>
+                        <span class="info-value">${(ficha.setorNome || '').split('(')[0]}</span>
                     </div>
                     <div class="info-item">
-                        <span class="info-label">Data Operação</span>
-                        <span class="info-value">${ficha.data.split('-').reverse().join('/')}</span>
-                    </div>
-                    <div class="info-item">
-                        <span class="info-label">Turno</span>
-                        <span class="info-value">${ficha.turno}</span>
+                        <span class="info-label">Data</span>
+                        <span class="info-value">${dataFmt}</span>
                     </div>
                 </div>
 
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 120px;">Cód. Referência</th>
+                            <th style="width:120px;">Cód. Referência</th>
                             <th>Descrição do Produto</th>
-                            <th style="width: 60px;">Tam.</th>
-                            <th style="width: 120px;">Qtde Produzida</th>
+                            <th style="width:60px;">Tam.</th>
+                            <th style="width:120px;">${isConcluida ? 'Qtde Produzida' : 'Qtde (preencher)'}</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        ${ficha.produtos.map(p => `
-                            <tr>
-                                <td style="font-weight: 800;">${p.codigo}</td>
-                                <td>${p.descricao}</td>
-                                <td style="text-align: center; font-weight: 800; font-size: 14px;">${p.tamanho}</td>
-                                <td class="col-check"></td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
+                    <tbody>${produtosHtml}</tbody>
                 </table>
 
-                <div class="downtime-section">
-                    <div class="downtime-title">Registro de Parada de Máquina (Uso da Manutenção)</div>
-                    <div style="display: flex; gap: 20px;">
-                        <div style="flex: 1;">
-                            <span class="info-label">Tempo Total de Parada (minutos)</span>
-                            <div style="height: 25px; border-bottom: 1px dashed #000; margin-top: 5px;"></div>
-                        </div>
-                        <div style="flex: 2;">
-                            <span class="info-label">Motivo / Causa da Ocorrência</span>
-                            <div style="height: 25px; border-bottom: 1px dashed #000; margin-top: 5px;"></div>
-                        </div>
-                    </div>
-                </div>
+                ${manutencaoHtml}
 
-                ${ficha.obs ? `<div style="margin-top: 10px; font-size: 10px; border: 1px solid #eee; padding: 5px;"><strong>OBSERVAÇÕES:</strong> ${ficha.obs}</div>` : ''}
+                ${ficha.obs ? `<div style="margin-top:10px;font-size:10px;border:1px solid #eee;padding:5px;"><strong>OBSERVAÇÕES:</strong> ${ficha.obs}</div>` : ''}
 
                 <div class="footer">
                     <div class="qr-box">
                         <img src="${qrUrl}">
-                        <div style="font-size: 7px; text-align: center; font-weight: 800;">VALIDAÇÃO DIGITAL</div>
+                        <div style="font-size:7px;text-align:center;font-weight:800;">VALIDAÇÃO DIGITAL</div>
                     </div>
-                    <div class="sig-box">ASSINATURA DO OPERADOR</div>
-                    <div class="sig-box">VISTO SUPERVISÃO</div>
+                    <div class="sig-box">${isConcluida ? `CONFERIDO POR: ${ficha.concluidaPor || '___________'}` : 'ASSINATURA DO OPERADOR'}</div>
+                    <div class="sig-box">${isConcluida ? `TOTAL: ${ficha.totalProduzido || 0} UN.` : 'VISTO SUPERVISÃO'}</div>
                 </div>
             </div>
         </body>
@@ -1886,11 +1968,18 @@ async function executarSalvarBaixa(f, motivo = null) {
 
         
         await Promise.all(promises);
-        mostrarMensagem(motivo ? 'Ficha substituída com sucesso!' : 'Ficha baixada com sucesso!', 'success');
         bootstrap.Modal.getInstance(document.getElementById('modalAuditoriaFicha')).hide();
-        if (motivo) bootstrap.Modal.getInstance(document.getElementById('modalMotivoSubstituicao')).hide();
-        
+        if (motivo) {
+            const msMod = bootstrap.Modal.getInstance(document.getElementById('modalMotivoSubstituicao'));
+            if (msMod) msMod.hide();
+        }
+
+        // Atualizar a ficha em memória com os novos valores
+        const fichaFinalizada = { ...f, status: 'Concluída', totalProduzido: totalLancado, detalhesLancamento: detalhes };
+        await exibirResumoPosBaixa(fichaFinalizada, detalhes);
+
         await carregarFichasDia();
+
     } catch(e) {
         alert("Erro ao salvar: " + e.message);
     }
@@ -1904,7 +1993,6 @@ window.confirmarSubstituicaoFicha = async () => {
 
 async function registrarMovimentacaoEstoque(codigo, qtd, tipo, fichaId) {
     try {
-        // 1. Localizar produto para pegar o ID do documento
         const snapProd = await db.collection('producao_produtos').where('codigo', '==', codigo).limit(1).get();
         if (snapProd.empty) return;
         
@@ -1912,20 +2000,18 @@ async function registrarMovimentacaoEstoque(codigo, qtd, tipo, fichaId) {
         const prodId = prodDoc.id;
         const p = prodDoc.data();
 
-        // 2. Atualizar Saldo no Produto
         const incremento = tipo === 'ENTRADA' ? qtd : -qtd;
         await db.collection('producao_produtos').doc(prodId).update({
             estoqueAtual: firebase.firestore.FieldValue.increment(incremento),
             ultimaMovimentacao: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // 3. Registrar Log de Movimentação
         await db.collection('producao_estoque_movimentos').add({
             produtoId: prodId,
             produtoCodigo: codigo,
             produtoDesc: p.descricao,
             quantidade: qtd,
-            tipo: tipo, // ENTRADA / SAIDA
+            tipo: tipo,
             origem: 'Produção',
             referenciaId: fichaId,
             data: new Date().toISOString().split('T')[0],
@@ -1935,4 +2021,232 @@ async function registrarMovimentacaoEstoque(codigo, qtd, tipo, fichaId) {
     } catch (e) {
         console.error("Erro no estoque:", e);
     }
+}
+
+// ================================================================
+// LEITOR DE QR CODE (CÂMERA)
+// ================================================================
+let __qr_stream = null;
+
+window.abrirLeitorQR = () => {
+    let modal = document.getElementById('modalQRReader');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalQRReader';
+        modal.className = 'modal fade';
+        modal.setAttribute('tabindex', '-1');
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-dark text-white py-2">
+                        <h5 class="modal-title"><i class="fas fa-qrcode me-2"></i>Escanear QR Code</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-2 text-center">
+                        <p class="small text-muted mb-2">Aponte a câmera para o QR Code da ficha</p>
+                        <div style="position:relative; width:100%; max-width:360px; margin:0 auto;">
+                            <video id="qr-video" style="width:100%; border-radius:8px; background:#000;" autoplay playsinline></video>
+                            <canvas id="qr-canvas" style="display:none;"></canvas>
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #0d6efd;border-radius:8px;pointer-events:none;"></div>
+                        </div>
+                        <div id="qr-status" class="mt-2 small text-muted">Inicializando câmera...</div>
+                    </div>
+                    <div class="modal-footer py-2">
+                        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+
+    modal.addEventListener('hidden.bs.modal', () => {
+        if (__qr_stream) { __qr_stream.getTracks().forEach(t => t.stop()); __qr_stream = null; }
+    }, { once: true });
+
+    new bootstrap.Modal(modal).show();
+    setTimeout(() => iniciarCameraQR(), 400);
+};
+
+async function iniciarCameraQR() {
+    const video = document.getElementById('qr-video');
+    const canvas = document.getElementById('qr-canvas');
+    const status = document.getElementById('qr-status');
+    if (!video) return;
+
+    // Carregar jsQR dinamicamente se ainda não estiver na página
+    if (!window.jsQR) {
+        await new Promise((resolve, reject) => {
+            const s = document.createElement('script');
+            s.src = 'https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js';
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
+        });
+    }
+
+    try {
+        __qr_stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+        video.srcObject = __qr_stream;
+        await video.play();
+        status.textContent = 'Câmera ativa. Aponte para o QR Code.';
+        status.className = 'mt-2 small text-success';
+        scanQRFrame(video, canvas, status);
+    } catch (e) {
+        status.textContent = 'Não foi possível acessar a câmera: ' + e.message;
+        status.className = 'mt-2 small text-danger';
+    }
+}
+
+function scanQRFrame(video, canvas, status) {
+    if (!__qr_stream) return;
+
+    const ctx = canvas.getContext('2d');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const code = window.jsQR ? window.jsQR(imageData.data, canvas.width, canvas.height) : null;
+
+    if (code && code.data) {
+        status.textContent = `✅ Lido: ${code.data}`;
+        status.className = 'mt-2 small text-success fw-bold';
+
+        // Parar câmera e fechar modal
+        if (__qr_stream) { __qr_stream.getTracks().forEach(t => t.stop()); __qr_stream = null; }
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalQRReader'));
+        if (modal) modal.hide();
+
+        // Preencher o campo de código e buscar a ficha
+        const input = document.getElementById('af-codigo-ficha');
+        if (input) {
+            input.value = code.data.trim();
+            window.buscarFichaAuditoria();
+        }
+        return;
+    }
+
+    requestAnimationFrame(() => scanQRFrame(video, canvas, status));
+}
+
+// ================================================================
+// RESUMO PÓS-BAIXA COM CHAMADOS DE MANUTENÇÃO
+// ================================================================
+async function exibirResumoPosBaixa(ficha, detalhes) {
+    // Buscar chamados de manutenção da máquina na data da ficha
+    let chamadosHtml = '';
+    try {
+        const snap = await db.collection('manutencao_chamados')
+            .where('maquinaId', '==', ficha.maquinaId)
+            .limit(10)
+            .get();
+
+        const fichaDate = new Date(ficha.data + 'T00:00:00');
+        const chamadosDia = snap.docs
+            .map(d => ({ id: d.id, ...d.data() }))
+            .filter(c => {
+                if (!c.dataAbertura) return false;
+                const cd = c.dataAbertura.toDate();
+                return cd.toDateString() === fichaDate.toDateString();
+            });
+
+        if (chamadosDia.length > 0) {
+            chamadosHtml = `<div class="mt-3 p-3 border border-warning rounded bg-warning bg-opacity-10">
+                <h6 class="fw-bold text-warning mb-2"><i class="fas fa-tools me-2"></i>Chamados de Manutenção na Data</h6>`;
+
+            chamadosDia.forEach(c => {
+                const statusBadge = c.status === 'Concluído' ? 'bg-success' : (c.status === 'Em Andamento' ? 'bg-warning text-dark' : 'bg-danger');
+                const tempoParadaTexto = c.tempoParada ? `<span class="badge bg-secondary ms-2"><i class="fas fa-clock me-1"></i>${c.tempoParada}</span>` : '';
+                chamadosHtml += `
+                    <div class="d-flex justify-content-between align-items-center py-1 border-bottom">
+                        <div>
+                            <span class="small fw-bold">${c.motivo || 'Sem motivo'}</span>
+                            ${tempoParadaTexto}
+                        </div>
+                        <span class="badge ${statusBadge}">${c.status}</span>
+                    </div>`;
+            });
+
+            chamadosHtml += '</div>';
+        } else {
+            chamadosHtml = `<div class="mt-3 p-2 bg-light rounded text-muted small text-center">
+                <i class="fas fa-check-circle text-success me-1"></i>Nenhum chamado de manutenção registrado para esta máquina na data.
+            </div>`;
+        }
+    } catch(e) {
+        console.warn('Não foi possível carregar chamados de manutenção:', e);
+        chamadosHtml = '';
+    }
+
+    // Montar resumo de produção por produto
+    const prodResumo = {};
+    Object.entries(detalhes).forEach(([key, qtd]) => {
+        const [, prodCod] = key.split('_');
+        prodResumo[prodCod] = (prodResumo[prodCod] || 0) + qtd;
+    });
+
+    let prodHtml = '';
+    ficha.produtos.forEach(p => {
+        const qtd = prodResumo[p.codigo] || 0;
+        if (qtd > 0) {
+            prodHtml += `<div class="d-flex justify-content-between py-1 border-bottom">
+                <span class="small">${p.descricao} <span class="text-muted">(${p.codigo})</span></span>
+                <span class="fw-bold text-success">${qtd}</span>
+            </div>`;
+        }
+    });
+
+    const operador = ficha.colaboradores?.[0]?.nome || 'N/A';
+    const dataFmt = ficha.data.split('-').reverse().join('/');
+
+    const bodyHtml = `
+        <div class="text-center mb-3">
+            <div class="display-6 fw-bold text-success">${ficha.totalProduzido}</div>
+            <div class="text-muted small">unidades produzidas</div>
+        </div>
+        <div class="row g-2 mb-3">
+            <div class="col-4 text-center bg-light rounded p-2">
+                <div class="text-muted" style="font-size:0.65rem;">MÁQUINA</div>
+                <div class="fw-bold small">${ficha.maquinaCodigo || 'N/A'}</div>
+            </div>
+            <div class="col-4 text-center bg-light rounded p-2">
+                <div class="text-muted" style="font-size:0.65rem;">OPERADOR</div>
+                <div class="fw-bold small">${operador}</div>
+            </div>
+            <div class="col-4 text-center bg-light rounded p-2">
+                <div class="text-muted" style="font-size:0.65rem;">DATA</div>
+                <div class="fw-bold small">${dataFmt}</div>
+            </div>
+        </div>
+        <h6 class="fw-bold small text-muted">PRODUÇÃO POR PRODUTO</h6>
+        ${prodHtml || '<div class="text-muted small text-center">Sem detalhes</div>'}
+        ${chamadosHtml}`;
+
+    let modal = document.getElementById('modalResumoPosBaixa');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'modalResumoPosBaixa';
+        modal.className = 'modal fade';
+        modal.setAttribute('tabindex', '-1');
+        modal.innerHTML = `
+            <div class="modal-dialog modal-dialog-centered modal-fullscreen-sm-down">
+                <div class="modal-content border-0 shadow">
+                    <div class="modal-header bg-success text-white py-2">
+                        <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Ficha Baixada com Sucesso</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="resumo-pos-baixa-body"></div>
+                    <div class="modal-footer py-2">
+                        <button class="btn btn-outline-dark btn-sm" onclick="visualizarFichaImpressa('${ficha.id}')">
+                            <i class="fas fa-print me-1"></i>Imprimir Ficha
+                        </button>
+                        <button class="btn btn-success btn-sm" data-bs-dismiss="modal">Fechar</button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modal);
+    }
+
+    document.getElementById('resumo-pos-baixa-body').innerHTML = bodyHtml;
+    new bootstrap.Modal(modal).show();
 }
