@@ -71,11 +71,11 @@ async function carregarLancamentosFinanceiros() {
     try {
         let query = db.collection('lancamentos_financeiros');
 
-        const origem = document.getElementById('fin-filtro-origem').value;
-        const subdivisao = document.getElementById('fin-filtro-subdivisao').value;
-        const setor = document.getElementById('fin-filtro-setor').value;
-        const inicio = document.getElementById('fin-filtro-inicio').value;
-        const fim = document.getElementById('fin-filtro-fim').value;
+        const origem = document.getElementById('fin-filtro-origem')?.value;
+        const subdivisao = document.getElementById('fin-filtro-subdivisao')?.value;
+        const setor = document.getElementById('fin-filtro-setor')?.value;
+        const inicio = document.getElementById('fin-filtro-inicio')?.value;
+        const fim = document.getElementById('fin-filtro-fim')?.value;
 
         if (origem) query = query.where('origem', '==', origem);
         if (subdivisao) query = query.where('subdivisao', '==', subdivisao);
