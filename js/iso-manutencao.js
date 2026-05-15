@@ -736,7 +736,11 @@ async function carregarChamadosManutencao() {
         const maquinasMap = new Map();
         maquinasSnap.forEach(doc => {
             const data = doc.data();
-            maquinasMap.set(doc.id, { isCritica: data.isCritica || false, setor: data.setor || 'N/A' });
+            maquinasMap.set(doc.id, { 
+                isCritica: data.isCritica || false, 
+                setor: data.setor || 'N/A',
+                apelido: data.apelido || data.nome || 'N/A'
+            });
         });
 
         let query = db.collection('manutencao_chamados');
@@ -825,9 +829,11 @@ __unsubscribe_manutencao = query.onSnapshot((snap) => {
 
             let tableHtml = '';
             chamados.forEach(chamado => {
+                const maquinaData = maquinasMap.get(chamado.maquinaId) || {};
                 const abertura = chamado.dataAbertura?.toDate();
                 const encerramento = chamado.dataEncerramento?.toDate();
-                const isCritica = maquinasMap.get(chamado.maquinaId)?.isCritica || false;
+                const isCritica = maquinaData.isCritica || false;
+                const apelido = maquinaData.apelido || chamado.maquinaNome || chamado.maquinaId;
 
                 const rowClass = chamado.maquinaParada ? 'table-danger' : (isCritica ? 'table-warning' : '');
 
@@ -922,7 +928,7 @@ let prioridadeConteudo;
                 const row = `
                     <tr class="${rowClass}">
                         <td>
-                            ${chamado.maquinaNome || chamado.maquinaId}
+                            ${apelido}
                             ${isCritica ? '<span class="badge bg-dark ms-1" title="Máquina Crítica">Crítica</span>' : ''}
                         </td>
                         <td>
