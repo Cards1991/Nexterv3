@@ -2029,30 +2029,43 @@ async function registrarMovimentacaoEstoque(codigo, qtd, tipo, fichaId) {
 let __qr_stream = null;
 
 window.abrirLeitorQR = () => {
+    // Esconder o modal anterior temporariamente para evitar conflitos de sobreposição no mobile
+    const modalAuditoria = document.getElementById('modalAuditoriaFicha');
+    if (modalAuditoria && modalAuditoria.classList.contains('show')) {
+        const bsModalAuditoria = bootstrap.Modal.getInstance(modalAuditoria);
+        if (bsModalAuditoria) bsModalAuditoria.hide();
+        window.__reabrirModalAuditoria = true;
+    }
+
     let modal = document.getElementById('modalQRReader');
     if (!modal) {
         modal = document.createElement('div');
         modal.id = 'modalQRReader';
         modal.className = 'modal fade';
         modal.setAttribute('tabindex', '-1');
+        // z-index alto para garantir que fique acima de tudo
+        modal.style.zIndex = '1060';
         modal.innerHTML = `
-            <div class="modal-dialog modal-dialog-centered">
-                <div class="modal-content border-0 shadow">
-                    <div class="modal-header bg-dark text-white py-2">
-                        <h5 class="modal-title"><i class="fas fa-qrcode me-2"></i>Escanear QR Code</h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            <div class="modal-dialog modal-dialog-centered mx-auto" style="max-width: 400px;">
+                <div class="modal-content border-0 shadow-lg overflow-hidden" style="border-radius: 16px;">
+                    <div class="modal-header bg-primary text-white py-3 border-0">
+                        <h5 class="modal-title fw-bold d-flex align-items-center">
+                            <i class="fas fa-qrcode me-2"></i>Escanear Ficha
+                        </h5>
+                        <button type="button" class="btn-close btn-close-white shadow-none" data-bs-dismiss="modal"></button>
                     </div>
-                    <div class="modal-body p-2 text-center">
-                        <p class="small text-muted mb-2">Aponte a câmera para o QR Code da ficha</p>
-                        <div style="position:relative; width:100%; max-width:360px; margin:0 auto;">
-                            <video id="qr-video" style="width:100%; border-radius:8px; background:#000;" autoplay playsinline></video>
+                    <div class="modal-body p-4 text-center bg-light">
+                        <p class="small text-muted mb-4">Centralize o QR Code da ficha na área marcada</p>
+                        <div class="bg-white p-2 rounded-4 shadow-sm mx-auto" style="position:relative; width:100%; max-width:280px;">
+                            <video id="qr-video" style="width:100%; border-radius:12px; background:#000; display:block; aspect-ratio: 3/4; object-fit: cover;" autoplay playsinline></video>
                             <canvas id="qr-canvas" style="display:none;"></canvas>
-                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:200px;height:200px;border:3px solid #0d6efd;border-radius:8px;pointer-events:none;"></div>
+                            <!-- Guia de mira central -->
+                            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:70%;aspect-ratio:1/1;border:3px dashed rgba(255, 255, 255, 0.8);border-radius:16px;pointer-events:none;box-shadow: 0 0 0 4000px rgba(0,0,0,0.5);"></div>
                         </div>
-                        <div id="qr-status" class="mt-2 small text-muted">Inicializando câmera...</div>
+                        <div id="qr-status" class="mt-4 badge bg-secondary px-3 py-2 rounded-pill fw-normal">Inicializando câmera...</div>
                     </div>
-                    <div class="modal-footer py-2">
-                        <button class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <div class="modal-footer bg-white border-top-0 py-3 d-flex justify-content-center">
+                        <button class="btn btn-light border px-4 rounded-pill fw-bold" data-bs-dismiss="modal">Cancelar</button>
                     </div>
                 </div>
             </div>`;
@@ -2061,6 +2074,15 @@ window.abrirLeitorQR = () => {
 
     modal.addEventListener('hidden.bs.modal', () => {
         if (__qr_stream) { __qr_stream.getTracks().forEach(t => t.stop()); __qr_stream = null; }
+        
+        // Reabre o modal anterior se estava aberto
+        if (window.__reabrirModalAuditoria) {
+            window.__reabrirModalAuditoria = false;
+            const modalAuditoria = document.getElementById('modalAuditoriaFicha');
+            if (modalAuditoria) {
+                new bootstrap.Modal(modalAuditoria).show();
+            }
+        }
     }, { once: true });
 
     new bootstrap.Modal(modal).show();
