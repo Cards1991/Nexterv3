@@ -229,7 +229,9 @@ async function carregarDadosSecao(sectionName) {
             case 'producao-bonus':
             case 'producao-produtos':
             case 'producao-leitura':
+            case 'producao-auditoria':
                 if (typeof inicializarProducaoMetas === 'function') await inicializarProducaoMetas(sectionName);
+                if (sectionName === 'producao-auditoria' && typeof inicializarProducaoAuditoria === 'function') await inicializarProducaoAuditoria();
                 break;
             case 'faltas':
                 if (typeof inicializarFaltas === 'function') await inicializarFaltas();
