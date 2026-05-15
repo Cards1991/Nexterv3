@@ -1,7 +1,7 @@
 // Aguarda o evento 'firebaseMobileReady' que é disparado pelo firebase-config-mobile.js
 // Isso garante que o Firebase e suas variáveis globais (db, auth) estejam totalmente
 // inicializados antes que este script tente usá-los.
-document.addEventListener('firebaseMobileReady', () => {
+function initMobileApp() {
     // Verifica se é a página mobile pelo ID ou parâmetro
     const isMobilePage = document.getElementById('chamado-maquina-id') !== null;
 
@@ -69,7 +69,15 @@ document.addEventListener('firebaseMobileReady', () => {
     if (formChamado) {
         formChamado.addEventListener('submit', salvarChamadoMobile);
     }
-});
+}
+
+// Aguarda o evento 'firebaseMobileReady' que é disparado pelo firebase-config-mobile.js
+// ou executa imediatamente se já estiver carregado
+if (window.auth && window.db) {
+    initMobileApp();
+} else {
+    document.addEventListener('firebaseMobileReady', initMobileApp);
+}
 
 function adicionarBotaoSair(user) {
     const container = document.querySelector('#chamado-section .login-card');
