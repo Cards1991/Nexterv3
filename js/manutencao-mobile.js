@@ -155,6 +155,9 @@ async function fetchMachineInfo(maquinaId) {
                     }
                 };
 
+                // Inicializar com required true para o input
+                document.getElementById('chamado-motivo').required = true;
+
                 // Mostrar container com select, esconder o simples
                 containerFrequentes.style.display = 'block';
                 containerSimples.style.display = 'none';
@@ -162,7 +165,10 @@ async function fetchMachineInfo(maquinaId) {
             } else {
                 // Sem motivos cadastrados: mostrar apenas campo de texto simples
                 containerFrequentes.style.display = 'none';
+                document.getElementById('chamado-motivo').required = false;
+                
                 containerSimples.style.display = 'block';
+                document.getElementById('chamado-motivo-fallback').required = true;
             }
         } else {
             console.warn(`[DEBUG] Doc com ID/Código '${maquinaId}' não encontrado.`);
