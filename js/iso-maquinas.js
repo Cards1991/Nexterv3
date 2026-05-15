@@ -412,13 +412,13 @@ async function carregarSetoresPorEmpresa(empresaId, selectId) {
     if (!select) return;
     
     try {
-        const empresasSnap = await __db.collection('empresas').get();
+        const setoresSnap = await __db.collection('setores').get();
         let todosSetores = new Set();
         
-        empresasSnap.forEach(doc => {
+        setoresSnap.forEach(doc => {
             const data = doc.data();
-            if (data.setores && Array.isArray(data.setores)) {
-                data.setores.forEach(setor => todosSetores.add(setor));
+            if (data.descricao) {
+                todosSetores.add(data.descricao.trim());
             }
         });
         
