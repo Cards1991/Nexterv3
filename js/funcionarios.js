@@ -5,8 +5,18 @@ let funcionarios = [];
 async function inicializarFuncionarios() {
     const filtroEmpresa = document.getElementById('filtro-empresa-funcionarios');
     if (filtroEmpresa && !filtroEmpresa.__bound) {
-        filtroEmpresa.addEventListener('change', carregarFuncionarios);
+        filtroEmpresa.addEventListener('change', async () => {
+            const selectSetor = document.getElementById('filtro-setor-funcionarios');
+            if (selectSetor) selectSetor.value = "";
+            await preencherFiltroSetorFuncionarios(filtroEmpresa.value, true);
+            await carregarFuncionarios();
+        });
         filtroEmpresa.__bound = true;
+    }
+    const filtroSetor = document.getElementById('filtro-setor-funcionarios');
+    if (filtroSetor && !filtroSetor.__bound) {
+        filtroSetor.addEventListener('change', carregarFuncionarios);
+        filtroSetor.__bound = true;
     }
     const filtroNome = document.getElementById('filtro-nome-funcionarios');
     if (filtroNome && !filtroNome.__bound) {
@@ -18,6 +28,13 @@ async function inicializarFuncionarios() {
         filtroSemSetor.addEventListener('change', carregarFuncionarios);
         filtroSemSetor.__bound = true;
     }
+    const filtroInativos = document.getElementById('filtro-inativos-funcionarios');
+    if (filtroInativos && !filtroInativos.__bound) {
+        filtroInativos.addEventListener('change', carregarFuncionarios);
+        filtroInativos.__bound = true;
+    }
+
+
 
     await carregarFuncionarios();
 }
@@ -90,9 +107,26 @@ async function carregarFuncionarios() {
         const tbody = document.getElementById('tabela-funcionarios');
         if (!tbody) return;
 
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+        // Reset check-all and bulk banner
+        const checkAll = document.getElementById('check-all-funcionarios');
+        if (checkAll) {
+            checkAll.checked = false;
+            checkAll.indeterminate = false;
+        }
+        const banner = document.getElementById('bulk-actions-banner');
+        if (banner) {
+            banner.classList.add('d-none');
+            banner.classList.remove('d-flex');
+        }
+
+        tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary d-block"></i>Carregando...</td></tr>';
+
+        const filtroEmpresaEl = document.getElementById('filtro-empresa-funcionarios');
+        const filtroEmpresaId = filtroEmpresaEl ? filtroEmpresaEl.value : '';
 
         await preencherFiltroEmpresaFuncionarios();
+        await preencherFiltroSetorFuncionarios(filtroEmpresaId);
+
         const funcionariosSnapshot = await db.collection('funcionarios')
             .orderBy('nome')
             .get();
@@ -100,7 +134,7 @@ async function carregarFuncionarios() {
         funcionarios = [];
 
         if (funcionariosSnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum funcionário cadastrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum funcionário cadastrado</td></tr>';
             return;
         }
 
@@ -115,16 +149,24 @@ async function carregarFuncionarios() {
         funcionarios = funcionariosSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
         // Aplicar filtros
-        const filtroEmpresaEl = document.getElementById('filtro-empresa-funcionarios');
-        const filtroEmpresaId = filtroEmpresaEl ? filtroEmpresaEl.value : '';
-
         const filtroNomeEl = document.getElementById('filtro-nome-funcionarios');
         const filtroNome = filtroNomeEl ? filtroNomeEl.value.toLowerCase() : '';
         
         const filtroSemSetorEl = document.getElementById('filtro-sem-setor-funcionarios');
         const filtroSemSetor = filtroSemSetorEl ? filtroSemSetorEl.checked : false;
 
+        const filtroSetorEl = document.getElementById('filtro-setor-funcionarios');
+        const filtroSetor = filtroSetorEl ? filtroSetorEl.value : '';
+
+        const filtroInativosEl = document.getElementById('filtro-inativos-funcionarios');
+        const filtroInativos = filtroInativosEl ? filtroInativosEl.checked : false;
+
         let funcionariosFiltrados = funcionarios;
+
+        // Se "Mostrar Inativos" NÃO estiver marcado, filtramos removendo os inativos
+        if (!filtroInativos) {
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => f.status !== 'Inativo');
+        }
 
         if (filtroEmpresaId) {
             funcionariosFiltrados = funcionariosFiltrados.filter(f => f.empresaId === filtroEmpresaId);
@@ -135,9 +177,50 @@ async function carregarFuncionarios() {
         if (filtroSemSetor) {
             funcionariosFiltrados = funcionariosFiltrados.filter(f => !f.setor || (typeof f.setor === 'string' && f.setor.trim() === ''));
         }
+        if (filtroSetor) {
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => f.setor === filtroSetor);
+        }
+
+        // 📈 UPDATE LIVE DASHBOARD
+        const totalFuncs = funcionariosFiltrados.length;
+        const dashTotal = document.getElementById('dash-total-funcionarios');
+        if (dashTotal) dashTotal.innerText = totalFuncs.toLocaleString();
+
+        const totalAtivos = funcionariosFiltrados.filter(f => f.status === 'Ativo' || !f.status).length;
+        const totalInativos = funcionariosFiltrados.filter(f => f.status === 'Inativo').length;
+        const dashAtivos = document.getElementById('dash-ativos-funcionarios');
+        if (dashAtivos) dashAtivos.innerText = `${totalAtivos} Ativos`;
+        const dashInativos = document.getElementById('dash-inativos-funcionarios');
+        if (dashInativos) dashInativos.innerText = `${totalInativos} Inativos`;
+
+        const idades = funcionariosFiltrados
+            .map(f => {
+                if (!f.dataNascimento) return null;
+                const d = typeof f.dataNascimento.toDate === 'function' ? f.dataNascimento.toDate() : new Date(f.dataNascimento);
+                return calcularIdade(d);
+            })
+            .filter(id => typeof id === 'number' && !isNaN(id));
+
+        const mediaIdade = idades.length > 0 ? (idades.reduce((a, b) => a + b, 0) / idades.length).toFixed(1) : '0';
+        const dashMediaIdade = document.getElementById('dash-media-idade');
+        if (dashMediaIdade) dashMediaIdade.innerText = `${mediaIdade} anos`;
+
+        const masc = funcionariosFiltrados.filter(f => {
+            const s = String(f.sexo || '').toUpperCase();
+            return s === 'MASCULINO' || s === 'M';
+        }).length;
+        const fem = funcionariosFiltrados.filter(f => {
+            const s = String(f.sexo || '').toUpperCase();
+            return s === 'FEMININO' || s === 'F';
+        }).length;
+
+        const dashMasc = document.getElementById('dash-genero-masc');
+        if (dashMasc) dashMasc.innerHTML = `<i class="fas fa-mars me-1"></i>${masc} Masc.`;
+        const dashFem = document.getElementById('dash-genero-fem');
+        if (dashFem) dashFem.innerHTML = `<i class="fas fa-venus me-1"></i>${fem} Fem.`;
 
         if (funcionariosFiltrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-3 d-block opacity-50"></i>Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
             return;
         }
 
@@ -148,33 +231,48 @@ async function carregarFuncionarios() {
             const statusClass = status === 'Inativo' ? 'bg-danger' : 'bg-success';
 
             const nomeEmpresa = empresasMap[funcionario.empresaId] || 'Empresa não encontrada';
-            const tempoDeEmpresa = funcionario.dataAdmissao ? calcularTempoDeEmpresa(funcionario.dataAdmissao.toDate()) : 'N/A';
-            const idade = funcionario.dataNascimento ? calcularIdade(funcionario.dataNascimento.toDate()) : 'N/A';
+            const tempoDeEmpresa = funcionario.dataAdmissao ? (typeof funcionario.dataAdmissao.toDate === 'function' ? calcularTempoDeEmpresa(funcionario.dataAdmissao.toDate()) : calcularTempoDeEmpresa(new Date(funcionario.dataAdmissao))) : 'N/A';
+            const idade = funcionario.dataNascimento ? (typeof funcionario.dataNascimento.toDate === 'function' ? calcularIdade(funcionario.dataNascimento.toDate()) : calcularIdade(new Date(funcionario.dataNascimento))) : 'N/A';
 
             const row = document.createElement('tr');
             // ✅ SAFE ESCAPING for onclick strings
             const docIdEscaped = docId.replace(/'/g, "\\'");
             const nomeEscaped = funcionario.nome.replace(/'/g, "\\'").replace(/"/g, '\\"');
 
+            // Generate clean initials for Avatar
+            const iniciais = funcionario.nome.trim().split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() || '?';
+            const avatar = `<div class="d-flex align-items-center gap-3">
+                <div class="avatar-placeholder">${iniciais}</div>
+                <div>
+                    <div class="fw-bold text-dark" style="font-size: 0.92rem;">${funcionario.nome}</div>
+                    <div class="text-muted small" style="font-size: 0.75rem;">Mat: ${funcionario.matricula || 'N/A'}</div>
+                </div>
+            </div>`;
+
+            const setorBadge = funcionario.setor ? `<span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.75rem;">${funcionario.setor}</span>` : `<span class="text-muted small"><em>Não definido</em></span>`;
+            const cargoLabel = `<div class="fw-medium text-dark" style="font-size: 0.85rem;">${funcionario.cargo || '--'}</div>`;
+
             row.innerHTML = `  
-                <td>${funcionario.nome}</td>
-                <td>${funcionario.cpf}</td>
-                <td>${nomeEmpresa}</td>
-                <td>${funcionario.setor}</td>
-                <td>${funcionario.cargo}</td>
-                <td>${idade}</td>
-                <td><small>${tempoDeEmpresa}</small></td>
-                <td><span class="badge ${statusClass}">${status}</span></td>
-                <td>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editarFuncionario('${docIdEscaped}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-info" onclick="verDetalhesFuncionario('${docIdEscaped}')">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="excluirFuncionario('${docIdEscaped}', '${nomeEscaped}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <td class="ps-3">${avatar}</td>
+                <td><code class="text-secondary" style="font-size: 0.8rem;">${funcionario.cpf || '--'}</code></td>
+                <td><span class="fw-semibold text-secondary" style="font-size: 0.85rem;">${nomeEmpresa}</span></td>
+                <td>${setorBadge}</td>
+                <td>${cargoLabel}</td>
+                <td class="fw-semibold text-secondary" style="font-size: 0.85rem;">${idade}</td>
+                <td><small class="text-muted" style="font-size: 0.8rem;">${tempoDeEmpresa}</small></td>
+                <td><span class="badge-status badge ${statusClass}">${status}</span></td>
+                <td class="pe-3">
+                    <div class="d-flex justify-content-end gap-2">
+                        <button class="btn btn-sm btn-outline-primary btn-action" onclick="editarFuncionario('${docIdEscaped}')" title="Editar Colaborador">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-info btn-action" onclick="verDetalhesFuncionario('${docIdEscaped}')" title="Visualizar Detalhes">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger btn-action" onclick="excluirFuncionario('${docIdEscaped}', '${nomeEscaped}')" title="Excluir Colaborador">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             `;
             tbody.appendChild(row);
@@ -210,6 +308,54 @@ async function preencherFiltroEmpresaFuncionarios() {
         });
     } catch (error) {
         console.error('Erro ao preencher filtro de empresas:', error);
+    }
+}
+
+async function preencherFiltroSetorFuncionarios(empresaId = '', force = false) {
+    try {
+        const select = document.getElementById('filtro-setor-funcionarios');
+        if (!select) return;
+
+        // Se não for forçado e já tiver opções (mais que a padrão), e a empresa não mudou, não recarrega
+        if (!force && select.options.length > 1 && select.dataset.lastEmpresaId === empresaId) {
+            return;
+        }
+
+        const valorAtual = select.value;
+        select.innerHTML = '<option value="">Filtrar por Setor...</option>';
+
+        let query = db.collection('setores');
+        if (empresaId) {
+            query = query.where('empresaId', '==', empresaId);
+        }
+
+        const snapshot = await query.get();
+        const setoresSet = new Set();
+
+        snapshot.forEach(doc => {
+            const desc = doc.data().descricao;
+            if (desc) setoresSet.add(desc);
+        });
+
+        const setoresOrdenados = Array.from(setoresSet).sort((a, b) => a.localeCompare(b));
+
+        setoresOrdenados.forEach(setor => {
+            const option = document.createElement('option');
+            option.value = setor;
+            option.textContent = setor;
+            select.appendChild(option);
+        });
+
+        select.dataset.lastEmpresaId = empresaId;
+
+        // Restaura valor anterior se ainda existir
+        if (valorAtual && setoresSet.has(valorAtual)) {
+            select.value = valorAtual;
+        } else {
+            select.value = "";
+        }
+    } catch (error) {
+        console.error('Erro ao preencher filtro de setores:', error);
     }
 }
 
@@ -3290,3 +3436,259 @@ function adicionarBotaoTesteLeitor() {
 
 // Removido listener automático - inicializado via showSection / initializarFuncionarios
 setTimeout(adicionarBotaoTesteLeitor, 2000);
+
+// ============================================
+// BATCH TRANSFER FUNCTIONALITIES
+// ============================================
+
+// ============================================
+// BATCH TRANSFER FUNCTIONALITIES
+// ============================================
+
+function atualizarContadorSelecaoModal() {
+    const checkedBoxes = document.querySelectorAll('.check-lote-modal:checked');
+    const countSpan = document.getElementById('lote-count-selecionados');
+    if (countSpan) {
+        countSpan.innerText = checkedBoxes.length;
+    }
+}
+
+async function abrirModalTransferenciaLote() {
+    try {
+        // Preenche as empresas de Origem e Destino
+        const selectEmpresaOrigem = document.getElementById('lote-empresa-origem');
+        const selectEmpresaDestino = document.getElementById('lote-empresa-destino');
+        const selectSetorOrigem = document.getElementById('lote-setor-origem');
+        const selectSetorDestino = document.getElementById('lote-setor-destino');
+        const containerFuncionarios = document.getElementById('lote-lista-funcionarios');
+        const countSpan = document.getElementById('lote-count-selecionados');
+
+        if (countSpan) countSpan.innerText = '0';
+        if (containerFuncionarios) {
+            containerFuncionarios.innerHTML = '<span class="text-muted small">Selecione a empresa de origem para carregar os colaboradores...</span>';
+        }
+
+        const empresasSnapshot = await db.collection('empresas')
+            .orderBy('nome')
+            .get();
+
+        const empresasOptions = ['<option value="">Selecione a empresa...</option>'];
+        empresasSnapshot.forEach(doc => {
+            empresasOptions.push(`<option value="${doc.id}">${doc.data().nome}</option>`);
+        });
+
+        if (selectEmpresaOrigem) {
+            selectEmpresaOrigem.innerHTML = empresasOptions.join('');
+            if (selectSetorOrigem) selectSetorOrigem.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+        }
+
+        if (selectEmpresaDestino) {
+            selectEmpresaDestino.innerHTML = empresasOptions.join('');
+            if (selectSetorDestino) selectSetorDestino.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
+        }
+
+        // Evento change da Empresa de Origem
+        if (selectEmpresaOrigem && !selectEmpresaOrigem.__boundLoteOrigem) {
+            selectEmpresaOrigem.addEventListener('change', async function() {
+                const empresaId = this.value;
+                if (selectSetorOrigem) {
+                    selectSetorOrigem.innerHTML = '<option value="">Carregando setores...</option>';
+                    containerFuncionarios.innerHTML = '<span class="text-muted small">Carregando colaboradores...</span>';
+                    
+                    try {
+                        const setoresSnapshot = await db.collection('setores')
+                            .where('empresaId', '==', empresaId)
+                            .get();
+
+                        if (setoresSnapshot.empty) {
+                            selectSetorOrigem.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
+                        } else {
+                            selectSetorOrigem.innerHTML = '<option value="">Selecione o setor...</option>';
+                            const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
+                                const descA = a.data().descricao || '';
+                                const descB = b.data().descricao || '';
+                                return descA.localeCompare(descB);
+                            });
+                            setoresDocs.forEach(doc => {
+                                selectSetorOrigem.innerHTML += `<option value="${doc.data().descricao}">${doc.data().descricao}</option>`;
+                            });
+                        }
+                        
+                        // Atualiza a listagem de funcionários apenas para a empresa selecionada
+                        atualizarListaFuncionariosLote();
+                    } catch (error) {
+                        console.error('Erro ao buscar setores origem:', error);
+                        selectSetorOrigem.innerHTML = '<option value="">Erro ao carregar setores</option>';
+                    }
+                }
+            });
+            selectEmpresaOrigem.__boundLoteOrigem = true;
+        }
+
+        // Evento change do Setor de Origem
+        if (selectSetorOrigem && !selectSetorOrigem.__boundLoteOrigemSetor) {
+            selectSetorOrigem.addEventListener('change', atualizarListaFuncionariosLote);
+            selectSetorOrigem.__boundLoteOrigemSetor = true;
+        }
+
+        // Evento change da Empresa de Destino
+        if (selectEmpresaDestino && !selectEmpresaDestino.__boundLoteDestino) {
+            selectEmpresaDestino.addEventListener('change', async function() {
+                const empresaId = this.value;
+                if (selectSetorDestino) {
+                    selectSetorDestino.innerHTML = '<option value="">Carregando setores...</option>';
+                    try {
+                        const setoresSnapshot = await db.collection('setores')
+                            .where('empresaId', '==', empresaId)
+                            .get();
+
+                        if (setoresSnapshot.empty) {
+                            selectSetorDestino.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
+                            return;
+                        }
+
+                        selectSetorDestino.innerHTML = '<option value="">Selecione...</option>';
+                        const setoresDocs = setoresSnapshot.docs.sort((a, b) => {
+                            const descA = a.data().descricao || '';
+                            const descB = b.data().descricao || '';
+                            return descA.localeCompare(descB);
+                        });
+                        setoresDocs.forEach(doc => {
+                            selectSetorDestino.innerHTML += `<option value="${doc.data().descricao}">${doc.data().descricao}</option>`;
+                        });
+                    } catch (error) {
+                        console.error('Erro ao buscar setores destino:', error);
+                        selectSetorDestino.innerHTML = '<option value="">Erro ao carregar setores</option>';
+                    }
+                }
+            });
+            selectEmpresaDestino.__boundLoteDestino = true;
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTransferenciaLote'));
+        modal.show();
+    } catch (error) {
+        console.error('Erro ao abrir modal de transferência em lote:', error);
+        mostrarMensagem('Erro ao carregar dados de transferência', 'error');
+    }
+}
+
+function atualizarListaFuncionariosLote() {
+    const deEmpresa = document.getElementById('lote-empresa-origem').value;
+    const deSetor = document.getElementById('lote-setor-origem').value;
+    const container = document.getElementById('lote-lista-funcionarios');
+    const countSpan = document.getElementById('lote-count-selecionados');
+
+    if (countSpan) countSpan.innerText = '0';
+    if (!deEmpresa) {
+        container.innerHTML = '<span class="text-muted small">Selecione a empresa de origem para carregar os colaboradores...</span>';
+        return;
+    }
+
+    db.collection('funcionarios')
+        .where('empresaId', '==', deEmpresa)
+        .where('status', '==', 'Ativo')
+        .get()
+        .then(snapshot => {
+            let filtrados = [];
+            snapshot.forEach(doc => {
+                const f = doc.data();
+                f.id = doc.id;
+                // Filtrar por setor se um setor foi escolhido
+                if (!deSetor || f.setor === deSetor) {
+                    filtrados.push(f);
+                }
+            });
+
+            // Ordenar alfabeticamente
+            filtrados.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+
+            if (filtrados.length === 0) {
+                container.innerHTML = '<span class="text-muted small">Nenhum colaborador ativo encontrado.</span>';
+                return;
+            }
+
+            let html = `
+                <div class="form-check mb-2 pb-2 border-bottom">
+                    <input class="form-check-input" type="checkbox" id="lote-select-all-modal" style="cursor: pointer;">
+                    <label class="form-check-label fw-bold text-dark" for="lote-select-all-modal" style="cursor: pointer;">Selecionar Todos (${filtrados.length})</label>
+                </div>
+            `;
+
+            filtrados.forEach(f => {
+                html += `
+                    <div class="form-check mb-1">
+                        <input class="form-check-input check-lote-modal" type="checkbox" value="${f.id}" id="chk-lote-${f.id}" style="cursor: pointer;">
+                        <label class="form-check-label text-secondary small" for="chk-lote-${f.id}" style="cursor: pointer;">${f.nome} (${f.cargo || 'Sem Cargo'})</label>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+
+            // Vincular evento de mudança nos checkboxes individuais
+            const checkboxes = container.querySelectorAll('.check-lote-modal');
+            checkboxes.forEach(cb => {
+                cb.addEventListener('change', atualizarContadorSelecaoModal);
+            });
+
+            // Vincular evento no checkbox Selecionar Todos
+            const selectAll = document.getElementById('lote-select-all-modal');
+            if (selectAll) {
+                selectAll.addEventListener('change', function() {
+                    checkboxes.forEach(cb => {
+                        cb.checked = selectAll.checked;
+                    });
+                    atualizarContadorSelecaoModal();
+                });
+            }
+        })
+        .catch(error => {
+            console.error('Erro ao buscar funcionários para lote:', error);
+            container.innerHTML = '<span class="text-danger small">Erro ao carregar colaboradores.</span>';
+        });
+}
+
+async function confirmarTransferenciaLote() {
+    const checkedBoxes = document.querySelectorAll('.check-lote-modal:checked');
+    if (checkedBoxes.length === 0) {
+        mostrarMensagem('Nenhum colaborador selecionado na lista de origem.', 'warning');
+        return;
+    }
+
+    const empresaId = document.getElementById('lote-empresa-destino').value;
+    const sector = document.getElementById('lote-setor-destino').value;
+
+    if (!empresaId || !sector) {
+        mostrarMensagem('Por favor, selecione a Empresa e o Setor de destino.', 'warning');
+        return;
+    }
+
+    try {
+        mostrarMensagem('Transferindo colaboradores... Por favor, aguarde.', 'info');
+
+        const batch = db.batch();
+        checkedBoxes.forEach(cb => {
+            const funcId = cb.value;
+            const ref = db.collection('funcionarios').doc(funcId);
+            batch.update(ref, {
+                empresaId: empresaId,
+                setor: sector,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        });
+
+        await batch.commit();
+
+        const modal = bootstrap.Modal.getInstance(document.getElementById('modalTransferenciaLote'));
+        if (modal) modal.hide();
+
+        mostrarMensagem(`${checkedBoxes.length} colaboradores transferidos com sucesso!`, 'success');
+        
+        // Recarregar a listagem principal
+        await carregarFuncionarios();
+    } catch (error) {
+        console.error('Erro ao transferir em lote:', error);
+        mostrarMensagem('Erro ao realizar transferência em lote', 'error');
+    }
+}

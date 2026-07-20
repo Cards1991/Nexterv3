@@ -177,7 +177,15 @@ window.abrirModalConfigMetas = async () => {
     
     container.innerHTML = '<div class="row gx-3">';
     
-    __PRODUCAO_CONFIG.setores.forEach(s => {
+    const setoresElegiveis = __PRODUCAO_CONFIG.setores.filter(s => s.controlaProducao === true || s.controlaProducao === "Sim" || String(s.controlaProducao).toLowerCase() === "true");
+    
+    if (setoresElegiveis.length === 0) {
+        container.innerHTML = '<div class="col-12 text-center py-4 text-muted">Nenhum setor marcado com "Controla Produção" encontrado.</div></div>';
+        modal.show();
+        return;
+    }
+
+    setoresElegiveis.forEach(s => {
         const metaDoc = __PRODUCAO_CONFIG.metas.find(m => m.setorId === s.id);
         const metaAtual = metaDoc?.metaValue || 0;
         const bonusAtual = metaDoc?.bonusValue || 0;
@@ -280,6 +288,10 @@ async function salvarLancamentoProducao(e) {
 let producaoChartInstance = null;
 
 function renderizarGraficoEvolucao() {
+    // Gráfico desativado temporariamente devido a problemas de crescimento infinito
+    return;
+    
+    /*
     const ctx = document.getElementById('chart-producao-evolucao');
     if (!ctx) return;
     
@@ -313,6 +325,7 @@ function renderizarGraficoEvolucao() {
             scales: { y: { beginAtZero: true } }
         }
     });
+    */
 }
 
 function renderizarTabelaHistorico() {

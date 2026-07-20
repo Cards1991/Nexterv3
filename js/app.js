@@ -128,7 +128,7 @@ async function showSection(sectionName) {
                 await ScriptLoader.loadForSection(sectionName);
             }
 
-            const resposta = await fetch(`views/${sectionName}.html`);
+            const resposta = await fetch(`views/${sectionName}.html?t=${Date.now()}`);
             if (!resposta.ok) {
                 mainContent.innerHTML = '<div class="alert alert-danger mt-5">Tela não encontrada ou não migrada.</div>';
             } else {
