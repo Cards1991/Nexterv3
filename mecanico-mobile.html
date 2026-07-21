@@ -933,9 +933,24 @@
             startTicketsListener();
         }
 
+        let _maquinasCache = new Map();
+
         // Tickets Realtime Listener
-        function startTicketsListener() {
+        async function startTicketsListener() {
             if (_unsubscribe) _unsubscribe();
+
+            try {
+                const maqSnap = await _db.collection('maquinas').get();
+                _maquinasCache.clear();
+                maqSnap.forEach(doc => {
+                    _maquinasCache.set(doc.id, doc.data().tag || '');
+                    if (doc.data().codigo) {
+                        _maquinasCache.set(doc.data().codigo, doc.data().tag || '');
+                    }
+                });
+            } catch (e) {
+                console.error("Erro ao carregar cache de máquinas:", e);
+            }
             
             const query = _db.collection('manutencao_chamados').orderBy('dataAbertura', 'desc');
             
@@ -1062,6 +1077,8 @@
                 const statusClass = t.status === 'Aberto' ? 'status-aberto' : t.status === 'Em Andamento' ? 'status-andamento' : 'status-concluido';
                 const cardClass = t.prioridade === 'Urgente' ? 'ticket-card urgente' : t.status === 'Em Andamento' ? 'ticket-card andamento' : 'ticket-card';
 
+                const maquinaTag = t.maquinaTag || _maquinasCache.get(t.maquinaId) || '';
+
                 let actionBtns = `<button class="btn-ticket btn-view" onclick="openDetails('${t.id}')"><i class="fas fa-eye"></i></button>`;
                 
                 if (t.status === 'Aberto') {
@@ -1075,7 +1092,7 @@
                         <div class="ticket-header">
                             <div class="machine-info">
                                 <h3>${t.maquinaNome || 'Máquina s/ nome'}</h3>
-                                <p>${t.maquinaId || 'ID não informado'}</p>
+                                <p>${t.maquinaId || 'ID não informado'}${maquinaTag ? ` &bull; TAG: ${maquinaTag}` : ''}</p>
                             </div>
                             <span class="status-badge ${statusClass}">${t.status}</span>
                         </div>
@@ -1195,10 +1212,15 @@
         function openDetails(id) {
             const t = _tickets.find(x => x.id === id);
             const content = document.getElementById('detalhe-content');
+            const maquinaTag = t.maquinaTag || _maquinasCache.get(t.maquinaId) || '--';
             content.innerHTML = `
                 <div class="mb-3">
                     <p class="small text-dim mb-1">LOCAL / MÁQUINA</p>
                     <p class="fw-bold">${t.maquinaNome} (${t.maquinaId})</p>
+                </div>
+                <div class="mb-3">
+                    <p class="small text-dim mb-1">TAG DA MÁQUINA</p>
+                    <p class="fw-bold">${maquinaTag}</p>
                 </div>
                 <div class="mb-3">
                     <p class="small text-dim mb-1">MOTIVO DA ABERTURA</p>

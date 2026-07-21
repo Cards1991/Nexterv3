@@ -139,11 +139,26 @@ function mostrarApp() {
 // ============================================================
 // CHAMADOS: listener em tempo real
 // ============================================================
-function inicializarChamados() {
+let _maquinasCache = new Map();
+
+async function inicializarChamados() {
     if (_unsubscribe) _unsubscribe();
 
     const lista = document.getElementById('lista-chamados');
     lista.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin me-2"></i> Carregando seus chamados...</div>';
+
+    try {
+        const maqSnap = await db.collection('maquinas').get();
+        _maquinasCache.clear();
+        maqSnap.forEach(doc => {
+            _maquinasCache.set(doc.id, doc.data().tag || '');
+            if (doc.data().codigo) {
+                _maquinasCache.set(doc.data().codigo, doc.data().tag || '');
+            }
+        });
+    } catch (e) {
+        console.error("Erro ao carregar cache de máquinas:", e);
+    }
 
     _unsubscribe = db.collection('manutencao_chamados')
         .where('mecanicoResponsavelId', '==', _currentUser.uid)
@@ -234,11 +249,13 @@ function buildChamadoCard(c) {
         actions += `<button class="btn-action btn-finalizar" onclick="abrirSheetFinalizar('${c.id}','${c.maquinaId}')"><i class="fas fa-check-circle"></i> Finalizar</button>`;
     }
 
+    const maquinaTag = c.maquinaTag || _maquinasCache.get(c.maquinaId) || '';
+
     return `
         <div class="${cardClass}">
             <div class="card-header-row">
                 <div>
-                    <div class="maquina-nome">${c.maquinaNome || c.maquinaId || 'Máquina'}</div>
+                    <div class="maquina-nome">${c.maquinaNome || c.maquinaId || 'Máquina'}${maquinaTag ? ` &bull; TAG: ${maquinaTag}` : ''}</div>
                     <div class="maquina-setor">${abertura}</div>
                 </div>
                 <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
@@ -272,8 +289,11 @@ function abrirDetalhes(chamadoId) {
     const abertura = c.dataAbertura?.toDate ? c.dataAbertura.toDate().toLocaleString('pt-BR') : '--';
     const encerramento = c.dataEncerramento?.toDate ? c.dataEncerramento.toDate().toLocaleString('pt-BR') : 'Pendente';
 
+    const maquinaTag = c.maquinaTag || _maquinasCache.get(c.maquinaId) || '--';
+
     document.getElementById('detalhe-content').innerHTML = `
         <div class="detail-row"><span class="detail-label">Máquina</span><span class="detail-value">${c.maquinaNome || '--'}</span></div>
+        <div class="detail-row"><span class="detail-label">TAG</span><span class="detail-value">${maquinaTag}</span></div>
         <div class="detail-row"><span class="detail-label">Motivo Abertura</span><span class="detail-value">${c.motivo || '--'}</span></div>
         <div class="detail-row"><span class="detail-label">Status</span><span class="detail-value">${c.status || '--'}</span></div>
         <div class="detail-row"><span class="detail-label">Prioridade</span><span class="detail-value">${c.prioridade || 'Normal'}</span></div>

@@ -122,6 +122,18 @@ async function fetchMachineInfo(maquinaId) {
             document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
             document.getElementById('chamado-maquina-id').value = finalMaquinaId;
 
+            const tagEl = document.getElementById('chamado-maquina-tag');
+            const tagContainer = document.getElementById('container-maquina-tag');
+            if (tagEl && tagContainer) {
+                if (machineData.tag) {
+                    tagEl.value = machineData.tag;
+                    tagContainer.style.display = 'block';
+                } else {
+                    tagEl.value = '';
+                    tagContainer.style.display = 'none';
+                }
+            }
+
             // --- MOTIVOS FREQUENTES ---
             const motivos = machineData.motivos || [];
             const containerFrequentes = document.getElementById('container-motivos-frequentes');
@@ -209,6 +221,7 @@ async function salvarChamadoMobile(event) {
 
     const maquinaId = document.getElementById('chamado-maquina-id').value;
     const maquinaNome = document.getElementById('chamado-maquina-nome').value;
+    const maquinaTag = document.getElementById('chamado-maquina-tag')?.value || '';
     
     // Lê o motivo do campo correto (frequente ou simples)
     const containerFrequentes = document.getElementById('container-motivos-frequentes');
@@ -241,6 +254,7 @@ async function salvarChamadoMobile(event) {
         const chamadoData = {
             maquinaId,
             maquinaNome,
+            maquinaTag,
             motivo,
             observacoes,
             maquinaParada,
