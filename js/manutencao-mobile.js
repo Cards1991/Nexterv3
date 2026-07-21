@@ -122,16 +122,16 @@ async function fetchMachineInfo(maquinaId) {
             document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
             document.getElementById('chamado-maquina-id').value = finalMaquinaId;
 
-            // Exibir TAG como badge abaixo do nome da máquina
-            const tagDisplay = document.getElementById('chamado-tag-display');
+            // Exibir TAG no badge sempre-visível
+            const tagBadge = document.getElementById('chamado-tag-badge');
             const tagValue = document.getElementById('chamado-tag-value');
-            if (tagDisplay && tagValue) {
+            if (tagBadge && tagValue) {
                 if (machineData.tag) {
                     tagValue.textContent = machineData.tag;
-                    tagDisplay.style.display = 'block';
+                    tagBadge.classList.remove('tag-sem-valor');
                 } else {
-                    tagValue.textContent = '-';
-                    tagDisplay.style.display = 'none';
+                    tagValue.textContent = 'Não cadastrada';
+                    tagBadge.classList.add('tag-sem-valor');
                 }
             }
 
