@@ -1334,7 +1334,8 @@
                     fecharScanner();
                     _maquinaIdParam = maquinaId;
                     renderTickets();
-                    toast(`Máquina ${maquinaId} identificada!`, 'success');
+                    const maquinaTag = _maquinasCache.get(maquinaId) || '';
+                    toast(`Máquina ${maquinaId} ${maquinaTag ? `(TAG: ${maquinaTag}) ` : ''}identificada!`, 'success');
                 },
                 (errorMessage) => {
                     // Erro silencioso durante o scan

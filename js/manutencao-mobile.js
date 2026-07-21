@@ -119,7 +119,7 @@ async function fetchMachineInfo(maquinaId) {
 
         if (machineData) {
             console.log("[DEBUG] Máquina encontrada:", machineData);
-            document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
+            document.getElementById('chamado-maquina-nome').value = (machineData.nome || 'Nome não encontrado') + (machineData.tag ? ` - TAG: ${machineData.tag}` : '');
             document.getElementById('chamado-maquina-id').value = finalMaquinaId;
 
             const tagEl = document.getElementById('chamado-maquina-tag');
