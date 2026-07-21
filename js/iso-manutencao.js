@@ -1942,18 +1942,20 @@ async function imprimirChamado(chamadoId) {
     const dataAbertura = chamado.dataAbertura?.toDate()?.toLocaleString('pt-BR') || 'N/A';
     const dataEncerramento = chamado.dataEncerramento?.toDate()?.toLocaleString('pt-BR') || 'Pendente';
 
-    // Buscar o número do patrimônio da máquina
+    // Buscar o número do patrimônio e TAG da máquina
     let patrimonio = 'N/A';
+    let tag = 'N/A';
     let maquinaNome = chamado.maquinaNome || chamado.maquinaId || 'N/A';
     try {
         const maquinaSnap = await db.collection('maquinas').doc(chamado.maquinaId).get();
         if (maquinaSnap.exists) {
             const maquinaData = maquinaSnap.data();
             patrimonio = maquinaData.patrimonio || 'N/A';
+            tag = maquinaData.tag || 'N/A';
             maquinaNome = maquinaData.nome || chamado.maquinaId;
         }
     } catch (e) {
-        console.error("Erro ao buscar patrimônio da máquina:", e);
+        console.error("Erro ao buscar dados da máquina:", e);
     }
 
     const conteudo = `
@@ -1998,11 +2000,12 @@ async function imprimirChamado(chamadoId) {
                         <div class="col-4 mb-2"><div class="field-label">Máquina/Equipamento</div><div class="field-value">${maquinaNome}</div></div>
                         <div class="col-4 mb-2"><div class="field-label">Código</div><div class="field-value">${chamado.maquinaId}</div></div>
                         <div class="col-4 mb-2"><div class="field-label">Nº Patrimônio</div><div class="field-value">${patrimonio}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">TAG</div><div class="field-value">${tag}</div></div>
                         <div class="col-4 mb-2"><div class="field-label">Status</div><div class="field-value">${chamado.status}</div></div>
                         <div class="col-4 mb-2"><div class="field-label">Prioridade</div><div class="field-value">${chamado.prioridade}</div></div>
                         <div class="col-4 mb-2"><div class="field-label">Tipo</div><div class="field-value">${chamado.tipoManutencao || 'Não informado'}</div></div>
-                        <div class="col-6 mb-2"><div class="field-label">Data de Abertura</div><div class="field-value">${dataAbertura}</div></div>
-                        <div class="col-6 mb-2"><div class="field-label">Data de Encerramento</div><div class="field-value">${dataEncerramento}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Data de Abertura</div><div class="field-value">${dataAbertura}</div></div>
+                        <div class="col-4 mb-2"><div class="field-label">Data de Encerramento</div><div class="field-value">${dataEncerramento}</div></div>
                     </div>
 
                     <h5 class="section-title">2. Descrição do Problema</h5>

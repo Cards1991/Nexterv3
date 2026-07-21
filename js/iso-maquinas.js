@@ -63,7 +63,7 @@ async function carregarMaquinas() {
     const tbody = document.getElementById('tabela-maquinas');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="7" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
         // Verificar novamente a conexão
@@ -79,7 +79,7 @@ async function carregarMaquinas() {
         const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
 
         if (maquinasSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhuma máquina cadastrada.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">Nenhuma máquina cadastrada.</td></tr>';
             return;
         }
 
@@ -91,6 +91,7 @@ async function carregarMaquinas() {
             const row = `
                 <tr>
                     <td><span class="badge bg-secondary">${maquina.codigo}</span></td>
+                    <td>${maquina.tag || '-'}</td>
                     <td>${maquina.patrimonio || '-'}</td>
                     <td>${maquina.nome}</td>
                     <td>${empresasMap.get(maquina.empresaId) || 'N/A'} / ${maquina.setor}</td>
@@ -115,7 +116,7 @@ async function carregarMaquinas() {
         console.error("Erro ao carregar máquinas:", error);
         tbody.innerHTML = `
             <tr>
-                <td colspan="7" class="text-center text-danger">
+                <td colspan="8" class="text-center text-danger">
                     <i class="fas fa-exclamation-triangle"></i> Erro ao carregar máquinas.<br>
                     <small>${error.message}</small>
                 </td>
@@ -162,7 +163,16 @@ async function abrirModalMaquina(maquinaId = null) {
                                 </div>
                             </div>
 
-                            <div class="mb-3"><label class="form-label">Número do Patrimônio</label><input type="text" class="form-control" id="maquina-patrimonio"></div>
+                            <div class="row g-2 mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Número do Patrimônio</label>
+                                    <input type="text" class="form-control" id="maquina-patrimonio">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">TAG</label>
+                                    <input type="text" class="form-control" id="maquina-tag" placeholder="Ex: TAG-1234">
+                                </div>
+                            </div>
                             <div class="mb-3">
                                 <label class="form-label">Gerente Responsável</label>
                                 <select class="form-select" id="maquina-gerente">
@@ -240,6 +250,7 @@ async function abrirModalMaquina(maquinaId = null) {
                 document.getElementById('maquina-nome').value = data.nome;
                 document.getElementById('maquina-apelido').value = data.apelido || '';
                 document.getElementById('maquina-patrimonio').value = data.patrimonio || '';
+                document.getElementById('maquina-tag').value = data.tag || '';
 
                 
                 // Carregar selects
@@ -295,6 +306,7 @@ async function salvarMaquina() {
         nome: document.getElementById('maquina-nome').value.trim(),
         apelido: document.getElementById('maquina-apelido').value.trim(),
         patrimonio: document.getElementById('maquina-patrimonio').value.trim(),
+        tag: document.getElementById('maquina-tag').value.trim(),
 
         gerenteId: document.getElementById('maquina-gerente').value,
         gerente: document.getElementById('maquina-gerente').options[document.getElementById('maquina-gerente').selectedIndex]?.text || '',
