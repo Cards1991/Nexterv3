@@ -119,18 +119,19 @@ async function fetchMachineInfo(maquinaId) {
 
         if (machineData) {
             console.log("[DEBUG] Máquina encontrada:", machineData);
-            document.getElementById('chamado-maquina-nome').value = (machineData.nome || 'Nome não encontrado') + (machineData.tag ? ` - TAG: ${machineData.tag}` : '');
+            document.getElementById('chamado-maquina-nome').value = machineData.nome || 'Nome não encontrado';
             document.getElementById('chamado-maquina-id').value = finalMaquinaId;
 
-            const tagEl = document.getElementById('chamado-maquina-tag');
-            const tagContainer = document.getElementById('container-maquina-tag');
-            if (tagEl && tagContainer) {
+            // Exibir TAG como badge abaixo do nome da máquina
+            const tagDisplay = document.getElementById('chamado-tag-display');
+            const tagValue = document.getElementById('chamado-tag-value');
+            if (tagDisplay && tagValue) {
                 if (machineData.tag) {
-                    tagEl.value = machineData.tag;
-                    tagContainer.style.display = 'block';
+                    tagValue.textContent = machineData.tag;
+                    tagDisplay.style.display = 'block';
                 } else {
-                    tagEl.value = '';
-                    tagContainer.style.display = 'none';
+                    tagValue.textContent = '-';
+                    tagDisplay.style.display = 'none';
                 }
             }
 
@@ -221,7 +222,7 @@ async function salvarChamadoMobile(event) {
 
     const maquinaId = document.getElementById('chamado-maquina-id').value;
     const maquinaNome = document.getElementById('chamado-maquina-nome').value;
-    const maquinaTag = document.getElementById('chamado-maquina-tag')?.value || '';
+    const maquinaTag = (() => { const v = document.getElementById('chamado-tag-value')?.textContent?.trim(); return (v && v !== '-') ? v : ''; })();
     
     // Lê o motivo do campo correto (frequente ou simples)
     const containerFrequentes = document.getElementById('container-motivos-frequentes');
