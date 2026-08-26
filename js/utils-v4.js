@@ -158,7 +158,19 @@ function fakeDecimalToHHmm(fakeDecimal) {
     return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }
 
+function fakeDecimalToTrueDecimal(fakeDecimal) {
+    if (fakeDecimal === null || fakeDecimal === undefined || isNaN(fakeDecimal)) return 0;
+    const hours = Math.floor(fakeDecimal);
+    const minutes = Math.round((fakeDecimal - hours) * 100);
+    if (minutes < 60) {
+        return hours + (minutes / 60);
+    }
+    return fakeDecimal;
+}
+
 window.decimalToHHmm = decimalToHHmm;
 window.timeToDecimal = timeToDecimal;
 window.trueDecimalToFakeDecimal = trueDecimalToFakeDecimal;
+window.fakeDecimalToTrueDecimal = fakeDecimalToTrueDecimal;
 window.fakeDecimalToHHmm = fakeDecimalToHHmm;
+

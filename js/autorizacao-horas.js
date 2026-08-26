@@ -472,7 +472,7 @@ async function aprovarSolicitacao(id) {
         const salarioBase = parseFloat(funcionario.salario) || 0;
         const valorHora = salarioBase / 220;
         const taxaHoraExtra = valorHora * 1.5;
-        const valorTotalHoras = horasFakeDecimais * taxaHoraExtra;
+        const valorTotalHoras = totalHorasReais * taxaHoraExtra;
 
         const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
         const diasNaoUteis = 5; // Simplificação
@@ -771,7 +771,7 @@ async function calcularValorEstimado(start, end, employeeId, salariosMap = null)
         const valorHora = salario / 220;
         const totalHorasReais = duracaoMinutos / 60;
         const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
-        const valorExtra = horasFakeDecimais * (valorHora * 1.5);
+        const valorExtra = totalHorasReais * (valorHora * 1.5);
         const dsr = valorExtra / 6; // DSR simplificado
 
         return parseFloat((valorExtra + dsr).toFixed(2));
@@ -824,6 +824,13 @@ function imprimirTabelaAutorizacao() {
     });
 
     // Calcular totais
+    let totalMinutosGeral = 0;
+    dados.forEach(s => {
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        totalMinutosGeral += Math.round(Math.max(0, (end - start) / (1000 * 60)));
+    });
+
     const totalGeral = dados.reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
     const totalAprovadas = dados.filter(s => s.status === 'aprovado').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
     const totalPendentes = dados.filter(s => s.status === 'pendente').reduce((acc, s) => acc + (s.valorEstimado || 0), 0);
@@ -836,11 +843,17 @@ function imprimirTabelaAutorizacao() {
         if (!dadosPorMacro[macro]) {
             dadosPorMacro[macro] = {
                 total: 0,
+                totalMinutos: 0,
                 solicitacoes: []
             };
         }
+        const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
+        const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
+        const duracaoMinutos = Math.round(Math.max(0, (end - start) / (1000 * 60)));
+
         dadosPorMacro[macro].solicitacoes.push(s);
         dadosPorMacro[macro].total += (s.valorEstimado || 0);
+        dadosPorMacro[macro].totalMinutos += duracaoMinutos;
     });
 
     // Gerar HTML da tabela com solicitante e separação por macro setor
@@ -855,6 +868,7 @@ function imprimirTabelaAutorizacao() {
                 <th style="padding: 12px; text-align: left;">Setor</th>
                 <th style="padding: 12px; text-align: left;">Solicitante</th>
                 <th style="padding: 12px; text-align: left;">Período</th>
+                <th style="padding: 12px; text-align: center;">Minutos</th>
                 <th style="padding: 12px; text-align: left;">Motivo</th>
                 <th style="padding: 12px; text-align: center;">Status</th>
                 <th style="padding: 12px; text-align: right;">Valor</th>
@@ -869,9 +883,13 @@ function imprimirTabelaAutorizacao() {
         // Linha de cabeçalho do setor macro
         htmlTabela += `
             <tr style="background-color: #e9ecef; font-weight: bold;">
-                <td colspan="7" style="padding: 12px; border-top: 2px solid #2c3e50;">
+                <td colspan="5" style="padding: 12px; border-top: 2px solid #2c3e50;">
                     <i class="fas fa-layer-group me-2"></i>${macroNome}
                 </td>
+                <td style="padding: 12px; text-align: center; border-top: 2px solid #2c3e50; font-weight: bold;">
+                    ${macroData.totalMinutos} min
+                </td>
+                <td colspan="2" style="border-top: 2px solid #2c3e50;"></td>
                 <td style="padding: 12px; text-align: right; border-top: 2px solid #2c3e50; font-weight: bold;">
                     R$ ${macroData.total.toFixed(2).replace('.', ',')}
                 </td>
@@ -882,6 +900,7 @@ function imprimirTabelaAutorizacao() {
             const start = s.start?.toDate ? s.start.toDate() : new Date(s.start);
             const end = s.end?.toDate ? s.end.toDate() : new Date(s.end);
             const createdAt = s.createdAt?.toDate ? s.createdAt.toDate() : new Date();
+            const duracaoMinutos = Math.round(Math.max(0, (end - start) / (1000 * 60)));
             
             const statusConfig = {
                 'pendente': { class: '#ffc107', text: 'Pendente', color: '#856404' },
@@ -902,6 +921,9 @@ function imprimirTabelaAutorizacao() {
                     <td style="padding: 10px;">
                         ${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}
                     </td>
+                    <td style="padding: 10px; text-align: center; font-weight: bold; color: #0d6efd;">
+                        ${duracaoMinutos} min
+                    </td>
                     <td style="padding: 10px; max-width: 200px;">${motivo}</td>
                     <td style="padding: 10px; text-align: center;">
                         <span style="background-color: ${statusConfig.class}; color: ${statusConfig.color}; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: bold;">
@@ -917,7 +939,9 @@ function imprimirTabelaAutorizacao() {
         </tbody>
         <tfoot style="background-color: #f8f9fa; font-weight: bold;">
             <tr>
-                <td colspan="7" style="padding: 12px; text-align: right;">Total Geral:</td>
+                <td colspan="5" style="padding: 12px; text-align: right;">Total Geral:</td>
+                <td style="padding: 12px; text-align: center; font-size: 14px; color: #0d6efd;">${totalMinutosGeral} min</td>
+                <td colspan="2" style="padding: 12px;"></td>
                 <td style="padding: 12px; text-align: right; font-size: 14px;">R$ ${totalGeral.toFixed(2).replace('.', ',')}</td>
             </tr>
         </tfoot>`;
@@ -987,6 +1011,7 @@ function imprimirTabelaAutorizacao() {
                 .resumo-card.pendente { background: linear-gradient(135deg, #fff3cd, #ffeeba); border: 1px solid #ffc107; }
                 .resumo-card.rejeitado { background: linear-gradient(135deg, #f8d7da, #f5c6cb); border: 1px solid #dc3545; }
                 .resumo-card.geral { background: linear-gradient(135deg, #e2e3e5, #d6d8db); border: 1px solid #6c757d; }
+                .resumo-card.minutos { background: linear-gradient(135deg, #cff4fc, #b6effb); border: 1px solid #0dcaf0; }
                 .resumo-card .valor { font-size: 18px; font-weight: bold; }
                 .resumo-card .titulo { font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; }
                 
@@ -1050,6 +1075,10 @@ function imprimirTabelaAutorizacao() {
             </div>
 
             <div class="resumo-cards">
+                <div class="resumo-card minutos">
+                    <div class="titulo">Total Minutos Trabalhados</div>
+                    <div class="valor" style="color: #055160;">${totalMinutosGeral} min</div>
+                </div>
                 <div class="resumo-card aprovado">
                     <div class="titulo">Aprovadas</div>
                     <div class="valor">R$ ${totalAprovadas.toFixed(2).replace('.', ',')}</div>
@@ -1063,7 +1092,7 @@ function imprimirTabelaAutorizacao() {
                     <div class="valor">R$ ${totalRejeitadas.toFixed(2).replace('.', ',')}</div>
                 </div>
                 <div class="resumo-card geral">
-                    <div class="titulo">Total Geral</div>
+                    <div class="titulo">Total Geral (R$)</div>
                     <div class="valor">R$ ${totalGeral.toFixed(2).replace('.', ',')}</div>
                 </div>
             </div>
@@ -1265,13 +1294,14 @@ async function imprimirHoleritesHE() {
         const valorHora = salario / 220;
         const totalHorasReais = duracaoMinutos / 60;
         const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
-        const valorExtra = horasFakeDecimais * (valorHora * 1.5);
-        const dsr = valorExtra / 6; // Mantendo a lógica simplificada do sistema
+        const valorExtra = Number((totalHorasReais * (valorHora * 1.5)).toFixed(2));
+        const dsr = Number((valorExtra / 6).toFixed(2));
+        const totalItem = Number((valorExtra + dsr).toFixed(2));
 
         colaboradoresMap[empId].totalMinutos += duracaoMinutos;
         colaboradoresMap[empId].totalHE += valorExtra;
         colaboradoresMap[empId].totalDSR += dsr;
-        colaboradoresMap[empId].totalGeral += (valorExtra + dsr);
+        colaboradoresMap[empId].totalGeral += totalItem;
         colaboradoresMap[empId].qtdSolicitacoes++;
         colaboradoresMap[empId].detalhes.push({
             data: start.toLocaleDateString('pt-BR'),
@@ -1281,7 +1311,7 @@ async function imprimirHoleritesHE() {
             motivo: s.reason || 'S/ Motivo',
             valorHE: valorExtra.toFixed(2),
             valorDSR: dsr.toFixed(2),
-            valorTotal: (valorExtra + dsr).toFixed(2)
+            valorTotal: totalItem.toFixed(2)
         });
     });
 
@@ -1301,7 +1331,11 @@ async function imprimirHoleritesHE() {
     let htmlHolerites = '';
 
     listaColaboradores.forEach((c) => {
-        // Converter o total de minutos reais acumulados para fake decimais no final
+        // Garantir que os totais estejam arredondados a 2 casas decimais
+        c.totalHE = Number(c.totalHE.toFixed(2));
+        c.totalDSR = Number(c.totalDSR.toFixed(2));
+        c.totalGeral = Number((c.totalHE + c.totalDSR).toFixed(2));
+
         c.totalFakeDecimais = trueDecimalToFakeDecimal(c.totalMinutos / 60);
         const totalHorasFake = Number(c.totalFakeDecimais.toFixed(2));
         const totalHorasFormatado = fakeDecimalToHHmm(totalHorasFake);
@@ -1746,7 +1780,7 @@ async function reprocessarUmaSolicitacao(id) {
                 const salarioBase = parseFloat(func.salario) || 0;
                 const valorHora = salarioBase / 220;
                 const taxaHoraExtra = valorHora * 1.5;
-                const valorTotalHoras = horasFakeDecimais * taxaHoraExtra;
+                const valorTotalHoras = totalHorasReais * taxaHoraExtra;
                 
                 const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
                 const diasNaoUteis = 5; 

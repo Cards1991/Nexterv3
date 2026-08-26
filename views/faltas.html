@@ -2,8 +2,11 @@
 
 <!-- Card de Alerta de Faltas Recorrentes -->
 <div class="card border-danger mb-4" id="alerta-faltas-recorrentes" style="display: none;">
-    <div class="card-header bg-danger text-white">
-        <i class="fas fa-exclamation-triangle"></i> <strong>Alerta: Faltas Recorrentes</strong>
+    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
+        <div><i class="fas fa-exclamation-triangle"></i> <strong>Alerta: Faltas Recorrentes</strong></div>
+        <button class="btn btn-sm btn-light fw-bold text-success" onclick="exportarFaltasRecorrentesExcel()">
+            <i class="fas fa-file-excel"></i> Exportar
+        </button>
     </div>
     <div id="faltas-recorrentes-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
         <p class="text-muted">Nenhum funcionário com mais de 2 faltas no período.</p>

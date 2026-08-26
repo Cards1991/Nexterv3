@@ -744,7 +744,16 @@ async function verificarFaltasRecorrentes() {
         const snap = await query.get();
         const faltas = snap.docs.map(doc => doc.data());
 
-        const contagemPorFuncionario = faltas.reduce((acc, falta) => {
+        // Filtra para considerar apenas faltas injustificadas
+        const faltasInjustificadas = faltas.filter(falta => {
+            const just = (falta.justificativa || '').toLowerCase();
+            if (just.includes('atestado') || just.includes('doença') || just.includes('doenca') || just.includes('gestante') || just.includes('licença') || just.includes('licenca')) {
+                return false; // Considerada justificada
+            }
+            return true; // Considerada injustificada para fins deste alerta
+        });
+
+        const contagemPorFuncionario = faltasInjustificadas.reduce((acc, falta) => {
             if (falta.funcionarioId) {
                 if (!acc[falta.funcionarioId]) {
                     acc[falta.funcionarioId] = { nome: falta.funcionarioNome, count: 0 };
@@ -755,6 +764,7 @@ async function verificarFaltasRecorrentes() {
         }, {});
 
         const recorrentes = Object.values(contagemPorFuncionario).filter(f => f.count > 2);
+        window.__faltas_recorrentes_cache = recorrentes;
 
         if (recorrentes.length > 0) {
             // Ordena por quem tem mais faltas
@@ -785,6 +795,42 @@ async function verificarFaltasRecorrentes() {
         alertaContainer.style.display = 'block';
     }
 }
+
+function exportarFaltasRecorrentesExcel() {
+    if (!window.__faltas_recorrentes_cache || window.__faltas_recorrentes_cache.length === 0) {
+        mostrarMensagem('Não há dados de faltas recorrentes para exportar.', 'warning');
+        return;
+    }
+
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarFaltasRecorrentesExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    const dadosExportacao = window.__faltas_recorrentes_cache.map(f => {
+        return {
+            'Colaborador': f.nome || 'N/A',
+            'Quantidade de Faltas (Últimos 30 dias)': f.count
+        };
+    });
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+    
+    // Auto-size das colunas
+    const wscols = [
+        {wch: 40}, // Colaborador
+        {wch: 40}  // Quantidade de Faltas
+    ];
+    ws['!cols'] = wscols;
+
+    XLSX.utils.book_append_sheet(wb, ws, "Faltas Recorrentes");
+    XLSX.writeFile(wb, "Faltas_Recorrentes.xlsx");
+}
+window.exportarFaltasRecorrentesExcel = exportarFaltasRecorrentesExcel;
 
 async function replicarFaltasManhaTarde() {
     const dataStr = document.getElementById('falta-filtro-data-inicio')?.value;

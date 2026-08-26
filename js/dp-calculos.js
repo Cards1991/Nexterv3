@@ -54,26 +54,36 @@ async function calcularFolhaPagamento() {
         const outrosDescontos = parseFloat(document.getElementById('calc-outros-descontos').value) || 0;
         const descontaVT = document.getElementById('calc-desconto-vt').checked;
 
-        // 2. CÁLCULO DO SALÁRIO BRUTO
+        // 2. CÁLCULO DOS PROVENTOS
         const valorHora = salarioBase / jornadaMensal;
-        const valorHorasExtras = horasExtras * (valorHora * 1.5);
-        const valorAdicionalNoturno = horasAdicionalNoturno * (valorHora * 0.2);
+        const horasExtrasReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasExtras) : horasExtras;
+        const horasAdicionalNoturnoReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasAdicionalNoturno) : horasAdicionalNoturno;
+        const horasFaltaReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasFalta) : horasFalta;
 
-        const salarioBruto = salarioBase + valorHorasExtras + valorAdicionalNoturno + comissoes;
+        const valorSalarioBase = Number(salarioBase.toFixed(2));
+        const valorHorasExtras = Number((horasExtrasReais * (valorHora * 1.5)).toFixed(2));
+        const valorDSR = valorHorasExtras > 0 ? Number((valorHorasExtras / 6).toFixed(2)) : 0;
+        const valorAdicionalNoturno = Number((horasAdicionalNoturnoReais * (valorHora * 0.2)).toFixed(2));
+        const valorComissoes = Number(comissoes.toFixed(2));
+
+        // Total Proventos = Soma exata das verbas de proventos
+        const totalProventos = Number((valorSalarioBase + valorHorasExtras + valorDSR + valorAdicionalNoturno + valorComissoes).toFixed(2));
 
         // 3. CÁLCULO DOS DESCONTOS OBRIGATÓRIOS
-        const descontoINSS = calcularINSS(salarioBruto);
-        const baseCalculoIRRF = salarioBruto - descontoINSS - (numDependentes * 189.59);
-        const descontoIRRF = calcularIRRF(baseCalculoIRRF);
+        const descontoINSS = Number(Math.max(0, calcularINSS(totalProventos)).toFixed(2));
+        const baseCalculoIRRF = totalProventos - descontoINSS - (numDependentes * 189.59);
+        const descontoIRRF = Number(Math.max(0, calcularIRRF(baseCalculoIRRF)).toFixed(2));
 
         // 4. DESCONTOS OPCIONAIS E VARIÁVEIS
-        const descontoVT = descontaVT ? Math.min(salarioBase * 0.06, 9999) : 0; // Limite a ser definido
-        const descontoFaltas = horasFalta * valorHora;
+        const descontoVT = descontaVT ? Number((salarioBase * 0.06).toFixed(2)) : 0;
+        const descontoFaltas = Number((horasFaltaReais * valorHora).toFixed(2));
+        const valorOutrosDescontos = Number(outrosDescontos.toFixed(2));
+
+        // Total Descontos = Soma exata de todas as verbas de descontos
+        const totalDescontos = Number((descontoINSS + descontoIRRF + descontoVT + descontoFaltas + valorOutrosDescontos).toFixed(2));
 
         // 5. CÁLCULO DO SALÁRIO LÍQUIDO
-        const totalProventos = salarioBruto;
-        const totalDescontos = descontoINSS + descontoIRRF + descontoVT + descontoFaltas + outrosDescontos;
-        const salarioLiquido = totalProventos - totalDescontos;
+        const salarioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
 
         // 6. GERAÇÃO DO DEMONSTRATIVO
         const holeriteHTML = `
@@ -99,10 +109,11 @@ async function calcularFolhaPagamento() {
                         <table class="holerite-table">
                             <thead><tr><th>Proventos</th><th>Valor (R$)</th></tr></thead>
                             <tbody>
-                                <tr><td>Salário Base</td><td>${salarioBase.toFixed(2)}</td></tr>
+                                <tr><td>Salário Base</td><td>${valorSalarioBase.toFixed(2)}</td></tr>
                                 ${valorHorasExtras > 0 ? `<tr><td>Horas Extras (50%)</td><td>${valorHorasExtras.toFixed(2)}</td></tr>` : ''}
+                                ${valorDSR > 0 ? `<tr><td>DSR s/ Horas Extras</td><td>${valorDSR.toFixed(2)}</td></tr>` : ''}
                                 ${valorAdicionalNoturno > 0 ? `<tr><td>Adicional Noturno (20%)</td><td>${valorAdicionalNoturno.toFixed(2)}</td></tr>` : ''}
-                                ${comissoes > 0 ? `<tr><td>Comissões/Prêmios</td><td>${comissoes.toFixed(2)}</td></tr>` : ''}
+                                ${valorComissoes > 0 ? `<tr><td>Comissões/Prêmios</td><td>${valorComissoes.toFixed(2)}</td></tr>` : ''}
                             </tbody>
                         </table>
                     </div>
@@ -114,7 +125,7 @@ async function calcularFolhaPagamento() {
                                 <tr><td>IRRF</td><td>${descontoIRRF.toFixed(2)}</td></tr>
                                 ${descontoVT > 0 ? `<tr><td>Vale-Transporte</td><td>${descontoVT.toFixed(2)}</td></tr>` : ''}
                                 ${descontoFaltas > 0 ? `<tr><td>Faltas/Atrasos</td><td>${descontoFaltas.toFixed(2)}</td></tr>` : ''}
-                                ${outrosDescontos > 0 ? `<tr><td>Outros Descontos</td><td>${outrosDescontos.toFixed(2)}</td></tr>` : ''}
+                                ${valorOutrosDescontos > 0 ? `<tr><td>Outros Descontos</td><td>${valorOutrosDescontos.toFixed(2)}</td></tr>` : ''}
                             </tbody>
                         </table>
                     </div>
@@ -133,7 +144,7 @@ async function calcularFolhaPagamento() {
 
         // 7. GERAR ANÁLISE COM IA
         const dadosParaIA = {
-            salarioBruto,
+            salarioBruto: totalProventos,
             salarioLiquido,
             totalProventos,
             totalDescontos,
@@ -142,13 +153,14 @@ async function calcularFolhaPagamento() {
                 irrf: descontoIRRF,
                 vt: descontoVT,
                 faltas: descontoFaltas,
-                outros: outrosDescontos
+                outros: valorOutrosDescontos
             },
             proventos: {
-                base: salarioBase,
+                base: valorSalarioBase,
                 horasExtras: valorHorasExtras,
+                dsr: valorDSR,
                 adicionalNoturno: valorAdicionalNoturno,
-                comissoes: comissoes
+                comissoes: valorComissoes
             }
         };
         gerarAnaliseIAHolerite(dadosParaIA);
@@ -167,7 +179,6 @@ function gerarAnaliseIAHolerite(dados) {
     cardAnalise.style.display = 'block';
     containerAnalise.innerHTML = '<p><i class="fas fa-spinner fa-spin"></i> Gerando explicação...</p>';
 
-    // Simulação de chamada de IA
     setTimeout(() => {
         let explicacao = '<ul>';
 
@@ -175,6 +186,9 @@ function gerarAnaliseIAHolerite(dados) {
 
         if (dados.proventos.horasExtras > 0) {
             explicacao += `<li>Você recebeu <strong>R$ ${dados.proventos.horasExtras.toFixed(2)}</strong> referentes a horas extras.</li>`;
+        }
+        if (dados.proventos.dsr > 0) {
+            explicacao += `<li>Você recebeu <strong>R$ ${dados.proventos.dsr.toFixed(2)}</strong> referente a DSR sobre horas extras.</li>`;
         }
         if (dados.descontos.faltas > 0) {
             explicacao += `<li class="text-danger">Houve um desconto de <strong>R$ ${dados.descontos.faltas.toFixed(2)}</strong> por conta de faltas ou atrasos.</li>`;
@@ -188,37 +202,40 @@ function gerarAnaliseIAHolerite(dados) {
 }
 
 function calcularINSS(salarioBruto) {
-    // Tabela INSS 2025 (Exemplo - usar valores atualizados)
+    if (salarioBruto <= 0) return 0;
+    // Tabela INSS Progressiva 2025/2026 (Salário Mínimo R$ 1.518,00 / Teto R$ 8.157,41)
     const faixas = [
-        { limite: 1556.94, aliquota: 0.075, parcela: 0 },
-        { limite: 2826.65, aliquota: 0.09, parcela: 23.35 },
-        { limite: 4279.29, aliquota: 0.12, parcela: 108.28 },
-        { limite: 7507.49, aliquota: 0.14, parcela: 194.06 }
+        { limite: 1518.00, aliquota: 0.075, deducao: 0 },
+        { limite: 2793.88, aliquota: 0.09, deducao: 22.77 },
+        { limite: 4190.83, aliquota: 0.12, deducao: 106.59 },
+        { limite: 8157.41, aliquota: 0.14, deducao: 190.40 }
     ];
-    const teto = 908.85;
+    const teto = 951.63;
+
+    if (salarioBruto > 8157.41) return teto;
 
     for (const faixa of faixas) {
         if (salarioBruto <= faixa.limite) {
-            // Cálculo progressivo simplificado para o exemplo
-            return (salarioBruto * faixa.aliquota) - (faixa.parcela || 0);
+            return Math.max(0, (salarioBruto * faixa.aliquota) - faixa.deducao);
         }
     }
-    return teto; // Se maior que a última faixa, usa o teto
+    return teto;
 }
 
 function calcularIRRF(baseCalculo) {
-    // Tabela IRRF 2025 (Exemplo - usar valores atualizados)
+    if (baseCalculo <= 2259.20) return 0;
+    // Tabela IRRF Progressiva
     const faixas = [
-        { limite: 2112.00, aliquota: 0, parcela: 0 },
-        { limite: 2826.65, aliquota: 0.075, parcela: 158.40 },
-        { limite: 3751.05, aliquota: 0.15, parcela: 370.40 },
-        { limite: 4664.68, aliquota: 0.225, parcela: 651.73 },
-        { limite: Infinity, aliquota: 0.275, parcela: 884.96 }
+        { limite: 2259.20, aliquota: 0, deducao: 0 },
+        { limite: 2826.65, aliquota: 0.075, deducao: 169.44 },
+        { limite: 3751.05, aliquota: 0.15, deducao: 381.44 },
+        { limite: 4664.68, aliquota: 0.225, deducao: 662.77 },
+        { limite: Infinity, aliquota: 0.275, deducao: 896.00 }
     ];
 
     for (const faixa of faixas) {
         if (baseCalculo <= faixa.limite) {
-            return (baseCalculo * faixa.aliquota) - faixa.parcela;
+            return Math.max(0, (baseCalculo * faixa.aliquota) - faixa.deducao);
         }
     }
     return 0;

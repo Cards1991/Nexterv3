@@ -363,14 +363,14 @@ async function reprocessarHorasExtras() {
 
             const valorHoraExtra = valorHora * multiplicador;
             
-            // Recalcular as horas no formato "fake decimal" (ex: 4:45 -> 4.45) se tivermos os horários
-            let horasParaCalculo = parseFloat(item.hours) || 0;
+            let horasParaCalculo = 0;
             if (item.entryTime && item.exitTime) {
                 const d1 = new Date(`${item.date}T${item.entryTime}:00`);
                 let d2 = new Date(`${item.date}T${item.exitTime}:00`);
                 if (d2 <= d1) d2.setDate(d2.getDate() + 1);
-                const diffHorasReais = (d2 - d1) / 3600000;
-                horasParaCalculo = trueDecimalToFakeDecimal(diffHorasReais);
+                horasParaCalculo = (d2 - d1) / 3600000;
+            } else {
+                horasParaCalculo = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(parseFloat(item.hours) || 0) : (parseFloat(item.hours) || 0);
             }
 
             const totalHorasExtras = valorHoraExtra * horasParaCalculo;
@@ -455,14 +455,14 @@ async function reprocessarUmaHoraExtra(id) {
 
         const valorHoraExtra = valorHora * multiplicador;
         
-        // Recalcular as horas no formato "fake decimal" (ex: 4:45 -> 4.45) se tivermos os horários
-        let horasParaCalculo = parseFloat(item.hours) || 0;
+        let horasParaCalculo = 0;
         if (item.entryTime && item.exitTime) {
             const d1 = new Date(`${item.date}T${item.entryTime}:00`);
             let d2 = new Date(`${item.date}T${item.exitTime}:00`);
             if (d2 <= d1) d2.setDate(d2.getDate() + 1);
-            const diffHorasReais = (d2 - d1) / 3600000;
-            horasParaCalculo = trueDecimalToFakeDecimal(diffHorasReais);
+            horasParaCalculo = (d2 - d1) / 3600000;
+        } else {
+            horasParaCalculo = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(parseFloat(item.hours) || 0) : (parseFloat(item.hours) || 0);
         }
 
         const totalHorasExtras = valorHoraExtra * horasParaCalculo;
@@ -632,12 +632,25 @@ async function imprimirRelatorioHorasExtras() {
 
     let linhasHtml = '';
     let totalGeralHoras = 0;
+    let totalGeralMinutos = 0;
     let totalGeralValor = 0;
 
     dadosOrdenados.forEach(item => {
         const horas = parseFloat(item.hours) || 0;
+        let minutosItem = 0;
+        if (item.entryTime && item.exitTime) {
+            const d1 = new Date(`${item.date}T${item.entryTime}:00`);
+            let d2 = new Date(`${item.date}T${item.exitTime}:00`);
+            if (d2 <= d1) d2.setDate(d2.getDate() + 1);
+            minutosItem = Math.round((d2 - d1) / (1000 * 60));
+        } else {
+            const trueDec = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horas) : horas;
+            minutosItem = Math.round(trueDec * 60);
+        }
+
         const valor = (parseFloat(item.overtimePay) || 0) + (parseFloat(item.dsr) || 0);
         totalGeralHoras += horas;
+        totalGeralMinutos += minutosItem;
         totalGeralValor += valor;
 
         const assinaturaImg = item.signed && item.signatureUrl
@@ -650,7 +663,7 @@ async function imprimirRelatorioHorasExtras() {
                 <td>${item.employeeName}</td>
                 <td>${item.sector}</td>
                 <td>${item.reason}</td>
-                <td style="text-align: center; font-weight: bold;">${decimalToHHmm(horas)}</td>
+                <td style="text-align: center; font-weight: bold; color: #0d6efd;">${minutosItem} min (${decimalToHHmm(horas)})</td>
                 <td style="text-align: right;">R$ ${valor.toFixed(2)}</td>
                 <td style="text-align: center;">${assinaturaImg}</td>
             </tr>
@@ -673,14 +686,14 @@ async function imprimirRelatorioHorasExtras() {
         </head>
         <body>
             <h2>Relatório de Horas Extras</h2>
-            <p><strong>Período:</strong> ${dataFormatada}</p>
+            <p><strong>Período:</strong> ${dataFormatada} | <strong>Total em Minutos:</strong> <span style="color: #0d6efd; font-weight: bold;">${totalGeralMinutos} min</span></p>
             <table>
                 <thead>
-                    <tr><th>Data</th><th>Colaborador</th><th>Setor</th><th>Motivo</th><th style="text-align: center;">Horas</th><th style="text-align: right;">Total (c/ DSR)</th><th style="text-align: center;">Assinatura</th></tr>
+                    <tr><th>Data</th><th>Colaborador</th><th>Setor</th><th>Motivo</th><th style="text-align: center;">Minutos (Horas)</th><th style="text-align: right;">Total (c/ DSR)</th><th style="text-align: center;">Assinatura</th></tr>
                 </thead>
                 <tbody>
                     ${linhasHtml}
-                    <tr class="total-row"><td colspan="4" style="text-align: right;">TOTAIS:</td><td style="text-align: center;">${decimalToHHmm(totalGeralHoras)}</td><td style="text-align: right;">R$ ${totalGeralValor.toFixed(2)}</td><td></td></tr>
+                    <tr class="total-row"><td colspan="4" style="text-align: right;">TOTAIS:</td><td style="text-align: center; color: #0d6efd;">${totalGeralMinutos} min (${decimalToHHmm(totalGeralHoras)})</td><td style="text-align: right;">R$ ${totalGeralValor.toFixed(2)}</td><td></td></tr>
                 </tbody>
             </table>
             <div class="footer">Gerado pelo Sistema Nexter em ${new Date().toLocaleString('pt-BR')}</div>

@@ -1024,6 +1024,7 @@ function imprimirRelatorioDesempenho() {
 
     let linhasHtml = '';
     let totalHoras = 0;
+    let totalMinutos = 0;
 
     // Ordenar por colaborador e data
     const dadosOrdenados = __dash_sol_dados_cache.sort((a, b) => a.employeeName.localeCompare(b.employeeName) || a.start - b.start);
@@ -1033,7 +1034,10 @@ function imprimirRelatorioDesempenho() {
         const horaInicio = s.start.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         const horaFim = s.end.toDate().toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
         const duracao = ((s.end.toDate() - s.start.toDate()) / 3600000);
+        const duracaoMinutos = Math.round((s.end.toDate() - s.start.toDate()) / (1000 * 60));
+        
         totalHoras += duracao;
+        totalMinutos += duracaoMinutos;
         const duracaoFormatada = decimalToHHmm(duracao);
 
         linhasHtml += `
@@ -1041,7 +1045,7 @@ function imprimirRelatorioDesempenho() {
                 <td>${s.employeeName}</td>
                 <td>${data}</td>
                 <td>${horaInicio} - ${horaFim}</td>
-                <td>${duracaoFormatada}</td>
+                <td style="text-align: center; font-weight: bold; color: #0d6efd;">${duracaoMinutos} min (${duracaoFormatada})</td>
                 <td>${s.reason || '-'}</td>
                 <td>${s.status}</td>
             </tr>
@@ -1065,10 +1069,10 @@ function imprimirRelatorioDesempenho() {
         <body>
             <h2>Relatório de Solicitações de Horas Extras</h2>
             <p><strong>Solicitante:</strong> ${solicitante} | <strong>Período:</strong> ${periodo}</p>
-            <p><strong>Total de Horas Listadas:</strong> ${decimalToHHmm(totalHoras)}</p>
+            <p><strong>Total de Horas Listadas (em Minutos):</strong> <span style="color: #0d6efd; font-weight: bold;">${totalMinutos} min</span> (${decimalToHHmm(totalHoras)})</p>
             
             <table>
-                <thead><tr><th>Colaborador</th><th>Data</th><th>Horário</th><th>Duração</th><th>Motivo</th><th>Status</th></tr></thead>
+                <thead><tr><th>Colaborador</th><th>Data</th><th>Horário</th><th style="text-align: center;">Duração (Minutos)</th><th>Motivo</th><th>Status</th></tr></thead>
                 <tbody>${linhasHtml}</tbody>
             </table>
 

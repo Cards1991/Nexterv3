@@ -607,15 +607,15 @@ async function calcularEExibirHorasExtras() {
         // Cálculo de horas para exibição amigável
         const hoursHHmm = decimalToHHmm(hoursDiff);
 
-        // Lógica sugerida pelo usuário: Salário / 220 -> x 1.5 -> x 4.45 (em vez de 4.75)
+        // Cálculo com horas reais decimais para precisão financeira (ex: 55 min = 0.9167h -> R$ 18,60)
         const hourlyRateRaw = salary / 220; 
         const multiplier = (overtimeType === 50) ? 1.5 : 2;
         const overtimeRate = hourlyRateRaw * multiplier;
         
-        const hoursFakeDecimal = trueDecimalToFakeDecimal(hoursDiff);
-        const overtimePay = overtimeRate * hoursFakeDecimal;
+        const overtimePay = overtimeRate * hoursDiff;
 
-        // Armazenamos o "fake decimal" para consistência posterior (ex: 4:45 -> 4.45)
+        // Armazenamos o "fake decimal" apenas para exibição e relatórios (ex: 4:45 -> 4.45)
+        const hoursFakeDecimal = trueDecimalToFakeDecimal(hoursDiff);
         const hoursDecimal = parseFloat(hoursFakeDecimal.toFixed(2));
         
         // Cálculo do DSR (Descanso Semanal Remunerado)
