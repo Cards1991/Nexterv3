@@ -418,13 +418,35 @@ async function consultarHistoricoInterno(cpfFomatado) {
             html += `<strong>Motivo Desligamento:</strong> ${funcData.motivoDesligamento || funcData.tipoDemissao || 'Não informado no cadastro'}<br>`;
         }
 
-        // 2. Buscar Ocorrências
+        // 2. Buscar Ocorrências e Atestados
         const ocorrenciasSnap = await db.collection('ocorrencias_saude').where('funcionarioId', '==', funcId).get();
         if (!ocorrenciasSnap.empty) {
             html += `<hr class="my-2"><strong>Ocorrências / Atestados (Saúde):</strong> ${ocorrenciasSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
             ocorrenciasSnap.docs.forEach(doc => {
                 const oc = doc.data();
                 html += `<li><small>${oc.data ? new Date(oc.data).toLocaleDateString() : 'Data não info.'} - ${oc.motivo || 'Sem motivo'} (${oc.diasAfastamento || 0} dias)</small></li>`;
+            });
+            html += `</ul>`;
+        }
+
+        // Buscar Histórico de Faltas
+        const faltasSnap = await db.collection('faltas').where('funcionarioId', '==', funcId).get();
+        if (!faltasSnap.empty) {
+            html += `<hr class="my-2"><strong>Histórico de Faltas:</strong> ${faltasSnap.size} falta(s) registrada(s).<br><ul class="mb-1 pl-3">`;
+            faltasSnap.docs.forEach(doc => {
+                const f = doc.data();
+                html += `<li><small>${f.data ? new Date(f.data).toLocaleDateString() : 'Data não info.'} - ${f.justificada ? 'Justificada' : 'Injustificada'}</small></li>`;
+            });
+            html += `</ul>`;
+        }
+
+        // Buscar Histórico Disciplinar
+        const disciplinarSnap = await db.collection('registros_disciplinares').where('funcionarioId', '==', funcId).get();
+        if (!disciplinarSnap.empty) {
+            html += `<hr class="my-2"><strong class="text-danger">Histórico Disciplinar:</strong> ${disciplinarSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            disciplinarSnap.docs.forEach(doc => {
+                const d = doc.data();
+                html += `<li><small class="text-danger">${d.dataOcorrencia ? new Date(d.dataOcorrencia).toLocaleDateString() : 'Data não info.'} - ${d.tipoMedida || 'Advertência'}: ${d.motivo || 'Sem motivo registrado'}</small></li>`;
             });
             html += `</ul>`;
         }
