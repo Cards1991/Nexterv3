@@ -538,6 +538,32 @@ async function consultarHistoricoInterno(cpfFomatado) {
             if (ent.principaisDesafios) html += `<b>Desafios:</b> ${ent.principaisDesafios}</small><br>`;
         }
 
+        // 4. Buscar Gestão de Sumidos (Abandono)
+        const sumidosSnap = await db.collection('casos_sumidos').where('funcionarioId', '==', funcId).get();
+        html += `<hr class="my-2"><strong>Gestão de Sumidos (Abandono de Emprego):</strong> `;
+        if (!sumidosSnap.empty) {
+            html += `${sumidosSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            sumidosSnap.docs.forEach(doc => {
+                const s = doc.data();
+                const dataUltimoPonto = s.dataUltimoPonto && s.dataUltimoPonto.seconds ? new Date(s.dataUltimoPonto.seconds * 1000) : (s.dataUltimoPonto ? new Date(s.dataUltimoPonto) : null);
+                let detalhes = `Último ponto: ${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString() : 'Desconhecida'} - Status: ${s.status}`;
+                
+                // Calcula os dias sumidos se houver data de rescisão
+                const dataRescisaoRaw = funcData.dataDesligamento || funcData.dataDemissao;
+                if (dataUltimoPonto && dataRescisaoRaw) {
+                    const dataRescisao = dataRescisaoRaw.seconds ? new Date(dataRescisaoRaw.seconds * 1000) : new Date(dataRescisaoRaw);
+                    const diffTime = Math.abs(dataRescisao - dataUltimoPonto);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    detalhes += `<br><span class="text-danger">-> ${diffDays} dia(s) sumido até a rescisão.</span>`;
+                }
+
+                html += `<li><small>${detalhes}</small></li>`;
+            });
+            html += `</ul>`;
+        } else {
+            html += `<span class="text-success">Nenhum registro de abandono.</span><br>`;
+        }
+
         // Alertas visuais
         if (funcData.status === 'Ativo') {
             html = `<div class="alert alert-danger mb-0"><strong>Atenção:</strong> Este CPF pertence a um colaborador ATUALMENTE ATIVO na empresa.</div>` + html;
