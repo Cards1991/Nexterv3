@@ -331,6 +331,9 @@ async function consultarEscavador() {
         return;
     }
 
+    // Dispara a busca interna paralelamente
+    consultarHistoricoInterno(cpf);
+
     if (!escavadorToken) {
         mostrarMensagem('Token do Escavador não configurado.', 'error');
         return;
@@ -368,5 +371,74 @@ async function consultarEscavador() {
     } catch (error) {
         console.error('Erro consulta escavador:', error);
         divResult.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro na busca. Verifique se o token é válido ou se a API bloqueou por CORS. Detalhes: ${error.message}</span>`;
+    }
+}
+
+/* =============================================
+   HISTÓRICO INTERNO DO EX-COLABORADOR
+   ============================================= */
+async function consultarHistoricoInterno(cpfFomatado) {
+    const areaHistorico = document.getElementById('areaHistoricoColaborador');
+    const resultHistorico = document.getElementById('resultadoHistorico');
+    
+    // Opcionalmente formata o CPF com pontuação se o BD exige máscara
+    let cpfMasked = cpfFomatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+
+    try {
+        // 1. Buscar o funcionário
+        const funcSnap = await db.collection('funcionarios').where('cpf', '==', cpfMasked).get();
+        if (funcSnap.empty) {
+            // Se não encontrou com máscara, tenta sem máscara
+            const funcSnapNoMask = await db.collection('funcionarios').where('cpf', '==', cpfFomatado).get();
+            if (funcSnapNoMask.empty) {
+                areaHistorico.style.display = 'none';
+                return; // Não é ex-colaborador, nem colaborador atual
+            }
+        }
+        
+        const funcDoc = funcSnap.empty ? (await db.collection('funcionarios').where('cpf', '==', cpfFomatado).get()).docs[0] : funcSnap.docs[0];
+        const funcData = funcDoc.data();
+        const funcId = funcDoc.id;
+
+        areaHistorico.style.display = 'block';
+        let html = `<strong>Status Atual:</strong> <span class="badge ${funcData.status === 'Ativo' ? 'bg-success' : 'bg-danger'}">${funcData.status || 'Desconhecido'}</span><br>`;
+        html += `<strong>Nome no Sistema:</strong> ${funcData.nome}<br>`;
+
+        if (funcData.status !== 'Ativo') {
+            html += `<strong>Motivo Desligamento:</strong> ${funcData.motivoDesligamento || funcData.tipoDemissao || 'Não informado no cadastro'}<br>`;
+        }
+
+        // 2. Buscar Ocorrências
+        const ocorrenciasSnap = await db.collection('ocorrencias_saude').where('funcionarioId', '==', funcId).get();
+        if (!ocorrenciasSnap.empty) {
+            html += `<hr class="my-2"><strong>Ocorrências / Atestados (Saúde):</strong> ${ocorrenciasSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            ocorrenciasSnap.docs.forEach(doc => {
+                const oc = doc.data();
+                html += `<li><small>${oc.data ? new Date(oc.data).toLocaleDateString() : 'Data não info.'} - ${oc.motivo || 'Sem motivo'} (${oc.diasAfastamento || 0} dias)</small></li>`;
+            });
+            html += `</ul>`;
+        }
+
+        // 3. Buscar Entrevista Demissional
+        const entrevistasSnap = await db.collection('entrevistas_demissionais').where('funcionarioId', '==', funcId).get();
+        if (!entrevistasSnap.empty) {
+            const ent = entrevistasSnap.docs[0].data();
+            html += `<hr class="my-2"><strong>Entrevista Demissional:</strong><br>`;
+            html += `<small><b>Motivo Alegado pelo Funcionário:</b> ${ent.motivoDesligamento || '-'}<br>`;
+            html += `<b>Recomendaria a empresa?</b> ${ent.recomendariaEmpresa === 'sim' ? 'Sim' : 'Não'}<br>`;
+            html += `<b>Interesse em retornar?</b> ${ent.interesseRetornar === 'sim' ? 'Sim' : 'Não'}<br>`;
+            if (ent.pontosPositivos) html += `<b>Pontos Positivos:</b> ${ent.pontosPositivos}<br>`;
+            if (ent.principaisDesafios) html += `<b>Desafios:</b> ${ent.principaisDesafios}</small><br>`;
+        }
+
+        // Alertas visuais
+        if (funcData.status === 'Ativo') {
+            html = `<div class="alert alert-danger mb-0"><strong>Atenção:</strong> Este CPF pertence a um colaborador ATUALMENTE ATIVO na empresa.</div>` + html;
+        }
+
+        resultHistorico.innerHTML = html;
+    } catch (error) {
+        console.error("Erro ao buscar histórico interno:", error);
+        resultHistorico.innerHTML = `<span class="text-danger">Não foi possível carregar o histórico interno: ${error.message}</span>`;
     }
 }
