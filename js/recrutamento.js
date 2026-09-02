@@ -403,6 +403,33 @@ async function consultarCandidatoAPI() {
             }
         }
 
+        // -- MÓDULO JURÍDICO INTERNO --
+        const nomeAtual = inputNome.value.trim().toLowerCase();
+        if (nomeAtual) {
+            htmlResultados += `<hr class="my-2">`;
+            try {
+                const processosJuridicosSnap = await db.collection('processos_juridicos').get();
+                const processosContraEmpresa = processosJuridicosSnap.docs.filter(doc => {
+                    const data = doc.data();
+                    return data.parteContraria && data.parteContraria.toLowerCase() === nomeAtual;
+                });
+
+                if (processosContraEmpresa.length > 0) {
+                    htmlResultados += `<strong class="text-danger"><i class="fas fa-gavel"></i> Sistema Jurídico Interno (${processosContraEmpresa.length} processo(s)):</strong><br><ul class="mt-2 pl-3">`;
+                    processosContraEmpresa.forEach(doc => {
+                        const proc = doc.data();
+                        htmlResultados += `<li><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} - Status: ${proc.status || 'N/A'}</li>`;
+                    });
+                    htmlResultados += '</ul>';
+                } else {
+                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Limpo.</span><br>`;
+                }
+            } catch (err) {
+                console.error("Erro ao buscar no módulo jurídico:", err);
+                htmlResultados += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno: Indisponível.</span><br>`;
+            }
+        }
+
         // -- JUS BRASIL (VIA HUB DESENVOLVEDOR) --
         // MOCK/PLACEHOLDER: Implementar quando o token do Hub for providenciado
         htmlResultados += `<hr class="my-2">`;
