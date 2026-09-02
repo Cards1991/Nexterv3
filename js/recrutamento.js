@@ -456,12 +456,12 @@ async function consultarHistoricoInterno(cpfFomatado) {
         }
 
         // 2. Buscar Ocorrências e Atestados
-        const ocorrenciasSnap = await db.collection('ocorrencias_saude').where('funcionarioId', '==', funcId).get();
+        const ocorrenciasSnap = await db.collection('ocorrencias_saude').where('colaboradorId', '==', funcId).get();
         if (!ocorrenciasSnap.empty) {
             html += `<hr class="my-2"><strong>Ocorrências / Atestados (Saúde):</strong> ${ocorrenciasSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
             ocorrenciasSnap.docs.forEach(doc => {
                 const oc = doc.data();
-                html += `<li><small>${oc.data ? new Date(oc.data).toLocaleDateString() : 'Data não info.'} - ${oc.motivo || 'Sem motivo'} (${oc.diasAfastamento || 0} dias)</small></li>`;
+                html += `<li><small>${oc.data ? new Date(oc.data.seconds * 1000).toLocaleDateString() : 'Data não info.'} - ${oc.tipo || 'Sem tipo'} (${oc.descricao || 'Sem motivo'})</small></li>`;
             });
             html += `</ul>`;
         }
@@ -472,7 +472,8 @@ async function consultarHistoricoInterno(cpfFomatado) {
             html += `<hr class="my-2"><strong>Histórico de Faltas:</strong> ${faltasSnap.size} falta(s) registrada(s).<br><ul class="mb-1 pl-3">`;
             faltasSnap.docs.forEach(doc => {
                 const f = doc.data();
-                html += `<li><small>${f.data ? new Date(f.data).toLocaleDateString() : 'Data não info.'} - ${f.justificada ? 'Justificada' : 'Injustificada'}</small></li>`;
+                const dataFalta = f.data && f.data.seconds ? new Date(f.data.seconds * 1000).toLocaleDateString() : (f.data ? new Date(f.data).toLocaleDateString() : 'Data não info.');
+                html += `<li><small>${dataFalta} - ${f.justificada ? 'Justificada' : 'Injustificada'}</small></li>`;
             });
             html += `</ul>`;
         }
@@ -483,7 +484,8 @@ async function consultarHistoricoInterno(cpfFomatado) {
             html += `<hr class="my-2"><strong class="text-danger">Histórico Disciplinar:</strong> ${disciplinarSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
             disciplinarSnap.docs.forEach(doc => {
                 const d = doc.data();
-                html += `<li><small class="text-danger">${d.dataOcorrencia ? new Date(d.dataOcorrencia).toLocaleDateString() : 'Data não info.'} - ${d.tipoMedida || 'Advertência'}: ${d.motivo || 'Sem motivo registrado'}</small></li>`;
+                const dataOcorrencia = d.dataOcorrencia && d.dataOcorrencia.seconds ? new Date(d.dataOcorrencia.seconds * 1000).toLocaleDateString() : (d.dataOcorrencia ? new Date(d.dataOcorrencia).toLocaleDateString() : 'Data não info.');
+                html += `<li><small class="text-danger">${dataOcorrencia} - ${d.classificacao || 'Advertência'} / ${d.medidaAplicada || 'N/A'}: ${d.descricao || 'Sem motivo registrado'}</small></li>`;
             });
             html += `</ul>`;
         }
