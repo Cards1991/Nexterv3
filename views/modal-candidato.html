@@ -27,7 +27,7 @@
                             <label class="form-label required">CPF</label>
                             <div class="input-group">
                                 <input type="text" id="candidatoCpf" class="form-control" placeholder="000.000.000-00" required>
-                                <button type="button" class="btn btn-outline-secondary" onclick="consultarEscavador()" title="Buscar Antecedentes no Escavador">
+                                <button type="button" class="btn btn-outline-secondary" onclick="consultarCandidatoAPI()" title="Buscar Antecedentes no Escavador">
                                     <i class="fas fa-search"></i>
                                 </button>
                             </div>
@@ -46,9 +46,18 @@
                             <small class="text-muted" id="linkCurriculoAtual"></small>
                         </div>
                         
-                        <div class="col-12 mt-4" id="areaEscavador" style="display: none;">
+                        <div class="col-12 mt-4" id="areaHistoricoColaborador" style="display: none;">
+                            <div class="alert alert-warning mb-3">
+                                <h6><i class="fas fa-history"></i> Histórico na Empresa (Ex-Colaborador)</h6>
+                                <div id="resultadoHistorico" style="max-height: 200px; overflow-y: auto; font-size: 0.9rem;">
+                                    Buscando registros internos...
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12 mt-2" id="areaEscavador" style="display: none;">
                             <div class="alert alert-info">
-                                <h6><i class="fas fa-balance-scale"></i> Resultado Escavador</h6>
+                                <h6><i class="fas fa-balance-scale"></i> Consulta Processual (Escavador / JusBrasil)</h6>
                                 <div id="resultadoEscavador" style="max-height: 150px; overflow-y: auto; font-size: 0.9rem;">
                                     Buscando...
                                 </div>

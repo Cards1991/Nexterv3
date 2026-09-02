@@ -321,61 +321,98 @@ async function salvarCandidato() {
    INTEGRAÇÃO ESCAVADOR
    ============================================= */
 
-async function consultarEscavador() {
+// Token placeholder (Substitua depois pelo seu token do Hub Desenvolvedor)
+const HUB_DESENVOLVEDOR_TOKEN = 'SEU_TOKEN_AQUI';
+
+async function consultarCandidatoAPI() {
     const cpf = document.getElementById('candidatoCpf').value.replace(/\D/g, '');
     const divResult = document.getElementById('resultadoEscavador');
     const area = document.getElementById('areaEscavador');
+    const inputNome = document.getElementById('candidatoNome');
 
     if (!cpf || cpf.length !== 11) {
         mostrarMensagem('Digite um CPF válido (11 dígitos).', 'warning');
         return;
     }
 
-    // Dispara a busca interna paralelamente
-    consultarHistoricoInterno(cpf);
+    // 1. Dispara a busca interna e aguarda o resultado
+    const funcionarioEncontradoInternamente = await consultarHistoricoInterno(cpf);
 
-    if (!escavadorToken) {
-        mostrarMensagem('Token do Escavador não configurado.', 'error');
-        return;
+    // 2. Pré-Cadastro via Hub Desenvolvedor (Receita Federal) se NÃO achou internamente
+    if (!funcionarioEncontradoInternamente) {
+        try {
+            mostrarMensagem('Buscando dados na Receita Federal...', 'info');
+            // MOCK/PLACEHOLDER: Substitua pela chamada real ao endpoint do Hub Desenvolvedor para a Receita Federal
+            // Exemplo: fetch(`https://api.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`)
+            
+            // Simulação de resposta bem-sucedida para o pré-cadastro
+            /* 
+            const response = await fetch(`URL_HUB_DESENVOLVEDOR`);
+            const data = await response.json();
+            if (data.status === true && data.result) {
+                inputNome.value = data.result.nome_da_pf;
+            }
+            */
+           console.log("Integração Hub Desenvolvedor pendente. API Token necessário.");
+           
+        } catch (error) {
+            console.error("Erro Hub Desenvolvedor:", error);
+        }
+    } else {
+        // Se encontrou internamente, podemos usar o nome que já temos no próprio BD
+        try {
+            const funcSnap = await db.collection('funcionarios').where('cpf', '==', document.getElementById('candidatoCpf').value).get();
+            if(!funcSnap.empty) {
+                inputNome.value = funcSnap.docs[0].data().nome;
+            }
+        } catch(e) {}
     }
 
+    // 3. Buscar Processos no Escavador / Jus Brasil
     area.style.display = 'block';
     divResult.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando processos associados...';
 
     try {
-        const response = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?cpf=${cpf}`, {
-            headers: {
-                'Authorization': `Bearer ${escavadorToken}`,
-                'X-Requested-With': 'XMLHttpRequest'
-            }
-        });
+        let htmlResultados = '';
 
-        if (response.status === 404) {
-            divResult.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Nenhum processo encontrado.</span>`;
-            return;
-        }
-
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data && data.processos && data.processos.length > 0) {
-            let html = `<strong>Foram encontrados ${data.processos.length} processos.</strong><br><ul class="mt-2 pl-3">`;
-            // Mostrar no máximo 5 para não poluir
-            data.processos.slice(0, 5).forEach(proc => {
-                html += `<li><strong>${proc.numero_cnj || proc.numero}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}</li>`;
+        // -- ESCAVADOR --
+        if (escavadorToken) {
+            const responseEscavador = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?cpf=${cpf}`, {
+                headers: {
+                    'Authorization': `Bearer ${escavadorToken}`,
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
             });
-            if (data.processos.length > 5) html += `<li><em>... e mais ${data.processos.length - 5} processos. Consulte diretamente no Escavador.</em></li>`;
-            html += '</ul>';
-            divResult.innerHTML = html;
-        } else {
-            divResult.innerHTML = '<span class="text-success"><i class="fas fa-check"></i> Nenhum processo encontrado para este CPF.</span>';
+
+            if (responseEscavador.status === 404) {
+                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador: Nenhum processo encontrado.</span><br>`;
+            } else if (responseEscavador.ok) {
+                const data = await responseEscavador.json();
+                if (data && data.processos && data.processos.length > 0) {
+                    htmlResultados += `<strong>Escavador (${data.processos.length} processos encontrados):</strong><br><ul class="mt-2 pl-3">`;
+                    data.processos.slice(0, 5).forEach(proc => {
+                        htmlResultados += `<li><strong>${proc.numero_cnj || proc.numero}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}</li>`;
+                    });
+                    if (data.processos.length > 5) htmlResultados += `<li><em>... e mais ${data.processos.length - 5} processos.</em></li>`;
+                    htmlResultados += '</ul>';
+                } else {
+                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador: Nenhum processo.</span><br>`;
+                }
+            } else {
+                htmlResultados += `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro Escavador.</span><br>`;
+            }
         }
+
+        // -- JUS BRASIL (VIA HUB DESENVOLVEDOR) --
+        // MOCK/PLACEHOLDER: Implementar quando o token do Hub for providenciado
+        htmlResultados += `<hr class="my-2">`;
+        htmlResultados += `<span class="text-muted"><i class="fas fa-search"></i> Jus Brasil: <em>Integração com Hub Desenvolvedor pendente.</em></span><br>`;
+
+        divResult.innerHTML = htmlResultados;
+        
     } catch (error) {
-        console.error('Erro consulta escavador:', error);
-        divResult.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro na busca. Verifique se o token é válido ou se a API bloqueou por CORS. Detalhes: ${error.message}</span>`;
+        console.error('Erro consulta processos:', error);
+        divResult.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro na busca. Verifique se as APIs bloquearam por CORS.</span>`;
     }
 }
 
@@ -404,7 +441,7 @@ async function consultarHistoricoInterno(cpfFomatado) {
         
         if (!funcDoc) {
             areaHistorico.style.display = 'none';
-            return; // Não encontrou nenhum colaborador com esse CPF
+            return false; // Não encontrou nenhum colaborador com esse CPF
         }
         
         const funcData = funcDoc.data();
@@ -468,9 +505,13 @@ async function consultarHistoricoInterno(cpfFomatado) {
             html = `<div class="alert alert-danger mb-0"><strong>Atenção:</strong> Este CPF pertence a um colaborador ATUALMENTE ATIVO na empresa.</div>` + html;
         }
 
+        areaHistorico.style.display = 'block';
         resultHistorico.innerHTML = html;
+        return true; // Encontrou o colaborador
     } catch (error) {
-        console.error("Erro ao buscar histórico interno:", error);
-        resultHistorico.innerHTML = `<span class="text-danger">Não foi possível carregar o histórico interno: ${error.message}</span>`;
+        console.error('Erro ao consultar histórico interno:', error);
+        resultHistorico.innerHTML = '<span class="text-danger">Erro ao carregar histórico interno.</span>';
+        areaHistorico.style.display = 'block';
+        return false;
     }
 }
