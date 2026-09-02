@@ -350,6 +350,11 @@ async function consultarEscavador() {
             }
         });
 
+        if (response.status === 404) {
+            divResult.innerHTML = `<span class="text-success"><i class="fas fa-check-circle"></i> Nenhum processo encontrado.</span>`;
+            return;
+        }
+
         if (!response.ok) {
             throw new Error(`Erro HTTP: ${response.status}`);
         }
@@ -381,22 +386,27 @@ async function consultarHistoricoInterno(cpfFomatado) {
     const areaHistorico = document.getElementById('areaHistoricoColaborador');
     const resultHistorico = document.getElementById('resultadoHistorico');
     
-    // Opcionalmente formata o CPF com pontuação se o BD exige máscara
-    let cpfMasked = cpfFomatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    // Pegar apenas números do CPF pesquisado
+    const searchCpf = cpfFomatado.replace(/\D/g, '');
 
     try {
-        // 1. Buscar o funcionário
-        const funcSnap = await db.collection('funcionarios').where('cpf', '==', cpfMasked).get();
-        if (funcSnap.empty) {
-            // Se não encontrou com máscara, tenta sem máscara
-            const funcSnapNoMask = await db.collection('funcionarios').where('cpf', '==', cpfFomatado).get();
-            if (funcSnapNoMask.empty) {
-                areaHistorico.style.display = 'none';
-                return; // Não é ex-colaborador, nem colaborador atual
+        // 1. Buscar o funcionário (traz todos e filtra no JS para garantir match de CPF independente de máscara no BD)
+        const allFuncsSnap = await db.collection('funcionarios').get();
+        let funcDoc = null;
+        
+        for (let doc of allFuncsSnap.docs) {
+            const data = doc.data();
+            if (data.cpf && data.cpf.replace(/\D/g, '') === searchCpf) {
+                funcDoc = doc;
+                break;
             }
         }
         
-        const funcDoc = funcSnap.empty ? (await db.collection('funcionarios').where('cpf', '==', cpfFomatado).get()).docs[0] : funcSnap.docs[0];
+        if (!funcDoc) {
+            areaHistorico.style.display = 'none';
+            return; // Não encontrou nenhum colaborador com esse CPF
+        }
+        
         const funcData = funcDoc.data();
         const funcId = funcDoc.id;
 
