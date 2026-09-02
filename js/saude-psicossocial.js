@@ -139,11 +139,11 @@ SaudePsicossocial.inicializar = async function () {
 SaudePsicossocial.carregarDados = async function () {
     if (SaudePsicossocial.state.carregando) return;
 
-    const tbody = document.getElementById('tabela-casos-psicossociais');
-    if (!tbody) return;
+    const kanban = document.getElementById('kanban-psicossocial');
+    if (!kanban) return;
 
     SaudePsicossocial.state.carregando = true;
-    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    kanban.innerHTML = '<div class="col-12 text-center py-4"><i class="fas fa-spinner fa-spin"></i> Carregando...</div>';
 
     try {
         const dataLimite = new Date();
@@ -153,10 +153,17 @@ SaudePsicossocial.carregarDados = async function () {
             .where('data_atestado', '>=', dataLimite)
             .orderBy('data_atestado', 'asc')
             .get();
+            
+        // Buscar funcionários ativos para cruzar dados (Remover Demitidos)
+        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        const funcionariosAtivos = new Set(funcSnap.docs.map(d => d.id));
 
         const atestados = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(a => a.cid?.toUpperCase().match(/^F|^Z65/));
+            .filter(a => {
+                const cidStr = a.cid ? String(a.cid).toUpperCase() : '';
+                return cidStr.match(/^F|^Z65/) && funcionariosAtivos.has(a.funcionarioId);
+            });
 
         SaudePsicossocial.state.cache.atestados = atestados;
 
@@ -201,13 +208,13 @@ SaudePsicossocial.carregarDados = async function () {
 // ========================================
 
 SaudePsicossocial.renderizarTabela = function () {
-    const tbody = document.getElementById('tabela-casos-psicossociais');
-    if (!tbody) return;
+    const kanban = document.getElementById('kanban-psicossocial');
+    if (!kanban) return;
 
     let casos = SaudePsicossocial.state.cache.casos;
 
     if (!casos.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4">Nenhum caso psicossocial encontrado</td></tr>';
+        kanban.innerHTML = '<div class="col-12 text-center py-4 text-muted">Nenhum caso psicossocial encontrado</div>';
         return;
     }
     
@@ -223,7 +230,6 @@ SaudePsicossocial.renderizarTabela = function () {
         
         let matchEstagio = true;
         if (filtroEstagio) {
-            // Mapeamento dos estágios do select para os estágios reais do banco de dados
             if (filtroEstagio === 'Triagem Inicial' && (estagio !== 'Análise Inicial' && estagio !== 'Não iniciado')) matchEstagio = false;
             else if (filtroEstagio === 'Em Acompanhamento' && (estagio !== 'Conversa Agendada' && estagio !== 'Conversado com Funcionário')) matchEstagio = false;
             else if (filtroEstagio === 'Retorno Gradual' && estagio !== 'Plano de Ação Definido') matchEstagio = false;
@@ -234,7 +240,7 @@ SaudePsicossocial.renderizarTabela = function () {
     });
 
     if (!casos.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum caso encontrado para os filtros atuais.</td></tr>';
+        kanban.innerHTML = '<div class="col-12 text-center py-4 text-muted">Nenhum caso encontrado para os filtros atuais.</div>';
         SaudePsicossocial.renderizarMetricas(casos);
         return;
     }
@@ -245,35 +251,58 @@ SaudePsicossocial.renderizarTabela = function () {
         return bDate - aDate;
     });
 
-    tbody.innerHTML = casos.map(c => {
-        const primeiro = c.atestados[0];
-        const estagio = primeiro?.investigacaoPsicossocial?.estagio || 'Não iniciado';
+    // Separar em colunas do Kanban
+    const colunas = {
+        'Triagem Inicial': { titulo: 'Triagem Inicial', cor: 'secondary', casos: [] },
+        'Em Acompanhamento': { titulo: 'Em Acompanhamento', cor: 'warning', casos: [] },
+        'Retorno Gradual': { titulo: 'Retorno Gradual', cor: 'info', casos: [] },
+        'Alta/Concluído': { titulo: 'Alta / Concluído', cor: 'success', casos: [] }
+    };
 
-        const badgeClass = {
-            'Não iniciado': 'bg-secondary',
-            'Análise Inicial': 'bg-warning text-dark',
-            'Conversa Agendada': 'bg-warning text-dark',
-            'Conversado com Funcionário': 'bg-info text-dark',
-            'Plano de Ação Definido': 'bg-info text-dark',
-            'Caso Encerrado': 'bg-success'
-        }[estagio] || 'bg-secondary';
+    casos.forEach(c => {
+        const estagioBd = c.atestados[0]?.investigacaoPsicossocial?.estagio || 'Não iniciado';
+        let col = 'Triagem Inicial';
+        if (estagioBd === 'Conversa Agendada' || estagioBd === 'Conversado com Funcionário') col = 'Em Acompanhamento';
+        else if (estagioBd === 'Plano de Ação Definido') col = 'Retorno Gradual';
+        else if (estagioBd === 'Caso Encerrado') col = 'Alta/Concluído';
+        colunas[col].casos.push(c);
+    });
+
+    kanban.innerHTML = Object.keys(colunas).map(key => {
+        const col = colunas[key];
+        const cardsHTML = col.casos.map(c => {
+            const primeiro = c.atestados[0];
+            return `
+                <div class="card mb-3 border-0 shadow-sm border-start border-${col.cor} border-4">
+                    <div class="card-body p-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="badge bg-danger">${primeiro?.cid || 'N/A'}</span>
+                            <small class="text-muted">${SaudePsicossocial.formatarData(primeiro?.data_atestado)}</small>
+                        </div>
+                        <h6 class="fw-bold mb-1 text-truncate" title="${c.nome}">${c.nome}</h6>
+                        <p class="small text-muted mb-3"><i class="fas fa-sitemap me-1"></i>${c.setor}</p>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <span class="small fw-semibold text-dark"><i class="fas fa-clock me-1 text-warning"></i>${SaudePsicossocial.formatarDuracaoConsolidada(c.totalDias)}</span>
+                            <button class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="SaudePsicossocial.abrirModal('${c.idCaso}')">Acompanhar</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('') || `<div class="text-center text-muted small p-3 bg-white border rounded">Nenhum caso</div>`;
 
         return `
-            <tr>
-                <td>
-                    <div class="fw-bold">${c.nome} <span class="badge bg-primary ms-1">${c.atestados.length}</span></div>
-                    <small class="text-muted"><i class="fas fa-sitemap me-1"></i>${c.setor}</small>
-                </td>
-                <td><span class="badge bg-danger">${primeiro?.cid || 'N/A'}</span></td>
-                <td>${SaudePsicossocial.formatarData(primeiro?.data_atestado)}</td>
-                <td>${SaudePsicossocial.formatarDuracaoConsolidada(c.totalDias)}</td>
-                <td><span class="badge ${badgeClass}">${estagio}</span></td>
-                <td class="text-end">
-                    <button class="btn btn-sm btn-primary" onclick="SaudePsicossocial.abrirModal('${c.idCaso}')">
-                        <i class="fas fa-clipboard-check"></i> Acompanhar
-                    </button>
-                </td>
-            </tr>
+            <div class="col-12 col-md-6 col-xl-3">
+                <div class="bg-white p-3 rounded shadow-sm h-100" style="background-color: #f4f6f8 !important;">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h6 class="mb-0 fw-bold text-dark">${col.titulo}</h6>
+                        <span class="badge bg-${col.cor} rounded-pill">${col.casos.length}</span>
+                    </div>
+                    <div style="min-height: 200px; max-height: 60vh; overflow-y: auto; padding-right: 5px;">
+                        ${cardsHTML}
+                    </div>
+                </div>
+            </div>
         `;
     }).join('');
     

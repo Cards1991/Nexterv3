@@ -11,71 +11,130 @@ window.timestamp = function() {
 
 async function carregarAfastamentos() {
     try {
-        const tbody = document.getElementById('afastamentos-container');
+        const gridContainer = document.getElementById('afastamentos-grid-container');
         await carregarAlertasPericia(); // Carrega o dashboard de alertas de perícia
         await carregarAlertasRetorno(); // Carrega o dashboard de alertas de retorno
 
-        if (!tbody) return;
+        if (!gridContainer) return;
 
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+        gridContainer.innerHTML = '<div class="col-12 text-center py-5"><i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i><p class="text-muted">Carregando afastamentos...</p></div>';
 
         const snap = await db.collection('afastamentos').orderBy('data_inicio', 'desc').get();
         __afastamentos_cache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
         if (__afastamentos_cache.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center">Nenhum afastamento cadastrado</td></tr>';
+            gridContainer.innerHTML = '<div class="col-12 text-center text-muted py-4">Nenhum afastamento cadastrado</div>';
             return;
         }
 
         const empresasSnapshot = await db.collection('empresas').get();
         const empMap = new Map(empresasSnapshot.docs.map(doc => [doc.id, doc.data().nome]));
+        
+        window.empMapAfastamentosCache = empMap; // Cache para o filtro
 
-        tbody.innerHTML = '';
-        __afastamentos_cache.forEach(a => {
-            const inicio = a.data_inicio?.toDate ? a.data_inicio.toDate() : a.data_inicio;
-            const fim = a.data_termino_prevista?.toDate ? a.data_termino_prevista.toDate() : a.data_termino_prevista;
-            const statusBadge = a.status === 'Ativo' ? 'bg-danger' : 'bg-success';
-            const dias = calcularDiferencaDias(a.data_inicio, a.data_termino_prevista);
-
-            let acoesHTML = `
-                <button class="btn btn-sm btn-outline-primary" onclick="editarAfastamento('${a.id}')"><i class="fas fa-edit"></i></button>
-                <button class="btn btn-sm btn-outline-danger" onclick="excluirAfastamento('${a.id}')"><i class="fas fa-trash"></i></button>
-            `;
-
-            // Se o afastamento requer INSS e ainda está pendente, mostra o botão de encaminhamento
-            if (a.requerINSS && a.inssStatus === 'Pendente') {
-                acoesHTML = `
-                    <button class="btn btn-sm btn-warning" onclick="abrirModalEncaminhamentoINSS('${a.id}')"><i class="fas fa-exclamation-triangle"></i> Encaminhar INSS</button>
-                    <button class="btn btn-sm btn-outline-primary" onclick="editarAfastamento('${a.id}')"><i class="fas fa-edit"></i></button>
-                    <button class="btn btn-sm btn-outline-danger" onclick="excluirAfastamento('${a.id}')"><i class="fas fa-trash"></i></button>
-                `;
-            }
-
-            const empresaNome = empMap.get(a.empresaId) || '-';
-
-            const row = `
-                <tr>
-                    <td>${empresaNome} / ${a.setor || '-'}</td>
-                    <td>${a.colaborador_nome || '-'}</td>
-                    <td>${formatarData(inicio)}</td>
-                    <td>${dias}</td>
-                    <td>${a.tipo_afastamento || '-'}</td>
-                    <td><span class="badge ${statusBadge}">${a.status}</span></td>
-                    <td class="text-end">
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-info" onclick="verDetalhesAfastamento('${a.id}')"><i class="fas fa-eye"></i></button>
-                            ${a.status === 'Ativo' && !a.requerINSS ? `<button class="btn btn-outline-success" onclick="darBaixaAfastamento('${a.id}')"><i class="fas fa-check-circle"></i> Dar Baixa</button>` : ''}
-                            ${acoesHTML}
-                        </div>
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
-        });
+        renderizarGridAfastamentos(__afastamentos_cache, empMap);
     } catch (e) {
         console.error('Erro ao carregar afastamentos:', e);
         mostrarMensagem('Erro ao carregar afastamentos', 'error');
     }
+}
+
+function filtrarAfastamentosGrid() {
+    const termoBusca = (document.getElementById('filtro-busca-afastamento')?.value || '').toLowerCase();
+    const status = document.getElementById('filtro-status-afastamento')?.value || 'Todos';
+    
+    let filtrados = __afastamentos_cache;
+    
+    if (status !== 'Todos') {
+        filtrados = filtrados.filter(a => a.status === status);
+    }
+    
+    if (termoBusca) {
+        filtrados = filtrados.filter(a => 
+            (a.colaborador_nome || '').toLowerCase().includes(termoBusca) ||
+            (a.tipo_afastamento || '').toLowerCase().includes(termoBusca)
+        );
+    }
+    
+    renderizarGridAfastamentos(filtrados, window.empMapAfastamentosCache || new Map());
+}
+
+function renderizarGridAfastamentos(lista, empMap) {
+    const gridContainer = document.getElementById('afastamentos-grid-container');
+    if (!gridContainer) return;
+
+    if (lista.length === 0) {
+        gridContainer.innerHTML = '<div class="col-12 text-center text-muted py-4">Nenhum afastamento encontrado com os filtros atuais.</div>';
+        return;
+    }
+
+    gridContainer.innerHTML = '';
+    lista.forEach(a => {
+        const inicio = a.data_inicio?.toDate ? a.data_inicio.toDate() : a.data_inicio;
+        const fim = a.data_termino_prevista?.toDate ? a.data_termino_prevista.toDate() : a.data_termino_prevista;
+        
+        let statusColor = a.status === 'Ativo' ? 'danger' : 'success';
+        let statusIcon = a.status === 'Ativo' ? 'fa-procedures' : 'fa-check-circle';
+        
+        const dias = calcularDiferencaDias(a.data_inicio, a.data_termino_prevista);
+
+        let acoesHTML = `
+            <button class="btn btn-sm btn-outline-primary" onclick="editarAfastamento('${a.id}')" title="Editar"><i class="fas fa-edit"></i></button>
+            <button class="btn btn-sm btn-outline-danger" onclick="excluirAfastamento('${a.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+        `;
+
+        if (a.requerINSS && a.inssStatus === 'Pendente') {
+            acoesHTML = `
+                <button class="btn btn-sm btn-warning" onclick="abrirModalEncaminhamentoINSS('${a.id}')" title="Encaminhar INSS"><i class="fas fa-exclamation-triangle"></i> INSS</button>
+                <button class="btn btn-sm btn-outline-primary" onclick="editarAfastamento('${a.id}')"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirAfastamento('${a.id}')"><i class="fas fa-trash"></i></button>
+            `;
+        }
+
+        const empresaNome = empMap.get(a.empresaId) || '-';
+
+        const card = `
+            <div class="col-12 col-md-6 col-lg-4">
+                <div class="card h-100 shadow-sm border-0 border-top border-${statusColor} border-3">
+                    <div class="card-body position-relative">
+                        <span class="badge bg-${statusColor} position-absolute top-0 end-0 m-3 rounded-pill">
+                            <i class="fas ${statusIcon} me-1"></i> ${a.status}
+                        </span>
+                        
+                        <h5 class="card-title text-truncate pe-5 mb-1" title="${a.colaborador_nome || '-'}">
+                            <strong>${a.colaborador_nome || '-'}</strong>
+                        </h5>
+                        <p class="text-muted small mb-3">
+                            <i class="fas fa-building me-1"></i> ${empresaNome} / ${a.setor || '-'}
+                        </p>
+                        
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span><i class="fas fa-calendar-alt text-primary me-1"></i> <strong>Início:</strong></span>
+                            <span>${formatarData(inicio)}</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-2 small">
+                            <span><i class="fas fa-clock text-warning me-1"></i> <strong>Dias:</strong></span>
+                            <span>${dias}</span>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between mb-3 small">
+                            <span><i class="fas fa-notes-medical text-danger me-1"></i> <strong>Motivo:</strong></span>
+                            <span class="text-truncate text-end" style="max-width: 150px;" title="${a.tipo_afastamento || '-'}">${a.tipo_afastamento || '-'}</span>
+                        </div>
+                    </div>
+                    <div class="card-footer bg-white border-top-0 d-flex justify-content-between pb-3">
+                        <button class="btn btn-sm btn-outline-info flex-grow-1 me-2" onclick="verDetalhesAfastamento('${a.id}')"><i class="fas fa-eye me-1"></i> Detalhes</button>
+                        ${a.status === 'Ativo' && !a.requerINSS ? `<button class="btn btn-sm btn-outline-success me-2" onclick="darBaixaAfastamento('${a.id}')" title="Dar Baixa"><i class="fas fa-check"></i></button>` : ''}
+                        <div class="btn-group">
+                            ${acoesHTML}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        gridContainer.innerHTML += card;
+    });
 }
 
 /**
@@ -91,10 +150,10 @@ async function carregarAlertasRetorno() {
     }
 
     // Tenta encontrar o card da tabela, se não encontrar, usa o container da tabela como referência.
-    const tableCard = tbody.closest('.card');
-    const insertionReference = tableCard || tbody.closest('.table-responsive') || tbody.parentElement;
+    // Tenta encontrar o card da tabela, se não encontrar, usa o container da tabela como referência.
+    const insertionReference = document.getElementById('retornos-proximos-container')?.closest('.card');
 
-    if (!insertionReference || !insertionReference.parentNode) {
+    if (!insertionReference) {
         console.warn("Ponto de inserção para alertas de retorno não encontrado.");
         return;
     }

@@ -1,0 +1,49 @@
+<!-- Modal Nova Vaga -->
+<div class="modal fade" id="modalVaga" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-briefcase"></i> Cadastrar Nova Vaga</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formVaga">
+                    <input type="hidden" id="vagaId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label required">Título da Vaga</label>
+                            <input type="text" id="vagaTitulo" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">Status</label>
+                            <select id="vagaStatus" class="form-select" required>
+                                <option value="Aberta">Aberta</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausada">Pausada</option>
+                                <option value="Fechada">Fechada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Departamento/Setor</label>
+                            <select id="vagaSetor" class="form-select" required>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Local de Trabalho</label>
+                            <input type="text" id="vagaLocal" class="form-control" placeholder="Ex: Matriz, Filial 1...">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descrição e Requisitos</label>
+                            <textarea id="vagaDescricao" class="form-control" rows="4" placeholder="Descreva as atividades e requisitos desejados..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarVaga()">Salvar Vaga</button>
+            </div>
+        </div>
+    </div>
+</div>

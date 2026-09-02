@@ -464,9 +464,21 @@ class MovimentacoesManager {
                         createdByUid: user ? user.uid : null
                     };
                     await db.collection('reposicoes').add(reposicaoData);
-                    this.mostrarMensagem("Solicitação de reposição gerada automaticamente.", "info");
+                    
+                    // Alimentar módulo de recrutamento e seleção (Criar Vaga)
+                    const vagaData = {
+                        titulo: `Reposição: ${funcionario.cargo}`,
+                        status: 'Aberta',
+                        setor: funcionario.setor,
+                        local: 'Pendente',
+                        descricao: `Vaga gerada automaticamente para repor a saída de ${funcionario.nome} (${funcionario.cargo}).`,
+                        criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    };
+                    await db.collection('vagas').add(vagaData);
+
+                    this.mostrarMensagem("Solicitação de reposição e vaga geradas automaticamente.", "info");
                 } catch (repoError) {
-                    console.error("Erro ao gerar reposição automática:", repoError);
+                    console.error("Erro ao gerar reposição/vaga automática:", repoError);
                     this.mostrarMensagem("Erro ao gerar reposição automática.", "warning");
                 }
             }

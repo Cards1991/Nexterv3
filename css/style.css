@@ -83,6 +83,8 @@ body {
     display: flex;
     min-height: 100vh;
     background: transparent;
+    width: 100%;
+    min-width: 0;
 }
 
 /* ===== SIDEBAR MODERNA ===== */
@@ -261,6 +263,8 @@ body {
     background: transparent;
     min-height: 100vh;
     transition: var(--transition-normal);
+    min-width: 0;
+    max-width: 100%;
 }
 
 /* Header */
@@ -299,6 +303,8 @@ body {
 /* Content Wrapper */
 .content-wrapper {
     padding: 2rem 1.5rem;
+    min-width: 0;
+    width: 100%;
 }
 
 .content-section {
@@ -1413,4 +1419,150 @@ body.sidebar-collapsed .sidebar:hover .nav-link i {
 .mecanico-nav-item i {
     font-size: 1.5rem;
     margin-bottom: 4px;
+}
+
+/* =============================================
+   DASHBOARD INICIAL - ESTILOS
+   ============================================= */
+.dashboard-inicial .category-title {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark-color);
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid var(--gray-light);
+}
+
+.dashboard-inicial .module-card {
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    border: 1px solid rgba(0,0,0,0.05) !important;
+}
+
+.dashboard-inicial .module-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important;
+    border-color: var(--primary-color) !important;
+}
+
+.dashboard-inicial .icon-circle {
+    width: 70px;
+    height: 70px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.bg-primary-light { background-color: rgba(67, 97, 238, 0.1); }
+.bg-success-light { background-color: rgba(46, 196, 182, 0.1); }
+.bg-warning-light { background-color: rgba(255, 159, 28, 0.1); }
+.bg-danger-light { background-color: rgba(231, 29, 54, 0.1); }
+.bg-info-light { background-color: rgba(42, 157, 143, 0.1); }
+.bg-secondary-light { background-color: rgba(247, 37, 133, 0.1); }
+.bg-dark-light { background-color: rgba(43, 45, 66, 0.1); }
+
+/* =============================================
+   RECRUTAMENTO E SELEÇÃO - KANBAN
+   ============================================= */
+.kanban-board {
+    display: flex;
+    gap: 1.5rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    min-height: calc(100vh - 250px);
+    align-items: flex-start;
+}
+
+.kanban-column {
+    flex: 0 0 320px;
+    background: #f4f5f7;
+    border-radius: var(--border-radius);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    max-height: calc(100vh - 250px);
+}
+
+.kanban-column-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e1e4e8;
+}
+
+.kanban-column-title {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: var(--dark-color);
+}
+
+.kanban-badge {
+    background: #e1e4e8;
+    color: var(--dark-color);
+    border-radius: 12px;
+    padding: 0.15rem 0.6rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.kanban-cards {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 50px;
+}
+
+.kanban-card {
+    background: white;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    cursor: grab;
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: 1px solid rgba(0,0,0,0.05);
+    border-left: 4px solid var(--primary-color);
+}
+
+.kanban-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.kanban-card:active {
+    cursor: grabbing;
+}
+
+.kanban-card-title {
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.kanban-card.drag-over {
+    background: #f0f8ff;
+    border: 2px dashed var(--primary-light);
+}
+
+.cursor-pointer { cursor: pointer; }
+
+/* Responsividade Kanban Mobile */
+@media (max-width: 768px) {
+    .kanban-board {
+        flex-direction: row;
+        overflow-x: auto;
+        overflow-y: hidden;
+        padding-bottom: 1rem;
+        -webkit-overflow-scrolling: touch;
+        scroll-snap-type: x mandatory;
+    }
+    .kanban-column {
+        scroll-snap-align: center;
+        flex: 0 0 85vw; /* 85% da tela para mostrar um pedaço da próxima coluna */
+        margin-right: 1rem;
+        max-height: none;
+    }
+    .kanban-cards {
+        max-height: 400px;
+    }
 }

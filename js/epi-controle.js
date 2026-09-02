@@ -67,9 +67,48 @@ async function carregarEstoqueEPI() {
         hoje.setHours(0,0,0,0);
 
         const docs = snapshot.docs.sort((a, b) => (a.data().descricao || '').localeCompare(b.data().descricao || ''));
+        
+        let totalItensDiferentes = 0;
+        let alertasHtml = '';
 
         docs.forEach(doc => {
             const epi = doc.data();
+
+            // Filtrar lotes substituídos para evitar confusão
+            if (epi.status === 'Substituido') return;
+            
+            // Incrementa apenas itens válidos (não substituídos) para a contagem
+            totalItensDiferentes++;
+
+            const validadeCA = epi.validadeCA ? new Date(epi.validadeCA.replace(/-/g, '\/')) : null;
+            const estoqueAtual = parseInt(epi.quantidade) || 0;
+            const estoqueMinimo = parseInt(epi.estoqueMinimo) || 0;
+
+            // Tratamento de Alertas Globais (independente do filtro de busca)
+            let alertaTipo = null;
+            let alertaIcone = '';
+            let alertaTexto = '';
+            
+            if (estoqueAtual <= estoqueMinimo) {
+                alertaTipo = 'danger';
+                alertaIcone = '<i class="fas fa-arrow-down text-danger me-2"></i>';
+                alertaTexto = `Estoque Crítico (${estoqueAtual}/${estoqueMinimo})`;
+            } else if (validadeCA && validadeCA < hoje) {
+                alertaTipo = 'dark';
+                alertaIcone = '<i class="fas fa-times-circle text-dark me-2"></i>';
+                alertaTexto = `CA Vencido (${epi.validadeCA})`;
+            } else if (validadeCA) {
+                const diasParaVencer = Math.ceil((validadeCA - hoje) / (1000 * 60 * 60 * 24));
+                if (diasParaVencer <= 30) {
+                    alertaTipo = 'warning';
+                    alertaIcone = '<i class="fas fa-exclamation-triangle text-warning me-2"></i>';
+                    alertaTexto = `CA Vence em ${diasParaVencer} dia(s)`;
+                }
+            }
+            
+            if (alertaTipo) {
+                alertasHtml += `<li class="list-group-item bg-transparent small border-0 py-1"><span class="fw-bold">${doc.data().descricao}</span> - ${alertaIcone} ${alertaTexto}</li>`;
+            }
 
             // Filtro de busca local
             if (termoBusca && !epi.descricao.toLowerCase().includes(termoBusca) && !epi.ca.includes(termoBusca)) {
@@ -81,14 +120,7 @@ async function carregarEstoqueEPI() {
                 return;
             }
 
-            // Filtrar lotes substituídos para evitar confusão
-            if (epi.status === 'Substituido') return;
-
-            const validadeCA = epi.validadeCA ? new Date(epi.validadeCA.replace(/-/g, '\/')) : null;
-            const estoqueAtual = parseInt(epi.quantidade) || 0;
-            const estoqueMinimo = parseInt(epi.estoqueMinimo) || 0;
-
-            // Definição de Status e Alertas
+            // Definição de Status para a linha da tabela
             let statusBadge = '<span class="badge bg-success">Normal</span>';
             let rowClass = '';
 
@@ -119,10 +151,10 @@ async function carregarEstoqueEPI() {
                     </td>
                     <td>${statusBadge}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" onclick="abrirModalEPI('${doc.id}')" title="Editar">
+                        <button class="btn btn-sm btn-outline-primary shadow-sm" onclick="abrirModalEPI('${doc.id}')" title="Editar">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirEPI('${doc.id}')" title="Excluir">
+                        <button class="btn btn-sm btn-outline-danger shadow-sm ms-1" onclick="excluirEPI('${doc.id}')" title="Excluir">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>
@@ -130,7 +162,15 @@ async function carregarEstoqueEPI() {
             `;
         });
 
-        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted">Nenhum EPI encontrado com o termo pesquisado.</td></tr>';
+        const elTotal = document.getElementById('epi-total-itens');
+        if (elTotal) elTotal.innerText = totalItensDiferentes;
+        
+        const elAlertas = document.getElementById('lista-alertas-epi');
+        if (elAlertas) {
+            elAlertas.innerHTML = alertasHtml || '<li class="list-group-item bg-transparent text-muted small border-0">Nenhum alerta.</li>';
+        }
+
+        tbody.innerHTML = html || '<tr><td colspan="7" class="text-center text-muted py-4">Nenhum EPI encontrado com os filtros atuais.</td></tr>';
 
     } catch (error) {
         console.error("Erro ao carregar estoque:", error);
@@ -570,7 +610,7 @@ function atualizarCardsDashboardEPI(totalEntregas, custoTotal, contagemEpi, cont
 /**
  * Carrega indicadores que exigem consultas separadas (ex: CAs vencidos)
  */
-async function carregarDashboardConsumoEPI() {
+async function carregarDashboardEstoqueEPIVencimentos() {
     const elVencidos = document.getElementById('dash-epi-vencimentos-hoje');
     if (!elVencidos) return;
 
@@ -2203,6 +2243,7 @@ async function inicializarEstoqueEPI() {
         await carregarSelectEmpresas('filtro-epi-empresa');
     }
     await carregarEstoqueEPI();
+    await carregarDashboardEstoqueEPIVencimentos();
 }
 
 async function inicializarConsumoEPI() {
@@ -2314,6 +2355,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (target.id === 'epi-compras' && !target.classList.contains('d-none')) {
                     inicializarComprasEPI();
                 }
+
+                // Se a seção de entrega EPI ficou visível
+                if (target.id === 'entrega-epis' && !target.classList.contains('d-none')) {
+                    if (typeof inicializarEntregaEPIs === 'function') inicializarEntregaEPIs();
+                }
             }
         });
     });
@@ -2326,3 +2372,109 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log("Módulo de Controle de EPI carregado!");
+
+// ========================================
+// MÓDULO DE ENTREGA EPI (MIGRADO DA VIEW)
+// ========================================
+let chartEntregas = null;
+
+async function inicializarEntregaEPIs() {
+    console.log("Inicializando Entrega de EPIs...");
+    if (typeof carregarSelectFuncionariosAtivos === 'function') {
+        await carregarSelectFuncionariosAtivos('entrega-funcionario-select');
+    }
+    
+    const funcSelect = document.getElementById('entrega-funcionario-select');
+    const btnRegistrar = document.getElementById('btn-registrar-entrega');
+    if (funcSelect && btnRegistrar) {
+        funcSelect.addEventListener('change', function() {
+            btnRegistrar.disabled = !this.value;
+        });
+    }
+    
+    carregarUltimasEntregas();
+    carregarGraficoEPIsEntregues();
+}
+
+async function carregarUltimasEntregas() {
+    const tbody = document.getElementById('ultimas-entregas-tbody');
+    if (!tbody) return;
+    try {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const snapshot = await db.collection('epi_consumo')
+            .where('dataEntrega', '>=', hoje)
+            .orderBy('dataEntrega', 'desc')
+            .limit(10)
+            .get();
+            
+        if (snapshot.empty) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted py-3">Nenhuma entrega hoje</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = snapshot.docs.map(doc => {
+            const data = doc.data();
+            const dataEntrega = data.dataEntrega?.toDate().toLocaleDateString('pt-BR');
+            return `
+                <tr>
+                    <td><small class="text-muted">${dataEntrega}</small></td>
+                    <td>${data.funcionarioNome}</td>
+                    <td><span class="badge bg-primary">${data.quantidade || 0} itens</span></td>
+                </tr>
+            `;
+        }).join('');
+    } catch (error) {
+        console.error('Erro ao carregar últimas entregas:', error);
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center text-danger">Erro ao carregar</td></tr>';
+    }
+}
+
+async function carregarGraficoEPIsEntregues() {
+    const canvas = document.getElementById('chart-epis-entregues');
+    if (!canvas) return;
+    
+    try {
+        const hoje = new Date();
+        hoje.setHours(0, 0, 0, 0);
+        
+        const snapshot = await db.collection('epi_consumo')
+            .where('dataEntrega', '>=', hoje)
+            .get();
+            
+        const epiCounts = {};
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const epi = data.epiDescricao || 'Não identificado';
+            epiCounts[epi] = (epiCounts[epi] || 0) + (data.quantidade || 1);
+        });
+        
+        const labels = Object.keys(epiCounts).slice(0, 5); // Top 5
+        const data = labels.map(label => epiCounts[label]);
+        
+        if (chartEntregas) chartEntregas.destroy();
+        
+        chartEntregas = new Chart(canvas, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: data,
+                    backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0', '#9966FF']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Erro ao carregar gráfico:', error);
+    }
+}

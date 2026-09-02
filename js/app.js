@@ -15,7 +15,8 @@ const TODAS_SECOES = [
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
-    'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura'
+    'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
+    'dashboard-inicial', 'recrutamento'
 ];
 
 let currentUserPermissions = {};
@@ -439,6 +440,9 @@ async function carregarDadosSecao(sectionName) {
             case 'controle-reunioes':
                 if (typeof inicializarControleReunioes === 'function') await inicializarControleReunioes();
                 break;
+            case 'recrutamento':
+                if (typeof inicializarRecrutamento === 'function') await inicializarRecrutamento();
+                break;
         }
     } catch (error) {
         console.error(`Erro ao carregar dados da seção ${sectionName}:`, error);
@@ -846,6 +850,12 @@ function inicializarNavegacao() {
                 // Se for seção interna, previne o comportamento padrão e carrega
                 e.preventDefault();
                 showSection(targetSection);
+                
+                // Fecha o sidebar automaticamente no mobile após clicar em um item
+                const sidebar = document.getElementById('sidebar');
+                if (window.innerWidth <= 992 && sidebar) {
+                    sidebar.classList.remove('show');
+                }
             } else {
                 e.preventDefault();
                 mostrarMensagem('Você não tem permissão para acessar esta seção.', 'error');
@@ -859,7 +869,7 @@ function inicializarNavegacao() {
         btnSairSidebar.addEventListener('click', (e) => { e.preventDefault(); sair(); });
     }
 
-    let secaoInicial = 'agenda';
+    let secaoInicial = 'dashboard-inicial';
 
     // Se for mecânico normal (não admin), a tela inicial DEVE ser o painel integrado "Meus Chamados"
     if (currentUserPermissions.isMecanico && !currentUserPermissions.isAdmin) {

@@ -1,0 +1,71 @@
+<!-- Modal Novo Candidato -->
+<div class="modal fade" id="modalCandidato" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Ficha do Candidato</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCandidato">
+                    <input type="hidden" id="candidatoId">
+                    <input type="hidden" id="candidatoFaseAtual" value="triagem"> <!-- Fase inicial -->
+                    
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label required">Vaga Pretendida</label>
+                            <select id="candidatoVagaId" class="form-select" required>
+                                <option value="">Selecione a vaga...</option>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label required">Nome Completo</label>
+                            <input type="text" id="candidatoNome" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">CPF</label>
+                            <div class="input-group">
+                                <input type="text" id="candidatoCpf" class="form-control" placeholder="000.000.000-00" required>
+                                <button type="button" class="btn btn-outline-secondary" onclick="consultarEscavador()" title="Buscar Antecedentes no Escavador">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Telefone/WhatsApp</label>
+                            <input type="text" id="candidatoTelefone" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" id="candidatoEmail" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Anexar Currículo (PDF/DOC)</label>
+                            <input type="file" id="candidatoCurriculo" class="form-control" accept=".pdf,.doc,.docx">
+                            <small class="text-muted" id="linkCurriculoAtual"></small>
+                        </div>
+                        
+                        <div class="col-12 mt-4" id="areaEscavador" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-balance-scale"></i> Resultado Escavador</h6>
+                                <div id="resultadoEscavador" style="max-height: 150px; overflow-y: auto; font-size: 0.9rem;">
+                                    Buscando...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Anotações / Entrevista</label>
+                            <textarea id="candidatoAnotacoes" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarCandidato()">Salvar Candidato</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,189 @@
+<div class="dashboard-inicial fade-in">
+    <div class="row mb-4 align-items-center">
+        <div class="col-md-8">
+            <h1 class="page-title mb-1">Painel Inicial</h1>
+            <p class="text-muted" style="font-size: 1.1rem;">Bem-vindo(a) ao Nexter. Selecione um módulo abaixo para começar.</p>
+        </div>
+        <div class="col-md-4 text-md-end">
+            <div class="relogio-digital p-3 bg-white rounded shadow-sm text-center d-inline-block border">
+                <div id="hora-atual" class="fw-bold fs-4 text-primary">--:--:--</div>
+                <div id="data-atual" class="text-muted small">Carregando data...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Central de Módulos (Grid) -->
+    <div class="row g-4">
+        <!-- RH e Pessoal -->
+        <div class="col-12">
+            <h4 class="category-title"><i class="fas fa-users text-primary"></i> Recursos Humanos & DP</h4>
+        </div>
+        
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('funcionarios')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-primary-light text-primary mx-auto mb-3">
+                        <i class="fas fa-id-card fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Funcionários</h5>
+                    <p class="text-muted small mb-0">Gestão de colaboradores, admissões, demissões e cadastro.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('ponto-eletronico')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-info-light text-info mx-auto mb-3">
+                        <i class="fas fa-clock fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Ponto Eletrônico</h5>
+                    <p class="text-muted small mb-0">Faltas, horas extras e espelho de ponto.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('recrutamento')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-success-light text-success mx-auto mb-3">
+                        <i class="fas fa-user-plus fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Recrutamento</h5>
+                    <p class="text-muted small mb-0">Gestão de vagas e acompanhamento de candidatos.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('saude-psicossocial')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-warning-light text-warning mx-auto mb-3">
+                        <i class="fas fa-heartbeat fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Saúde Psicossocial</h5>
+                    <p class="text-muted small mb-0">Atendimentos e acompanhamentos da equipe.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- SSMA -->
+        <div class="col-12 mt-5">
+            <h4 class="category-title"><i class="fas fa-hard-hat text-warning"></i> SSMA (Saúde e Segurança)</h4>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('analise-epi')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-secondary-light text-secondary mx-auto mb-3">
+                        <i class="fas fa-shield-alt fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Gestão de EPIs</h5>
+                    <p class="text-muted small mb-0">Estoque, entrega e consumo de EPIs.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('gestao-cipa')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-danger-light text-danger mx-auto mb-3">
+                        <i class="fas fa-users-cog fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">CIPA & Brigada</h5>
+                    <p class="text-muted small mb-0">Controle de mandatos, reuniões e extintores.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('ocorrencias')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-primary-light text-primary mx-auto mb-3">
+                        <i class="fas fa-exclamation-triangle fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Ocorrências</h5>
+                    <p class="text-muted small mb-0">Registro e investigação de incidentes/acidentes.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Jurídico & Compliance -->
+        <div class="col-12 mt-5">
+            <h4 class="category-title"><i class="fas fa-balance-scale text-secondary"></i> Jurídico & Compliance</h4>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('juridico-dashboard')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-dark-light text-dark mx-auto mb-3">
+                        <i class="fas fa-gavel fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Processos Jurídicos</h5>
+                    <p class="text-muted small mb-0">Gestão de processos cíveis e trabalhistas.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('gestao-denuncias')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-danger-light text-danger mx-auto mb-3">
+                        <i class="fas fa-user-secret fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Canal de Denúncias</h5>
+                    <p class="text-muted small mb-0">Gestão de relatos e compliance.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Frota & Manutenção -->
+        <div class="col-12 mt-5">
+            <h4 class="category-title"><i class="fas fa-truck text-dark"></i> Frota & Manutenção</h4>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('frota-dashboard')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-info-light text-info mx-auto mb-3">
+                        <i class="fas fa-route fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Gestão de Frota</h5>
+                    <p class="text-muted small mb-0">Veículos, motoristas e viagens.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-lg-4 col-md-6">
+            <div class="module-card card h-100 bg-white border-0 shadow-sm hover-elevate cursor-pointer" onclick="showSection('dashboard-manutencao')">
+                <div class="card-body text-center p-4">
+                    <div class="icon-circle bg-warning-light text-warning mx-auto mb-3">
+                        <i class="fas fa-tools fa-2x"></i>
+                    </div>
+                    <h5 class="fw-bold mb-2">Manutenção</h5>
+                    <p class="text-muted small mb-0">Chamados e gestão de máquinas.</p>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function atualizarRelogio() {
+        const agora = new Date();
+        const configHora = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        const configData = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        
+        const elHora = document.getElementById('hora-atual');
+        const elData = document.getElementById('data-atual');
+        
+        if(elHora) elHora.innerText = agora.toLocaleTimeString('pt-BR', configHora);
+        if(elData) elData.innerText = agora.toLocaleDateString('pt-BR', configData);
+    }
+    
+    // Inicia e limpa para evitar vazamento
+    if(window.timerRelogioId) clearInterval(window.timerRelogioId);
+    window.timerRelogioId = setInterval(atualizarRelogio, 1000);
+    atualizarRelogio();
+</script>

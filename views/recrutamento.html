@@ -1,0 +1,348 @@
+<div class="recrutamento-container container-fluid px-0 fade-in">
+    <div class="row mb-3">
+        <div class="col-12 col-md-6 mb-3 mb-md-0 d-flex flex-column justify-content-center">
+            <h1 class="page-title mb-1 fs-4">Recrutamento e Seleção</h1>
+            <p class="text-muted small mb-0 d-none d-md-block">Gestão de Vagas e Acompanhamento de Candidatos</p>
+        </div>
+        <div class="col-12 col-md-6 mt-3 mt-md-0">
+            <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                <button class="btn btn-outline-primary" onclick="abrirModalVaga()" type="button">
+                    <i class="fas fa-briefcase"></i> Nova Vaga
+                </button>
+                <button class="btn btn-primary" onclick="abrirModalCandidato()" type="button">
+                    <i class="fas fa-user-plus"></i> Novo Candidato
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card mb-4 bg-white border-0 shadow-sm">
+        <div class="card-body">
+            <div class="row align-items-end g-3">
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Filtrar por Vaga</label>
+                    <select id="filtro-vaga-kanban" class="form-select" onchange="carregarKanbanCandidatos()">
+                        <option value="">Todas as Vagas</option>
+                        <!-- Preenchido dinamicamente -->
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label">Buscar Candidato</label>
+                    <input type="text" id="busca-candidato" class="form-control" placeholder="Nome ou CPF..." onkeyup="filtrarCandidatosKanban()">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kanban Board -->
+    <div class="kanban-board">
+        
+        <!-- Coluna Triagem -->
+        <div class="kanban-column" id="col-triagem" ondragover="allowDrop(event)" ondrop="drop(event, 'triagem')">
+            <div class="kanban-column-header border-primary">
+                <div class="kanban-column-title">
+                    <i class="fas fa-filter text-primary me-2"></i> Triagem
+                </div>
+                <span class="kanban-badge" id="count-triagem">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-triagem">
+                <!-- Cards inseridos dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Coluna Entrevista -->
+        <div class="kanban-column" id="col-entrevista" ondragover="allowDrop(event)" ondrop="drop(event, 'entrevista')">
+            <div class="kanban-column-header border-info">
+                <div class="kanban-column-title">
+                    <i class="fas fa-comments text-info me-2"></i> Entrevista
+                </div>
+                <span class="kanban-badge" id="count-entrevista">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-entrevista">
+            </div>
+        </div>
+
+        <!-- Coluna Avaliação Prática/Testes -->
+        <div class="kanban-column" id="col-avaliacao" ondragover="allowDrop(event)" ondrop="drop(event, 'avaliacao')">
+            <div class="kanban-column-header border-warning">
+                <div class="kanban-column-title">
+                    <i class="fas fa-clipboard-check text-warning me-2"></i> Avaliação/Testes
+                </div>
+                <span class="kanban-badge" id="count-avaliacao">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-avaliacao">
+            </div>
+        </div>
+
+        <!-- Coluna Aprovado (Aguardando Doc) -->
+        <div class="kanban-column" id="col-aprovado" ondragover="allowDrop(event)" ondrop="drop(event, 'aprovado')">
+            <div class="kanban-column-header border-success">
+                <div class="kanban-column-title">
+                    <i class="fas fa-check-circle text-success me-2"></i> Aprovado
+                </div>
+                <span class="kanban-badge" id="count-aprovado">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-aprovado">
+            </div>
+        </div>
+
+        <!-- Coluna Banco de Talentos / Reprovado -->
+        <div class="kanban-column" id="col-banco" ondragover="allowDrop(event)" ondrop="drop(event, 'banco')">
+            <div class="kanban-column-header border-secondary">
+                <div class="kanban-column-title">
+                    <i class="fas fa-archive text-secondary me-2"></i> Banco de Talentos
+                </div>
+                <span class="kanban-badge" id="count-banco">0</span>
+            </div>
+            <div class="kanban-cards" id="cards-banco">
+            </div>
+        </div>
+
+    </div>
+</div>
+<!-- Modal Nova Vaga -->
+<div class="modal fade" id="modalVaga" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-briefcase"></i> Cadastrar Nova Vaga</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formVaga">
+                    <input type="hidden" id="vagaId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label required">Título da Vaga</label>
+                            <input type="text" id="vagaTitulo" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">Status</label>
+                            <select id="vagaStatus" class="form-select" required>
+                                <option value="Aberta">Aberta</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausada">Pausada</option>
+                                <option value="Fechada">Fechada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Departamento/Setor</label>
+                            <select id="vagaSetor" class="form-select" required>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Local de Trabalho</label>
+                            <input type="text" id="vagaLocal" class="form-control" placeholder="Ex: Matriz, Filial 1...">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descrição e Requisitos</label>
+                            <textarea id="vagaDescricao" class="form-control" rows="4" placeholder="Descreva as atividades e requisitos desejados..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarVaga()">Salvar Vaga</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Novo Candidato -->
+<div class="modal fade" id="modalCandidato" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Ficha do Candidato</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCandidato">
+                    <input type="hidden" id="candidatoId">
+                    <input type="hidden" id="candidatoFaseAtual" value="triagem"> <!-- Fase inicial -->
+                    
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label required">Vaga Pretendida</label>
+                            <select id="candidatoVagaId" class="form-select" required>
+                                <option value="">Selecione a vaga...</option>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label required">Nome Completo</label>
+                            <input type="text" id="candidatoNome" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">CPF</label>
+                            <div class="input-group">
+                                <input type="text" id="candidatoCpf" class="form-control" placeholder="000.000.000-00" required>
+                                <button type="button" class="btn btn-outline-secondary" onclick="consultarEscavador()" title="Buscar Antecedentes no Escavador">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Telefone/WhatsApp</label>
+                            <input type="text" id="candidatoTelefone" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" id="candidatoEmail" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Anexar Currículo (PDF/DOC)</label>
+                            <input type="file" id="candidatoCurriculo" class="form-control" accept=".pdf,.doc,.docx">
+                            <small class="text-muted" id="linkCurriculoAtual"></small>
+                        </div>
+                        
+                        <div class="col-12 mt-4" id="areaEscavador" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-balance-scale"></i> Resultado Escavador</h6>
+                                <div id="resultadoEscavador" style="max-height: 150px; overflow-y: auto; font-size: 0.9rem;">
+                                    Buscando...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Anotações / Entrevista</label>
+                            <textarea id="candidatoAnotacoes" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+<!-- Modal Nova Vaga -->
+<div class="modal fade" id="modalVaga" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-briefcase"></i> Cadastrar Nova Vaga</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formVaga">
+                    <input type="hidden" id="vagaId">
+                    <div class="row g-3">
+                        <div class="col-md-8">
+                            <label class="form-label required">Título da Vaga</label>
+                            <input type="text" id="vagaTitulo" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">Status</label>
+                            <select id="vagaStatus" class="form-select" required>
+                                <option value="Aberta">Aberta</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Pausada">Pausada</option>
+                                <option value="Fechada">Fechada</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Departamento/Setor</label>
+                            <select id="vagaSetor" class="form-select" required>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Local de Trabalho</label>
+                            <input type="text" id="vagaLocal" class="form-control" placeholder="Ex: Matriz, Filial 1...">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descrição e Requisitos</label>
+                            <textarea id="vagaDescricao" class="form-control" rows="4" placeholder="Descreva as atividades e requisitos desejados..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarVaga()">Salvar Vaga</button>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- Modal Novo Candidato -->
+<div class="modal fade" id="modalCandidato" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Ficha do Candidato</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formCandidato">
+                    <input type="hidden" id="candidatoId">
+                    <input type="hidden" id="candidatoFaseAtual" value="triagem"> <!-- Fase inicial -->
+                    
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label required">Vaga Pretendida</label>
+                            <select id="candidatoVagaId" class="form-select" required>
+                                <option value="">Selecione a vaga...</option>
+                                <!-- Preenchido dinamicamente -->
+                            </select>
+                        </div>
+                        <div class="col-md-8">
+                            <label class="form-label required">Nome Completo</label>
+                            <input type="text" id="candidatoNome" class="form-control" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label required">CPF</label>
+                            <div class="input-group">
+                                <input type="text" id="candidatoCpf" class="form-control" placeholder="000.000.000-00" required>
+                                <button type="button" class="btn btn-outline-secondary" onclick="consultarEscavador()" title="Buscar Antecedentes no Escavador">
+                                    <i class="fas fa-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label required">Telefone/WhatsApp</label>
+                            <input type="text" id="candidatoTelefone" class="form-control" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">E-mail</label>
+                            <input type="email" id="candidatoEmail" class="form-control">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Anexar Currículo (PDF/DOC)</label>
+                            <input type="file" id="candidatoCurriculo" class="form-control" accept=".pdf,.doc,.docx">
+                            <small class="text-muted" id="linkCurriculoAtual"></small>
+                        </div>
+                        
+                        <div class="col-12 mt-4" id="areaEscavador" style="display: none;">
+                            <div class="alert alert-info">
+                                <h6><i class="fas fa-balance-scale"></i> Resultado Escavador</h6>
+                                <div id="resultadoEscavador" style="max-height: 150px; overflow-y: auto; font-size: 0.9rem;">
+                                    Buscando...
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12">
+                            <label class="form-label">Anotações / Entrevista</label>
+                            <textarea id="candidatoAnotacoes" class="form-control" rows="4"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="salvarCandidato()">Salvar Candidato</button>
+            </div>
+        </div>
+    </div>
+</div>
+<style> 
+    body, html { overflow-x: hidden !important; }
+    .recrutamento-container { width: 100%; max-width: 100%; overflow-x: hidden; padding: 0 15px; }
+    .recrutamento-container .row { margin-left: 0; margin-right: 0; }
+    .kanban-board { width: 100%; overflow-x: auto; display: flex; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 15px; }
+    @media (max-width: 768px) {
+        .kanban-column { flex: 0 0 90vw !important; max-width: 90vw; scroll-snap-align: center; }
+        .kanban-board { scroll-snap-type: x mandatory; }
+    }
+</style>

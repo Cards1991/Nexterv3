@@ -42,6 +42,11 @@ async function carregarDadosCipa() {
         mostrarMensagem('Erro carregando CIPA: ' + error.message, 'error');
     }
 }
+// ========== UTILITÁRIOS ==========
+function atualizarElemento(id, valor) {
+    const el = document.getElementById(id);
+    if (el) el.innerText = valor;
+}
 
 // ========== DASHBOARD ==========
 function renderizarDashboardCipa() {
@@ -59,6 +64,8 @@ function renderizarDashboardCipa() {
     renderizarChartAcoesCipa();
 }
 
+let chartAcoesCipaInstance = null;
+
 function renderizarChartAcoesCipa() {
     const ctx = document.getElementById('chart-cipa-acoes')?.getContext('2d');
     if (!ctx) return;
@@ -68,7 +75,11 @@ function renderizarChartAcoesCipa() {
         statusCount[a.status] = (statusCount[a.status] || 0) + 1;
     });
     
-    new Chart(ctx, {
+    if (chartAcoesCipaInstance) {
+        chartAcoesCipaInstance.destroy();
+    }
+    
+    chartAcoesCipaInstance = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: Object.keys(statusCount),
@@ -90,7 +101,12 @@ function renderizarListaMembros() {
     
     cipaMembros.forEach(m => {
         const statusBadge = m.status === 'Ativo' ? 'bg-success' : 'bg-secondary';
-        const mandatoStatus = m.dataFimMandato && new Date(m.dataFimMandato.toDate()) < new Date() ? 'bg-danger' : 'bg-info';
+        let isVencido = false;
+        if (m.dataFimMandato) {
+            const dataFim = m.dataFimMandato.toDate ? m.dataFimMandato.toDate() : new Date(m.dataFimMandato);
+            isVencido = dataFim < new Date();
+        }
+        const mandatoStatus = isVencido ? 'bg-danger' : 'bg-info';
         
         const row = document.createElement('tr');
         row.innerHTML = `

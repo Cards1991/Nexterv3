@@ -1,58 +1,54 @@
-<h2 class="page-title">Gestão de Afastamentos</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0">Gestão de Afastamentos</h2>
+    <button class="btn btn-primary shadow-sm" id="btn-novo-afastamento">
+        <i class="fas fa-plus-circle me-2"></i> Novo Afastamento
+    </button>
+</div>
 
-<div class="row">
-    <!-- Dashboard de Alertas de Perícia -->
+<!-- Dashboard de Alertas e Métricas -->
+<div class="row g-3 mb-4">
+    <!-- Alertas de Perícia -->
     <div class="col-md-6">
-        <div class="card border-warning mb-4">
-            <div class="card-header bg-warning text-dark">
-                <i class="fas fa-bell"></i> <strong>Alertas: Perícias do INSS Próximas</strong>
+        <div class="card border-0 shadow-sm h-100" style="background-color: #fff3cd;">
+            <div class="card-header bg-transparent border-warning text-dark fw-bold pb-0 pt-3">
+                <i class="fas fa-bell me-2 text-warning"></i> Perícias do INSS Próximas
             </div>
-            <div id="pericias-proximas-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
-                <p class="text-muted">Nenhum alerta de perícia nos próximos 5 dias úteis.</p>
+            <div id="pericias-proximas-container" class="card-body" style="max-height: 200px; overflow-y: auto;">
+                <p class="text-muted small">Nenhum alerta de perícia nos próximos 5 dias úteis.</p>
             </div>
         </div>
     </div>
-    <!-- Dashboard de Alertas de Retorno -->
+    <!-- Alertas de Retorno -->
     <div class="col-md-6">
-        <div class="card border-info mb-4">
-            <div class="card-header bg-info text-white">
-                <i class="fas fa-walking"></i> <strong>Alertas: Retorno de Afastamento</strong>
+        <div class="card border-0 shadow-sm h-100" style="background-color: #e0f7fa;">
+            <div class="card-header bg-transparent border-info text-dark fw-bold pb-0 pt-3">
+                <i class="fas fa-walking me-2 text-info"></i> Retorno de Afastamento
             </div>
-            <div id="retornos-proximos-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
-                <p class="text-muted">Nenhum retorno de afastamento nos próximos 5 dias.</p>
+            <div id="retornos-proximos-container" class="card-body" style="max-height: 200px; overflow-y: auto;">
+                <p class="text-muted small">Nenhum retorno de afastamento nos próximos 5 dias.</p>
             </div>
         </div>
     </div>
 </div>
 
 <div class="d-flex justify-content-between align-items-center mb-3">
-    <div></div>
-    <button class="btn btn-primary" id="btn-novo-afastamento">
-        <i class="fas fa-plus-circle"></i> Novo Afastamento
-    </button>
-</div>
-<div class="card">
-    <div class="card-header">Afastamentos Cadastrados</div>
-    <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Empresa/Setor</th>
-                        <th>Colaborador</th>
-                        <th>Início</th>
-                        <th>Dias</th>
-                        <th>Tipo</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="afastamentos-container">
-                    <tr>
-                        <td colspan="9" class="text-center">Carregando...</td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
+    <div class="input-group shadow-sm" style="max-width: 350px;">
+        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+        <input type="text" id="filtro-busca-afastamento" class="form-control border-start-0 ps-0" placeholder="Buscar colaborador..." onkeyup="filtrarAfastamentosGrid()">
+    </div>
+    <div class="d-flex gap-2">
+        <select id="filtro-status-afastamento" class="form-select shadow-sm" style="max-width: 200px;" onchange="filtrarAfastamentosGrid()">
+            <option value="Todos">Todos os Status</option>
+            <option value="Ativo" selected>Ativos</option>
+            <option value="Retornou">Retornaram</option>
+        </select>
     </div>
 </div>
+
+<!-- Container do Grid de Afastamentos (Substitui a tabela antiga) -->
+<div class="row g-3" id="afastamentos-grid-container">
+    <div class="col-12 text-center py-5">
+        <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
+        <p class="text-muted">Carregando afastamentos...</p>
+    </div>
+</div>
