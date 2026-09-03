@@ -764,7 +764,6 @@ async function carregarAgenda() {
     } catch (error) {
         console.error("Erro ao carregar agenda:", error);
     }
-    }
 }
 
 function alternarVisaoAgenda(view) {
