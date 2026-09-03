@@ -381,31 +381,58 @@ async function consultarCandidatoAPI() {
 
         // -- ESCAVADOR --
         if (escavadorToken) {
-            const responseEscavador = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?cpf=${cpf}`, {
-                headers: {
-                    'Authorization': `Bearer ${escavadorToken}`,
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
+            let processosEncontrados = [];
+            let escavadorStatus = '';
+            
+            // Tentativa 1: CPF
+            const responseCpf = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?cpf=${cpf}`, {
+                headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
             });
-
-            if (responseEscavador.status === 404) {
-                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo encontrado.</span><br>`;
-                htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
-            } else if (responseEscavador.ok) {
-                const data = await responseEscavador.json();
+            
+            if (responseCpf.ok) {
+                const data = await responseCpf.json();
                 if (data && data.processos && data.processos.length > 0) {
-                    htmlResultados += `<strong>Escavador (${data.processos.length} processos encontrados):</strong><br><ul class="mt-2 pl-3">`;
-                    data.processos.slice(0, 5).forEach(proc => {
-                        htmlResultados += `<li><strong>${proc.numero_cnj || proc.numero}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}</li>`;
-                    });
-                    if (data.processos.length > 5) htmlResultados += `<li><em>... e mais ${data.processos.length - 5} processos.</em></li>`;
-                    htmlResultados += '</ul>';
-                } else {
-                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo.</span><br>`;
-                    htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
+                    processosEncontrados = data.processos;
+                    escavadorStatus = 'Encontrado por CPF';
                 }
+            }
+
+            // Tentativa 2: Nome + Homônimos (Fallback)
+            if (processosEncontrados.length === 0 && inputNome.value.trim() !== '') {
+                const nomeBusca = encodeURIComponent(inputNome.value.trim());
+                const responseNome = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?nome=${nomeBusca}&incluir_homonimos=true`, {
+                    headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                
+                if (responseNome.ok) {
+                    const dataNome = await responseNome.json();
+                    if (dataNome && dataNome.processos && dataNome.processos.length > 0) {
+                        processosEncontrados = dataNome.processos;
+                        escavadorStatus = 'Encontrado por Nome (Atenção: Pode conter homônimos)';
+                    }
+                }
+            }
+
+            // Renderização
+            if (processosEncontrados.length > 0) {
+                htmlResultados += `<strong>Escavador (${processosEncontrados.length} processos - ${escavadorStatus}):</strong><br><ul class="mt-2 pl-3">`;
+                processosEncontrados.slice(0, 5).forEach(proc => {
+                    const numCnj = proc.numero_cnj || proc.numero;
+                    htmlResultados += `<li><strong class="text-danger">${numCnj}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}<br>`;
+                    
+                    // Botões de Ação
+                    htmlResultados += `<div class="mt-1 mb-2">`;
+                    if (proc.fontes && proc.fontes.length > 0 && proc.fontes[0].url) {
+                        htmlResultados += `<a href="${proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-primary me-2"><i class="fas fa-university"></i> Ver Oficial no Tribunal</a>`;
+                    }
+                    htmlResultados += `<button type="button" class="btn btn-sm btn-outline-danger" onclick="abrirDocumentosEscavador('${numCnj}')"><i class="fas fa-file-pdf"></i> Explorar Documentos (PDF)</button>`;
+                    htmlResultados += `</div></li>`;
+                });
+                if (processosEncontrados.length > 5) htmlResultados += `<li><em>... e mais ${processosEncontrados.length - 5} processos.</em></li>`;
+                htmlResultados += '</ul>';
             } else {
-                htmlResultados += `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro Escavador.</span><br>`;
+                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo encontrado (nem por CPF, nem por Nome).</span><br>`;
+                htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
             }
         }
 
@@ -585,3 +612,124 @@ async function consultarHistoricoInterno(cpfFomatado) {
         return false;
     }
 }
+
+// -----------------------------------------------------
+// FUNÇÕES DO MODAL DE DOCUMENTOS DO ESCAVADOR (PDF)
+// -----------------------------------------------------
+
+window.abrirDocumentosEscavador = async function(numeroCnj) {
+    if (!escavadorToken) {
+        alert("Token do Escavador não encontrado.");
+        return;
+    }
+
+    // Prepara e abre o modal
+    document.getElementById('docEscavadorProcessoNum').textContent = numeroCnj;
+    const listaContainer = document.getElementById('listaDocumentosContainer');
+    const pdfFrame = document.getElementById('escavadorPdfFrame');
+    const overlay = document.getElementById('pdfViewerOverlay');
+    
+    listaContainer.innerHTML = '<div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Buscando documentos públicos...</div>';
+    pdfFrame.style.display = 'none';
+    pdfFrame.src = '';
+    overlay.style.display = 'flex';
+    
+    // Mostra o modal (precisa garantir que foi carregado pelo view-loader)
+    const modalEl = document.getElementById('modalDocumentosEscavador');
+    if (!modalEl) {
+        alert("O modal de documentos ainda não foi carregado na página.");
+        return;
+    }
+    const bsModal = new bootstrap.Modal(modalEl);
+    bsModal.show();
+
+    try {
+        const response = await fetch(`https://api.escavador.com/api/v1/processos/numero_cnj/${numeroCnj}/documentos-publicos`, {
+            headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) {
+            if(response.status === 404) {
+                 listaContainer.innerHTML = '<div class="alert alert-warning m-2">Nenhum documento público encontrado para este processo.</div>';
+                 return;
+            }
+            throw new Error(`Erro API Escavador: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const itens = data.items || [];
+        
+        if (itens.length === 0) {
+            listaContainer.innerHTML = '<div class="alert alert-warning m-2">Nenhum documento público disponível nesta rota para este processo.</div>';
+            return;
+        }
+
+        let html = '<div class="list-group list-group-flush">';
+        itens.forEach(doc => {
+            const dataStr = doc.data ? new Date(doc.data).toLocaleDateString() : 'Data N/A';
+            html += `
+                <a href="#" class="list-group-item list-group-item-action py-3" onclick="carregarPDFEscavador(event, '${numeroCnj}', '${doc.id}')">
+                    <div class="d-flex w-100 justify-content-between">
+                        <h6 class="mb-1 text-primary"><i class="far fa-file-alt"></i> ${doc.titulo || 'Documento'}</h6>
+                        <small class="text-muted">${dataStr}</small>
+                    </div>
+                    <p class="mb-1 small">${doc.tipo || ''}</p>
+                </a>
+            `;
+        });
+        html += '</div>';
+        listaContainer.innerHTML = html;
+
+    } catch (error) {
+        console.error("Erro ao buscar documentos:", error);
+        listaContainer.innerHTML = `<div class="alert alert-danger m-2">Falha ao carregar documentos.<br><small>${error.message}</small></div>`;
+    }
+};
+
+window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
+    event.preventDefault();
+    
+    // Atualiza UI da lista para mostrar o selecionado
+    const links = document.getElementById('listaDocumentosContainer').querySelectorAll('a.list-group-item');
+    links.forEach(el => el.classList.remove('active', 'bg-light'));
+    event.currentTarget.classList.add('active');
+
+    const pdfFrame = document.getElementById('escavadorPdfFrame');
+    const overlay = document.getElementById('pdfViewerOverlay');
+    
+    // Mostra loading no overlay
+    overlay.innerHTML = '<i class="fas fa-spinner fa-spin fa-3x mb-3 text-secondary"></i><h5>Baixando e decodificando PDF...</h5>';
+    overlay.style.display = 'flex';
+    pdfFrame.style.display = 'none';
+
+    try {
+        const response = await fetch(`https://api.escavador.com/api/v1/processos/numero_cnj/${numeroCnj}/documentos/${docId}`, {
+            headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
+        });
+
+        if (!response.ok) throw new Error(`Erro API ao baixar documento: ${response.status}`);
+        
+        // A API de download do Escavador geralmente retorna os bytes do PDF
+        const blob = await response.blob();
+        
+        // Verifica se realmente é um PDF ou JSON (erro mascarado)
+        if (blob.type.includes("json")) {
+             const text = await blob.text();
+             const json = JSON.parse(text);
+             throw new Error(json.message || "Erro desconhecido da API");
+        }
+        
+        const blobUrl = URL.createObjectURL(blob);
+        pdfFrame.src = blobUrl;
+        
+        // Esconde o overlay e mostra o iframe
+        pdfFrame.onload = function() {
+            overlay.style.display = 'none';
+            pdfFrame.style.display = 'block';
+        };
+
+    } catch(error) {
+        console.error("Erro no PDF:", error);
+        overlay.innerHTML = `<i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><h5 class="text-white">Erro ao visualizar PDF</h5><p class="small text-white-50">${error.message}</p>`;
+    }
+};
