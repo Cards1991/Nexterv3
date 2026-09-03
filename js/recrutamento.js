@@ -384,9 +384,26 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
         </div>
     `;
 
-    setTimeout(() => { document.getElementById('step-cpf').classList.replace('active', 'completed'); document.getElementById('step-analysis').classList.add('active'); }, 1500);
-    setTimeout(() => { document.getElementById('step-analysis').classList.replace('active', 'completed'); document.getElementById('step-name').classList.add('active'); }, 3000);
-    setTimeout(() => { document.getElementById('step-name').classList.replace('active', 'completed'); document.getElementById('step-consolidation').classList.add('active'); }, 5000);
+    const s1 = setTimeout(() => { 
+        const e1 = document.getElementById('step-cpf'); 
+        const e2 = document.getElementById('step-analysis');
+        if(e1) e1.classList.replace('active', 'completed'); 
+        if(e2) e2.classList.add('active'); 
+    }, 1500);
+
+    const s2 = setTimeout(() => { 
+        const e1 = document.getElementById('step-analysis');
+        const e2 = document.getElementById('step-name');
+        if(e1) e1.classList.replace('active', 'completed'); 
+        if(e2) e2.classList.add('active'); 
+    }, 3000);
+
+    const s3 = setTimeout(() => { 
+        const e1 = document.getElementById('step-name');
+        const e2 = document.getElementById('step-consolidation');
+        if(e1) e1.classList.replace('active', 'completed'); 
+        if(e2) e2.classList.add('active'); 
+    }, 5000);
 
     try {
         // Chamada para o Backend
