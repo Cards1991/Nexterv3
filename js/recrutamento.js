@@ -389,7 +389,8 @@ async function consultarCandidatoAPI() {
             });
 
             if (responseEscavador.status === 404) {
-                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador: Nenhum processo encontrado.</span><br>`;
+                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo encontrado.</span><br>`;
+                htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
             } else if (responseEscavador.ok) {
                 const data = await responseEscavador.json();
                 if (data && data.processos && data.processos.length > 0) {
@@ -400,7 +401,8 @@ async function consultarCandidatoAPI() {
                     if (data.processos.length > 5) htmlResultados += `<li><em>... e mais ${data.processos.length - 5} processos.</em></li>`;
                     htmlResultados += '</ul>';
                 } else {
-                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador: Nenhum processo.</span><br>`;
+                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo.</span><br>`;
+                    htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
                 }
             } else {
                 htmlResultados += `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro Escavador.</span><br>`;
