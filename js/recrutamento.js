@@ -240,6 +240,8 @@ function abrirModalCandidato() {
     document.getElementById('candidatoFaseAtual').value = 'triagem';
     document.getElementById('linkCurriculoAtual').innerHTML = '';
     document.getElementById('areaEscavador').style.display = 'none';
+    const elAreaProcessos = document.getElementById('areaProcessosInternos');
+    if (elAreaProcessos) elAreaProcessos.style.display = 'none';
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
 }
@@ -275,6 +277,8 @@ async function editarCandidato(id) {
     }
     
     document.getElementById('areaEscavador').style.display = 'none';
+    const elAreaProcessos = document.getElementById('areaProcessosInternos');
+    if (elAreaProcessos) elAreaProcessos.style.display = 'none';
     
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
@@ -343,6 +347,8 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
     const cpf = cpfRaw.replace(/\D/g, '');
     const divResult = document.getElementById('resultadoEscavador');
     const area = document.getElementById('areaEscavador');
+    const divResultInterno = document.getElementById('resultadoProcessosInternos');
+    const areaInterna = document.getElementById('areaProcessosInternos');
     const inputNome = document.getElementById('candidatoNome');
     const personId = document.getElementById('candidatoId').value || currentCandidatoId;
 
@@ -485,6 +491,7 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
                         </div>
                         <div class="process-details">
                             <p><strong>Tribunal/UF:</strong> ${proc.estado_origem?.sigla || ''} - ${proc.capa?.orgao_julgador || 'N/I'}</p>
+                            <p><strong>Área:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
                             <p><strong>Classe:</strong> ${proc.capa?.classe || 'N/I'}</p>
                             <p><strong>Status:</strong> ${proc.capa?.situacao || 'Desconhecido'}</p>
                             <p><strong>Distribuição:</strong> ${proc.capa?.data_distribuicao ? new Date(proc.capa.data_distribuicao).toLocaleDateString() : 'N/A'}</p>
@@ -523,8 +530,9 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
 
         // -- MÓDULO JURÍDICO INTERNO --
         const nomeAtual = inputNome.value.trim().toLowerCase();
-        if (nomeAtual) {
-            htmlResultados += `<hr class="my-4">`;
+        if (nomeAtual && areaInterna && divResultInterno) {
+            areaInterna.style.display = 'block';
+            let htmlInternos = '';
             try {
                 const processosJuridicosSnap = await db.collection('processos_juridicos').get();
                 const processosContraEmpresa = processosJuridicosSnap.docs.filter(doc => {
@@ -533,18 +541,19 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
                 });
 
                 if (processosContraEmpresa.length > 0) {
-                    htmlResultados += `<h6 class="text-danger"><i class="fas fa-gavel"></i> Sistema Jurídico Interno (${processosContraEmpresa.length} processo(s)):</h6><ul class="mt-2 pl-3">`;
+                    htmlInternos += `<ul class="mt-2 pl-3">`;
                     processosContraEmpresa.forEach(doc => {
                         const proc = doc.data();
-                        htmlResultados += `<li><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} - Status: ${proc.status || 'N/A'}</li>`;
+                        htmlInternos += `<li><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} - Status: ${proc.status || 'N/A'}</li>`;
                     });
-                    htmlResultados += '</ul>';
+                    htmlInternos += '</ul>';
                 } else {
-                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Nada consta para este nome.</span><br>`;
+                    htmlInternos += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Nada consta para este nome.</span><br>`;
                 }
             } catch (err) {
-                htmlResultados += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno indisponível.</span><br>`;
+                htmlInternos += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno indisponível.</span><br>`;
             }
+            divResultInterno.innerHTML = htmlInternos;
         }
 
         divResult.innerHTML = htmlResultados;
