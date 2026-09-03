@@ -244,6 +244,14 @@ function abrirModalCandidato() {
     modal.show();
 }
 
+function formatarCPF(input) {
+    const cpf = input.value.replace(/\D/g, '').slice(0, 11);
+    input.value = cpf
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
 async function editarCandidato(id) {
     const cand = candidatosAtuais.find(c => c.id === id);
     if (!cand) return;
@@ -251,7 +259,9 @@ async function editarCandidato(id) {
     document.getElementById('candidatoId').value = cand.id;
     document.getElementById('candidatoVagaId').value = cand.vagaId;
     document.getElementById('candidatoNome').value = cand.nome;
-    document.getElementById('candidatoCpf').value = cand.cpf;
+    const cpfInput = document.getElementById('candidatoCpf');
+    cpfInput.value = cand.cpf;
+    formatarCPF(cpfInput);
     document.getElementById('candidatoTelefone').value = cand.telefone || '';
     document.getElementById('candidatoEmail').value = cand.email || '';
     document.getElementById('candidatoAnotacoes').value = cand.anotacoes || '';
