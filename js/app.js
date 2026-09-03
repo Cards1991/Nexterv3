@@ -443,6 +443,9 @@ async function carregarDadosSecao(sectionName) {
             case 'recrutamento':
                 if (typeof inicializarRecrutamento === 'function') await inicializarRecrutamento();
                 break;
+            case 'dashboard-inicial':
+                if (typeof inicializarDashboardInicial === 'function') inicializarDashboardInicial();
+                break;
         }
     } catch (error) {
         console.error(`Erro ao carregar dados da seção ${sectionName}:`, error);
@@ -452,6 +455,30 @@ async function carregarDadosSecao(sectionName) {
 // ============================
 // 🛠️ FUNÇÕES UTILITÁRIAS
 // ============================
+
+window.inicializarDashboardInicial = function() {
+    function atualizarRelogio() {
+        const agora = new Date();
+        const configHora = { hour: '2-digit', minute: '2-digit', second: '2-digit' };
+        const configData = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+        
+        const elHora = document.getElementById('hora-atual');
+        const elData = document.getElementById('data-atual');
+        
+        if(elHora) elHora.innerText = agora.toLocaleTimeString('pt-BR', configHora);
+        if(elData) {
+            let dataStr = agora.toLocaleDateString('pt-BR', configData);
+            elData.innerText = dataStr.charAt(0).toUpperCase() + dataStr.slice(1);
+        }
+    }
+    
+    if(window.timerRelogioId) clearInterval(window.timerRelogioId);
+    
+    if (document.getElementById('hora-atual') || document.getElementById('data-atual')) {
+        window.timerRelogioId = setInterval(atualizarRelogio, 1000);
+        atualizarRelogio();
+    }
+};
 
 // Formatar data
 function formatarData(date) {
