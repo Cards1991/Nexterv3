@@ -1,30 +1,47 @@
-<div class="container-fluid mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Administração de Usuários</h2>
-        <button class="btn btn-primary" onclick="abrirModalNovoUsuario()">
-            <i class="fas fa-user-plus"></i> Novo Usuário
-        </button>
-
-        <button class="btn btn-outline-secondary" onclick="exibirSenhaCadastrada()" title="Mostrar a senha cadastrada">
-            <i class="fas fa-eye"></i> Ver senha cadastrada
-        </button>
+<div class="container-fluid mt-4 fade-in">
+    <!-- Cabeçalho e Ações -->
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="page-title mb-0"><i class="fas fa-users-cog me-2 text-primary"></i>Administração de Contas</h2>
+            <p class="text-muted mb-0 mt-1">Gerencie os acessos, permissões e restrições dos usuários do sistema.</p>
+        </div>
+        
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <div class="input-group" style="width: auto; min-width: 250px;">
+                <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                <input type="text" id="pesquisa-usuario" class="form-control border-start-0 ps-0" placeholder="Buscar por nome ou e-mail..." onkeyup="filtrarUsuariosAdmin()">
+            </div>
+            
+            <button class="btn btn-outline-secondary text-nowrap shadow-sm" onclick="exibirSenhaCadastrada()" title="Consultar a senha cadastrada da equipe">
+                <i class="fas fa-eye"></i> <span class="d-none d-md-inline">Ver Senhas</span>
+            </button>
+            <button class="btn btn-primary text-nowrap shadow-sm" onclick="abrirModalNovoUsuario()">
+                <i class="fas fa-user-plus"></i> <span class="d-none d-md-inline">Novo Usuário</span>
+            </button>
+        </div>
     </div>
 
-    <div class="card shadow-sm">
+    <!-- Tabela de Usuários -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden">
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
-                    <thead class="bg-light">
+                <table class="table table-hover align-middle mb-0" id="tabela-usuarios-grid">
+                    <thead class="table-light">
                         <tr>
-                            <th>Email</th>
-                            <th>Nome</th>
-                            <th>Admin</th>
-                            <th>Restrição de Setor</th>
-                            <th class="text-end">Ações</th>
+                            <th class="ps-4 text-muted text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">Usuário</th>
+                            <th class="text-muted text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">Nível de Acesso</th>
+                            <th class="text-muted text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">Restrições</th>
+                            <th class="text-end pe-4 text-muted text-uppercase" style="font-size: 0.8rem; letter-spacing: 0.5px;">Ações</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-usuarios-admin">
                         <!-- Preenchido via JS -->
+                        <tr>
+                            <td colspan="4" class="text-center p-5 text-muted">
+                                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>
+                                Carregando usuários...
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>

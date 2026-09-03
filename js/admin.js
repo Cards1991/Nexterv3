@@ -4,47 +4,107 @@ async function inicializarAdmin() {
     await carregarUsuariosAdmin();
 }
 
+let todosUsuariosAdmin = [];
+
 async function carregarUsuariosAdmin() {
     const tbody = document.getElementById('tabela-usuarios-admin');
     if (!tbody) return;
     
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center p-5 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-3"></i><br>Carregando usuários...</td></tr>';
 
     try {
         const usersSnap = await db.collection('usuarios').get();
         if (usersSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center">Nenhum usuário encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center p-5 text-muted">Nenhum usuário encontrado.</td></tr>';
             return;
         }
 
-        tbody.innerHTML = '';
+        todosUsuariosAdmin = [];
         usersSnap.forEach(doc => {
-            const user = doc.data();
-            const row = `
-                <tr>
-                    <td>${user.email}</td>
-                    <td>${user.nome || '-'}</td>
-                    <td>${user.permissoes?.isAdmin ? '<span class="badge bg-success">Sim</span>' : '<span class="badge bg-secondary">Não</span>'}</td>
-                    <td>${user.permissoes?.restricaoSetor || 'N/A'}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary" title="Editar Permissões" onclick="abrirModalPermissoes('${doc.id}')">
-                            <i class="fas fa-edit"></i> Editar Permissões
-                        </button>
-                        <button class="btn btn-sm btn-outline-secondary" title="Resetar Senha" onclick="resetarSenhaUsuario('${user.email}')">
-                            <i class="fas fa-key"></i> Resetar Senha
-                        </button>
-                        <button class="btn btn-sm btn-outline-danger" title="Excluir Usuário" onclick="excluirUsuario('${doc.id}', '${user.email}')">
-                            <i class="fas fa-trash"></i> Excluir
-                        </button>
-                    </td>
-                </tr>
-            `;
-            tbody.innerHTML += row;
+            todosUsuariosAdmin.push({ id: doc.id, ...doc.data() });
         });
+        
+        renderizarTabelaUsuariosAdmin(todosUsuariosAdmin);
     } catch (error) {
         console.error("Erro ao carregar usuários:", error);
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar usuários.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-5 text-danger">Erro ao carregar usuários.</td></tr>';
     }
+}
+
+function renderizarTabelaUsuariosAdmin(usuarios) {
+    const tbody = document.getElementById('tabela-usuarios-admin');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (usuarios.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center p-5 text-muted">Nenhum usuário correspondente à pesquisa.</td></tr>';
+        return;
+    }
+
+    usuarios.forEach(user => {
+        const nome = user.nome || 'Usuário Indefinido';
+        const iniciais = nome.substring(0, 2).toUpperCase();
+        
+        let permissoesHtml = '';
+        if (user.permissoes?.isAdmin) {
+            permissoesHtml += '<span class="badge bg-danger-subtle text-danger border border-danger-subtle rounded-pill me-1 mb-1 px-2 py-1"><i class="fas fa-crown me-1"></i>Admin Master</span>';
+        } else if (user.permissoes?.isMecanicoAdmin) {
+            permissoesHtml += '<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle rounded-pill me-1 mb-1 px-2 py-1"><i class="fas fa-tools me-1"></i>Admin Mecânico</span>';
+        } else if (user.permissoes?.isMecanico) {
+            permissoesHtml += '<span class="badge bg-info-subtle text-info-emphasis border border-info-subtle rounded-pill me-1 mb-1 px-2 py-1">Mecânico</span>';
+        } else {
+            permissoesHtml += '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle rounded-pill me-1 mb-1 px-2 py-1">Padrão</span>';
+        }
+
+        const restricao = user.permissoes?.restricaoSetor 
+            ? `<span class="badge bg-light text-dark border rounded-pill px-2 py-1"><i class="fas fa-lock me-1 text-warning"></i>${user.permissoes.restricaoSetor}</span>`
+            : '<span class="text-muted small"><i class="fas fa-globe me-1"></i>Acesso Global</span>';
+
+        const row = `
+            <tr>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="bg-primary text-white d-flex justify-content-center align-items-center rounded-circle me-3 shadow-sm" style="width: 42px; height: 42px; font-weight: 700; font-size: 1.1rem; background: linear-gradient(135deg, #0d6efd, #0dcaf0);">
+                            ${iniciais}
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark" style="font-size: 0.95rem;">${nome}</div>
+                            <div class="text-muted small">${user.email}</div>
+                        </div>
+                    </div>
+                </td>
+                <td>
+                    <div class="d-flex flex-wrap" style="max-width: 220px;">
+                        ${permissoesHtml}
+                    </div>
+                </td>
+                <td>${restricao}</td>
+                <td class="text-end">
+                    <div class="btn-group shadow-sm">
+                        <button class="btn btn-sm btn-light border text-primary" title="Editar Permissões" onclick="abrirModalPermissoes('${user.id}')">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-light border text-warning" title="Resetar Senha" onclick="resetarSenhaUsuario('${user.email}')">
+                            <i class="fas fa-key"></i>
+                        </button>
+                        <button class="btn btn-sm btn-light border text-danger" title="Excluir Usuário" onclick="excluirUsuario('${user.id}', '${user.email}')">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+        tbody.innerHTML += row;
+    });
+}
+
+function filtrarUsuariosAdmin() {
+    const termo = document.getElementById('pesquisa-usuario')?.value.toLowerCase() || '';
+    const filtrados = todosUsuariosAdmin.filter(u => 
+        (u.nome && u.nome.toLowerCase().includes(termo)) || 
+        (u.email && u.email.toLowerCase().includes(termo))
+    );
+    renderizarTabelaUsuariosAdmin(filtrados);
 }
 
 async function abrirModalPermissoes(uid) {
