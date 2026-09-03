@@ -342,7 +342,7 @@ async function salvarCandidato() {
 // Token placeholder (Substitua depois pelo seu token do Hub Desenvolvedor)
 const HUB_DESENVOLVEDOR_TOKEN = 'SEU_TOKEN_AQUI';
 
-async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
+async function consultarCandidatoAPI(deepSearchModeParam = null) {
     const cpfRaw = document.getElementById('candidatoCpf').value;
     const cpf = cpfRaw.replace(/\D/g, '');
     const divResult = document.getElementById('resultadoEscavador');
@@ -355,6 +355,12 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
     if (!cpf || cpf.length !== 11) {
         mostrarMensagem('Digite um CPF válido (11 dígitos).', 'warning');
         return;
+    }
+
+    let modeToUse = deepSearchModeParam;
+    if (!modeToUse) {
+        const exactCheck = document.getElementById('buscaExataCpf');
+        modeToUse = (exactCheck && exactCheck.checked) ? 'AUTO' : 'HOMONIMOS_ONLY';
     }
 
     // 1. Dispara a busca interna e aguarda o resultado
@@ -420,7 +426,7 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
                 personId: personId || null,
                 cpfRaw: cpf,
                 nomeRaw: inputNome.value.trim(),
-                mode: deepSearchMode
+                mode: modeToUse
             })
         });
 

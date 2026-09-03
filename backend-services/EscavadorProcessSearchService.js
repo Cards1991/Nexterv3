@@ -170,23 +170,25 @@ class EscavadorProcessSearchService {
     };
 
     try {
-      // Camada 1 - CPF Exato
-      strategiesExecuted.push('CPF_EXACT');
-      const resCpfExato = await this.getAllPages('/envolvido/processos', {
-        cpf_cnpj: cpfLimpo,
-        incluir_homonimos: 0,
-        limit: 100,
-        ordena_por: 'data_inicio',
-        ordem: 'desc'
-      });
-      
-      if (resCpfExato.envolvidoEncontrado && resCpfExato.envolvidoEncontrado.nome) {
-        nomeEscavador = resCpfExato.envolvidoEncontrado.nome;
+      if (deepSearchMode !== 'HOMONIMOS_ONLY') {
+        // Camada 1 - CPF Exato
+        strategiesExecuted.push('CPF_EXACT');
+        const resCpfExato = await this.getAllPages('/envolvido/processos', {
+          cpf_cnpj: cpfLimpo,
+          incluir_homonimos: 0,
+          limit: 100,
+          ordena_por: 'data_inicio',
+          ordem: 'desc'
+        });
+        
+        if (resCpfExato.envolvidoEncontrado && resCpfExato.envolvidoEncontrado.nome) {
+          nomeEscavador = resCpfExato.envolvidoEncontrado.nome;
+        }
+
+        resCpfExato.items.forEach(p => addProcess(p, 'CPF_EXACT'));
       }
 
-      resCpfExato.items.forEach(p => addProcess(p, 'CPF_EXACT'));
-
-      const needsDeepSearch = deepSearchMode === 'ALWAYS' || (deepSearchMode === 'AUTO' && resCpfExato.items.length === 0);
+      const needsDeepSearch = deepSearchMode === 'ALWAYS' || deepSearchMode === 'HOMONIMOS_ONLY' || (deepSearchMode === 'AUTO' && allProcesses.size === 0);
 
       if (needsDeepSearch) {
         // Camada 2 - CPF Homônimos
