@@ -400,15 +400,28 @@ async function consultarCandidatoAPI() {
             // Tentativa 2: Nome + Homônimos (Fallback)
             if (processosEncontrados.length === 0 && inputNome.value.trim() !== '') {
                 const nomeBusca = encodeURIComponent(inputNome.value.trim());
-                const responseNome = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?nome=${nomeBusca}&incluir_homonimos=true`, {
+                // Na API v1, a busca por nome é feita no motor de busca e depois puxamos o perfil da pessoa
+                const responseBusca = await fetch(`https://api.escavador.com/api/v1/busca?q=${nomeBusca}&qo=p`, {
                     headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
                 });
                 
-                if (responseNome.ok) {
-                    const dataNome = await responseNome.json();
-                    if (dataNome && dataNome.processos && dataNome.processos.length > 0) {
-                        processosEncontrados = dataNome.processos;
-                        escavadorStatus = 'Encontrado por Nome (Atenção: Pode conter homônimos)';
+                if (responseBusca.ok) {
+                    const dataBusca = await responseBusca.json();
+                    if (dataBusca && dataBusca.items && dataBusca.items.length > 0) {
+                        const pessoaId = dataBusca.items[0].id; // Pega o perfil mais relevante
+                        
+                        // Busca os processos da pessoa encontrada
+                        const responsePessoa = await fetch(`https://api.escavador.com/api/v1/pessoas/${pessoaId}`, {
+                            headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        
+                        if (responsePessoa.ok) {
+                            const dataPessoa = await responsePessoa.json();
+                            if (dataPessoa && dataPessoa.processos && dataPessoa.processos.length > 0) {
+                                processosEncontrados = dataPessoa.processos;
+                                escavadorStatus = 'Encontrado por Nome (Atenção: Pode conter homônimos)';
+                            }
+                        }
                     }
                 }
             }
