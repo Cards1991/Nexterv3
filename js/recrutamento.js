@@ -426,10 +426,16 @@ async function consultarCandidatoAPI() {
                 }
             }
 
-            // Renderização
+            processosEncontrados = Array.from(new Map(
+                processosEncontrados.map(processo => [
+                    processo.numero_cnj || processo.numero || JSON.stringify(processo),
+                    processo
+                ])
+            ).values());
+
             if (processosEncontrados.length > 0) {
                 htmlResultados += `<strong>Escavador (${processosEncontrados.length} processos - ${escavadorStatus}):</strong><br><ul class="mt-2 pl-3">`;
-                processosEncontrados.slice(0, 5).forEach(proc => {
+                processosEncontrados.forEach(proc => {
                     const numCnj = proc.numero_cnj || proc.numero;
                     htmlResultados += `<li><strong class="text-danger">${numCnj}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}<br>`;
                     
@@ -441,7 +447,6 @@ async function consultarCandidatoAPI() {
                     htmlResultados += `<button type="button" class="btn btn-sm btn-outline-danger" onclick="abrirDocumentosEscavador('${numCnj}')"><i class="fas fa-file-pdf"></i> Explorar Documentos (PDF)</button>`;
                     htmlResultados += `</div></li>`;
                 });
-                if (processosEncontrados.length > 5) htmlResultados += `<li><em>... e mais ${processosEncontrados.length - 5} processos.</em></li>`;
                 htmlResultados += '</ul>';
             } else {
                 htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo encontrado (nem por CPF, nem por Nome).</span><br>`;
