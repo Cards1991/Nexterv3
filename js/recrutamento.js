@@ -852,3 +852,324 @@ window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
         overlay.innerHTML = `<i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><h5 class="text-white">Erro ao visualizar PDF</h5><p class="small text-white-50">${error.message}</p>`;
     }
 };
+
+/* =============================================
+   IMPRESSÃO DA FICHA DO CANDIDATO
+   ============================================= */
+window.imprimirFichaCandidato = function() {
+    const nome = document.getElementById('candidatoNome').value || 'Não informado';
+    let cpf = document.getElementById('candidatoCpf').value || 'Não informado';
+    const telefone = document.getElementById('candidatoTelefone').value || 'Não informado';
+    const email = document.getElementById('candidatoEmail').value || 'Não informado';
+    const vagaSelect = document.getElementById('candidatoVagaId');
+    const vaga = vagaSelect.options[vagaSelect.selectedIndex]?.text || 'Não informada';
+    const anotacoes = document.getElementById('candidatoAnotacoes').value || 'Sem anotações.';
+    
+    // Fallbacks if elements are hidden/empty before fetching
+    const elHistInterno = document.getElementById('resultadoHistorico');
+    const elEscavador = document.getElementById('resultadoEscavador');
+    const elProcInternos = document.getElementById('resultadoProcessosInternos');
+
+    const histInterno = elHistInterno ? elHistInterno.innerHTML : '';
+    let procEscavador = elEscavador ? elEscavador.innerHTML : '';
+    const procInternos = elProcInternos ? elProcInternos.innerHTML : '';
+
+    // Remove buttons and interaction elements from Escavador HTML for printing
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = procEscavador;
+    tempDiv.querySelectorAll('button').forEach(b => b.remove());
+    tempDiv.querySelectorAll('a').forEach(a => a.remove()); // Remove links to avoid clutter
+    tempDiv.querySelectorAll('.review-actions').forEach(d => d.remove());
+    const escavadorClean = tempDiv.innerHTML;
+
+    const dataAtual = new Date().toLocaleString('pt-BR');
+
+    const html = `
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <title>Ficha de Antecedentes - ${nome}</title>
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+            
+            @page {
+                size: A4;
+                margin: 15mm;
+            }
+            
+            body {
+                font-family: 'Inter', sans-serif;
+                color: #333;
+                line-height: 1.5;
+                margin: 0;
+                padding: 0;
+                background: #fff;
+            }
+
+            .header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                border-bottom: 2px solid #1e3a8a;
+                padding-bottom: 10px;
+                margin-bottom: 20px;
+            }
+
+            .header-logo {
+                font-size: 24px;
+                font-weight: 700;
+                color: #1e3a8a;
+                letter-spacing: -0.5px;
+            }
+
+            .header-logo span {
+                color: #ef4444;
+            }
+
+            .header-info {
+                text-align: right;
+                font-size: 10px;
+                color: #666;
+            }
+
+            .doc-title {
+                text-align: center;
+                font-size: 18px;
+                font-weight: 700;
+                text-transform: uppercase;
+                letter-spacing: 1px;
+                margin-bottom: 25px;
+                color: #111827;
+            }
+
+            .section {
+                margin-bottom: 25px;
+                page-break-inside: avoid;
+            }
+
+            .section-title {
+                font-size: 14px;
+                font-weight: 700;
+                text-transform: uppercase;
+                background-color: #f3f4f6;
+                padding: 8px 12px;
+                border-left: 4px solid #1e3a8a;
+                margin-bottom: 15px;
+                color: #374151;
+            }
+
+            .info-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 15px;
+            }
+
+            .info-item {
+                font-size: 12px;
+            }
+
+            .info-item strong {
+                display: block;
+                color: #6b7280;
+                font-size: 10px;
+                text-transform: uppercase;
+                margin-bottom: 2px;
+            }
+
+            .info-item div {
+                font-weight: 600;
+                color: #111827;
+            }
+
+            .box-content {
+                font-size: 12px;
+                border: 1px solid #e5e7eb;
+                padding: 15px;
+                border-radius: 6px;
+            }
+
+            .box-content p { margin-top: 0; }
+
+            /* Escavador clean styles */
+            .process-list {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+            }
+            .process-card {
+                border: 1px solid #d1d5db;
+                border-radius: 6px;
+                padding: 10px;
+                background: #f9fafb;
+                page-break-inside: avoid;
+            }
+            .process-header {
+                display: flex;
+                justify-content: space-between;
+                border-bottom: 1px solid #e5e7eb;
+                padding-bottom: 8px;
+                margin-bottom: 8px;
+            }
+            .process-number { font-weight: 700; color: #1e3a8a; }
+            .process-title { font-size: 11px; color: #4b5563; }
+            .match-badge {
+                font-size: 10px;
+                font-weight: bold;
+                padding: 3px 6px;
+                border-radius: 4px;
+                border: 1px solid #9ca3af;
+                background: #fff;
+            }
+            .process-details p {
+                margin: 2px 0;
+                font-size: 11px;
+            }
+            .escavador-summary {
+                display: flex;
+                gap: 10px;
+                margin-bottom: 15px;
+            }
+            .summary-card {
+                flex: 1;
+                border: 1px solid #e5e7eb;
+                padding: 10px;
+                text-align: center;
+                background: #fff;
+                border-radius: 4px;
+            }
+            .summary-card .count { font-size: 16px; font-weight: bold; }
+            .summary-card .label { font-size: 10px; color: #6b7280; text-transform: uppercase; }
+            
+            .text-danger { color: #dc2626; }
+            .text-success { color: #16a34a; }
+            .text-warning { color: #d97706; }
+            .text-primary { color: #2563eb; }
+            .text-muted { color: #6b7280; }
+
+            .alert { padding: 10px; border: 1px solid #d1d5db; border-radius: 4px; font-size: 11px; margin-bottom: 10px; }
+            .badge { padding: 2px 5px; background: #e5e7eb; border-radius: 3px; font-size: 10px; }
+
+            .signature-area {
+                margin-top: 50px;
+                display: flex;
+                justify-content: space-around;
+                page-break-inside: avoid;
+            }
+
+            .signature-line {
+                width: 250px;
+                border-top: 1px solid #000;
+                text-align: center;
+                padding-top: 5px;
+                font-size: 11px;
+                font-weight: 600;
+            }
+            .signature-line span {
+                display: block;
+                font-size: 10px;
+                font-weight: 400;
+                color: #666;
+            }
+
+            ul { padding-left: 20px; margin-top: 5px; }
+            li { margin-bottom: 5px; font-size: 12px; }
+        </style>
+    </head>
+    <body>
+
+        <div class="header">
+            <div class="header-logo">Nexter <span>/ RH Crival</span></div>
+            <div class="header-info">
+                Documento de Uso Restrito e Confidencial<br>
+                Gerado em: ${dataAtual}
+            </div>
+        </div>
+
+        <div class="doc-title">Relatório de Antecedentes e Ficha do Candidato</div>
+
+        <div class="section">
+            <div class="section-title">Dados do Candidato</div>
+            <div class="box-content info-grid">
+                <div class="info-item">
+                    <strong>Nome Completo</strong>
+                    <div>${nome}</div>
+                </div>
+                <div class="info-item">
+                    <strong>CPF</strong>
+                    <div>${cpf}</div>
+                </div>
+                <div class="info-item">
+                    <strong>Telefone / WhatsApp</strong>
+                    <div>${telefone}</div>
+                </div>
+                <div class="info-item">
+                    <strong>E-mail</strong>
+                    <div>${email}</div>
+                </div>
+                <div class="info-item" style="grid-column: span 2;">
+                    <strong>Vaga Pretendida</strong>
+                    <div>${vaga}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Histórico na Empresa (Ex-Colaborador)</div>
+            <div class="box-content">
+                ${histInterno.trim() && !histInterno.includes('Buscando registros internos') ? histInterno : 'Nenhum registro verificado.'}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Processos Jurídicos Internos</div>
+            <div class="box-content">
+                ${procInternos.trim() && !procInternos.includes('Buscando') ? procInternos : 'Nenhum registro interno verificado.'}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Consulta de Antecedentes (Escavador)</div>
+            <div class="box-content" style="border: none; padding: 0;">
+                ${escavadorClean.trim() && !escavadorClean.includes('Buscando') ? escavadorClean : '<div class="alert">Nenhuma busca de antecedentes realizada ou sem resultados.</div>'}
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-title">Parecer / Anotações do Entrevistador</div>
+            <div class="box-content" style="min-height: 80px;">
+                ${anotacoes.replace(/\n/g, '<br>')}
+            </div>
+        </div>
+
+        <div class="signature-area">
+            <div class="signature-line">
+                ${nome}
+                <span>Candidato</span>
+            </div>
+            <div class="signature-line">
+                Responsável RH
+                <span>Nexter / RH Crival</span>
+            </div>
+        </div>
+
+        <script>
+            window.onload = () => {
+                setTimeout(() => {
+                    window.print();
+                }, 800);
+            };
+        </script>
+    </body>
+    </html>
+    `;
+
+    const printWin = window.open('', '_blank');
+    if (printWin) {
+        printWin.document.open();
+        printWin.document.write(html);
+        printWin.document.close();
+    } else {
+        alert('Por favor, permita pop-ups neste site para poder imprimir a ficha.');
+    }
+};

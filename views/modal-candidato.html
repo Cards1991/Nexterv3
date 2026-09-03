@@ -86,9 +86,12 @@
                     </div>
                 </form>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarCandidato()">Salvar Candidato</button>
+            <div class="modal-footer d-flex justify-content-between">
+                <button type="button" class="btn btn-outline-dark" onclick="imprimirFichaCandidato()"><i class="fas fa-print"></i> Imprimir Ficha</button>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarCandidato()">Salvar Candidato</button>
+                </div>
             </div>
         </div>
     </div>
