@@ -47,11 +47,12 @@
 </div>
 
 <!-- Visão de Cards -->
-<div id="agenda-cards-view" style="max-height: 70vh; overflow-y: auto; padding-right: 15px;">
-    <!-- Seção Minhas Atividades -->
-    <h5 class="mb-3 text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Minhas
-        Atividades</h5>
-    <div class="agenda-container">
+<div id="agenda-cards-view" style="max-height: 70vh; overflow-y: auto; padding-right: 15px; overflow-x: hidden;">
+    <div class="row">
+        <!-- Coluna Minhas Atividades -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <h5 class="mb-3 text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Minhas Atividades</h5>
+            <div class="agenda-container" style="margin-top: 1rem;">
         <!-- Coluna Em Atraso -->
         <div class="agenda-column">
             <div class="agenda-header">
@@ -108,12 +109,13 @@
             </div>
             <div class="agenda-cards" id="agenda-minhas-futuro"></div>
         </div>
-    </div>
+            </div>
+        </div>
 
-    <!-- Seção Atividades da Equipe -->
-    <h5 class="mt-5 mb-3 text-info border-bottom pb-2"><i class="fas fa-users me-2"></i>Atividades
-        da Equipe (Delegadas)</h5>
-    <div class="agenda-container">
+        <!-- Coluna Atividades da Equipe -->
+        <div class="col-xl-6 col-lg-12 mb-4">
+            <h5 class="mb-3 text-info border-bottom pb-2"><i class="fas fa-users me-2"></i>Atividades da Equipe (Delegadas)</h5>
+            <div class="agenda-container" style="margin-top: 1rem;">
         <!-- Coluna Em Atraso -->
         <div class="agenda-column">
             <div class="agenda-header">
@@ -169,6 +171,8 @@
                     id="agenda-equipe-count-futuro">0</span>
             </div>
             <div class="agenda-cards" id="agenda-equipe-futuro"></div>
+        </div>
+            </div>
         </div>
     </div>
 </div>
