@@ -89,6 +89,7 @@ class EscavadorProcessSearchService {
   }
 
   normalizarNome(nome) {
+    if (!nome) return '';
     return nome.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().replace(/\s+/g, ' ');
   }
 
@@ -173,7 +174,7 @@ class EscavadorProcessSearchService {
       strategiesExecuted.push('CPF_EXACT');
       const resCpfExato = await this.getAllPages('/envolvido/processos', {
         cpf_cnpj: cpfLimpo,
-        incluir_homonimos: false,
+        incluir_homonimos: 0,
         limit: 100,
         ordena_por: 'data_inicio',
         ordem: 'desc'
@@ -192,7 +193,7 @@ class EscavadorProcessSearchService {
         strategiesExecuted.push('CPF_HOMONYMS');
         const resCpfHomonimos = await this.getAllPages('/envolvido/processos', {
           cpf_cnpj: cpfLimpo,
-          incluir_homonimos: true,
+          incluir_homonimos: 1,
           limit: 100
         });
 
@@ -202,14 +203,16 @@ class EscavadorProcessSearchService {
         strategiesExecuted.push('NAME_SEARCH');
         const searchName = nomeEscavador ? nomeEscavador : nomeNorm;
         
-        const resNome = await this.getAllPages('/envolvido/processos', {
-          nome: searchName,
-          limit: 100,
-          ordena_por: 'data_inicio',
-          ordem: 'desc'
-        });
+        if (searchName) {
+            const resNome = await this.getAllPages('/envolvido/processos', {
+              nome: searchName,
+              limit: 100,
+              ordena_por: 'data_inicio',
+              ordem: 'desc'
+            });
 
-        resNome.items.forEach(p => addProcess(p, 'NAME_SEARCH'));
+            resNome.items.forEach(p => addProcess(p, 'NAME_SEARCH'));
+        }
       }
 
       // Consolidar e calcular Match Score

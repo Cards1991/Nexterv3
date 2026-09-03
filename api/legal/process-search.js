@@ -69,15 +69,15 @@ module.exports = async function handler(req, res) {
 
   // If personData not found from DB, try to use provided raw data if allowed (or fail)
   if (!personData) {
-    if (cpfRaw && nomeRaw) {
-      personData = { cpf: cpfRaw, nome: nomeRaw };
+    if (cpfRaw) {
+      personData = { cpf: cpfRaw, nome: nomeRaw || '' };
     } else {
-      return res.status(404).json({ status: 'API_ERROR', error: 'Pessoa não encontrada e dados não fornecidos.' });
+      return res.status(404).json({ status: 'API_ERROR', error: 'Candidato não encontrado no sistema e CPF não fornecido.' });
     }
   }
 
-  if (!personData.cpf || !personData.nome) {
-    return res.status(400).json({ status: 'API_ERROR', error: 'CPF e Nome são obrigatórios para a pesquisa.' });
+  if (!personData.cpf) {
+    return res.status(400).json({ status: 'API_ERROR', error: 'CPF é obrigatório para a pesquisa.' });
   }
 
   try {
