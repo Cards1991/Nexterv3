@@ -1,5 +1,5 @@
 const admin = require('firebase-admin');
-const EscavadorProcessSearchService = require('../../backend-services/EscavadorProcessSearchService');
+const EscavadorProcessSearchService = require('./EscavadorProcessSearchService');
 
 // Initialize Firebase Admin if not already initialized
 if (!admin.apps.length) {
@@ -40,7 +40,7 @@ module.exports = async function handler(req, res) {
     return res.status(405).json({ status: 'API_ERROR', error: 'Method Not Allowed' });
   }
 
-  const { personId, mode = 'AUTO', collection = 'candidatos', cpfRaw, nomeRaw } = req.body;
+  const { personId, mode = 'AUTO', collection = 'candidatos', cpfRaw, nomeRaw } = req.body || {};
   const token = process.env.ESCAVADOR_API_TOKEN;
 
   if (!token) {
