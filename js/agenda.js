@@ -781,6 +781,7 @@ function alternarVisaoAgenda(view) {
         calendarioDataAtual = new Date();
     } else {
         viewCalendario.classList.add('d-none');
+        viewCards.classList.remove('d-none');
         btnCards.classList.add('active');
         btnCalendario.classList.remove('active');
         configurarFiltrosDeDataAgenda();
@@ -987,7 +988,60 @@ function atualizarJarvisAgenda(eventosMinhas, eventosEquipe) {
     
     greetingEl.innerText = saudacao;
     messageEl.innerHTML = mensagem;
+    calcularIndicadores(eventosMinhas, 'minhas');
+    calcularIndicadores(eventosEquipe, 'equipe');
+}
 
+function calcularIndicadores(eventos, sufixo) {
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    
+    let total = eventos.length;
+    let concluidas = 0;
+    let atrasadas = 0;
+    let andamento = 0;
+    let futuras = 0;
+
+    eventos.forEach(e => {
+        const data = new Date(e.data);
+        data.setHours(0,0,0,0);
+        
+        if (e.status === 'Concluído' || e.status === 'Encerrado') {
+            concluidas++;
+        } else if ((e.status === 'Aberto' || e.status === 'Pendente') && data < hoje) {
+            atrasadas++;
+        } else if (e.status === 'Em Andamento' || data.getTime() === hoje.getTime()) {
+            andamento++;
+        } else {
+            futuras++;
+        }
+    });
+
+    const progressoPercent = total > 0 ? Math.round((concluidas / total) * 100) : 0;
+    
+    const pAtrasadas = total > 0 ? (atrasadas / total) * 100 : 0;
+    const pAndamento = total > 0 ? (andamento / total) * 100 : 0;
+    const pFuturas = total > 0 ? (futuras / total) * 100 : 0;
+    const pConcluidas = total > 0 ? (concluidas / total) * 100 : 0;
+
+    // Atualizar UI
+    const elPercent = document.getElementById(`progresso-${sufixo}-percent`);
+    const elBar = document.getElementById(`progresso-${sufixo}-bar`);
+    if(elPercent) elPercent.innerText = `${progressoPercent}%`;
+    if(elBar) {
+        elBar.style.width = `${progressoPercent}%`;
+        elBar.setAttribute('aria-valuenow', progressoPercent);
+    }
+
+    const bAtrasadas = document.getElementById(`dist-${sufixo}-atrasadas`);
+    const bAndamento = document.getElementById(`dist-${sufixo}-andamento`);
+    const bAbertas = document.getElementById(`dist-${sufixo}-abertas`);
+    const bConcluidas = document.getElementById(`dist-${sufixo}-concluidas`);
+
+    if(bAtrasadas) bAtrasadas.style.width = `${pAtrasadas}%`;
+    if(bAndamento) bAndamento.style.width = `${pAndamento}%`;
+    if(bAbertas) bAbertas.style.width = `${pFuturas}%`;
+    if(bConcluidas) bConcluidas.style.width = `${pConcluidas}%`;
 }
 
 function inicializarTooltips() {
