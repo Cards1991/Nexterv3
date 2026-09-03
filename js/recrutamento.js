@@ -338,11 +338,13 @@ async function salvarCandidato() {
 // Token placeholder (Substitua depois pelo seu token do Hub Desenvolvedor)
 const HUB_DESENVOLVEDOR_TOKEN = 'SEU_TOKEN_AQUI';
 
-async function consultarCandidatoAPI() {
-    const cpf = document.getElementById('candidatoCpf').value.replace(/\D/g, '');
+async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
+    const cpfRaw = document.getElementById('candidatoCpf').value;
+    const cpf = cpfRaw.replace(/\D/g, '');
     const divResult = document.getElementById('resultadoEscavador');
     const area = document.getElementById('areaEscavador');
     const inputNome = document.getElementById('candidatoNome');
+    const personId = document.getElementById('candidatoId').value || currentCandidatoId;
 
     if (!cpf || cpf.length !== 11) {
         mostrarMensagem('Digite um CPF válido (11 dígitos).', 'warning');
@@ -352,122 +354,160 @@ async function consultarCandidatoAPI() {
     // 1. Dispara a busca interna e aguarda o resultado
     const funcionarioEncontradoInternamente = await consultarHistoricoInterno(cpf);
 
-    // 2. Pré-Cadastro via Hub Desenvolvedor (Receita Federal) se NÃO achou internamente
+    // 2. Pré-Cadastro via Hub Desenvolvedor (Receita Federal)
     if (!funcionarioEncontradoInternamente) {
         try {
             mostrarMensagem('Buscando dados na Receita Federal...', 'info');
-            // MOCK/PLACEHOLDER: Substitua pela chamada real ao endpoint do Hub Desenvolvedor para a Receita Federal
-            // Exemplo: fetch(`https://api.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`)
-            
-            // Simulação de resposta bem-sucedida para o pré-cadastro
-            /* 
-            const response = await fetch(`URL_HUB_DESENVOLVEDOR`);
-            const data = await response.json();
-            if (data.status === true && data.result) {
-                inputNome.value = data.result.nome_da_pf;
-            }
-            */
-           console.log("Integração Hub Desenvolvedor pendente. API Token necessário.");
-           
+            // MOCK/PLACEHOLDER: Integração Receita Federal
         } catch (error) {
             console.error("Erro Hub Desenvolvedor:", error);
         }
     } else {
-        // Se encontrou internamente, podemos usar o nome que já temos no próprio BD
         try {
-            const funcSnap = await db.collection('funcionarios').where('cpf', '==', document.getElementById('candidatoCpf').value).get();
+            const funcSnap = await db.collection('funcionarios').where('cpf', '==', cpfRaw).get();
             if(!funcSnap.empty) {
                 inputNome.value = funcSnap.docs[0].data().nome;
             }
         } catch(e) {}
     }
 
-    // 3. Buscar Processos no Escavador / Jus Brasil
+    // 3. Buscar Processos via NEXTER Backend (Escavador V2)
     area.style.display = 'block';
-    divResult.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando processos associados...';
+    
+    // Novo Loading Flow Interativo
+    divResult.innerHTML = `
+        <div class="escavador-loading-steps">
+            <div class="step-item active" id="step-cpf"><i class="fas fa-spinner fa-spin"></i> Consultando CPF...</div>
+            <div class="step-item" id="step-analysis"><i class="fas fa-search"></i> Analisando correspondências...</div>
+            <div class="step-item" id="step-name"><i class="fas fa-users"></i> Ampliando pesquisa por nome...</div>
+            <div class="step-item" id="step-consolidation"><i class="fas fa-layer-group"></i> Consolidando processos encontrados...</div>
+        </div>
+    `;
+
+    setTimeout(() => { document.getElementById('step-cpf').classList.replace('active', 'completed'); document.getElementById('step-analysis').classList.add('active'); }, 1500);
+    setTimeout(() => { document.getElementById('step-analysis').classList.replace('active', 'completed'); document.getElementById('step-name').classList.add('active'); }, 3000);
+    setTimeout(() => { document.getElementById('step-name').classList.replace('active', 'completed'); document.getElementById('step-consolidation').classList.add('active'); }, 5000);
 
     try {
+        // Chamada para o Backend
+        const response = await fetch('/api/legal/process-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                personId: personId || null,
+                cpfRaw: cpf,
+                nomeRaw: inputNome.value.trim(),
+                mode: deepSearchMode
+            })
+        });
+
+        const data = await response.json();
+        
         let htmlResultados = '';
 
-        // -- ESCAVADOR --
-        if (escavadorToken) {
-            let processosEncontrados = [];
-            let escavadorStatus = '';
+        if (response.ok && data.status === 'SUCCESS_WITH_RESULTS') {
+            const sum = data.summary;
             
-            // Tentativa 1: CPF
-            const responseCpf = await fetch(`https://api.escavador.com/api/v1/envolvido/processos?cpf=${cpf}`, {
-                headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
-            });
-            
-            if (responseCpf.ok) {
-                const data = await responseCpf.json();
-                if (data && data.processos && data.processos.length > 0) {
-                    processosEncontrados = data.processos;
-                    escavadorStatus = 'Encontrado por CPF';
-                }
-            }
+            // Header
+            htmlResultados += `
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="mb-0 text-primary"><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</h5>
+                    ${deepSearchMode !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-secondary" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada</button>` : ''}
+                </div>
+            `;
 
-            // Tentativa 2: Nome + Homônimos (Fallback)
-            if (processosEncontrados.length === 0 && inputNome.value.trim() !== '') {
-                const nomeBusca = encodeURIComponent(inputNome.value.trim());
-                // Na API v1, a busca por nome é feita no motor de busca e depois puxamos o perfil da pessoa
-                const responseBusca = await fetch(`https://api.escavador.com/api/v1/busca?q=${nomeBusca}&qo=p`, {
-                    headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
-                });
+            // Summary Cards
+            htmlResultados += `
+                <div class="escavador-summary">
+                    <div class="summary-card" style="border-left: 4px solid var(--nexter-success);">
+                        <div class="count text-success">${sum.confirmed}</div>
+                        <div class="label">CPF Confirmado</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid var(--nexter-primary);">
+                        <div class="count text-primary">${sum.highConfidence}</div>
+                        <div class="label">Alta Correspondência</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid var(--nexter-warning);">
+                        <div class="count text-warning">${sum.possible}</div>
+                        <div class="label">Verificar Identidade</div>
+                    </div>
+                    <div class="summary-card" style="border-left: 4px solid var(--nexter-danger);">
+                        <div class="count text-danger">${sum.homonyms}</div>
+                        <div class="label">Possíveis Homônimos</div>
+                    </div>
+                </div>
                 
-                if (responseBusca.ok) {
-                    const dataBusca = await responseBusca.json();
-                    if (dataBusca && dataBusca.items && dataBusca.items.length > 0) {
-                        const pessoaId = dataBusca.items[0].id; // Pega o perfil mais relevante
-                        
-                        // Busca os processos da pessoa encontrada
-                        const responsePessoa = await fetch(`https://api.escavador.com/api/v1/pessoas/${pessoaId}`, {
-                            headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
-                        });
-                        
-                        if (responsePessoa.ok) {
-                            const dataPessoa = await responsePessoa.json();
-                            if (dataPessoa && dataPessoa.processos && dataPessoa.processos.length > 0) {
-                                processosEncontrados = dataPessoa.processos;
-                                escavadorStatus = 'Encontrado por Nome (Atenção: Pode conter homônimos)';
-                            }
-                        }
-                    }
-                }
+                <div class="alert alert-info small py-2"><i class="fas fa-info-circle"></i> <strong>Estratégia:</strong> Pesquisa ampliada realizada utilizando documento, nome e critérios de correspondência (${data.strategiesExecuted.join(', ')}).</div>
+            `;
+
+            if (sum.homonyms > 0 || sum.possible > 0) {
+                 htmlResultados += `<div class="alert alert-warning small py-2"><i class="fas fa-exclamation-triangle"></i> Encontramos processos associados ao mesmo nome, porém o CPF não foi identificado diretamente na fonte judicial. Revise as correspondências sinalizadas.</div>`;
             }
 
-            processosEncontrados = Array.from(new Map(
-                processosEncontrados.map(processo => [
-                    processo.numero_cnj || processo.numero || JSON.stringify(processo),
-                    processo
-                ])
-            ).values());
+            htmlResultados += `<div class="process-list mt-3">`;
+            
+            data.processes.forEach(proc => {
+                let badgeClass = 'homonym';
+                if (proc.classificacao === 'CONFIRMADO') badgeClass = 'confirmed';
+                else if (proc.classificacao === 'ALTA_PROBABILIDADE') badgeClass = 'high';
+                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') badgeClass = 'possible';
 
-            if (processosEncontrados.length > 0) {
-                htmlResultados += `<strong>Escavador (${processosEncontrados.length} processos - ${escavadorStatus}):</strong><br><ul class="mt-2 pl-3">`;
-                processosEncontrados.forEach(proc => {
-                    const numCnj = proc.numero_cnj || proc.numero;
-                    htmlResultados += `<li><strong class="text-danger">${numCnj}</strong> - ${proc.titulo_polo_ativo || 'Pólo Ativo'} x ${proc.titulo_polo_passivo || 'Pólo Passivo'}<br>`;
-                    
-                    // Botões de Ação
-                    htmlResultados += `<div class="mt-1 mb-2">`;
-                    if (proc.fontes && proc.fontes.length > 0 && proc.fontes[0].url) {
-                        htmlResultados += `<a href="${proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-primary me-2"><i class="fas fa-university"></i> Ver Oficial no Tribunal</a>`;
-                    }
-                    htmlResultados += `<button type="button" class="btn btn-sm btn-outline-danger" onclick="abrirDocumentosEscavador('${numCnj}')"><i class="fas fa-file-pdf"></i> Explorar Documentos (PDF)</button>`;
-                    htmlResultados += `</div></li>`;
-                });
-                htmlResultados += '</ul>';
-            } else {
-                htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Escavador (API): Nenhum processo encontrado (nem por CPF, nem por Nome).</span><br>`;
-                htmlResultados += `<a href="https://www.escavador.com/busca?q=${cpf}&qo=t" target="_blank" class="btn btn-sm btn-outline-secondary mt-1"><i class="fas fa-external-link-alt"></i> Verificação Profunda no Site</a><br>`;
-            }
+                htmlResultados += `
+                    <div class="process-card fade-in">
+                        <div class="process-header">
+                            <div>
+                                <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
+                                <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
+                            </div>
+                            <div class="d-flex flex-column align-items-end">
+                                <span class="match-badge ${badgeClass}" title="${proc.match_documento_por}">
+                                    ${proc.badgeText}
+                                </span>
+                                <span class="score-text mt-1">Score: ${proc.nexterMatchScore}/100</span>
+                            </div>
+                        </div>
+                        <div class="process-details">
+                            <p><strong>Tribunal/UF:</strong> ${proc.estado_origem?.sigla || ''} - ${proc.capa?.orgao_julgador || 'N/I'}</p>
+                            <p><strong>Classe:</strong> ${proc.capa?.classe || 'N/I'}</p>
+                            <p><strong>Status:</strong> ${proc.capa?.situacao || 'Desconhecido'}</p>
+                            <p><strong>Distribuição:</strong> ${proc.capa?.data_distribuicao ? new Date(proc.capa.data_distribuicao).toLocaleDateString() : 'N/A'}</p>
+                        </div>
+                        <div class="process-actions">
+                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="abrirDocumentosEscavador('${proc.numero_cnj}')"><i class="fas fa-file-pdf"></i> Documentos Públicos</button>
+                            ${proc.fontes && proc.fontes[0]?.url ? `<a href="${proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                            
+                            ${proc.classificacao !== 'CONFIRMADO' ? `
+                                <div class="review-actions">
+                                    <button class="btn btn-sm btn-success text-white" onclick="revisarCorrespondencia('${personId}', '${proc.numero_cnj}', 'CONFIRMED')"><i class="fas fa-check"></i> Confirmar</button>
+                                    <button class="btn btn-sm btn-warning" onclick="revisarCorrespondencia('${personId}', '${proc.numero_cnj}', 'HOMONYM')"><i class="fas fa-ban"></i> Homônimo</button>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            htmlResultados += `</div>`;
+        } else if (response.ok && data.status === 'SUCCESS_NO_RESULTS') {
+            htmlResultados += `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> Não foram encontrados processos nas fontes consultadas. 
+                    <br><small>A ausência de resultados não significa necessariamente inexistência de processos, pois alguns tribunais podem não disponibilizar CPF/CNPJ das partes.</small>
+                </div>
+                ${deepSearchMode !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada (Deep Search)</button>` : ''}
+            `;
+        } else {
+            // Tratamento de Erros Retornados pelo Backend
+            let errorMsg = 'Erro ao consultar API.';
+            if (data.status === 'AUTH_ERROR') errorMsg = 'Falha de autenticação com o provedor (Token Inválido).';
+            if (data.status === 'NO_CREDIT') errorMsg = 'Consulta temporariamente indisponível (Sem Saldo).';
+            if (data.status === 'RATE_LIMIT') errorMsg = 'Muitas consultas simultâneas. Tente novamente em breve.';
+            htmlResultados += `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${errorMsg}</div>`;
         }
 
         // -- MÓDULO JURÍDICO INTERNO --
         const nomeAtual = inputNome.value.trim().toLowerCase();
         if (nomeAtual) {
-            htmlResultados += `<hr class="my-2">`;
+            htmlResultados += `<hr class="my-4">`;
             try {
                 const processosJuridicosSnap = await db.collection('processos_juridicos').get();
                 const processosContraEmpresa = processosJuridicosSnap.docs.filter(doc => {
@@ -476,33 +516,52 @@ async function consultarCandidatoAPI() {
                 });
 
                 if (processosContraEmpresa.length > 0) {
-                    htmlResultados += `<strong class="text-danger"><i class="fas fa-gavel"></i> Sistema Jurídico Interno (${processosContraEmpresa.length} processo(s)):</strong><br><ul class="mt-2 pl-3">`;
+                    htmlResultados += `<h6 class="text-danger"><i class="fas fa-gavel"></i> Sistema Jurídico Interno (${processosContraEmpresa.length} processo(s)):</h6><ul class="mt-2 pl-3">`;
                     processosContraEmpresa.forEach(doc => {
                         const proc = doc.data();
                         htmlResultados += `<li><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} - Status: ${proc.status || 'N/A'}</li>`;
                     });
                     htmlResultados += '</ul>';
                 } else {
-                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Limpo.</span><br>`;
+                    htmlResultados += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Nada consta para este nome.</span><br>`;
                 }
             } catch (err) {
-                console.error("Erro ao buscar no módulo jurídico:", err);
-                htmlResultados += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno: Indisponível.</span><br>`;
+                htmlResultados += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno indisponível.</span><br>`;
             }
         }
-
-        // -- JUS BRASIL (VIA HUB DESENVOLVEDOR) --
-        // MOCK/PLACEHOLDER: Implementar quando o token do Hub for providenciado
-        htmlResultados += `<hr class="my-2">`;
-        htmlResultados += `<span class="text-muted"><i class="fas fa-search"></i> Jus Brasil: <em>Integração com Hub Desenvolvedor pendente.</em></span><br>`;
 
         divResult.innerHTML = htmlResultados;
         
     } catch (error) {
-        console.error('Erro consulta processos:', error);
-        divResult.innerHTML = `<span class="text-danger"><i class="fas fa-times-circle"></i> Erro na busca. Verifique se as APIs bloquearam por CORS.</span>`;
+        console.error('Erro consulta processos (Network):', error);
+        divResult.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Consulta temporariamente indisponível. Erro de conexão com o servidor.</div>`;
     }
 }
+
+window.revisarCorrespondencia = async function(personId, numeroCnj, decision) {
+    if(!personId || personId === 'undefined') {
+        mostrarMensagem('Salve o candidato antes de revisar a correspondência.', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/legal/review-match', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ personId, numeroCnj, decision, reviewedBy: 'Usuario' })
+        });
+        
+        if (response.ok) {
+            mostrarMensagem('Revisão salva com sucesso!', 'success');
+            // Opcional: Atualizar UI via JS ou re-pesquisar
+        } else {
+            mostrarMensagem('Falha ao salvar revisão.', 'error');
+        }
+    } catch (e) {
+        mostrarMensagem('Erro de conexão.', 'error');
+    }
+}
+
 
 /* =============================================
    HISTÓRICO INTERNO DO EX-COLABORADOR

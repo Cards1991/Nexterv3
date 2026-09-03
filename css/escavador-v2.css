@@ -1,0 +1,195 @@
+/* Motor Inteligente de Busca Processual Escavador V2 */
+
+:root {
+  --nexter-primary: #2563eb;
+  --nexter-success: #16a34a;
+  --nexter-warning: #eab308;
+  --nexter-danger: #dc2626;
+  --nexter-surface: #ffffff;
+  --nexter-surface-hover: #f8fafc;
+  --nexter-border: #e2e8f0;
+  --nexter-text-main: #0f172a;
+  --nexter-text-muted: #64748b;
+  --badge-confirmed-bg: #dcfce7;
+  --badge-confirmed-text: #166534;
+  --badge-high-bg: #dbeafe;
+  --badge-high-text: #1e40af;
+  --badge-possible-bg: #fef9c3;
+  --badge-possible-text: #854d0e;
+  --badge-homonym-bg: #fee2e2;
+  --badge-homonym-text: #991b1b;
+}
+
+/* Loading Steps Animation */
+.escavador-loading-steps {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  text-align: center;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.5rem 0;
+  font-size: 0.95rem;
+  color: var(--nexter-text-muted);
+  opacity: 0.5;
+  transition: all 0.3s ease;
+}
+
+.step-item.active {
+  color: var(--nexter-primary);
+  opacity: 1;
+  font-weight: 600;
+  transform: scale(1.05);
+}
+
+.step-item.completed {
+  color: var(--nexter-success);
+  opacity: 0.8;
+}
+
+/* Summary Cards */
+.escavador-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.summary-card {
+  background: var(--nexter-surface);
+  border: 1px solid var(--nexter-border);
+  border-radius: 0.5rem;
+  padding: 1rem;
+  text-align: center;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.summary-card .count {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 0.25rem;
+}
+
+.summary-card .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--nexter-text-muted);
+}
+
+/* Process List */
+.process-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.process-card {
+  background: var(--nexter-surface);
+  border: 1px solid var(--nexter-border);
+  border-radius: 0.5rem;
+  padding: 1.25rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+
+.process-card:hover {
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+  border-color: #cbd5e1;
+}
+
+.process-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  gap: 1rem;
+}
+
+.process-number {
+  font-family: monospace;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--nexter-text-main);
+}
+
+.process-title {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--nexter-text-main);
+  margin-bottom: 0.5rem;
+}
+
+.process-details {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--nexter-text-muted);
+  background: var(--nexter-surface-hover);
+  padding: 1rem;
+  border-radius: 0.375rem;
+  margin-bottom: 1rem;
+}
+
+.process-details p {
+  margin: 0;
+}
+
+.process-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  border-top: 1px solid var(--nexter-border);
+  padding-top: 1rem;
+}
+
+/* Badges */
+.match-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.match-badge.confirmed {
+  background-color: var(--badge-confirmed-bg);
+  color: var(--badge-confirmed-text);
+}
+
+.match-badge.high {
+  background-color: var(--badge-high-bg);
+  color: var(--badge-high-text);
+}
+
+.match-badge.possible {
+  background-color: var(--badge-possible-bg);
+  color: var(--badge-possible-text);
+}
+
+.match-badge.homonym {
+  background-color: var(--badge-homonym-bg);
+  color: var(--badge-homonym-text);
+}
+
+.score-text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: auto;
+  color: var(--nexter-text-muted);
+}
+
+.review-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 0.5rem;
+}

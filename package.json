@@ -8,8 +8,11 @@
     "vercel-build": "bash vercel-build.sh"
   },
   "dependencies": {
+    "axios": "^1.20.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.4.2",
     "express": "^4.19.2",
+    "firebase-admin": "^14.3.0",
     "koffi": "^2.6.2"
   }
 }
