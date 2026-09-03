@@ -556,6 +556,55 @@ window.inicializarDashboardInicial = function() {
     }
 
     carregarJarvis();
+
+    // ========== CONTROLE DE MÓDULOS (Ocultar cards não permitidos) ==========
+    const currentUserPermissions = window.currentUserPermissions || {};
+    const isAdmin = currentUserPermissions.isAdmin;
+    const permitted = currentUserPermissions.secoesPermitidas || [];
+    
+    if (!isAdmin) {
+        // Encontra todos os cards do dashboard
+        const cards = document.querySelectorAll('.dashboard-inicial .module-card');
+        
+        cards.forEach(card => {
+            const onclickAttr = card.getAttribute('onclick');
+            if (onclickAttr) {
+                const match = onclickAttr.match(/showSection\(['"]([^'"]+)['"]\)/);
+                if (match && match[1]) {
+                    const targetSection = match[1];
+                    const isMecanicoAdmin = currentUserPermissions.isMecanicoAdmin;
+                    const allowMecanicoAdminISO = isMecanicoAdmin && (targetSection === 'iso-manutencao' || targetSection === 'manutencao-mecanico' || targetSection.startsWith('iso-'));
+                    
+                    if (!permitted.includes(targetSection) && !allowMecanicoAdminISO) {
+                        // Esconde o elemento pai da grid (col-xl-3...)
+                        const colElement = card.parentElement;
+                        if (colElement) {
+                            colElement.style.display = 'none';
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Ocultar categorias (h4) que ficaram sem nenhum card visível abaixo delas
+        const categoryContainers = document.querySelectorAll('.dashboard-inicial .col-12:has(h4.category-title)');
+        categoryContainers.forEach(catContainer => {
+            let curr = catContainer.nextElementSibling;
+            let hasVisibleCards = false;
+            
+            while(curr && !curr.querySelector('h4.category-title')) {
+                if (curr.style.display !== 'none' && curr.querySelector('.module-card')) {
+                    hasVisibleCards = true;
+                    break;
+                }
+                curr = curr.nextElementSibling;
+            }
+            
+            if (!hasVisibleCards) {
+                catContainer.style.display = 'none';
+            }
+        });
+    }
 };
 
 // Formatar data
@@ -975,18 +1024,6 @@ function inicializarNavegacao() {
     }
 
     let secaoInicial = 'dashboard-inicial';
-
-    // Se for mecânico normal (não admin), a tela inicial DEVE ser o painel integrado "Meus Chamados"
-    if (currentUserPermissions.isMecanico && !currentUserPermissions.isAdmin) {
-        secaoInicial = 'manutencao-mecanico';
-    }
-
-    if (currentUserPermissions.secoesPermitidas && !currentUserPermissions.secoesPermitidas.includes('agenda')) {
-        const primeiraSecaoValida = currentUserPermissions.secoesPermitidas.find(secao => TODAS_SECOES.includes(secao));
-        if (primeiraSecaoValida) {
-            secaoInicial = primeiraSecaoValida;
-        }
-    }
 
     showSection(secaoInicial);
 }
