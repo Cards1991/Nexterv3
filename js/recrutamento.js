@@ -441,7 +441,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
             htmlResultados += `
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0 text-primary"><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</h5>
-                    ${deepSearchMode !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-secondary" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada</button>` : ''}
+                    ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-secondary" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada</button>` : ''}
                 </div>
             `;
 
@@ -523,7 +523,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                     <i class="fas fa-check-circle"></i> Não foram encontrados processos nas fontes consultadas. 
                     <br><small>A ausência de resultados não significa necessariamente inexistência de processos, pois alguns tribunais podem não disponibilizar CPF/CNPJ das partes.</small>
                 </div>
-                ${deepSearchMode !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada (Deep Search)</button>` : ''}
+                ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada (Deep Search)</button>` : ''}
             `;
         } else {
             // Tratamento de Erros Retornados pelo Backend
