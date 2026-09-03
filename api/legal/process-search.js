@@ -1,25 +1,26 @@
-const admin = require('firebase-admin');
-const EscavadorProcessSearchService = require('./EscavadorProcessSearchService');
+const { getApps, initializeApp, cert } = require('firebase-admin/app');
+const { getFirestore } = require('firebase-admin/firestore');
+const EscavadorProcessSearchService = require('../../backend-services/EscavadorProcessSearchService');
 
 // Initialize Firebase Admin if not already initialized
-if (!admin.apps.length) {
+if (!getApps().length) {
   try {
     // Requires FIREBASE_SERVICE_ACCOUNT in Vercel environment variables
     if (process.env.FIREBASE_SERVICE_ACCOUNT) {
       const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-      admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount)
+      initializeApp({
+        credential: cert(serviceAccount)
       });
     } else {
       console.warn("FIREBASE_SERVICE_ACCOUNT não configurado. Utilizando inicialização default (funciona se Application Default Credentials estiverem configuradas).");
-      admin.initializeApp();
+      initializeApp();
     }
   } catch (error) {
     console.error("Erro ao inicializar Firebase Admin:", error);
   }
 }
 
-const db = admin.apps.length ? admin.firestore() : null;
+const db = getApps().length ? getFirestore() : null;
 
 module.exports = async function handler(req, res) {
   // CORS configuration
