@@ -488,6 +488,7 @@ async function salvarNovaAtividade() {
     // Validação
     if (!assunto || !data || !tipo || !descricao) {
         mostrarMensagem("Preencha todos os campos obrigatórios (*)", "warning");
+        return; // Retorna para interromper o salvamento caso falte campos
     }
 
     try {
@@ -656,23 +657,15 @@ async function salvarAlteracoes(id, collection, dados) {
 async function carregarAgenda() {
 
     const containersMinhas = {
-        andamento: getElement('agenda-minhas-andamento'),
-        hoje: getElement('agenda-minhas-hoje'),
-        amanha: getElement('agenda-minhas-amanha'),
         atraso: getElement('agenda-minhas-atraso'),
-        '7dias': getElement('agenda-minhas-7dias'),
-        '30dias': getElement('agenda-minhas-30dias'),
-        futuro: getElement('agenda-minhas-futuro')
+        hoje: getElement('agenda-minhas-hoje'),
+        proximos: getElement('agenda-minhas-proximos')
     };
 
     const containersEquipe = {
-        andamento: getElement('agenda-equipe-andamento'),
-        hoje: getElement('agenda-equipe-hoje'),
-        amanha: getElement('agenda-equipe-amanha'),
         atraso: getElement('agenda-equipe-atraso'),
-        '7dias': getElement('agenda-equipe-7dias'),
-        '30dias': getElement('agenda-equipe-30dias'),
-        futuro: getElement('agenda-equipe-futuro'),
+        hoje: getElement('agenda-equipe-hoje'),
+        proximos: getElement('agenda-equipe-proximos')
     };
 
     // Verificar se containers existem
@@ -762,12 +755,15 @@ async function carregarAgenda() {
         if (agendaView === 'cards') {
             distribuirEventosNosCards(eventosMinhas, containersMinhas, 'agenda-minhas');
             distribuirEventosNosCards(eventosEquipe, containersEquipe, 'agenda-equipe');
+            atualizarJarvisAgenda(eventosMinhas, eventosEquipe);
         } else {
             renderizarCalendario(todosEventos);
         }
         inicializarTooltips();
 
     } catch (error) {
+        console.error("Erro ao carregar agenda:", error);
+    }
     }
 }
 
@@ -897,56 +893,38 @@ function distribuirEventosNosCards(eventos, containers, prefixoId) {
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
-    const amanha = new Date(hoje);
-    amanha.setDate(hoje.getDate() + 1);
-
-    const seteDias = new Date(hoje);
-    seteDias.setDate(hoje.getDate() + 7);
-
-    const trintaDias = new Date(hoje);
-    trintaDias.setDate(hoje.getDate() + 30);
-    const counts = { andamento: 0, hoje: 0, amanha: 0, '7dias': 0, '30dias': 0, atraso: 0, futuro: 0 };
+    const counts = { atraso: 0, hoje: 0, proximos: 0 };
 
     eventos.forEach(evento => {
         const eventoData = new Date(evento.data);
         eventoData.setHours(0, 0, 0, 0);
 
-        // Lógica para tarefas Em Andamento ou Pausadas - Vão para a coluna específica
-        if (evento.status === 'Em Andamento' || evento.status === 'Pausado') {
-            if (containers.andamento) {
-                containers.andamento.innerHTML += criarCardEvento(evento);
-                counts.andamento++;
+        // Lógica para tarefas atrasadas - PRIORIDADE MÁXIMA
+        if ((evento.status === 'Aberto' || evento.status === 'Pendente') && eventoData < hoje) {
+            if(containers.atraso) {
+                containers.atraso.innerHTML += criarCardEvento(evento);
+                counts.atraso++;
             }
             return;
         }
 
-        // Lógica para tarefas atrasadas - PRIORIDADE MÁXIMA
-        if ((evento.status === 'Aberto' || evento.status === 'Pendente') && eventoData < hoje) {
-            containers.atraso.innerHTML += criarCardEvento(evento);
-            counts.atraso++;
-            return;
-        }
-
-        if (eventoData.getTime() === hoje.getTime()) {
-            containers.hoje.innerHTML += criarCardEvento(evento);
-            counts.hoje++;
-        } else if (eventoData.getTime() === amanha.getTime()) {
-            containers.amanha.innerHTML += criarCardEvento(evento);
-            counts.amanha++;
-        } else if (eventoData > amanha && eventoData <= seteDias) {
-            containers['7dias'].innerHTML += criarCardEvento(evento);
-            counts['7dias']++;
-        } else if (eventoData > seteDias && eventoData <= trintaDias) {
-            containers['30dias'].innerHTML += criarCardEvento(evento);
-            counts['30dias']++;
-        } else if (eventoData > trintaDias) {
-            containers.futuro.innerHTML += criarCardEvento(evento);
-            counts.futuro++;
+        // Tarefas de hoje (incluindo em andamento para hoje)
+        if (eventoData.getTime() === hoje.getTime() || (evento.status === 'Em Andamento' && eventoData <= hoje)) {
+            if(containers.hoje) {
+                containers.hoje.innerHTML += criarCardEvento(evento);
+                counts.hoje++;
+            }
+        } else {
+            // Qualquer outra coisa no futuro (ou concluídas)
+            if(containers.proximos) {
+                containers.proximos.innerHTML += criarCardEvento(evento);
+                counts.proximos++;
+            }
         }
     });
 
     // Atualizar contadores e mensagens vazias
-    for (const key in containers) {
+    for (const key in counts) {
         const container = containers[key];
         if (container && container.innerHTML === '') {
             container.innerHTML = '<p class="text-muted text-center small p-2">Nenhum evento neste período.</p>';
@@ -956,6 +934,61 @@ function distribuirEventosNosCards(eventos, containers, prefixoId) {
             countElement.textContent = counts[key];
         }
     }
+}
+
+function atualizarJarvisAgenda(eventosMinhas, eventosEquipe) {
+    const greetingEl = document.getElementById('jarvis-agenda-greeting');
+    const messageEl = document.getElementById('jarvis-agenda-message');
+    if(!greetingEl || !messageEl) return;
+    
+    const hoje = new Date();
+    hoje.setHours(0,0,0,0);
+    
+    let atrasadas = 0;
+    let hojeCount = 0;
+    
+    eventosMinhas.forEach(evento => {
+        const eventoData = new Date(evento.data);
+        eventoData.setHours(0, 0, 0, 0);
+        if ((evento.status === 'Aberto' || evento.status === 'Pendente') && eventoData < hoje) {
+            atrasadas++;
+        } else if (eventoData.getTime() === hoje.getTime() || (evento.status === 'Em Andamento' && eventoData <= hoje)) {
+            hojeCount++;
+        }
+    });
+
+    const elAtrasadas = document.getElementById('resumo-atrasadas');
+    const elHoje = document.getElementById('resumo-hoje');
+    if(elAtrasadas) elAtrasadas.innerText = atrasadas;
+    if(elHoje) elHoje.innerText = hojeCount;
+
+    let saudacao = 'Analisando sua produtividade...';
+    let mensagem = '';
+    
+    if (atrasadas > 0) {
+        saudacao = 'Atenção necessária!';
+        mensagem = `Você possui <strong class="text-white">${atrasadas} tarefas em atraso</strong>. Sugiro que você verifique a aba "Minhas Tarefas" e dê prioridade a elas.`;
+    } else if (hojeCount > 0) {
+        saudacao = 'Tudo sob controle!';
+        mensagem = `Ótimo trabalho! Você não tem tarefas atrasadas. O foco de hoje está em <strong class="text-white">${hojeCount} tarefas</strong> para o dia.`;
+    } else {
+        saudacao = 'Sua agenda está livre!';
+        mensagem = 'Nenhuma tarefa pendente para hoje. Que tal adiantar as tarefas dos próximos dias?';
+    }
+    
+    const equipeAtrasadas = eventosEquipe.filter(e => {
+        const d = new Date(e.data);
+        d.setHours(0,0,0,0);
+        return (e.status === 'Aberto' || e.status === 'Pendente') && d < hoje;
+    }).length;
+    
+    if (equipeAtrasadas > 0) {
+        mensagem += `<br><br>⚠️ Sua equipe possui <strong class="text-warning">${equipeAtrasadas} tarefas atrasadas</strong>. Considere fazer um follow-up.`;
+    }
+    
+    greetingEl.innerText = saudacao;
+    messageEl.innerHTML = mensagem;
+
 }
 
 function inicializarTooltips() {

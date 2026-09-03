@@ -47,131 +47,125 @@
 </div>
 
 <!-- Visão de Cards -->
-<div id="agenda-cards-view" style="max-height: 70vh; overflow-y: auto; padding-right: 15px; overflow-x: hidden;">
-    <div class="row">
-        <!-- Coluna Minhas Atividades -->
-        <div class="col-xl-6 col-lg-12 mb-4">
-            <h5 class="mb-3 text-primary border-bottom pb-2"><i class="fas fa-user me-2"></i>Minhas Atividades</h5>
-            <div class="agenda-container" style="margin-top: 1rem;">
-        <!-- Coluna Em Atraso -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger"
-                    id="agenda-minhas-count-atraso">0</span>
+<div id="agenda-cards-view" style="max-height: 75vh; overflow-y: auto; padding-right: 15px; overflow-x: hidden;">
+    
+    <!-- Abas da Agenda -->
+    <ul class="nav nav-tabs mb-4 border-0" id="agendaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active rounded-pill px-4 fw-bold me-2 mb-2" id="visao-geral-tab" data-bs-toggle="tab" data-bs-target="#visao-geral" type="button" role="tab" style="color: var(--bs-body-color);">Visão Geral</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4 fw-bold me-2 mb-2" id="minhas-tarefas-tab" data-bs-toggle="tab" data-bs-target="#minhas-tarefas" type="button" role="tab" style="color: var(--bs-body-color);">Minhas Tarefas</button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link rounded-pill px-4 fw-bold mb-2" id="tarefas-equipe-tab" data-bs-toggle="tab" data-bs-target="#tarefas-equipe" type="button" role="tab" style="color: var(--bs-body-color);">Delegadas (Equipe)</button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="agendaTabsContent">
+        <!-- Aba: Visão Geral (Jarvis) -->
+        <div class="tab-pane fade show active" id="visao-geral" role="tabpanel">
+            <div id="jarvis-agenda-container">
+                <div class="jarvis-panel">
+                    <div class="jarvis-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="jarvis-content">
+                        <div class="jarvis-greeting" id="jarvis-agenda-greeting">Analisando sua produtividade...</div>
+                        <div class="jarvis-message" id="jarvis-agenda-message">
+                            Coletando dados da agenda...
+                        </div>
+                    </div>
+                </div>
             </div>
-            <div class="agenda-cards" id="agenda-minhas-atraso"></div>
-        </div>
-        <!-- Coluna Em Andamento -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-spinner fa-spin"></i> Em Andamento</h3><span class="badge bg-info"
-                    id="agenda-minhas-count-andamento">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-andamento"></div>
-        </div>
-        <!-- Coluna Hoje -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-day"></i> Hoje</h3><span class="badge bg-warning"
-                    id="agenda-minhas-count-hoje">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-hoje"></div>
-        </div>
-        <!-- Coluna Amanhã -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-day"></i> Amanhã</h3><span class="badge bg-secondary"
-                    id="agenda-minhas-count-amanha">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-amanha"></div>
-        </div>
-        <!-- Coluna Próximos 7 Dias -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-week"></i> Próximos 7 Dias</h3><span class="badge bg-info"
-                    id="agenda-minhas-count-7dias">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-7dias"></div>
-        </div>
-        <!-- Coluna Próximos 30 Dias -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar"></i> Próximos 30 Dias</h3><span class="badge bg-primary"
-                    id="agenda-minhas-count-30dias">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-30dias"></div>
-        </div>
-        <!-- Coluna Futuros -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-infinity"></i> Futuros (> 30 dias)</h3><span class="badge bg-dark"
-                    id="agenda-minhas-count-futuro">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-minhas-futuro"></div>
-        </div>
+            
+            <div class="row mt-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-danger text-white border-0 shadow-sm h-100 p-4 rounded-4" style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="display-4 fw-bold mb-0 text-white" id="resumo-atrasadas">0</h2>
+                                <p class="mb-0 fs-5 text-white opacity-75">Tarefas Atrasadas</p>
+                            </div>
+                            <i class="fas fa-exclamation-triangle fa-3x opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <div class="card bg-warning text-dark border-0 shadow-sm h-100 p-4 rounded-4" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div>
+                                <h2 class="display-4 fw-bold mb-0 text-white" id="resumo-hoje">0</h2>
+                                <p class="mb-0 fs-5 text-white opacity-75">Tarefas para Hoje</p>
+                            </div>
+                            <i class="fas fa-calendar-day fa-3x text-white opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <!-- Coluna Atividades da Equipe -->
-        <div class="col-xl-6 col-lg-12 mb-4">
-            <h5 class="mb-3 text-info border-bottom pb-2"><i class="fas fa-users me-2"></i>Atividades da Equipe (Delegadas)</h5>
-            <div class="agenda-container" style="margin-top: 1rem;">
-        <!-- Coluna Em Atraso -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3><span class="badge bg-danger"
-                    id="agenda-equipe-count-atraso">0</span>
+        <!-- Aba: Minhas Tarefas -->
+        <div class="tab-pane fade" id="minhas-tarefas" role="tabpanel">
+            <div class="agenda-container" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <!-- Coluna Em Atraso -->
+                <div class="agenda-column">
+                    <div class="agenda-header">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3>
+                        <span class="badge bg-danger" id="agenda-minhas-count-atraso">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-minhas-atraso"></div>
+                </div>
+                
+                <!-- Coluna Hoje -->
+                <div class="agenda-column border-primary" style="border: 2px solid var(--bs-primary);">
+                    <div class="agenda-header">
+                        <h3 class="text-primary"><i class="fas fa-calendar-day"></i> Hoje</h3>
+                        <span class="badge bg-warning" id="agenda-minhas-count-hoje">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-minhas-hoje"></div>
+                </div>
+                
+                <!-- Coluna Próximos -->
+                <div class="agenda-column">
+                    <div class="agenda-header">
+                        <h3><i class="fas fa-calendar-week"></i> Próximos (e Futuros)</h3>
+                        <span class="badge bg-info" id="agenda-minhas-count-proximos">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-minhas-proximos"></div>
+                </div>
             </div>
-            <div class="agenda-cards" id="agenda-equipe-atraso"></div>
         </div>
-        <!-- Coluna Em Andamento -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-spinner fa-spin"></i> Em Andamento</h3><span class="badge bg-info"
-                    id="agenda-equipe-count-andamento">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-andamento"></div>
-        </div>
-        <!-- Coluna Hoje -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-day"></i> Hoje</h3><span class="badge bg-warning"
-                    id="agenda-equipe-count-hoje">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-hoje"></div>
-        </div>
-        <!-- Coluna Amanhã -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-day"></i> Amanhã</h3><span class="badge bg-secondary"
-                    id="agenda-equipe-count-amanha">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-amanha"></div>
-        </div>
-        <!-- Coluna Próximos 7 Dias -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar-week"></i> Próximos 7 Dias</h3><span class="badge bg-info"
-                    id="agenda-equipe-count-7dias">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-7dias"></div>
-        </div>
-        <!-- Coluna Próximos 30 Dias -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-calendar"></i> Próximos 30 Dias</h3><span class="badge bg-primary"
-                    id="agenda-equipe-count-30dias">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-30dias"></div>
-        </div>
-        <!-- Coluna Futuros -->
-        <div class="agenda-column">
-            <div class="agenda-header">
-                <h3><i class="fas fa-infinity"></i> Futuros (> 30 dias)</h3><span class="badge bg-dark"
-                    id="agenda-equipe-count-futuro">0</span>
-            </div>
-            <div class="agenda-cards" id="agenda-equipe-futuro"></div>
-        </div>
+
+        <!-- Aba: Tarefas da Equipe -->
+        <div class="tab-pane fade" id="tarefas-equipe" role="tabpanel">
+            <div class="agenda-container" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));">
+                <!-- Coluna Em Atraso -->
+                <div class="agenda-column">
+                    <div class="agenda-header">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Em Atraso</h3>
+                        <span class="badge bg-danger" id="agenda-equipe-count-atraso">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-equipe-atraso"></div>
+                </div>
+                
+                <!-- Coluna Hoje -->
+                <div class="agenda-column border-primary" style="border: 2px solid var(--bs-primary);">
+                    <div class="agenda-header">
+                        <h3 class="text-primary"><i class="fas fa-calendar-day"></i> Hoje</h3>
+                        <span class="badge bg-warning" id="agenda-equipe-count-hoje">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-equipe-hoje"></div>
+                </div>
+                
+                <!-- Coluna Próximos -->
+                <div class="agenda-column">
+                    <div class="agenda-header">
+                        <h3><i class="fas fa-calendar-week"></i> Próximos (e Futuros)</h3>
+                        <span class="badge bg-info" id="agenda-equipe-count-proximos">0</span>
+                    </div>
+                    <div class="agenda-cards" id="agenda-equipe-proximos"></div>
+                </div>
             </div>
         </div>
     </div>
