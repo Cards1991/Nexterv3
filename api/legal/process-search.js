@@ -92,6 +92,6 @@ module.exports = async function handler(req, res) {
     return res.status(httpStatus).json(result);
   } catch (error) {
     console.error("Erro fatal no endpoint process-search:", error);
-    return res.status(500).json({ status: 'API_ERROR', error: 'Erro interno no servidor.' });
+    return res.status(500).json({ status: 'API_ERROR', error: error.stack || error.message || 'Erro interno no servidor.' });
   }
 }

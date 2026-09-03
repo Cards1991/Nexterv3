@@ -514,7 +514,7 @@ async function consultarCandidatoAPI(deepSearchMode = 'AUTO') {
             `;
         } else {
             // Tratamento de Erros Retornados pelo Backend
-            let errorMsg = 'Erro ao consultar API.';
+            let errorMsg = data.error || 'Erro ao consultar API.';
             if (data.status === 'AUTH_ERROR') errorMsg = 'Falha de autenticação com o provedor (Token Inválido).';
             if (data.status === 'NO_CREDIT') errorMsg = 'Consulta temporariamente indisponível (Sem Saldo).';
             if (data.status === 'RATE_LIMIT') errorMsg = 'Muitas consultas simultâneas. Tente novamente em breve.';
