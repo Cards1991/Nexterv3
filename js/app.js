@@ -478,6 +478,84 @@ window.inicializarDashboardInicial = function() {
         window.timerRelogioId = setInterval(atualizarRelogio, 1000);
         atualizarRelogio();
     }
+
+    // ========== JARVIS ASSISTANT LOGIC ==========
+    async function carregarJarvis() {
+        const greetingEl = document.getElementById('jarvis-greeting');
+        const messageEl = document.getElementById('jarvis-message');
+        const actionsEl = document.getElementById('jarvis-actions');
+        if (!greetingEl || !messageEl) return;
+
+        const currentUser = firebase.auth().currentUser;
+        if (!currentUser) return;
+
+        const userName = currentUser.displayName || currentUser.email.split('@')[0] || 'Usuário';
+        const firstName = userName.split(' ')[0];
+        
+        const hour = new Date().getHours();
+        let saudacaoTempo = 'Bom dia';
+        if (hour >= 12 && hour < 18) saudacaoTempo = 'Boa tarde';
+        else if (hour >= 18) saudacaoTempo = 'Boa noite';
+
+        greetingEl.innerText = `${saudacaoTempo}, ${firstName}.`;
+
+        try {
+            // Fetch user activities
+            const criadasSnap = await db.collection('agenda_atividades').where('criadoPor', '==', currentUser.uid).get();
+            const atribuidasSnap = await db.collection('agenda_atividades').where('atribuidoParaId', '==', currentUser.uid).get();
+
+            let minhasParaHoje = 0;
+            let minhasAtrasadas = 0;
+            let equipePendentes = 0;
+
+            const hojeStr = new Date().toISOString().split('T')[0];
+
+            // Process Atribuidas (Minhas Atividades)
+            atribuidasSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.status === 'Concluído' || data.status === 'Cancelado') return;
+                
+                const dataAtv = data.data; // formato YYYY-MM-DD
+                if (dataAtv === hojeStr) minhasParaHoje++;
+                if (dataAtv < hojeStr) minhasAtrasadas++;
+            });
+
+            // Process Criadas por mim mas NÃO atribuidas para mim (Equipe/Delegadas)
+            criadasSnap.forEach(doc => {
+                const data = doc.data();
+                if (data.atribuidoParaId === currentUser.uid) return; // already processed above if I assigned to myself
+                if (data.status === 'Concluído' || data.status === 'Cancelado') return;
+                
+                equipePendentes++;
+            });
+
+            let message = '';
+            
+            if (minhasParaHoje === 0 && minhasAtrasadas === 0 && equipePendentes === 0) {
+                message = `Sua agenda está livre. Nenhuma tarefa pendente para hoje.`;
+            } else {
+                message = `Você possui <strong class="text-white">${minhasParaHoje} tarefas</strong> agendadas para hoje`;
+                if (minhasAtrasadas > 0) {
+                    message += ` e <span class="jarvis-badge">${minhasAtrasadas} atrasada(s)</span>.`;
+                } else {
+                    message += `.`;
+                }
+
+                if (equipePendentes > 0) {
+                    message += `<br>A sua equipe possui <strong class="text-white">${equipePendentes} tarefas delegadas</strong> aguardando acompanhamento.`;
+                }
+            }
+
+            messageEl.innerHTML = message;
+            if(actionsEl) actionsEl.style.display = 'flex';
+
+        } catch (error) {
+            console.error("Erro no Jarvis:", error);
+            messageEl.innerText = 'Não foi possível sincronizar sua agenda no momento.';
+        }
+    }
+
+    carregarJarvis();
 };
 
 // Formatar data

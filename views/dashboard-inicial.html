@@ -2,7 +2,25 @@
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h1 class="page-title mb-1">Painel Inicial</h1>
-            <p class="text-muted" style="font-size: 1.1rem;">Bem-vindo(a) ao Nexter. Selecione um módulo abaixo para começar.</p>
+            <!-- Assistente Virtual Jarvis -->
+            <div id="jarvis-container" class="mt-3">
+                <div class="jarvis-panel">
+                    <div class="jarvis-avatar">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <div class="jarvis-content">
+                        <div class="jarvis-greeting" id="jarvis-greeting">Iniciando sistemas...</div>
+                        <div class="jarvis-message" id="jarvis-message">
+                            Sincronizando com a sua agenda...
+                        </div>
+                        <div class="jarvis-actions" id="jarvis-actions" style="display: none;">
+                            <a href="#" onclick="showSection('agenda')" class="jarvis-btn">
+                                <i class="fas fa-tasks"></i> Abrir Agenda
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="col-md-4 text-md-end">
             <div class="relogio-digital p-3 bg-white rounded shadow-sm text-center d-inline-block border">
