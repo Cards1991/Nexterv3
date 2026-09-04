@@ -7,8 +7,18 @@ let totemMbtiAnswers = {
 };
 let candidatoData = {};
 
-document.addEventListener('DOMContentLoaded', async () => {
-    await carregarVagas();
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.auth) {
+        window.auth.onAuthStateChanged(async (user) => {
+            if (user) {
+                await carregarVagas();
+            } else {
+                document.getElementById('totem-vaga').innerHTML = '<option value="">Erro de Permissão: Faça login no sistema de RH primeiro.</option>';
+            }
+        });
+    } else {
+        carregarVagas();
+    }
 });
 
 function formatarCpfTotem(campo) {
