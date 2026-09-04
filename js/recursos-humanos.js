@@ -113,11 +113,22 @@ async function abrirModalGerarConvite() {
     if (select.options.length <= 1) {
         select.innerHTML = '<option value="">Carregando...</option>';
         try {
-            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nomeCompleto').get();
-            select.innerHTML = '<option value="">Selecione um colaborador...</option>';
+            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+            
+            let funcionariosList = [];
             snap.forEach(doc => {
-                const f = doc.data();
-                select.innerHTML += `<option value="${doc.id}" data-nome="${f.nomeCompleto}">${f.nomeCompleto}</option>`;
+                const data = doc.data();
+                if (data.nomeCompleto) {
+                    funcionariosList.push({ id: doc.id, nomeCompleto: data.nomeCompleto });
+                }
+            });
+            
+            // Ordenar no cliente para evitar a necessidade de índice composto no Firestore
+            funcionariosList.sort((a, b) => a.nomeCompleto.localeCompare(b.nomeCompleto));
+
+            select.innerHTML = '<option value="">Selecione um colaborador...</option>';
+            funcionariosList.forEach(f => {
+                select.innerHTML += `<option value="${f.id}" data-nome="${f.nomeCompleto}">${f.nomeCompleto}</option>`;
             });
         } catch (error) {
             console.error("Erro ao buscar funcionários:", error);
