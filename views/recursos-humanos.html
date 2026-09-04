@@ -38,6 +38,32 @@
     </div>
 </div>
 
+<!-- Nova Seção: Mapa Visual Comportamental da Empresa -->
+<div class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white py-3 border-bottom-0">
+        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-pie text-primary me-2"></i> Mapa Visual Comportamental da Empresa</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <!-- Gráfico de Macro Grupos -->
+            <div class="col-md-5 mb-4 mb-md-0 d-flex flex-column justify-content-center align-items-center border-end">
+                <h6 class="text-center text-muted fw-bold mb-3">Distribuição por Macro Grupos</h6>
+                <div style="position: relative; height: 250px; width: 100%;">
+                    <canvas id="chart-mbti-macro"></canvas>
+                </div>
+            </div>
+            
+            <!-- Heatmap dos 16 Perfis -->
+            <div class="col-md-7">
+                <h6 class="text-center text-muted fw-bold mb-3">Mapa de Calor (16 Perfis)</h6>
+                <div id="heatmap-mbti-container" class="row g-2">
+                    <div class="col-12 text-center text-muted py-5">Carregando mapa...</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Nova Seção: Matriz de Gerentes -->
 <div class="card shadow-sm border-0 mb-4 bg-light">
     <div class="card-header bg-white py-3 border-bottom-0">

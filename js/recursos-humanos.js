@@ -1,4 +1,5 @@
 let mbtiEquipeList = [];
+let chartMbtiMacro = null;
 
 async function initRecursosHumanos() {
     await carregarMBTIEquipe();
@@ -21,6 +22,7 @@ async function carregarMBTIEquipe() {
         document.getElementById('mbti-total-testes').textContent = mbtiEquipeList.length;
         renderizarTabelaMBTIEquipe(mbtiEquipeList);
         renderizarMatrizGerentes();
+        renderizarMapaVisualCorporativo();
         
     } catch (error) {
         console.error("Erro ao buscar testes MBTI:", error);
@@ -235,4 +237,122 @@ function renderizarMatrizGerentes() {
     });
     
     container.innerHTML = html;
+}
+
+function renderizarMapaVisualCorporativo() {
+    const testes = mbtiEquipeList.filter(x => x.status === 'Concluído' && x.mbti);
+    const containerMapa = document.getElementById('heatmap-mbti-container');
+    const ctxMacro = document.getElementById('chart-mbti-macro');
+    
+    if (testes.length === 0) {
+        if(containerMapa) containerMapa.innerHTML = '<div class="col-12 text-center text-muted py-5">Aguardando conclusões de testes...</div>';
+        return;
+    }
+    
+    // Contagem Grupos
+    const contagemGrupos = {
+        "Os Administradores": 0,
+        "Os Pesquisadores": 0,
+        "Os Idealistas": 0,
+        "Os Ativos": 0
+    };
+    
+    // Contagem Perfis (16)
+    const contagemPerfis = {};
+    const perfisOrdenados = [
+        "INTJ", "INTP", "ENTJ", "ENTP",
+        "INFJ", "INFP", "ENFJ", "ENFP",
+        "ISTJ", "ISFJ", "ESTJ", "ESFJ",
+        "ISTP", "ISFP", "ESTP", "ESFP"
+    ];
+    
+    perfisOrdenados.forEach(p => contagemPerfis[p] = 0);
+    
+    testes.forEach(t => {
+        if(contagemGrupos[t.mbti.grupo] !== undefined) {
+            contagemGrupos[t.mbti.grupo]++;
+        }
+        if(contagemPerfis[t.mbti.perfil] !== undefined) {
+            contagemPerfis[t.mbti.perfil]++;
+        }
+    });
+
+    // 1. Chart
+    if (chartMbtiMacro) {
+        chartMbtiMacro.destroy();
+    }
+    
+    if (ctxMacro) {
+        chartMbtiMacro = new Chart(ctxMacro, {
+            type: 'doughnut',
+            data: {
+                labels: ['Administradores', 'Pesquisadores', 'Idealistas', 'Ativos'],
+                datasets: [{
+                    data: [
+                        contagemGrupos["Os Administradores"],
+                        contagemGrupos["Os Pesquisadores"],
+                        contagemGrupos["Os Idealistas"],
+                        contagemGrupos["Os Ativos"]
+                    ],
+                    backgroundColor: ['#0d6efd', '#6610f2', '#198754', '#fd7e14'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'right' }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+
+    // 2. Heatmap
+    if (containerMapa) {
+        const maxVal = Math.max(...Object.values(contagemPerfis), 1);
+        
+        let html = '';
+        perfisOrdenados.forEach(perfil => {
+            const qtd = contagemPerfis[perfil];
+            const hasPeople = qtd > 0;
+            const alpha = hasPeople ? (0.3 + (qtd / maxVal) * 0.7) : 0; 
+            
+            let colorRgb = '13, 110, 253'; 
+            let fontColor = hasPeople ? '#fff' : '#6c757d';
+            let groupName = "";
+            
+            if (["INTJ", "INTP", "ENTJ", "ENTP"].includes(perfil)) {
+                colorRgb = '102, 16, 242'; // Roxo
+                groupName = "Pesquisadores";
+            } else if (["INFJ", "INFP", "ENFJ", "ENFP"].includes(perfil)) {
+                colorRgb = '25, 135, 84'; // Verde
+                groupName = "Idealistas";
+            } else if (["ISTJ", "ISFJ", "ESTJ", "ESFJ"].includes(perfil)) {
+                colorRgb = '13, 110, 253'; // Azul
+                groupName = "Administradores";
+            } else if (["ISTP", "ISFP", "ESTP", "ESFP"].includes(perfil)) {
+                colorRgb = '253, 126, 20'; // Laranja
+                groupName = "Ativos";
+            }
+
+            const bgColor = hasPeople ? `rgba(${colorRgb}, ${alpha})` : '#f8f9fa';
+            const borderStyle = hasPeople ? 'border: none;' : 'border: 1px dashed #dee2e6;';
+            const badgeStr = hasPeople ? `<span class="badge bg-white text-dark rounded-pill mt-1 shadow-sm" style="font-size: 0.75rem;">${qtd}</span>` : '';
+
+            html += `
+                <div class="col-3">
+                    <div class="card h-100 shadow-sm" style="background-color: ${bgColor}; ${borderStyle} transition: 0.3s; cursor: default;" title="${groupName} - ${qtd} pessoa(s)">
+                        <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center" style="min-height: 80px;">
+                            <h5 class="mb-0 fw-bold" style="color: ${fontColor};">${perfil}</h5>
+                            ${badgeStr}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        containerMapa.innerHTML = html;
+    }
 }
