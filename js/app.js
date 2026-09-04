@@ -521,9 +521,15 @@ window.inicializarDashboardInicial = function() {
                 const data = doc.data();
                 if (data.status === 'Concluído' || data.status === 'Cancelado') return;
                 
-                const dataAtv = data.data; // formato YYYY-MM-DD
-                if (dataAtv === hojeStr) minhasParaHoje++;
-                if (dataAtv < hojeStr) minhasAtrasadas++;
+                let dataAtvStr = '';
+                if (data.data && typeof data.data.toDate === 'function') {
+                    dataAtvStr = data.data.toDate().toISOString().split('T')[0];
+                } else if (data.data) {
+                    dataAtvStr = String(data.data).split('T')[0];
+                }
+                
+                if (dataAtvStr === hojeStr) minhasParaHoje++;
+                if (dataAtvStr < hojeStr) minhasAtrasadas++;
             });
 
             // Process Criadas por mim mas NÃO atribuidas para mim (Equipe/Delegadas)
