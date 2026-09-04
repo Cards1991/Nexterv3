@@ -1,0 +1,33 @@
+<!-- Modal de Função -->
+<div class="modal fade" id="funcaoModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="funcaoModalTitle">Nova Função</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <form id="form-funcao">
+                    <input type="hidden" id="funcao-id">
+                    <input type="hidden" id="funcao-empresa-nome">
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Empresa <span class="text-danger">*</span></label>
+                        <select class="form-select" id="funcao-empresa-id" required>
+                            <option value="">Selecione uma empresa</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome da Função (Cargo) <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="funcao-nome" placeholder="Ex: Operador de Máquina, Gerente..." required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4" onclick="salvarFuncao()" id="btn-salvar-funcao">Salvar Função</button>
+            </div>
+        </div>
+    </div>
+</div>

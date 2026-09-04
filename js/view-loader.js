@@ -43,6 +43,7 @@ const ViewLoader = {
         { url: 'views/modal-horas-extras-assinatura.html' },
         { url: 'views/modal-setor.html' },
         { url: 'views/modal-novo-setor.html' },
+        { url: 'views/modal-funcao.html' },
         { url: 'views/modal-treinamento-novo.html' },
         { url: 'views/modal-treinamento-prova.html' },
         { url: 'views/modal-avaliacao-experiencia.html' },

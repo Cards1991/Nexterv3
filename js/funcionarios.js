@@ -1255,38 +1255,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
     }
 }
 
-// Carregar funções baseado na empresa selecionada
-async function carregarFuncoesPorEmpresa(empresaId, selectId) {
-    const select = document.getElementById(selectId);
-    if (!select) return;
-
-    select.innerHTML = '<option value="">Selecione um cargo</option>';
-    select.disabled = true;
-
-    if (!empresaId) {
-        select.innerHTML = '<option value="">Selecione a empresa primeiro</option>';
-        return;
-    }
-
-    try {
-        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
-        if (!empresaDoc.exists) return;
-
-        const empresa = empresaDoc.data();
-
-        if (empresa.funcoes && empresa.funcoes.length > 0) {
-            select.disabled = false;
-            empresa.funcoes.forEach(funcao => {
-                const option = document.createElement('option');
-                option.value = funcao;
-                option.textContent = funcao;
-                select.appendChild(option);
-            });
-        }
-    } catch (error) {
-        console.error('Erro ao carregar funções:', error);
-    }
-}
+// Removido versão duplicada de carregarFuncoesPorEmpresa
 
 // Carregar funcionários ativos para selects
 async function carregarSelectFuncionariosAtivos(selectId, incluirInativos = false) {
@@ -1400,25 +1369,39 @@ async function carregarFuncoesPorEmpresa(empresaId, selectId, funcaoSelecionada 
     select.disabled = true;
 
     try {
-        const empresaDoc = await db.collection('empresas').doc(empresaId).get();
-        if (!empresaDoc.exists) {
-            select.innerHTML = '<option value="">Empresa não encontrada</option>';
+        const funcoesSnapshot = await db.collection('funcoes')
+                                      .where('empresaId', '==', empresaId)
+                                      .get();
+
+        if (funcoesSnapshot.empty) {
+            select.innerHTML = '<option value="">Nenhuma função cadastrada para esta empresa</option>';
             return;
         }
 
-        const funcoes = empresaDoc.data().funcoes || [];
+        const funcoesList = [];
+        funcoesSnapshot.forEach(doc => {
+            funcoesList.push(doc.data().nome);
+        });
 
-        if (funcoes.length === 0) {
-            select.innerHTML = '<option value="">Nenhum cargo cadastrado para esta empresa</option>';
-            return;
-        }
+        // Ordenar as funções por nome em ordem alfabética
+        funcoesList.sort((a, b) => a.localeCompare(b));
 
         select.innerHTML = '<option value="">Selecione...</option>';
-        funcoes.sort().forEach(funcao => {
+        
+        // Adiciona a funçãoSelecionada caso ela não esteja mais na lista (foi excluída)
+        if (funcaoSelecionada && !funcoesList.includes(funcaoSelecionada)) {
+            const optionFallback = document.createElement('option');
+            optionFallback.value = funcaoSelecionada;
+            optionFallback.textContent = funcaoSelecionada + ' (Inativo/Excluído)';
+            optionFallback.selected = true;
+            select.appendChild(optionFallback);
+        }
+
+        funcoesList.forEach(funcaoNome => {
             const option = document.createElement('option');
-            option.value = funcao;
-            option.textContent = funcao;
-            if (funcaoSelecionada && funcaoSelecionada === funcao) {
+            option.value = funcaoNome;
+            option.textContent = funcaoNome;
+            if (funcaoSelecionada && funcaoSelecionada === funcaoNome) {
                 option.selected = true;
             }
             select.appendChild(option);

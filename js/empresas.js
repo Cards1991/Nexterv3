@@ -124,7 +124,7 @@ async function carregarEmpresas() {
                 <td>${empresa.cnpj || 'Não informado'}</td>
                 <td><span class="badge bg-secondary">${numSetores}</span></td>
                 <td><span class="badge bg-primary">${numFuncionarios}</span></td>
-                <td><span class="badge bg-info">${numFuncoes}</span></td>
+                <td><span class="badge bg-secondary">${doc.id.substring(0, 4)}...</span></td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary" onclick="editarEmpresa('${doc.id}')">
                         <i class="fas fa-edit"></i>
@@ -147,7 +147,7 @@ async function salvarEmpresa() {
     try {
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa')?.value || ''; // Garante que seja uma string vazia se não encontrado
-        const funcoesText = document.getElementById('funcoes-empresa').value;
+        const logoFile = document.getElementById('logo-empresa').files[0];
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
         const percTerceiros = temTerceiros ? (parseFloat(document.getElementById('empresa-input-terceiro').value) || 0) : 0;
         const temPatronal = document.getElementById('empresa-check-patronal')?.checked || false;
@@ -162,7 +162,7 @@ async function salvarEmpresa() {
             return;
         }
 
-        const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
+        const logoUrl = await uploadLogo(logoFile);
         const user = firebase.auth().currentUser;
 
         const empresaData = {
@@ -173,7 +173,7 @@ async function salvarEmpresa() {
                 patronal: percPatronal
             },
             jornadaTrabalho: jornadaTrabalho, // Salva a jornada
-            funcoes: funcoes,
+            setores: setores,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user ? user.uid : null
         };
@@ -212,8 +212,7 @@ async function editarEmpresa(empresaId) {
             const cnpjInput = document.getElementById('cnpj-empresa');
             if (cnpjInput) cnpjInput.value = empresa.cnpj || '';
 
-            const funcoesInput = document.getElementById('funcoes-empresa');
-            if (funcoesInput) funcoesInput.value = Array.isArray(empresa.funcoes) ? empresa.funcoes.join(', ') : '';
+            document.getElementById('setores-empresa').value = Array.isArray(empresa.setores) ? empresa.setores.join(', ') : '';
 
             // Preencher impostos
             const impostos = empresa.impostos || {};
@@ -262,7 +261,7 @@ async function atualizarEmpresa(empresaId) {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-empresa').value;
         const cnpj = document.getElementById('cnpj-empresa').value;
-        const funcoesText = document.getElementById('funcoes-empresa').value;
+        const setoresText = document.getElementById('setores-empresa').value;
         
         // Captura dos impostos configuráveis
         const temTerceiros = document.getElementById('empresa-check-terceiro')?.checked || false;
@@ -274,12 +273,12 @@ async function atualizarEmpresa(empresaId) {
         // Captura jornada
         const jornadaTrabalho = await obterDadosJornada();
 
-        const funcoes = funcoesText.split(',').map(f => f.trim()).filter(f => f);
+        const setores = setoresText.split(',').map(s => s.trim()).filter(s => s);
         const user = firebase.auth().currentUser;
         const updateData = {
             nome: nome,
             cnpj: cnpj,
-            funcoes: funcoes,            
+            setores: setores,            
             impostos: {
                 terceiros: percTerceiros,
                 patronal: percPatronal
@@ -360,7 +359,7 @@ async function carregarSelectEmpresas(selectId) {
  */
 function exportarModeloEmpresasCSV() {
     const headers = [
-        "nome", "cnpj", "setores (separados por vírgula)", "funcoes (separados por vírgula)"
+        "nome", "cnpj", "setores (separados por vírgula)"
     ];
     const exemplo = [
         '"Empresa Exemplo SA"', '"00.111.222/0001-33"', '"RH,TI,Financeiro,Produção"', '"Analista,Gerente,Operador"'
@@ -465,10 +464,9 @@ async function processarArquivoEmpresasCSV() {
             const empresa = {
                 nome: values[0]?.trim(),
                 cnpj: values[1]?.trim(),
-                setores: values[2]?.split(',').map(s => s.trim()).filter(Boolean),
-                funcoes: values[3]?.split(',').map(f => f.trim()).filter(Boolean)
+                setores: values[2]?.split(',').map(s => s.trim()).filter(Boolean)
             };
-
+            
             let erroMsg = '';
             if (!empresa.nome) {
                 erroMsg = 'O campo "nome" da empresa é obrigatório.';
@@ -485,7 +483,6 @@ async function processarArquivoEmpresasCSV() {
                         nome: empresa.nome,
                         cnpj: empresa.cnpj || '',
                         setores: empresa.setores || [],
-                        funcoes: empresa.funcoes || [],
                         createdAt: firebase.firestore.FieldValue.serverTimestamp(),
                         createdByUid: firebase.auth().currentUser?.uid
                     };
