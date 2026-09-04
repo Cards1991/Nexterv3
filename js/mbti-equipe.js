@@ -13,8 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     membroToken = urlParams.get('t');
 
     if (membroToken) {
-        // Se houver token na URL, podemos guardar para usar no final
-        // mas não vamos bloquear a tela caso dê erro de permissão agora.
+        // Se houver token na URL, tentamos usar, mas não bloqueamos
         try {
             const docSnap = await db.collection('equipe_mbti').doc(membroToken).get();
             if (docSnap.exists) {
@@ -25,14 +24,32 @@ document.addEventListener('DOMContentLoaded', async () => {
                 }
             }
         } catch (e) {
-            console.warn("Não foi possível validar o token previamente (Possível falta de permissão). O usuário fará a validação por CPF.", e);
+            console.warn("Aviso: Falha ao ler token inicial. Validaremos por CPF.", e);
         }
     }
 
-    // Mostra a tela de CPF ao invés da tela inicial antiga
+    // Mostra a tela de CPF
     document.getElementById('step-loading').classList.remove('active');
     document.getElementById('step-validar-cpf').classList.add('active');
 });
+
+// Tenta logar anonimamente caso o sistema exija auth != null
+async function garantirAutenticacao() {
+    return new Promise((resolve) => {
+        firebase.auth().onAuthStateChanged(user => {
+            if (user) {
+                resolve(true);
+            } else {
+                firebase.auth().signInAnonymously()
+                    .then(() => resolve(true))
+                    .catch(err => {
+                        console.warn("Login anônimo não ativado no Firebase.", err);
+                        resolve(false); // continua tentando mesmo sem auth
+                    });
+            }
+        });
+    });
+}
 
 function formatarCpfTotem(campo) {
     let cpf = campo.value.replace(/\D/g, '');
@@ -55,6 +72,8 @@ async function buscarColaboradorPorCpf() {
     const btn = document.getElementById('btn-buscar-cpf');
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
     btn.disabled = true;
+
+    await garantirAutenticacao(); // Tenta o bypass anônimo antes de consultar
 
     try {
         // Busca funcionário pelo CPF
@@ -82,7 +101,14 @@ async function buscarColaboradorPorCpf() {
 
     } catch (error) {
         console.error("Erro ao buscar CPF:", error);
-        alert("Erro de permissão ou falha ao acessar banco de dados. Contate o suporte.");
+        
+        let msg = "Erro de conexão ao buscar CPF.";
+        if (error.message.includes("permissions") || error.code === "permission-denied") {
+            msg = "ATENÇÃO RH: O banco de dados bloqueou a consulta por segurança (Missing or insufficient permissions). \n\n" +
+                  "Você PRECISA acessar o Firebase Console > Firestore > Rules e liberar a leitura da coleção 'funcionarios' e 'equipe_mbti' conforme as instruções fornecidas pelo assistente. O código não consegue alterar isso sozinho.";
+        }
+        
+        alert(msg);
         btn.innerHTML = 'Buscar Cadastro';
         btn.disabled = false;
     }
