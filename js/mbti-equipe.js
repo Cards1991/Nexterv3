@@ -12,35 +12,81 @@ document.addEventListener('DOMContentLoaded', async () => {
     const urlParams = new URLSearchParams(window.location.search);
     membroToken = urlParams.get('t');
 
-    if (!membroToken) {
-        mostrarErro("Nenhum código de convite encontrado na URL.");
+    if (membroToken) {
+        // Se houver token na URL, podemos guardar para usar no final
+        // mas não vamos bloquear a tela caso dê erro de permissão agora.
+        try {
+            const docSnap = await db.collection('equipe_mbti').doc(membroToken).get();
+            if (docSnap.exists) {
+                const data = docSnap.data();
+                if (data.status === 'Concluído') {
+                    mostrarErro("Você já concluiu este teste anteriormente. Obrigado!");
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn("Não foi possível validar o token previamente (Possível falta de permissão). O usuário fará a validação por CPF.", e);
+        }
+    }
+
+    // Mostra a tela de CPF ao invés da tela inicial antiga
+    document.getElementById('step-loading').classList.remove('active');
+    document.getElementById('step-validar-cpf').classList.add('active');
+});
+
+function formatarCpfTotem(campo) {
+    let cpf = campo.value.replace(/\D/g, '');
+    if (cpf.length > 11) cpf = cpf.slice(0, 11);
+    if (cpf.length > 9) cpf = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    else if (cpf.length > 6) cpf = cpf.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
+    else if (cpf.length > 3) cpf = cpf.replace(/(\d{3})(\d{1,3})/, "$1.$2");
+    campo.value = cpf;
+}
+
+async function buscarColaboradorPorCpf() {
+    const cpfRaw = document.getElementById('equipe-cpf').value;
+    const cpfLimpo = cpfRaw.replace(/\D/g, '');
+    
+    if (cpfLimpo.length !== 11) {
+        alert("Por favor, digite um CPF válido.");
         return;
     }
 
+    const btn = document.getElementById('btn-buscar-cpf');
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+    btn.disabled = true;
+
     try {
-        const docSnap = await db.collection('equipe_mbti').doc(membroToken).get();
-        if (!docSnap.exists) {
-            mostrarErro("Convite não encontrado no sistema.");
+        // Busca funcionário pelo CPF
+        let snap = await db.collection('funcionarios').where('cpf', '==', cpfRaw).get();
+        if (snap.empty) {
+            // Tenta buscar pelo CPF sem pontuação caso no banco esteja assim
+            snap = await db.collection('funcionarios').where('cpf', '==', cpfLimpo).get();
+        }
+
+        if (snap.empty) {
+            alert("Nenhum colaborador encontrado com este CPF. Verifique a digitação ou contate o RH.");
+            btn.innerHTML = 'Buscar Cadastro';
+            btn.disabled = false;
             return;
         }
 
-        membroData = docSnap.data();
+        const funcDoc = snap.docs[0];
+        membroData = funcDoc.data();
+        membroData.funcionarioId = funcDoc.id;
 
-        if (membroData.status === 'Concluído') {
-            mostrarErro("Você já concluiu este teste anteriormente. Obrigado!");
-            return;
-        }
-
-        // Mostra boas vindas
-        document.getElementById('step-loading').classList.remove('active');
-        document.getElementById('step-dados').classList.add('active');
-        document.getElementById('equipe-nome-display').textContent = membroData.nome;
+        // Preenche o campo não editável
+        document.getElementById('equipe-nome-encontrado').value = membroData.nome;
+        document.getElementById('area-colaborador-encontrado').classList.remove('d-none');
+        btn.style.display = 'none';
 
     } catch (error) {
-        console.error("Erro ao validar token:", error);
-        mostrarErro("Ocorreu um erro ao acessar o servidor. Tente novamente mais tarde.");
+        console.error("Erro ao buscar CPF:", error);
+        alert("Erro de permissão ou falha ao acessar banco de dados. Contate o suporte.");
+        btn.innerHTML = 'Buscar Cadastro';
+        btn.disabled = false;
     }
-});
+}
 
 function mostrarErro(msg) {
     document.getElementById('step-loading').classList.remove('active');
@@ -49,7 +95,11 @@ function mostrarErro(msg) {
 }
 
 function avancarParaMbti() {
-    document.getElementById('step-dados').classList.remove('active');
+    // Se ainda havia step-dados, esconde. Mas o principal agora é step-validar-cpf.
+    const stepDados = document.getElementById('step-dados');
+    if (stepDados) stepDados.classList.remove('active');
+    
+    document.getElementById('step-validar-cpf').classList.remove('active');
     document.getElementById('step-mbti').classList.add('active');
     renderMbtiStep(1);
 }
@@ -156,12 +206,25 @@ async function finalizarTesteEquipe() {
     btnNext.disabled = true;
     
     try {
-        // Atualiza o documento gerado pelo convite
-        await db.collection('equipe_mbti').doc(membroToken).update({
-            mbti: mbtiResultData,
-            status: 'Concluído',
-            dataTeste: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // Atualiza o documento gerado pelo convite, ou cria um novo se for link genérico
+        if (membroToken) {
+            await db.collection('equipe_mbti').doc(membroToken).update({
+                mbti: mbtiResultData,
+                status: 'Concluído',
+                dataTeste: firebase.firestore.FieldValue.serverTimestamp(),
+                nome: membroData.nome, // Atualiza nome caso CPF não bata exatamente
+                funcionarioId: membroData.funcionarioId
+            });
+        } else {
+            await db.collection('equipe_mbti').add({
+                nome: membroData.nome,
+                funcionarioId: membroData.funcionarioId,
+                mbti: mbtiResultData,
+                status: 'Concluído',
+                dataTeste: firebase.firestore.FieldValue.serverTimestamp(),
+                dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
         
         // Mostra tela de sucesso
         document.getElementById('step-mbti').classList.remove('active');
