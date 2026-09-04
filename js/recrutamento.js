@@ -130,13 +130,24 @@ function renderizarKanban() {
             card.addEventListener('dragstart', dragStart);
             card.addEventListener('dragend', dragEnd);
             
+            let tagsHtml = '';
+            if (cand.mbti) {
+                tagsHtml += `<span class="badge bg-primary mb-1 me-1" title="Perfil MBTI"><i class="fas fa-brain"></i> ${cand.mbti.perfil}</span>`;
+            }
+            if (cand.escavador_summary) {
+                const total = cand.escavador_summary.total || 0;
+                const badgeClass = total > 0 ? 'bg-danger' : 'bg-success';
+                tagsHtml += `<span class="badge ${badgeClass} mb-1" title="Processos Escavador"><i class="fas fa-gavel"></i> ${total} Proc.</span>`;
+            }
+
             card.innerHTML = `
                 <div class="kanban-card-title">${cand.nome}</div>
                 <div class="small text-muted mb-2"><i class="fas fa-briefcase"></i> ${vagaTitle}</div>
-                <div class="d-flex justify-content-between align-items-center mt-2">
+                ${tagsHtml ? `<div class="mb-2">${tagsHtml}</div>` : ''}
+                <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2">
                     <span class="badge bg-light text-dark border"><i class="fas fa-phone"></i> ${cand.telefone || '-'}</span>
-                    <button class="btn btn-sm btn-light border" onclick="editarCandidato('${cand.id}')" title="Ver Detalhes">
-                        <i class="fas fa-edit"></i>
+                    <button class="btn btn-sm btn-primary" onclick="editarCandidato('${cand.id}')" title="Ver Detalhes">
+                        <i class="fas fa-folder-open"></i> Abrir Ficha
                     </button>
                 </div>
             `;
