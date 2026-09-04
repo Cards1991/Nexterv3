@@ -1,5 +1,5 @@
-let currentMbtiStep = 1;
-let mbtiAnswers = {
+let totemMbtiStep = 1;
+let totemMbtiAnswers = {
     E: 0, I: 0,
     S: 0, N: 0,
     T: 0, F: 0,
@@ -76,20 +76,21 @@ function avancarParaMbti() {
     renderMbtiStep(1);
 }
 
-// Lógica simplificada do MBTI adaptada do mbti.js
 function renderMbtiStep(stepNumber) {
-    currentMbtiStep = stepNumber;
+    totemMbtiStep = stepNumber;
     
-    if (!window.MbtiQuestions) {
+    if (!window.mbtiData) {
         alert("O dicionário MBTI não carregou.");
         return;
     }
     
-    const stage = window.MbtiQuestions.stages.find(s => s.id === stepNumber);
+    // As in mbti.js, stages might not be in window.MbtiQuestions
+    // Wait, mbti.js defines mbtiData and it has steps array, not stages.
+    const stage = window.mbtiData.steps[stepNumber - 1];
     if (!stage) return;
     
-    document.getElementById('totem-mbti-title').textContent = `Etapa ${stepNumber}`;
-    document.getElementById('totem-mbti-desc').textContent = `Escolha os 4 comportamentos que mais se parecem com você nesta etapa (${stage.desc}).`;
+    document.getElementById('totem-mbti-title').textContent = stage.title;
+    document.getElementById('totem-mbti-desc').textContent = `Responda às questões da ${stage.title}.`;
     document.getElementById('totem-mbti-progress-text').textContent = `${stepNumber} de 4`;
     document.getElementById('totem-mbti-progress').style.width = `${(stepNumber / 4) * 100}%`;
     
@@ -99,52 +100,57 @@ function renderMbtiStep(stepNumber) {
     const container = document.getElementById('totem-mbti-options');
     container.innerHTML = '';
     
-    // Zera os contadores desta etapa para evitar duplicação se o usuário voltar
-    mbtiAnswers[stage.traitA] = 0;
-    mbtiAnswers[stage.traitB] = 0;
+    // Zera os contadores desta etapa
+    totemMbtiAnswers[stage.letterA] = 0;
+    totemMbtiAnswers[stage.letterB] = 0;
     
     stage.questions.forEach((q, index) => {
-        const div = document.createElement('div');
-        div.className = 'mbti-option-card';
-        div.textContent = q.text;
-        div.dataset.trait = q.trait;
+        const divInfo = document.createElement('div');
+        divInfo.className = 'mb-4 p-3 border rounded bg-light shadow-sm';
         
-        div.onclick = function() {
-            this.classList.toggle('selected');
-            const trait = this.dataset.trait;
-            const selectedCount = container.querySelectorAll('.mbti-option-card.selected').length;
-            
-            if (this.classList.contains('selected')) {
-                if (selectedCount > 4) {
-                    this.classList.remove('selected');
-                    alert("Você já selecionou as 4 características permitidas para esta etapa.");
-                    return;
-                }
-                mbtiAnswers[trait]++;
-            } else {
-                mbtiAnswers[trait]--;
-            }
-        };
-        container.appendChild(div);
+        divInfo.innerHTML = `
+            <div class="form-check mb-2">
+                <input class="form-check-input" type="radio" name="totem-mbti-q-${stepNumber}-${index}" id="totem-mbti-q-${stepNumber}-${index}-a" value="a">
+                <label class="form-check-label w-100" for="totem-mbti-q-${stepNumber}-${index}-a">${q.a}</label>
+            </div>
+            <div class="form-check">
+                <input class="form-check-input" type="radio" name="totem-mbti-q-${stepNumber}-${index}" id="totem-mbti-q-${stepNumber}-${index}-b" value="b">
+                <label class="form-check-label w-100" for="totem-mbti-q-${stepNumber}-${index}-b">${q.b}</label>
+            </div>
+        `;
+        container.appendChild(divInfo);
     });
 }
 
 function totemPrevMbtiStep() {
-    if (currentMbtiStep > 1) {
-        renderMbtiStep(currentMbtiStep - 1);
+    if (totemMbtiStep > 1) {
+        renderMbtiStep(totemMbtiStep - 1);
     }
 }
 
 async function totemNextMbtiStep() {
-    const selectedCount = document.querySelectorAll('#totem-mbti-options .mbti-option-card.selected').length;
+    const stage = window.mbtiData.steps[totemMbtiStep - 1];
+    let answeredAll = true;
     
-    if (selectedCount !== 4) {
-        alert("Por favor, selecione exatamente 4 características que mais combinam com você antes de avançar.");
+    stage.questions.forEach((q, index) => {
+        const selected = document.querySelector(`input[name="totem-mbti-q-${totemMbtiStep}-${index}"]:checked`);
+        if (!selected) answeredAll = false;
+        else {
+            if (selected.value === 'a') totemMbtiAnswers[stage.letterA]++;
+            else totemMbtiAnswers[stage.letterB]++;
+        }
+    });
+    
+    if (!answeredAll) {
+        alert("Por favor, responda todas as questões antes de avançar.");
+        // Reset count if they fail validation
+        totemMbtiAnswers[stage.letterA] = 0;
+        totemMbtiAnswers[stage.letterB] = 0;
         return;
     }
     
-    if (currentMbtiStep < 4) {
-        renderMbtiStep(currentMbtiStep + 1);
+    if (totemMbtiStep < 4) {
+        renderMbtiStep(totemMbtiStep + 1);
     } else {
         await finalizarCandidatoTotem();
     }
@@ -153,19 +159,19 @@ async function totemNextMbtiStep() {
 async function finalizarCandidatoTotem() {
     // Calcula o perfil MBTI
     const profile = [
-        mbtiAnswers.E > mbtiAnswers.I ? 'E' : 'I',
-        mbtiAnswers.S > mbtiAnswers.N ? 'S' : 'N',
-        mbtiAnswers.T > mbtiAnswers.F ? 'T' : 'F',
-        mbtiAnswers.J > mbtiAnswers.P ? 'J' : 'P'
+        totemMbtiAnswers.E > totemMbtiAnswers.I ? 'E' : 'I',
+        totemMbtiAnswers.S > totemMbtiAnswers.N ? 'S' : 'N',
+        totemMbtiAnswers.T > totemMbtiAnswers.F ? 'T' : 'F',
+        totemMbtiAnswers.J > totemMbtiAnswers.P ? 'J' : 'P'
     ].join('');
     
-    const profileData = window.MbtiQuestions.profiles[profile];
+    const profileData = window.mbtiData.results ? window.mbtiData.results[profile] : null;
     
     candidatoData.mbti = {
         perfil: profile,
-        titulo: profileData ? profileData.title : 'Desconhecido',
-        grupo: profileData ? profileData.group : 'Desconhecido',
-        pontuacao: { ...mbtiAnswers },
+        titulo: profileData ? profileData.title : 'Concluído',
+        grupo: profileData ? profileData.group : 'Finalizado',
+        pontuacao: { ...totemMbtiAnswers },
         dataRealizacao: new Date().toISOString()
     };
     
