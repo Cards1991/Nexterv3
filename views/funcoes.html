@@ -1,19 +1,15 @@
 <h2 class="page-title">Cadastro de Funções</h2>
 
-<div class="card premium-card border-0 mb-4 shadow-sm">
-    <div class="card-body">
-        <div class="row align-items-center">
-            <div class="col-md-6">
-                <p class="text-muted mb-0">Gerencie todos os cargos (funções) disponíveis para cada empresa do sistema.</p>
-            </div>
-            <div class="col-md-6 text-md-end mt-3 mt-md-0 d-flex gap-2 justify-content-md-end flex-wrap">
-                <button class="btn btn-warning" onclick="migrarFuncoesAntigas()" id="btn-migrar-funcoes" title="Migrar funções salvas no formato antigo">
-                    <i class="fas fa-magic"></i> Migrar Funções Antigas
-                </button>
-                <button class="btn btn-primary" onclick="abrirModalFuncao()">
-                    <i class="fas fa-plus"></i> Nova Função
-                </button>
-            </div>
+<div class="card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+        <span>Gerencie todos os cargos (funções) disponíveis para cada empresa do sistema.</span>
+        <div class="d-flex gap-2">
+            <button class="btn btn-warning btn-sm text-dark fw-bold" onclick="migrarFuncoesAntigas()" id="btn-migrar-funcoes" title="Migrar funções salvas no formato antigo">
+                <i class="fas fa-magic"></i> Migrar Funções Antigas
+            </button>
+            <button class="btn btn-primary btn-sm" onclick="abrirModalFuncao()">
+                <i class="fas fa-plus"></i> Nova Função
+            </button>
         </div>
     </div>
 </div>
