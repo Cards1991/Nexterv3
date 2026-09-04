@@ -5,40 +5,52 @@ let equipeMbtiAnswers = {
     T: 0, F: 0,
     J: 0, P: 0
 };
-let membroData = {};
+let membroToken = null;
+let membroData = null;
 
-function formatarCpfEquipe(campo) {
-    let cpf = campo.value.replace(/\D/g, '');
-    if (cpf.length > 11) cpf = cpf.slice(0, 11);
-    if (cpf.length > 9) cpf = cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    else if (cpf.length > 6) cpf = cpf.replace(/(\d{3})(\d{3})(\d{1,3})/, "$1.$2.$3");
-    else if (cpf.length > 3) cpf = cpf.replace(/(\d{3})(\d{1,3})/, "$1.$2");
-    campo.value = cpf;
+document.addEventListener('DOMContentLoaded', async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    membroToken = urlParams.get('t');
+
+    if (!membroToken) {
+        mostrarErro("Nenhum código de convite encontrado na URL.");
+        return;
+    }
+
+    try {
+        const docSnap = await db.collection('equipe_mbti').doc(membroToken).get();
+        if (!docSnap.exists) {
+            mostrarErro("Convite não encontrado no sistema.");
+            return;
+        }
+
+        membroData = docSnap.data();
+
+        if (membroData.status === 'Concluído') {
+            mostrarErro("Você já concluiu este teste anteriormente. Obrigado!");
+            return;
+        }
+
+        // Mostra boas vindas
+        document.getElementById('step-loading').classList.remove('active');
+        document.getElementById('step-dados').classList.add('active');
+        document.getElementById('equipe-nome-display').textContent = membroData.nome;
+
+    } catch (error) {
+        console.error("Erro ao validar token:", error);
+        mostrarErro("Ocorreu um erro ao acessar o servidor. Tente novamente mais tarde.");
+    }
+});
+
+function mostrarErro(msg) {
+    document.getElementById('step-loading').classList.remove('active');
+    document.getElementById('step-erro').classList.add('active');
+    document.getElementById('msg-erro').textContent = msg;
 }
 
 function avancarParaMbti() {
-    const form = document.getElementById('form-equipe-mbti');
-    if(!form.checkValidity()) {
-        form.reportValidity();
-        return;
-    }
-    
-    const cpfRaw = document.getElementById('equipe-cpf').value;
-    const cpf = cpfRaw.replace(/\D/g, '');
-    if(cpf.length !== 11) {
-        alert("Digite um CPF válido com 11 números.");
-        return;
-    }
-
-    membroData = {
-        nome: document.getElementById('equipe-nome').value.trim(),
-        cpf: cpfRaw,
-        dataTeste: firebase.firestore.FieldValue.serverTimestamp(),
-    };
-
     document.getElementById('step-dados').classList.remove('active');
     document.getElementById('step-mbti').classList.add('active');
-    
     renderMbtiStep(1);
 }
 
@@ -131,7 +143,7 @@ async function finalizarTesteEquipe() {
     
     const profileData = mbtiData.results ? mbtiData.results[profile] : null;
     
-    membroData.mbti = {
+    const mbtiResultData = {
         perfil: profile,
         titulo: profileData ? profileData.title : 'Concluído',
         grupo: profileData ? profileData.group : 'Finalizado',
@@ -144,23 +156,12 @@ async function finalizarTesteEquipe() {
     btnNext.disabled = true;
     
     try {
-        // Salva na coleção dedicada equipe_mbti
-        await db.collection('equipe_mbti').add(membroData);
-        
-        // Também tenta atualizar na coleção 'funcionarios' se o CPF existir lá.
-        const funcionarioSnap = await db.collection('funcionarios').where('cpf', '==', membroData.cpf).get();
-        if(!funcionarioSnap.empty) {
-            const funcDocId = funcionarioSnap.docs[0].id;
-            await db.collection('funcionarios').doc(funcDocId).update({
-                mbti: {
-                    tipo: profile,
-                    grupo: profileData.group,
-                    titulo: profileData.title,
-                    descricao: profileData.description,
-                    dataTeste: firebase.firestore.FieldValue.serverTimestamp()
-                }
-            });
-        }
+        // Atualiza o documento gerado pelo convite
+        await db.collection('equipe_mbti').doc(membroToken).update({
+            mbti: mbtiResultData,
+            status: 'Concluído',
+            dataTeste: firebase.firestore.FieldValue.serverTimestamp()
+        });
         
         // Mostra tela de sucesso
         document.getElementById('step-mbti').classList.remove('active');
@@ -168,12 +169,8 @@ async function finalizarTesteEquipe() {
         
     } catch (error) {
         console.error("Erro ao salvar resultado da equipe:", error);
-        alert("Erro ao registrar suas respostas. Por favor, tente novamente ou chame o RH.");
+        alert("Erro ao registrar suas respostas. Por favor, tente novamente.");
         btnNext.innerHTML = 'Finalizar Teste';
         btnNext.disabled = false;
     }
-}
-
-function reiniciarTeste() {
-    window.location.reload();
 }

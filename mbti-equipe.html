@@ -43,6 +43,7 @@
             flex-grow: 1;
             display: flex;
             flex-direction: column;
+            justify-content: center;
         }
         .step-container {
             display: none;
@@ -78,28 +79,36 @@
     <div class="totem-container">
         <div class="totem-header">
             <h2><i class="fas fa-users me-2"></i> Análise de Perfil da Equipe</h2>
-            <p class="mb-0 mt-2 opacity-75">Por favor, identifique-se e responda ao questionário MBTI.</p>
+            <p class="mb-0 mt-2 opacity-75">Questionário MBTI</p>
         </div>
         
         <div class="totem-body">
-            <!-- Passo 1: Dados Básicos -->
-            <div id="step-dados" class="step-container active">
-                <h4 class="mb-4 text-center text-primary">Identificação</h4>
-                <form id="form-equipe-mbti">
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Nome Completo</label>
-                        <input type="text" class="form-control form-control-lg" id="equipe-nome" required placeholder="Digite seu nome completo">
+            
+            <!-- Loading -->
+            <div id="step-loading" class="step-container active text-center">
+                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status"></div>
+                <h4 class="mt-4 text-muted">Validando convite...</h4>
+            </div>
+
+            <!-- Erro de Convite -->
+            <div id="step-erro" class="step-container text-center">
+                <i class="fas fa-exclamation-triangle text-danger mb-3" style="font-size: 4rem;"></i>
+                <h3 class="text-danger fw-bold">Convite Inválido ou Expirado</h3>
+                <p class="text-muted mt-2" id="msg-erro">Verifique se você copiou o link corretamente ou entre em contato com o RH.</p>
+            </div>
+
+            <!-- Passo 1: Boas vindas -->
+            <div id="step-dados" class="step-container">
+                <div class="text-center">
+                    <h3 class="mb-3 text-primary">Olá, <span id="equipe-nome-display" class="fw-bold"></span>!</h3>
+                    <p class="text-muted fs-5 mb-5">Você foi convidado(a) para realizar o seu teste de perfil comportamental.</p>
+                    <div class="alert alert-info py-3 mb-5 text-start">
+                        <i class="fas fa-info-circle me-2"></i> Escolha a afirmação que mais condiz com você ou com seu jeito de agir e pensar na maioria das vezes. Não existem respostas certas ou erradas.
                     </div>
-                    <div class="mb-4">
-                        <label class="form-label fw-bold">CPF</label>
-                        <input type="text" class="form-control form-control-lg" id="equipe-cpf" required placeholder="000.000.000-00" oninput="formatarCpfEquipe(this)">
-                    </div>
-                    <div class="d-grid mt-4">
-                        <button type="button" class="btn btn-primary btn-lg text-white fw-bold" onclick="avancarParaMbti()" id="btn-avancar-mbti">
-                            Iniciar Teste de Perfil <i class="fas fa-arrow-right ms-2"></i>
-                        </button>
-                    </div>
-                </form>
+                    <button class="btn btn-primary btn-lg text-white fw-bold px-5" onclick="avancarParaMbti()" id="btn-avancar-mbti">
+                        Iniciar Teste <i class="fas fa-arrow-right ms-2"></i>
+                    </button>
+                </div>
             </div>
 
             <!-- Passo 2: MBTI -->
@@ -113,11 +122,11 @@
                 </div>
                 <p class="text-muted mb-4" id="equipe-mbti-desc"></p>
 
-                <div id="equipe-mbti-options" class="mb-4">
+                <div id="equipe-mbti-options" class="mb-4" style="max-height: 50vh; overflow-y: auto; padding-right: 10px;">
                     <!-- Opções geradas dinamicamente -->
                 </div>
 
-                <div class="d-flex justify-content-between mt-auto">
+                <div class="d-flex justify-content-between mt-auto pt-3 border-top">
                     <button class="btn btn-outline-secondary" id="equipe-btn-prev" onclick="equipePrevMbtiStep()" style="display: none;">Voltar</button>
                     <button class="btn btn-primary px-4 ms-auto text-white fw-bold" id="equipe-btn-next" onclick="equipeNextMbtiStep()">Próxima Etapa</button>
                 </div>
@@ -130,9 +139,7 @@
                 </div>
                 <h3 class="text-primary fw-bold mb-3">Tudo Certo!</h3>
                 <p class="fs-5 text-muted mb-5" id="equipe-conclusao-msg">Seu teste de perfil foi concluído e registrado com sucesso. O setor de Recursos Humanos já tem acesso às suas respostas.</p>
-                <button class="btn btn-primary btn-lg px-5 text-white fw-bold" onclick="reiniciarTeste()">
-                    Finalizar
-                </button>
+                <p class="text-muted">Você pode fechar esta aba.</p>
             </div>
             
         </div>

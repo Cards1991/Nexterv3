@@ -4,8 +4,8 @@
         <button class="btn btn-outline-primary me-2" onclick="carregarMBTIEquipe()">
             <i class="fas fa-sync-alt me-1"></i> Atualizar
         </button>
-        <button class="btn btn-primary" onclick="copiarLinkTeste()">
-            <i class="fas fa-link me-1"></i> Copiar Link do Teste
+        <button class="btn btn-primary" onclick="abrirModalGerarConvite()">
+            <i class="fas fa-plus-circle me-1"></i> Gerar Convite de Teste
         </button>
     </div>
 </div>
@@ -47,9 +47,8 @@
             <table class="table table-hover align-middle mb-0" id="tabela-mbti-equipe">
                 <thead class="table-light">
                     <tr>
-                        <th class="ps-4">Data</th>
+                        <th class="ps-4">Data/Status</th>
                         <th>Colaborador</th>
-                        <th>CPF</th>
                         <th>Perfil (Tipo)</th>
                         <th>Grupo</th>
                         <th class="text-center">Ações</th>
@@ -73,7 +72,7 @@
             </div>
             <div class="modal-body p-4 text-center">
                 <h4 class="mb-1 text-primary" id="detalhe-mbti-nome">Nome do Colaborador</h4>
-                <p class="text-muted mb-4">CPF: <span id="detalhe-mbti-cpf"></span> | Realizado em: <span id="detalhe-mbti-data"></span></p>
+                <p class="text-muted mb-4">Realizado em: <span id="detalhe-mbti-data"></span></p>
 
                 <div class="mb-4">
                     <i class="fas fa-brain text-success" style="font-size: 3rem;"></i>
@@ -89,6 +88,38 @@
             </div>
             <div class="modal-footer border-0">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Gerar Convite -->
+<div class="modal fade" id="modal-gerar-convite" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-plus-circle me-2"></i> Gerar Convite de Teste</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Nome do Colaborador</label>
+                    <input type="text" class="form-control" id="convite-nome" placeholder="Para quem é este teste?">
+                </div>
+                
+                <div id="area-link-gerado" class="mt-4 d-none">
+                    <hr>
+                    <p class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i> Convite gerado!</p>
+                    <p class="text-muted small">Copie o link abaixo e envie para o colaborador.</p>
+                    <div class="input-group">
+                        <input type="text" class="form-control bg-light" id="convite-link" readonly>
+                        <button class="btn btn-outline-primary" onclick="copiarLinkConvite()"><i class="fas fa-copy"></i></button>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary" id="btn-salvar-convite" onclick="gerarLinkConvite()">Gerar Link</button>
             </div>
         </div>
     </div>
