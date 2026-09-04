@@ -146,9 +146,21 @@ function renderizarKanban() {
                 ${tagsHtml ? `<div class="mb-2">${tagsHtml}</div>` : ''}
                 <div class="d-flex justify-content-between align-items-center mt-2 border-top pt-2">
                     <span class="badge bg-light text-dark border"><i class="fas fa-phone"></i> ${cand.telefone || '-'}</span>
-                    <button class="btn btn-sm btn-primary" onclick="editarCandidato('${cand.id}')" title="Ver Detalhes">
-                        <i class="fas fa-folder-open"></i> Abrir Ficha
-                    </button>
+                    <div class="d-flex gap-1">
+                        <button class="btn btn-sm btn-primary" onclick="editarCandidato('${cand.id}')" title="Ver Detalhes">
+                            <i class="fas fa-folder-open"></i> Ficha
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-light border dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Op√ß√µes">
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+                                <li><a class="dropdown-item" href="#" onclick="avancarFaseCandidato(event, '${cand.id}', '${fase}')"><i class="fas fa-step-forward text-success me-2"></i>Avan√ßar Fase</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="reprovarCandidato(event, '${cand.id}')"><i class="fas fa-archive text-warning me-2"></i>Reprovar (Banco)</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item text-danger" href="#" onclick="excluirCandidato(event, '${cand.id}')"><i class="fas fa-trash-alt me-2"></i>Excluir Candidato</a></li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             `;
             
@@ -1361,3 +1373,54 @@ async function calcularMatchMBTI(candidatoMBTI) {
         matchContainer.innerHTML = '<span class="text-danger small">Erro ao carregar dados do gerente.</span>';
     }
 }
+
+/* =============================================
+   A«’ES DO KANBAN CARD
+   ============================================= */
+
+async function avancarFaseCandidato(event, id, faseAtual) {
+    if(event) event.stopPropagation();
+    const fases = ['triagem', 'entrevista', 'avaliacao', 'aprovado', 'banco'];
+    let idx = fases.indexOf(faseAtual);
+    if(idx >= 0 && idx < 3) {
+        let proximaFase = fases[idx + 1];
+        try {
+            await db.collection('candidatos').doc(id).update({ faseAtual: proximaFase });
+            mostrarMensagem('Candidato avanÁado com sucesso!');
+        } catch(e) {
+            console.error(e);
+            mostrarMensagem('Erro ao avanÁar candidato.', 'error');
+        }
+    } else if (idx === 3) {
+        mostrarMensagem('Candidato j· est· na ˙ltima fase (Aprovado)!', 'warning');
+    } else {
+        mostrarMensagem('Candidato est· no banco de talentos. Mova manualmente.', 'warning');
+    }
+}
+
+async function reprovarCandidato(event, id) {
+    if(event) event.stopPropagation();
+    if(confirm('Deseja mover este candidato para o Banco de Talentos (Reprovado)?')) {
+        try {
+            await db.collection('candidatos').doc(id).update({ faseAtual: 'banco' });
+            mostrarMensagem('Candidato movido para o Banco de Talentos.');
+        } catch(e) {
+            console.error(e);
+            mostrarMensagem('Erro ao mover candidato.', 'error');
+        }
+    }
+}
+
+async function excluirCandidato(event, id) {
+    if(event) event.stopPropagation();
+    if(confirm('Tem certeza que deseja excluir este candidato permanentemente?')) {
+        try {
+            await db.collection('candidatos').doc(id).delete();
+            mostrarMensagem('Candidato excluÌdo com sucesso.');
+        } catch(e) {
+            console.error(e);
+            mostrarMensagem('Erro ao excluir candidato.', 'error');
+        }
+    }
+}
+

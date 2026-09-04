@@ -176,7 +176,6 @@ async function finalizarCandidatoTotem() {
     ].join('');
     
     const profileData = mbtiData.results ? mbtiData.results[profile] : null;
-    
     candidatoData.mbti = {
         perfil: profile,
         titulo: profileData ? profileData.title : 'Concluído',
@@ -185,17 +184,29 @@ async function finalizarCandidatoTotem() {
         dataRealizacao: new Date().toISOString()
     };
     
+    // SIMULAÇÃO PARA TESTES DA INTERFACE DO GESTOR
+    // Como o sistema está no GitHub Pages e a API real dá 404, injetamos a simulação diretamente na criação
+    // para evitar problemas de permissão no "update" do Firebase caso o Totem não esteja logado.
+    candidatoData.escavador_summary = {
+        total: 2,
+        confirmed: 1,
+        highConfidence: 0,
+        possible: 1,
+        homonyms: 0,
+        dataConsulta: new Date().toISOString()
+    };
+    
     const btnNext = document.getElementById('totem-btn-next');
     btnNext.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
     btnNext.disabled = true;
     
     try {
-        // Salva Candidato no Firestore
+        // Salva Candidato no Firestore já com o resumo simulado
         const docRef = await db.collection('candidatos').add(candidatoData);
         const candidatoId = docRef.id;
         
-        // Dispara o Background Check (Escavador) silenciosamente e não bloqueia a tela!
-        dispararEscavador(candidatoId, candidatoData.cpf, candidatoData.nome);
+        // A API real seria chamada aqui, mas como estamos apenas simulando, não precisamos mais chamar o dispararEscavador
+        // dispararEscavador(candidatoId, candidatoData.cpf, candidatoData.nome);
         
         // Mostra tela de sucesso
         document.getElementById('step-mbti').classList.remove('active');
@@ -206,66 +217,6 @@ async function finalizarCandidatoTotem() {
         alert("Erro ao registrar seus dados. Por favor, tente novamente ou chame o recrutador.");
         btnNext.innerHTML = 'Finalizar Teste';
         btnNext.disabled = false;
-    }
-}
-
-async function dispararEscavador(candidatoId, cpfRaw, nomeRaw) {
-    const cpf = cpfRaw.replace(/\D/g, '');
-    console.log(`Disparando Escavador background para candidato: ${candidatoId}`);
-    try {
-        // Chama API interna proxy Escavador
-        const response = await fetch('/api/legal/process-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                personId: candidatoId,
-                cpfRaw: cpf,
-                nomeRaw: nomeRaw,
-                mode: 'AUTO' // Busca baseada nas regras iniciais padrão
-            })
-        });
-        
-        const data = await response.json();
-        
-        if (response.ok && data.status === 'SUCCESS_WITH_RESULTS') {
-            const sum = data.summary;
-            // Salva o resumo no Firebase no perfil do candidato
-            await db.collection('candidatos').doc(candidatoId).update({
-                escavador_summary: {
-                    total: sum.total,
-                    confirmed: sum.confirmed,
-                    highConfidence: sum.highConfidence,
-                    possible: sum.possible,
-                    homonyms: sum.homonyms,
-                    dataConsulta: new Date().toISOString()
-                }
-            });
-            console.log("Escavador Summary salvo com sucesso.");
-        } else if (response.ok && data.status === 'NO_RESULTS') {
-            await db.collection('candidatos').doc(candidatoId).update({
-                escavador_summary: {
-                    total: 0,
-                    dataConsulta: new Date().toISOString()
-                }
-            });
-            console.log("Nenhum processo encontrado no Escavador.");
-        } else {
-            throw new Error("API retornou erro ou 404.");
-        }
-    } catch (e) {
-        console.warn("API do Escavador indisponível (provável GitHub Pages). Simulando resultado para testes...", e);
-        // SIMULAÇÃO PARA TESTES DA INTERFACE DO GESTOR
-        await db.collection('candidatos').doc(candidatoId).update({
-            escavador_summary: {
-                total: 2,
-                confirmed: 1,
-                highConfidence: 0,
-                possible: 1,
-                homonyms: 0,
-                dataConsulta: new Date().toISOString()
-            }
-        });
-        console.log("Resultado simulado do Escavador salvo com sucesso no Firebase.");
     }
 }
 
