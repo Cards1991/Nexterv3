@@ -89,14 +89,14 @@ function avancarParaMbti() {
 function renderMbtiStep(stepNumber) {
     totemMbtiStep = stepNumber;
     
-    if (!window.mbtiData) {
+    if (typeof mbtiData === 'undefined') {
         alert("O dicionário MBTI não carregou.");
         return;
     }
     
     // As in mbti.js, stages might not be in window.MbtiQuestions
     // Wait, mbti.js defines mbtiData and it has steps array, not stages.
-    const stage = window.mbtiData.steps[stepNumber - 1];
+    const stage = mbtiData.steps[stepNumber - 1];
     if (!stage) return;
     
     document.getElementById('totem-mbti-title').textContent = stage.title;
@@ -139,7 +139,7 @@ function totemPrevMbtiStep() {
 }
 
 async function totemNextMbtiStep() {
-    const stage = window.mbtiData.steps[totemMbtiStep - 1];
+    const stage = mbtiData.steps[totemMbtiStep - 1];
     let answeredAll = true;
     
     stage.questions.forEach((q, index) => {
@@ -175,7 +175,7 @@ async function finalizarCandidatoTotem() {
         totemMbtiAnswers.J > totemMbtiAnswers.P ? 'J' : 'P'
     ].join('');
     
-    const profileData = window.mbtiData.results ? window.mbtiData.results[profile] : null;
+    const profileData = mbtiData.results ? mbtiData.results[profile] : null;
     
     candidatoData.mbti = {
         perfil: profile,
