@@ -311,41 +311,32 @@ function renderizarMapaVisualCorporativo() {
 
     // 2. Heatmap
     if (containerMapa) {
-        const maxVal = Math.max(...Object.values(contagemPerfis), 1);
+        const maxVal = Math.max(...Object.values(contagemGrupos), 1);
         
+        const gruposInfo = [
+            { nome: "Os Pesquisadores", titulo: "Pesquisadores", corRgb: '102, 16, 242', icon: 'fa-search' },
+            { nome: "Os Idealistas", titulo: "Idealistas", corRgb: '25, 135, 84', icon: 'fa-lightbulb' },
+            { nome: "Os Administradores", titulo: "Administradores", corRgb: '13, 110, 253', icon: 'fa-briefcase' },
+            { nome: "Os Ativos", titulo: "Ativos", corRgb: '253, 126, 20', icon: 'fa-bolt' }
+        ];
+
         let html = '';
-        perfisOrdenados.forEach(perfil => {
-            const qtd = contagemPerfis[perfil];
+        gruposInfo.forEach(grupo => {
+            const qtd = contagemGrupos[grupo.nome];
             const hasPeople = qtd > 0;
             const alpha = hasPeople ? (0.3 + (qtd / maxVal) * 0.7) : 0; 
             
-            let colorRgb = '13, 110, 253'; 
-            let fontColor = hasPeople ? '#fff' : '#6c757d';
-            let groupName = "";
-            
-            if (["INTJ", "INTP", "ENTJ", "ENTP"].includes(perfil)) {
-                colorRgb = '102, 16, 242'; // Roxo
-                groupName = "Pesquisadores";
-            } else if (["INFJ", "INFP", "ENFJ", "ENFP"].includes(perfil)) {
-                colorRgb = '25, 135, 84'; // Verde
-                groupName = "Idealistas";
-            } else if (["ISTJ", "ISFJ", "ESTJ", "ESFJ"].includes(perfil)) {
-                colorRgb = '13, 110, 253'; // Azul
-                groupName = "Administradores";
-            } else if (["ISTP", "ISFP", "ESTP", "ESFP"].includes(perfil)) {
-                colorRgb = '253, 126, 20'; // Laranja
-                groupName = "Ativos";
-            }
-
-            const bgColor = hasPeople ? `rgba(${colorRgb}, ${alpha})` : '#f8f9fa';
+            const fontColor = hasPeople ? '#fff' : '#6c757d';
+            const bgColor = hasPeople ? `rgba(${grupo.corRgb}, ${alpha})` : '#f8f9fa';
             const borderStyle = hasPeople ? 'border: none;' : 'border: 1px dashed #dee2e6;';
-            const badgeStr = hasPeople ? `<span class="badge bg-white text-dark rounded-pill mt-1 shadow-sm" style="font-size: 0.75rem;">${qtd}</span>` : '';
+            const badgeStr = hasPeople ? `<span class="badge bg-white text-dark rounded-pill mt-2 shadow-sm" style="font-size: 0.9rem;">${qtd} Colaborador(es)</span>` : '<span class="badge bg-light text-muted rounded-pill mt-2 shadow-sm" style="font-size: 0.9rem;">0 Colaboradores</span>';
 
             html += `
-                <div class="col-3">
-                    <div class="card h-100 shadow-sm" style="background-color: ${bgColor}; ${borderStyle} transition: 0.3s; cursor: default;" title="${groupName} - ${qtd} pessoa(s)">
-                        <div class="card-body p-2 d-flex flex-column align-items-center justify-content-center" style="min-height: 80px;">
-                            <h5 class="mb-0 fw-bold" style="color: ${fontColor};">${perfil}</h5>
+                <div class="col-6 p-1">
+                    <div class="card h-100 shadow-sm" style="background-color: ${bgColor}; ${borderStyle} transition: 0.3s; cursor: default;" title="${grupo.titulo} - ${qtd} pessoa(s)">
+                        <div class="card-body p-3 d-flex flex-column align-items-center justify-content-center" style="min-height: 120px;">
+                            <i class="fas ${grupo.icon} mb-2 fs-4" style="color: ${fontColor};"></i>
+                            <h5 class="mb-0 fw-bold text-center" style="color: ${fontColor};">${grupo.titulo}</h5>
                             ${badgeStr}
                         </div>
                     </div>
