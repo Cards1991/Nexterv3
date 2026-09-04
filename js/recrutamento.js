@@ -1216,9 +1216,11 @@ window.imprimirFichaCandidato = function() {
 
 // --- MBTI MODULE (Recrutamento) ---
 
-document.getElementById('candidatoVagaId').addEventListener('change', () => {
-    const id = document.getElementById('candidatoId').value;
-    if(id) carregarMBTICandidato(id);
+document.body.addEventListener('change', (e) => {
+    if (e.target && e.target.id === 'candidatoVagaId') {
+        const id = document.getElementById('candidatoId').value;
+        if(id) carregarMBTICandidato(id);
+    }
 });
 
 async function carregarMBTICandidato(candidatoId) {
