@@ -184,17 +184,8 @@ async function finalizarCandidatoTotem() {
         dataRealizacao: new Date().toISOString()
     };
     
-    // SIMULAÇÃO PARA TESTES DA INTERFACE DO GESTOR
-    // Como o sistema está no GitHub Pages e a API real dá 404, injetamos a simulação diretamente na criação
-    // para evitar problemas de permissão no "update" do Firebase caso o Totem não esteja logado.
-    candidatoData.escavador_summary = {
-        total: 2,
-        confirmed: 1,
-        highConfidence: 0,
-        possible: 1,
-        homonyms: 0,
-        dataConsulta: new Date().toISOString()
-    };
+    // Removida a simulação fixa do Escavador que inseria processos falsos.
+    // A busca será feita sob demanda pelo RH através do painel.
     
     const btnNext = document.getElementById('totem-btn-next');
     btnNext.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
