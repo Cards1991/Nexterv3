@@ -59,6 +59,9 @@ function renderizarTabelaMBTIEquipe(lista) {
                 <button class="btn btn-sm btn-outline-info" onclick='verDetalhesMBTI(${JSON.stringify(item).replace(/'/g, "&apos;")})' title="Ver Detalhes">
                     <i class="fas fa-eye"></i> Detalhes
                 </button>
+                <button class="btn btn-sm btn-outline-danger ms-1" onclick="excluirConvite('${item.id}')" title="Excluir Resultado">
+                    <i class="fas fa-trash"></i>
+                </button>
             `;
         }
 
@@ -137,10 +140,10 @@ function reenviarLinkConvite(id) {
 }
 
 async function excluirConvite(id) {
-    if (confirm("Deseja realmente cancelar este convite?")) {
+    if (confirm("Deseja realmente excluir este registro?")) {
         try {
             await db.collection('equipe_mbti').doc(id).delete();
-            mostrarMensagem('Convite cancelado.', 'success');
+            mostrarMensagem('Registro excluído com sucesso.', 'success');
             carregarMBTIEquipe();
         } catch (error) {
             mostrarMensagem('Erro ao cancelar convite.', 'error');
