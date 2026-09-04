@@ -10,7 +10,7 @@ const TODAS_SECOES = [
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
-    'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'setor-macro', 'controle-cestas',
+    'iso-maquinas', 'iso-organograma', 'iso-swot', 'setores', 'funcoes', 'setor-macro', 'controle-cestas',
     'iso-mecanicos', 'iso-manutencao', 'cadastro-mecanicos',
     'dashboard-faltas', 'dashboard-atividades', 'gestao-sumidos', 'analise-lotacao', 'treinamento', 'avaliacao-experiencia', 'controle-usuario-master', 'ponto-pf', 'ocorrencias', 'historico-colaborador', 'manutencao-mecanico',
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
@@ -184,6 +184,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'setores':
                 if (typeof inicializarSetores === 'function') await inicializarSetores();
+                break;
+            case 'funcoes':
+                if (typeof inicializarFuncoes === 'function') await inicializarFuncoes();
                 break;
             case 'analise-lotacao':
                 if (typeof carregarDashboardSetores === 'function') await carregarDashboardSetores();
