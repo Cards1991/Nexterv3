@@ -38,6 +38,26 @@
                                 </label>
                             </div>
                         </div>
+                        
+                        <!-- Painel de Resumo do Totem (Preenchido dinamicamente se houver dados do Escavador) -->
+                        <div class="col-12 mb-3" id="painel-resumo-totem" style="display: none;">
+                            <div class="card border-0 bg-primary bg-opacity-10 shadow-sm">
+                                <div class="card-body">
+                                    <h5 class="text-primary mb-3"><i class="fas fa-clipboard-check me-2"></i>Resumo da Automação (Totem)</h5>
+                                    <div class="row g-3">
+                                        <div class="col-md-6 border-end border-primary border-opacity-25">
+                                            <h6 class="text-dark fw-bold mb-2">Background Check (Escavador)</h6>
+                                            <div id="totem-resumo-escavador">Carregando...</div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-dark fw-bold mb-2">Perfil Comportamental (MBTI)</h6>
+                                            <div id="totem-resumo-mbti">Carregando...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="col-md-6">
                             <label class="form-label required">Telefone/WhatsApp</label>
                             <input type="text" id="candidatoTelefone" class="form-control" required>

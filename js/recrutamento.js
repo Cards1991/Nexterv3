@@ -285,6 +285,38 @@ async function editarCandidato(id) {
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
     
+    // Renderizar Painel de Resumo do Totem
+    const painelResumo = document.getElementById('painel-resumo-totem');
+    if (cand.escavador_summary || cand.mbti) {
+        painelResumo.style.display = 'block';
+        
+        const mbtiDiv = document.getElementById('totem-resumo-mbti');
+        if (cand.mbti) {
+            mbtiDiv.innerHTML = `<span class="badge bg-primary fs-6 mb-1">${cand.mbti.perfil}</span><br>
+                                 <small class="text-muted">${cand.mbti.titulo}</small>`;
+        } else {
+            mbtiDiv.innerHTML = '<span class="text-muted">Pendente</span>';
+        }
+        
+        const escavadorDiv = document.getElementById('totem-resumo-escavador');
+        if (cand.escavador_summary) {
+            const sum = cand.escavador_summary;
+            if (sum.total === 0) {
+                escavadorDiv.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Nada Consta</span>';
+            } else {
+                let badges = `<span class="badge bg-secondary mb-1">Total: ${sum.total}</span> `;
+                if(sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
+                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
+                if(sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
+                escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Ver Detalhes (Buscando Novamente)</small>`;
+            }
+        } else {
+            escavadorDiv.innerHTML = '<span class="text-muted">Pendente</span>';
+        }
+    } else {
+        painelResumo.style.display = 'none';
+    }
+    
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
 
