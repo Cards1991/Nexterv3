@@ -89,7 +89,8 @@ const ScriptLoader = {
         'historico-colaborador': ['js/historico-colaborador.js'],
         'setor-macro': ['js/setor-macro.js'],
         'compliance-denuncia': ['js/compliance-denuncia.js'],
-        'gestao-denuncias': ['js/gestao-denuncias.js']
+        'gestao-denuncias': ['js/gestao-denuncias.js'],
+        'recursos-humanos': ['js/recursos-humanos.js']
     },
 
     /**

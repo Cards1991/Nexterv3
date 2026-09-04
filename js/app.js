@@ -16,7 +16,7 @@ const TODAS_SECOES = [
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
-    'dashboard-inicial', 'recrutamento'
+    'dashboard-inicial', 'recrutamento', 'recursos-humanos'
 ];
 
 let currentUserPermissions = {};
@@ -448,6 +448,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'dashboard-inicial':
                 if (typeof inicializarDashboardInicial === 'function') inicializarDashboardInicial();
+                break;
+            case 'recursos-humanos':
+                if (typeof initRecursosHumanos === 'function') await initRecursosHumanos();
                 break;
         }
     } catch (error) {
