@@ -38,6 +38,20 @@
     </div>
 </div>
 
+<!-- Nova Seção: Matriz de Gerentes -->
+<div class="card shadow-sm border-0 mb-4 bg-light">
+    <div class="card-header bg-white py-3 border-bottom-0">
+        <h5 class="mb-0 fw-bold text-primary"><i class="fas fa-sitemap me-2"></i> Matriz de Liderança (Base para Contratação)</h5>
+    </div>
+    <div class="card-body">
+        <div class="row" id="matriz-gerentes-container">
+            <div class="col-12 text-center text-muted">
+                Nenhum gerente marcado ainda. Marque na tabela abaixo os colaboradores que atuam como gerentes.
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="card shadow-sm border-0">
     <div class="card-header bg-white py-3">
         <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i> Resultados Registrados</h5>
@@ -51,11 +65,12 @@
                         <th>Colaborador</th>
                         <th>Perfil (Tipo)</th>
                         <th>Grupo</th>
+                        <th class="text-center">É Gerente?</th>
                         <th class="text-center">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="lista-mbti-equipe">
-                    <tr><td colspan="6" class="text-center py-4">Carregando dados...</td></tr>
+                    <tr><td colspan="7" class="text-center py-4">Carregando dados...</td></tr>
                 </tbody>
             </table>
         </div>
@@ -80,10 +95,15 @@
                 <h2 class="mb-1 text-primary fw-bold" id="detalhe-mbti-tipo">INTJ</h2>
                 <h5 class="text-muted mb-4"><span id="detalhe-mbti-titulo">O Arquiteto</span> - <span id="detalhe-mbti-grupo">Os Pesquisadores</span></h5>
                 
-                <div class="card border-primary mb-0 text-start">
+                <div class="card border-primary mb-3 text-start">
                     <div class="card-body bg-light">
                         <p id="detalhe-mbti-desc" class="mb-0" style="line-height: 1.6;"></p>
                     </div>
+                </div>
+                
+                <div class="text-start">
+                    <p class="mb-1 fw-bold text-muted"><i class="fas fa-briefcase me-1"></i> Profissões Indicadas:</p>
+                    <p id="detalhe-mbti-profissoes" class="mb-0 text-dark"></p>
                 </div>
             </div>
             <div class="modal-footer border-0">
