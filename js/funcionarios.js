@@ -761,6 +761,8 @@ async function editarFuncionario(funcionarioId) {
         }
 
         funcionarioModal.show();
+        
+        carregarMBTIFuncionario(funcionarioId);
 
         // Armazena o ID no formulário para uso na biometria
         const form = document.getElementById('form-funcionario');
@@ -3690,5 +3692,48 @@ async function confirmarTransferenciaLote() {
     } catch (error) {
         console.error('Erro ao transferir em lote:', error);
         mostrarMensagem('Erro ao realizar transferência em lote', 'error');
+    }
+}
+
+// --- MBTI MODULE ---
+async function carregarMBTIFuncionario(funcionarioId) {
+    const container = document.getElementById('funcionario-mbti-resultado');
+    if(!container) return;
+    
+    try {
+        const doc = await db.collection('funcionarios').doc(funcionarioId).get();
+        const data = doc.data();
+        if(data && data.mbti) {
+            container.innerHTML = `
+                <div class="d-flex flex-column">
+                    <span class="badge bg-primary fs-6 mb-1 align-self-start">${data.mbti.tipo}</span>
+                    <strong class="text-dark">${data.mbti.titulo}</strong>
+                    <span class="text-muted small">${data.mbti.grupo}</span>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<span class="text-muted fst-italic">Teste MBTI ainda não realizado.</span>`;
+        }
+    } catch(e) {
+        console.error("Erro ao carregar MBTI", e);
+    }
+}
+
+function iniciarMBTIFuncionario() {
+    const form = document.getElementById('form-funcionario');
+    if(!form || !form.dataset.funcionarioId) {
+        if(typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Salve o funcionário primeiro.', 'warning');
+        } else {
+            alert('Salve o funcionário primeiro.');
+        }
+        return;
+    }
+    const id = form.dataset.funcionarioId;
+    
+    if(typeof abrirModalMBTI === 'function') {
+        abrirModalMBTI(id, 'funcionario');
+    } else {
+        console.error('Função abrirModalMBTI não encontrada. Verifique se o script mbti.js está carregado.');
     }
 }

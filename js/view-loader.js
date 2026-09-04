@@ -56,6 +56,7 @@ const ViewLoader = {
         { url: 'views/modal-vaga.html' },
         { url: 'views/modal-candidato.html' },
         { url: 'views/modal-documentos-escavador.html' },
+        { url: 'views/modal-mbti.html' },
         { url: 'views/ai-chat.html' }
     ],
 

@@ -79,7 +79,36 @@
                             </div>
                         </div>
                         
-                        <div class="col-12">
+                        <div class="col-12 mt-4">
+                            <h6 class="text-primary"><i class="fas fa-brain me-1"></i> Perfil Comportamental (MBTI) e Match</h6>
+                            <div class="row g-3">
+                                <!-- Candidato -->
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light h-100 d-flex flex-column justify-content-between">
+                                        <div>
+                                            <h6 class="text-muted mb-2 fs-6">Candidato</h6>
+                                            <div id="candidato-mbti-resultado">
+                                                <span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>
+                                            </div>
+                                        </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm mt-3 align-self-start" onclick="iniciarMBTICandidato()">
+                                            <i class="fas fa-play me-1"></i> Aplicar Teste
+                                        </button>
+                                    </div>
+                                </div>
+                                <!-- Gerente/Match -->
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light h-100" id="mbti-match-container">
+                                        <h6 class="text-muted mb-2 fs-6">Gerente da Vaga (Match)</h6>
+                                        <div id="gerente-mbti-resultado">
+                                            <span class="text-muted fst-italic small">Selecione uma vaga ou aguarde o carregamento para ver a compatibilidade.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-12 mt-3">
                             <label class="form-label">Anotações / Entrevista</label>
                             <textarea id="candidatoAnotacoes" class="form-control" rows="4"></textarea>
                         </div>

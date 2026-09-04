@@ -242,6 +242,11 @@ function abrirModalCandidato() {
     document.getElementById('areaEscavador').style.display = 'none';
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
+    
+    // Clear MBTI
+    document.getElementById('candidato-mbti-resultado').innerHTML = '<span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>';
+    document.getElementById('gerente-mbti-resultado').innerHTML = '<span class="text-muted fst-italic small">Selecione uma vaga para carregar o perfil do gestor e calcular a compatibilidade.</span>';
+
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
 }
@@ -282,6 +287,9 @@ async function editarCandidato(id) {
     
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
+
+    // Carregar MBTI do candidato e Match
+    carregarMBTICandidato(id);
 }
 
 async function salvarCandidato() {
@@ -1173,3 +1181,138 @@ window.imprimirFichaCandidato = function() {
         alert('Por favor, permita pop-ups neste site para poder imprimir a ficha.');
     }
 };
+
+// --- MBTI MODULE (Recrutamento) ---
+
+document.getElementById('candidatoVagaId').addEventListener('change', () => {
+    const id = document.getElementById('candidatoId').value;
+    if(id) carregarMBTICandidato(id);
+});
+
+async function carregarMBTICandidato(candidatoId) {
+    const container = document.getElementById('candidato-mbti-resultado');
+    if(!container) return;
+    
+    let candidatoMBTI = null;
+    
+    try {
+        const doc = await db.collection('candidatos').doc(candidatoId).get();
+        const data = doc.data();
+        if(data && data.mbti) {
+            candidatoMBTI = data.mbti;
+            container.innerHTML = `
+                <div class="d-flex flex-column">
+                    <span class="badge bg-primary fs-6 mb-1 align-self-start">${data.mbti.tipo}</span>
+                    <strong class="text-dark">${data.mbti.titulo}</strong>
+                    <span class="text-muted small">${data.mbti.grupo}</span>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>`;
+        }
+        
+        await calcularMatchMBTI(candidatoMBTI);
+    } catch(e) {
+        console.error("Erro ao carregar MBTI", e);
+    }
+}
+
+function iniciarMBTICandidato() {
+    const id = document.getElementById('candidatoId').value;
+    if(!id) {
+        if(typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Salve o candidato primeiro para gerar a ficha, depois aplique o teste.', 'warning');
+        } else {
+            alert('Salve o candidato primeiro para gerar a ficha, depois aplique o teste.');
+        }
+        return;
+    }
+    
+    if(typeof abrirModalMBTI === 'function') {
+        abrirModalMBTI(id, 'candidato');
+    } else {
+        console.error('Função abrirModalMBTI não encontrada.');
+    }
+}
+
+async function calcularMatchMBTI(candidatoMBTI) {
+    const matchContainer = document.getElementById('gerente-mbti-resultado');
+    const vagaId = document.getElementById('candidatoVagaId').value;
+    
+    if(!vagaId) {
+        matchContainer.innerHTML = '<span class="text-muted fst-italic small">Selecione uma vaga para carregar o perfil do gestor.</span>';
+        return;
+    }
+    
+    try {
+        // 1. Pegar a Vaga
+        const vagaDoc = await db.collection('vagas').doc(vagaId).get();
+        if(!vagaDoc.exists) throw new Error('Vaga não encontrada');
+        const setorId = vagaDoc.data().setorId;
+        
+        if(!setorId) {
+            matchContainer.innerHTML = '<span class="text-muted small">Vaga não vinculada a um setor específico.</span>';
+            return;
+        }
+        
+        // 2. Pegar o Setor (para achar o Lider/Gerente)
+        const setorDoc = await db.collection('setores').doc(setorId).get();
+        if(!setorDoc.exists) throw new Error('Setor não encontrado');
+        const liderId = setorDoc.data().liderId;
+        const liderNome = setorDoc.data().liderNome || 'Gerente';
+        
+        if(!liderId) {
+            matchContainer.innerHTML = `<span class="text-muted small">Setor <strong>${setorDoc.data().nome}</strong> não possui gerente definido.</span>`;
+            return;
+        }
+        
+        // 3. Pegar o MBTI do Gerente
+        const funcDoc = await db.collection('funcionarios').doc(liderId).get();
+        if(!funcDoc.exists) throw new Error('Gerente não encontrado');
+        const gerenteData = funcDoc.data();
+        const gerenteMBTI = gerenteData.mbti;
+        
+        if(!gerenteMBTI) {
+            matchContainer.innerHTML = `
+                <div class="alert alert-warning py-2 mb-0 small">
+                    <i class="fas fa-exclamation-triangle"></i> O gestor <strong>${liderNome}</strong> ainda não realizou o Teste MBTI.
+                </div>`;
+            return;
+        }
+        
+        // 4. Calcular e Exibir Match
+        let matchText = '<div class="alert alert-info py-2 mb-0 small"><i class="fas fa-info-circle"></i> O candidato precisa fazer o teste para calcular a compatibilidade.</div>';
+        
+        if(candidatoMBTI) {
+            // Lógica Básica de Match (Exemplo simples baseado em letras em comum)
+            let letrasIguais = 0;
+            for(let i=0; i<4; i++) {
+                if(candidatoMBTI.tipo[i] === gerenteMBTI.tipo[i]) letrasIguais++;
+            }
+            
+            let percentual = (letrasIguais / 4) * 100;
+            let badgeClass = percentual >= 75 ? 'bg-success' : (percentual === 50 ? 'bg-warning text-dark' : 'bg-danger');
+            let txtCompatibilidade = percentual >= 75 ? 'Alta afinidade' : (percentual === 50 ? 'Afinidade moderada' : 'Perfis complementares/opostos');
+            
+            matchText = `
+                <div class="d-flex align-items-center mb-2">
+                    <span class="badge ${badgeClass} fs-6 me-2">${percentual}% Match</span>
+                    <span class="fw-bold text-secondary">${txtCompatibilidade}</span>
+                </div>
+            `;
+        }
+        
+        matchContainer.innerHTML = `
+            <div class="mb-2">
+                <span class="badge bg-secondary mb-1">${gerenteMBTI.tipo}</span>
+                <strong class="text-dark d-block" style="font-size:0.9rem;">${liderNome}</strong>
+                <span class="text-muted small">${gerenteMBTI.titulo}</span>
+            </div>
+            ${matchText}
+        `;
+        
+    } catch(e) {
+        console.error("Erro ao calcular match", e);
+        matchContainer.innerHTML = '<span class="text-danger small">Erro ao carregar dados do gerente.</span>';
+    }
+}
