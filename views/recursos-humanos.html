@@ -102,27 +102,19 @@
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body p-4">
-                <div class="mb-3">
-                    <label class="form-label fw-bold">Colaborador</label>
-                    <select class="form-select" id="convite-funcionario">
-                        <option value="">Selecione um colaborador...</option>
-                    </select>
+                <div class="mb-3 text-center">
+                    <p class="text-muted">Este é um <strong>link genérico</strong>. Você pode enviá-lo para qualquer colaborador. O sistema irá identificar quem está respondendo pelo CPF digitado no início do teste.</p>
                 </div>
                 
-                <div id="area-link-gerado" class="mt-4 d-none">
-                    <hr>
-                    <p class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i> Convite gerado!</p>
-                    <p class="text-muted small">Copie o link abaixo e envie para o colaborador.</p>
-                    <div class="input-group">
+                <div id="area-link-gerado" class="mt-2 text-center">
+                    <label class="form-label fw-bold text-success"><i class="fas fa-check-circle"></i> Link de Convite</label>
+                    <div class="input-group mb-3">
                         <input type="text" class="form-control bg-light" id="convite-link" readonly>
-                        <button class="btn btn-outline-primary" onclick="copiarLinkConvite()"><i class="fas fa-copy"></i></button>
+                        <button class="btn btn-outline-primary" type="button" onclick="copiarLinkConvite()"><i class="fas fa-copy"></i> Copiar</button>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-                <button type="button" class="btn btn-primary" id="btn-salvar-convite" onclick="gerarLinkConvite()">Gerar Link</button>
-            </div>
+            <!-- Botões do footer removidos pois o link é gerérico e já está na tela -->
         </div>
     </div>
 </div>

@@ -105,105 +105,28 @@ function verDetalhesMBTI(item) {
 }
 
 async function abrirModalGerarConvite() {
-    document.getElementById('area-link-gerado').classList.add('d-none');
-    document.getElementById('btn-salvar-convite').style.display = 'block';
+    document.getElementById('area-link-gerado').classList.remove('d-none');
     
-    // Carregar colaboradores se o select estiver vazio (apenas a opção padrão)
-    const select = document.getElementById('convite-funcionario');
-    if (select.options.length <= 1) {
-        select.innerHTML = '<option value="">Carregando...</option>';
-        try {
-            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
-            
-            let funcionariosList = [];
-            snap.forEach(doc => {
-                const data = doc.data();
-                if (data.nome) {
-                    funcionariosList.push({ id: doc.id, nome: data.nome });
-                }
-            });
-            
-            // Ordenar no cliente para evitar a necessidade de índice composto no Firestore
-            funcionariosList.sort((a, b) => a.nome.localeCompare(b.nome));
-
-            select.innerHTML = '<option value="">Selecione um colaborador...</option>';
-            funcionariosList.forEach(f => {
-                select.innerHTML += `<option value="${f.id}" data-nome="${f.nome}">${f.nome}</option>`;
-            });
-        } catch (error) {
-            console.error("Erro ao buscar funcionários:", error);
-            select.innerHTML = '<option value="">Erro ao carregar colaboradores</option>';
-        }
-    } else {
-        select.value = '';
-    }
-
+    // O link é genérico, sem token
+    const url = window.location.origin + window.location.pathname.replace('index.html', '') + 'mbti-equipe.html';
+    document.getElementById('convite-link').value = url;
+    
     const modal = new bootstrap.Modal(document.getElementById('modal-gerar-convite'));
     modal.show();
 }
 
-async function gerarLinkConvite() {
-    const select = document.getElementById('convite-funcionario');
-    const funcionarioId = select.value;
-    
-    if (!funcionarioId) {
-        mostrarMensagem('Selecione um colaborador.', 'warning');
-        return;
-    }
-    
-    const nome = select.options[select.selectedIndex].dataset.nome;
-
-    const btn = document.getElementById('btn-salvar-convite');
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gerando...';
-
-    try {
-        // Cria o convite
-        const docRef = await db.collection('equipe_mbti').add({
-            nome: nome,
-            funcionarioId: funcionarioId,
-            status: 'Pendente',
-            dataCriacao: firebase.firestore.FieldValue.serverTimestamp()
-        });
-
-        const url = window.location.origin + window.location.pathname.replace('index.html', '') + 'mbti-equipe.html?t=' + docRef.id;
-        
-        // Cria a tarefa na agenda para o próprio usuário criador
-        const currentUser = firebase.auth().currentUser;
-        if (currentUser) {
-            await db.collection('agenda_atividades').add({
-                assunto: `Acompanhar Teste MBTI - ${nome}`,
-                data: new Date(),
-                tipo: 'Follow-up',
-                descricao: `O colaborador ${nome} recebeu o convite para o teste MBTI. Acompanhar a conclusão do teste.\nLink enviado: ${url}`,
-                status: 'Aberto',
-                atribuidoParaId: currentUser.uid,
-                atribuidoParaNome: currentUser.displayName || currentUser.email,
-                criadoPor: currentUser.uid,
-                criadoPorNome: currentUser.displayName || currentUser.email,
-                criadoEm: firebase.firestore.FieldValue.serverTimestamp()
-            });
-        }
-
-        document.getElementById('convite-link').value = url;
-        document.getElementById('area-link-gerado').classList.remove('d-none');
-        btn.style.display = 'none';
-
-        carregarMBTIEquipe();
-    } catch (error) {
-        console.error("Erro ao criar convite:", error);
-        mostrarMensagem('Erro ao gerar convite.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = 'Gerar Link';
-    }
-}
-
 function copiarLinkConvite() {
-    const url = document.getElementById('convite-link').value;
-    navigator.clipboard.writeText(url).then(() => {
+    const linkInput = document.getElementById('convite-link');
+    linkInput.select();
+    linkInput.setSelectionRange(0, 99999);
+    try {
+        document.execCommand('copy');
         mostrarMensagem('Link copiado para a área de transferência!', 'success');
-    });
+    } catch (err) {
+        navigator.clipboard.writeText(linkInput.value).then(() => {
+            mostrarMensagem('Link copiado para a área de transferência!', 'success');
+        });
+    }
 }
 
 function reenviarLinkConvite(id) {
