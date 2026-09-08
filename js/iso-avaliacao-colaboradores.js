@@ -20,7 +20,18 @@ async function gerarAmostraParaAvaliacao() {
     const container = document.getElementById('avaliacao-container');
     container.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x"></i><p class="mt-3">Gerando amostra aleatória...</p></div>';
 
-    const funcionariosSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+    let query = db.collection('funcionarios').where('status', '==', 'Ativo');
+    
+    // Lógica de Permissão/Hierarquia
+    const currentUserPermissions = window.currentUserPermissions || {};
+    const isAdmin = currentUserPermissions.isAdmin;
+    const funcionarioId = currentUserPermissions.funcionarioId;
+    
+    if (!isAdmin && funcionarioId) {
+        query = query.where('liderId', '==', funcionarioId);
+    }
+    
+    const funcionariosSnap = await query.get();
     const funcionarios = funcionariosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
     if (funcionarios.length === 0) {
@@ -275,12 +286,29 @@ async function visualizarDetalhesCiclo(cicloId) {
             return;
         }
 
-        const funcionariosAvaliados = await Promise.all(snap.docs.map(async doc => {
+        const currentUserPermissions = window.currentUserPermissions || {};
+        const isAdmin = currentUserPermissions.isAdmin;
+        const gerenteId = currentUserPermissions.funcionarioId;
+
+        const promessas = snap.docs.map(async doc => {
             const avaliacao = doc.data();
             const funcDoc = await db.collection('funcionarios').doc(avaliacao.funcionarioId).get();
-            const nomeFunc = funcDoc.exists ? funcDoc.data().nome : 'Funcionário não encontrado';
-            return { nome: nomeFunc, nota: avaliacao.nota, setor: avaliacao.setor };
-        }));
+            if (funcDoc.exists) {
+                const funcData = funcDoc.data();
+                if (!isAdmin && gerenteId && funcData.liderId !== gerenteId) {
+                    return null;
+                }
+                return { nome: funcData.nome, nota: avaliacao.nota, setor: avaliacao.setor };
+            }
+            return null;
+        });
+
+        let funcionariosAvaliados = (await Promise.all(promessas)).filter(item => item !== null);
+
+        if (funcionariosAvaliados.length === 0) {
+            abrirModalGenerico("Detalhes do Ciclo", "<p>Nenhuma avaliação da sua equipe encontrada neste ciclo.</p>");
+            return;
+        }
 
         let corpoModal = '<ul class="list-group">';
         funcionariosAvaliados.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(item => {
