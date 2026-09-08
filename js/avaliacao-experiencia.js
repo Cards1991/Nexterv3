@@ -153,6 +153,10 @@ async function carregarPainelExperiencia() {
             const func = { id: doc.id, ...doc.data() };
             if (!func.dataAdmissao) return;
 
+            if (!permissoesUsuario.isAdmin && permissoesUsuario.funcionarioId) {
+                if (func.liderId !== permissoesUsuario.funcionarioId) return;
+            }
+
             const admissao = func.dataAdmissao.toDate ? func.dataAdmissao.toDate() : new Date(func.dataAdmissao);
             admissao.setHours(0, 0, 0, 0);
 
@@ -485,11 +489,19 @@ async function carregarDashboardExperienciaAnalitico() {
         const snap = await db.collection('avaliacoes_experiencia').get();
         let avaliacoes = snap.docs.map(d => d.data());
 
-        // Filtrar por setor se necessÃƒÂ¡rio
+        let funcIdsPermitidos = null;
+        if (!permissoesUsuario.isAdmin && permissoesUsuario.funcionarioId) {
+            const lideradosSnap = await db.collection('funcionarios').where('liderId', '==', permissoesUsuario.funcionarioId).get();
+            funcIdsPermitidos = new Set(lideradosSnap.docs.map(d => d.id));
+        }
+
+        // Filtrar por setor se necessÃ¡rio
         if (setorEfetivo) {
             const funcSnap = await db.collection('funcionarios').where('setor', '==', setorEfetivo).get();
-            const funcIds = new Set(funcSnap.docs.map(d => d.id));
-            avaliacoes = avaliacoes.filter(a => funcIds.has(a.funcionarioId));
+            const funcIdsSetor = new Set(funcSnap.docs.map(d => d.id));
+            avaliacoes = avaliacoes.filter(a => funcIdsSetor.has(a.funcionarioId) && (!funcIdsPermitidos || funcIdsPermitidos.has(a.funcionarioId)));
+        } else if (funcIdsPermitidos) {
+            avaliacoes = avaliacoes.filter(a => funcIdsPermitidos.has(a.funcionarioId));
         }
 
         const dados = { Aprovado: 0, Reprovado: 0, Prorrogado: 0 };
@@ -699,6 +711,10 @@ async function carregarAvaliacoesConcluidas() {
             const avaliacao = doc.data();
             const funcionario = funcMap.get(avaliacao.funcionarioId);
             if (!funcionario) return false;
+
+            if (!permissoesUsuario.isAdmin && permissoesUsuario.funcionarioId) {
+                if (funcionario.liderId !== permissoesUsuario.funcionarioId) return false;
+            }
 
             const matchesSetor = !filtroSetor || funcionario.setor === filtroSetor;
             const matchesNome = !filtroConcNome || funcionario.nome.toLowerCase().includes(filtroConcNome);

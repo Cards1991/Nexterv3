@@ -19,15 +19,19 @@ async function carregarMBTIEquipe() {
         const funcionarioId = currentUserPermissions.funcionarioId;
         
         let cpfsPermitidos = null;
+        let idsPermitidos = null;
         if (!isAdmin && funcionarioId) {
             cpfsPermitidos = new Set();
+            idsPermitidos = new Set();
             try {
+                idsPermitidos.add(funcionarioId);
                 const gerenteDoc = await db.collection('funcionarios').doc(funcionarioId).get();
                 if (gerenteDoc.exists && gerenteDoc.data().cpf) {
                     cpfsPermitidos.add(gerenteDoc.data().cpf.replace(/\D/g, ''));
                 }
                 const subordinadosSnap = await db.collection('funcionarios').where('liderId', '==', funcionarioId).get();
                 subordinadosSnap.forEach(doc => {
+                    idsPermitidos.add(doc.id);
                     if (doc.data().cpf) {
                         cpfsPermitidos.add(doc.data().cpf.replace(/\D/g, ''));
                     }
@@ -41,9 +45,14 @@ async function carregarMBTIEquipe() {
             const data = doc.data();
             data.id = doc.id;
             
-            if (cpfsPermitidos !== null) {
+            if (cpfsPermitidos !== null && idsPermitidos !== null) {
                 const cpfTeste = data.cpf ? data.cpf.replace(/\D/g, '') : null;
-                if (!cpfTeste || !cpfsPermitidos.has(cpfTeste)) {
+                const funcIdTeste = data.funcionarioId || doc.id;
+                
+                const matchCpf = cpfTeste && cpfsPermitidos.has(cpfTeste);
+                const matchId = funcIdTeste && idsPermitidos.has(funcIdTeste);
+                
+                if (!matchCpf && !matchId) {
                     return;
                 }
             }
