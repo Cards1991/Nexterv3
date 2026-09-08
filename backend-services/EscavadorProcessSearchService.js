@@ -80,6 +80,9 @@ class EscavadorProcessSearchService {
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest'
       },
+      params: {
+        async: 0 // Força a busca síncrona na base (R$ 0,05) e não nos tribunais
+      },
       timeout: 10000 // 10s
     });
   }

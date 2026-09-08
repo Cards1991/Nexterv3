@@ -1,13 +1,13 @@
 // ========================================
-// Módulo: Avaliação de Experiência
+// MÃ³dulo: AvaliaÃ§Ã£o de ExperiÃªncia
 // ========================================
 let permissoesUsuario = {};
 
 async function inicializarAvaliacaoExperiencia(permissoes) {
-    console.log("Inicializando Avaliação de Experiência...", permissoes);
+    console.log("Inicializando AvaliaÃ§Ã£o de ExperiÃªncia...", permissoes);
     permissoesUsuario = permissoes || {};
     
-    // Configurar datas padrão (Mês atual)
+    // Configurar datas padrÃ£o (MÃªs atual)
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1).toISOString().split('T')[0];
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().split('T')[0];
@@ -32,7 +32,7 @@ async function inicializarAvaliacaoExperiencia(permissoes) {
     // Configurar listeners
     const btnSalvar = document.getElementById('btn-salvar-avaliacao-exp');
     if (btnSalvar && !btnSalvar.bound) {
-        btnSalvar.textContent = 'Salvar Avaliação';
+        btnSalvar.textContent = 'Salvar AvaliaÃ§Ã£o';
         btnSalvar.addEventListener('click', salvarAvaliacaoExperiencia);
         btnSalvar.bound = true;
     }
@@ -65,12 +65,12 @@ function aplicarRegrasDePermissao() {
     if (infoDiv) infoDiv.remove();
 
     if (filtroSetor) {
-        // 1. Define o valor padrão (Setor do usuário)
+        // 1. Define o valor padrÃ£o (Setor do usuÃ¡rio)
         if (permissoesUsuario.restricaoSetor) {
             filtroSetor.value = permissoesUsuario.restricaoSetor.trim();
         }
 
-        // 2. Aplica bloqueio se NÃO for admin e TIVER restrição
+        // 2. Aplica bloqueio se NÃƒO for admin e TIVER restriÃ§Ã£o
         if (!permissoesUsuario.isAdmin && permissoesUsuario.restricaoSetor) {
             filtroSetor.disabled = true;
             
@@ -80,7 +80,7 @@ function aplicarRegrasDePermissao() {
             msg.innerHTML = `<i class="fas fa-lock"></i> Restrito ao seu setor: <strong>${permissoesUsuario.restricaoSetor}</strong>`;
             filtroSetor.parentNode.appendChild(msg);
         } else {
-            // Admin ou sem restrição: Campo livre
+            // Admin ou sem restriÃ§Ã£o: Campo livre
             filtroSetor.disabled = false;
         }
     }
@@ -162,7 +162,7 @@ async function carregarPainelExperiencia() {
             const vencimento90 = new Date(vencimento45);
             vencimento90.setDate(vencimento45.getDate() + 45);
 
-            // Função auxiliar para verificar filtros
+            // FunÃ§Ã£o auxiliar para verificar filtros
             const atendeFiltros = (periodo, vencimento) => {
                 if (filtroNome && !func.nome.toLowerCase().includes(filtroNome)) return false;
                 if (filtroInicio && vencimento < new Date(filtroInicio.replace(/-/g, '\/'))) return false;
@@ -179,7 +179,7 @@ async function carregarPainelExperiencia() {
                 if (mapaAvaliacoes.has(`${func.id}-${periodo}`)) return; 
                 
                 const diasParaVencer = Math.ceil((vencimento - hoje) / (1000 * 60 * 60 * 24));
-                if (diasParaVencer < 0) return; // Não mostra vencidos
+                if (diasParaVencer < 0) return; // NÃ£o mostra vencidos
 
                 if (!atendeFiltros(periodo, vencimento)) return;
                 
@@ -204,7 +204,7 @@ async function carregarPainelExperiencia() {
         carregarAvaliacoesConcluidas();
 
     } catch (error) {
-        console.error("Erro ao carregar painel de experiência:", error);
+        console.error("Erro ao carregar painel de experiÃªncia:", error);
         container.innerHTML = `<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados: ${error.message}</td></tr>`;
     }
 }
@@ -214,13 +214,13 @@ function renderizarTabelaExperiencia(lista) {
     if (!container) return;
 
     if (lista.length === 0) {
-        container.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliação pendente no momento.</td></tr>';
+        container.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliaÃ§Ã£o pendente no momento.</td></tr>';
         return;
     }
 
     container.innerHTML = lista.map(item => {
         let statusBadge = '';
-        if (item.diasRestantes < 0) statusBadge = `<span class="badge bg-danger">Vencido há ${Math.abs(item.diasRestantes)} dias</span>`;
+        if (item.diasRestantes < 0) statusBadge = `<span class="badge bg-danger">Vencido hÃ¡ ${Math.abs(item.diasRestantes)} dias</span>`;
         else if (item.diasRestantes <= 5) statusBadge = `<span class="badge bg-warning text-dark">Vence em ${item.diasRestantes} dias</span>`;
         else statusBadge = `<span class="badge bg-info text-dark">Vence em ${item.diasRestantes} dias</span>`;
 
@@ -243,7 +243,7 @@ function renderizarTabelaExperiencia(lista) {
                 </td>
                 <td>${statusBadge}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalAtribuicaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})" title="Atribuir Responsável">
+                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalAtribuicaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})" title="Atribuir ResponsÃ¡vel">
                         <i class="fas fa-user-plus"></i>
                     </button>
                     <button class="btn btn-sm btn-primary" onclick="abrirModalAvaliacaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})">
@@ -269,19 +269,25 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     const alertContainer = document.getElementById('aval-exp-alerts');
     
     if (!modalEl || !form) {
-        console.error("[AvalExp] Elementos do modal não encontrados!");
+        console.error("[AvalExp] Elementos do modal nÃ£o encontrados!");
         return;
     }
 
     form.reset();
     document.getElementById('aval-exp-funcionario-id').value = id;
     document.getElementById('aval-exp-periodo').value = periodo;
-    document.getElementById('aval-exp-titulo').textContent = `Avaliação de Experiência - ${periodo} Dias`;
+    document.getElementById('aval-exp-titulo').textContent = `AvaliaÃ§Ã£o de ExperiÃªncia - ${periodo} Dias`;
     document.getElementById('aval-exp-nome').value = nome;
     document.getElementById('aval-exp-data').value = new Date().toISOString().split('T')[0];
 
+    // Clear Escavador Area
+    const escavadorArea = document.getElementById('aval-exp-escavador-area');
+    const escavadorResultado = document.getElementById('aval-exp-escavador-resultado');
+    if (escavadorArea) escavadorArea.style.display = 'none';
+    if (escavadorResultado) escavadorResultado.innerHTML = '';
+
     if (alertContainer) {
-        alertContainer.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-2"></i> Buscando histórico...</div>';
+        alertContainer.innerHTML = '<div class="alert alert-info py-2"><i class="fas fa-spinner fa-spin me-2"></i> Buscando histÃ³rico...</div>';
     }
 
     try {
@@ -306,7 +312,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
         };
 
         const dtAdmissao = normalize(funcData.dataAdmissao);
-        console.log(`[AvalExp] Admissão: ${dtAdmissao?.toLocaleDateString('pt-BR') || 'Não informada'}`);
+        console.log(`[AvalExp] AdmissÃ£o: ${dtAdmissao?.toLocaleDateString('pt-BR') || 'NÃ£o informada'}`);
 
         console.log(`[AvalExp Query] Timestamp: ${Date.now()} - Fetching faltas/alerts for ${id}`);
         const [ateSnap, falSnap, disSnap] = await Promise.all([
@@ -342,11 +348,11 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
             let html = '';
             if (nAtestados > 0 || nFaltas > 0 || nDiscip > 0) {
                 html = '<div class="alert alert-warning border-warning shadow-sm mb-3">';
-                html += '<h6 class="fw-bold mb-2"><i class="fas fa-exclamation-triangle me-2"></i> Ocorrências Registradas</h6>';
+                html += '<h6 class="fw-bold mb-2"><i class="fas fa-exclamation-triangle me-2"></i> OcorrÃªncias Registradas</h6>';
                 if (nAtestados > 0) html += `<div><i class="fas fa-file-medical me-2"></i> <strong>${nAtestados}</strong> Atestado(s)</div>`;
                 if (nFaltas > 0) html += `<div><i class="fas fa-user-times me-2"></i> <strong>${nFaltas}</strong> dia(s) com falta</div>`;
                 if (nDiscip > 0) {
-                    html += '<div class="mt-2 small"><strong>Advertências/Suspensões:</strong></div><ul class="mb-0 ps-3 small">';
+                    html += '<div class="mt-2 small"><strong>AdvertÃªncias/SuspensÃµes:</strong></div><ul class="mb-0 ps-3 small">';
                     discipList.forEach(d => {
                         html += `<li>${d._dt.toLocaleDateString('pt-BR')} - ${d.medidaAplicada}: ${d.descricao || ''}</li>`;
                     });
@@ -354,7 +360,7 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
                 }
                 html += '</div>';
             } else {
-                html = '<div class="alert alert-success border-success py-2 mb-3"><i class="fas fa-check-circle me-2"></i> Sem ocorrências no histórico.</div>';
+                html = '<div class="alert alert-success border-success py-2 mb-3"><i class="fas fa-check-circle me-2"></i> Sem ocorrÃªncias no histÃ³rico.</div>';
             }
             alertContainer.innerHTML = html;
         }
@@ -369,10 +375,10 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     } catch (e) {
         console.error("[AvalExp] Erro ao carregar alertas:", e);
         console.log(`[AvalExp Debug] Query failed at ${Date.now()}`);
-        if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrências.</div>';
+        if (alertContainer) alertContainer.innerHTML = '<div class="alert alert-danger py-1 small">Erro ao carregar ocorrÃªncias.</div>';
     }
 
-    // Obs período anterior
+    // Obs perÃ­odo anterior
     if (parseInt(periodo) === 90) {
         try {
             const s45 = await db.collection('avaliacoes_experiencia').where('funcionarioId', '==', id).where('periodo', '==', 45).limit(1).get();
@@ -395,12 +401,12 @@ async function salvarAvaliacaoExperiencia() {
     const observacoes = document.getElementById('aval-exp-obs').value;
     const nomeFuncionario = document.getElementById('aval-exp-nome').value;
 
-    // Buscar setor do funcionário
-    let setorFuncionario = 'Não informado';
+    // Buscar setor do funcionÃ¡rio
+    let setorFuncionario = 'NÃ£o informado';
     let gerenteSetor = '_________________________';
     const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
     if (funcDoc.exists) {
-        setorFuncionario = funcDoc.data().setor || 'Não informado';
+        setorFuncionario = funcDoc.data().setor || 'NÃ£o informado';
         // Buscar o gerente do setor
         const setorQuery = await db.collection('setores').where('descricao', '==', setorFuncionario).limit(1).get();
         if (!setorQuery.empty) {
@@ -422,7 +428,7 @@ async function salvarAvaliacaoExperiencia() {
     media = media / criterios.length;
 
     if (media === 0) {
-        alert("Por favor, avalie todos os critérios.");
+        alert("Por favor, avalie todos os critÃ©rios.");
         return;
     }
 
@@ -442,22 +448,22 @@ async function salvarAvaliacaoExperiencia() {
         await db.collection('avaliacoes_experiencia').add(avaliacaoData);
         
         bootstrap.Modal.getInstance(document.getElementById('modalAvaliacaoExperiencia')).hide();
-        mostrarMensagem("Avaliação registrada com sucesso!", "success");
+        mostrarMensagem("AvaliaÃ§Ã£o registrada com sucesso!", "success");
         carregarPainelExperiencia();
 
-        // Opções de Impressão
-        if (confirm("Deseja imprimir o formulário de avaliação?")) {
+        // OpÃ§Ãµes de ImpressÃ£o
+        if (confirm("Deseja imprimir o formulÃ¡rio de avaliaÃ§Ã£o?")) {
             imprimirAvaliacaoExperiencia(avaliacaoData, nomeFuncionario, setorFuncionario, gerenteSetor);
         }
-        if (resultado === 'Aprovado' && confirm("O colaborador foi aprovado! Deseja imprimir a carta de parabenização?")) {
+        if (resultado === 'Aprovado' && confirm("O colaborador foi aprovado! Deseja imprimir a carta de parabenizaÃ§Ã£o?")) {
             imprimirCartaParabenizacao(nomeFuncionario, periodo);
         }
 
-        carregarAvaliacoesConcluidas(); // Atualiza o histórico
+        carregarAvaliacoesConcluidas(); // Atualiza o histÃ³rico
 
     } catch (error) {
-        console.error("Erro ao salvar avaliação:", error);
-        mostrarMensagem("Erro ao salvar avaliação.", "error");
+        console.error("Erro ao salvar avaliaÃ§Ã£o:", error);
+        mostrarMensagem("Erro ao salvar avaliaÃ§Ã£o.", "error");
     }
 }
 
@@ -476,7 +482,7 @@ async function carregarDashboardExperienciaAnalitico() {
         const snap = await db.collection('avaliacoes_experiencia').get();
         let avaliacoes = snap.docs.map(d => d.data());
 
-        // Filtrar por setor se necessário
+        // Filtrar por setor se necessÃ¡rio
         if (setorEfetivo) {
             const funcSnap = await db.collection('funcionarios').where('setor', '==', setorEfetivo).get();
             const funcIds = new Set(funcSnap.docs.map(d => d.id));
@@ -509,11 +515,11 @@ async function carregarDashboardExperienciaAnalitico() {
         });
 
     } catch (e) {
-        console.error("Erro dashboard analítico:", e);
+        console.error("Erro dashboard analÃ­tico:", e);
     }
 }
 
-// --- Funções de Impressão ---
+// --- FunÃ§Ãµes de ImpressÃ£o ---
 
 function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '_________________________') {
     let dataFormatada = 'N/A';
@@ -527,7 +533,7 @@ function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '______
     const conteudo = `
         <html>
         <head>
-            <title>Avaliação de Experiência - ${nome}</title>
+            <title>AvaliaÃ§Ã£o de ExperiÃªncia - ${nome}</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
                 body { font-family: 'Segoe UI', sans-serif; padding: 40px; }
@@ -542,7 +548,7 @@ function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '______
         </head>
         <body>
             <div class="header">
-                <h3>AVALIAÇÃO DE CONTRATO DE EXPERIÊNCIA</h3>
+                <h3>AVALIAÃ‡ÃƒO DE CONTRATO DE EXPERIÃŠNCIA</h3>
                 <p class="mb-0 text-muted">${dados.periodo} Dias</p>
             </div>
 
@@ -554,9 +560,9 @@ function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '______
                 </div>
             </div>
 
-            <h5>Critérios Avaliados (1 a 5)</h5>
+            <h5>CritÃ©rios Avaliados (1 a 5)</h5>
             <table class="criteria-table">
-                <thead><tr><th>Critério</th><th class="text-center">Nota</th></tr></thead>
+                <thead><tr><th>CritÃ©rio</th><th class="text-center">Nota</th></tr></thead>
                 <tbody>
                     <tr><td>Assiduidade</td><td class="text-center">${dados.notas.assiduidade}</td></tr>
                     <tr><td>Pontualidade</td><td class="text-center">${dados.notas.pontualidade}</td></tr>
@@ -565,13 +571,13 @@ function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '______
                     <tr><td>Iniciativa</td><td class="text-center">${dados.notas.iniciativa}</td></tr>
                 </tbody>
                 <tfoot>
-                    <tr class="table-light"><th>Média Final</th><th class="text-center">${dados.media.toFixed(1)}</th></tr>
+                    <tr class="table-light"><th>MÃ©dia Final</th><th class="text-center">${dados.media.toFixed(1)}</th></tr>
                 </tfoot>
             </table>
 
             <div class="mb-4">
-                <strong>Observações do Avaliador:</strong>
-                <p class="border p-2 rounded" style="min-height: 60px;">${dados.observacoes || 'Sem observações.'}</p>
+                <strong>ObservaÃ§Ãµes do Avaliador:</strong>
+                <p class="border p-2 rounded" style="min-height: 60px;">${dados.observacoes || 'Sem observaÃ§Ãµes.'}</p>
             </div>
 
             <div class="result-box">
@@ -598,7 +604,7 @@ function imprimirCartaParabenizacao(nome, periodo) {
     const conteudo = `
         <html>
         <head>
-            <title>Parabéns - ${nome}</title>
+            <title>ParabÃ©ns - ${nome}</title>
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <style>
                 body { font-family: 'Georgia', serif; padding: 60px; text-align: center; color: #333; background-image: url('assets/bg-confetti.png'); background-size: cover; }
@@ -615,20 +621,20 @@ function imprimirCartaParabenizacao(nome, periodo) {
                 <!-- Se tiver logo, pode descomentar abaixo -->
                 <!-- <img src="assets/logo.png" class="logo"> -->
                 
-                <h1>Parabéns!</h1>
+                <h1>ParabÃ©ns!</h1>
                 
                 <div class="name">${nome}</div>
                 
                 <div class="message">
-                    <p>É com grande satisfação que informamos a aprovação do seu período de experiência de <strong>${periodo} dias</strong>!</p>
-                    <p>Seu desempenho, dedicação e comprometimento têm sido fundamentais para o nosso time. Estamos muito felizes em tê-lo(a) conosco e confiantes de que continuaremos construindo uma trajetória de sucesso juntos.</p>
-                    <p>Continue dando o seu melhor. O seu crescimento é o nosso crescimento!</p>
+                    <p>Ã‰ com grande satisfaÃ§Ã£o que informamos a aprovaÃ§Ã£o do seu perÃ­odo de experiÃªncia de <strong>${periodo} dias</strong>!</p>
+                    <p>Seu desempenho, dedicaÃ§Ã£o e comprometimento tÃªm sido fundamentais para o nosso time. Estamos muito felizes em tÃª-lo(a) conosco e confiantes de que continuaremos construindo uma trajetÃ³ria de sucesso juntos.</p>
+                    <p>Continue dando o seu melhor. O seu crescimento Ã© o nosso crescimento!</p>
                 </div>
 
                 <div class="footer">
                     <p>Atenciosamente,</p>
                     <p><strong>Diretoria e Recursos Humanos</strong></p>
-                    <p>Calçados Crival</p>
+                    <p>CalÃ§ados Crival</p>
                 </div>
             </div>
         </body>
@@ -638,7 +644,7 @@ function imprimirCartaParabenizacao(nome, periodo) {
     openPrintWindow(conteudo, { autoPrint: true });
 }
 
-// --- HISTÓRICO DE AVALIAÇÕES ---
+// --- HISTÃ“RICO DE AVALIAÃ‡Ã•ES ---
 
 async function carregarAvaliacoesConcluidas() {
     let tbody = document.getElementById('tabela-avaliacoes-concluidas');
@@ -646,7 +652,7 @@ async function carregarAvaliacoesConcluidas() {
     tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando...</td></tr>';
 
     try {
-        // Ler filtros de data específicos para concluídas
+        // Ler filtros de data especÃ­ficos para concluÃ­das
         const filtroConcInicio = document.getElementById('filtro-exp-conc-inicio')?.value;
         const filtroConcFim = document.getElementById('filtro-exp-conc-fim')?.value;
         const filtroSetor = document.getElementById('filtro-exp-setor')?.value;
@@ -666,11 +672,11 @@ async function carregarAvaliacoesConcluidas() {
 
         const snap = await query.get();
         if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliação concluída encontrada.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliaÃ§Ã£o concluÃ­da encontrada.</td></tr>';
             return;
         }
 
-        // Carregar apenas funcionários necessários (otimização: só se filtroSetor ou restrição)
+        // Carregar apenas funcionÃ¡rios necessÃ¡rios (otimizaÃ§Ã£o: sÃ³ se filtroSetor ou restriÃ§Ã£o)
         let funcMap = new Map();
         let funcQuery = db.collection('funcionarios');
         const setorEfetivoConc = filtroSetor;
@@ -701,7 +707,7 @@ async function carregarAvaliacoesConcluidas() {
         avaliacoesFiltradas.forEach(doc => {
             const avaliacao = doc.data();
             const funcData = funcMap.get(avaliacao.funcionarioId);
-            const nomeFunc = funcData ? funcData.nome : 'Funcionário não encontrado';
+            const nomeFunc = funcData ? funcData.nome : 'FuncionÃ¡rio nÃ£o encontrado';
             
             const getResultadoClass = (resultado) => {
                 if (resultado === 'Aprovado') return 'bg-success';
@@ -719,7 +725,7 @@ async function carregarAvaliacoesConcluidas() {
                 <td>${avaliacao.media.toFixed(1)}</td>
                 <td class="text-end">
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-info" onclick="visualizarAvaliacao('${doc.id}')" title="Visualizar/Imprimir Avaliação"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-outline-info" onclick="visualizarAvaliacao('${doc.id}')" title="Visualizar/Imprimir AvaliaÃ§Ã£o"><i class="fas fa-eye"></i></button>
                         ${avaliacao.resultado === 'Aprovado' ? `<button class="btn btn-outline-success" onclick="reimprimirCarta('${doc.id}')" title="Reimprimir Carta"><i class="fas fa-award"></i></button>` : ''}
                         <button class="btn btn-outline-primary" onclick="editarAvaliacao('${doc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
                         <button class="btn btn-outline-danger" onclick="excluirAvaliacao('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
@@ -730,17 +736,17 @@ async function carregarAvaliacoesConcluidas() {
         });
 
         if (avaliacoesFiltradas.length === 0) {
-            let mensagem = 'Nenhuma avaliação concluída encontrada.';
+            let mensagem = 'Nenhuma avaliaÃ§Ã£o concluÃ­da encontrada.';
             if (filtroConcInicio || filtroConcFim) {
-                mensagem = `Nenhuma avaliação encontrada no período selecionado.`;
+                mensagem = `Nenhuma avaliaÃ§Ã£o encontrada no perÃ­odo selecionado.`;
             } else if (filtroSetor) {
-                mensagem = `Nenhuma avaliação concluída encontrada para o setor ${filtroSetor}.`;
+                mensagem = `Nenhuma avaliaÃ§Ã£o concluÃ­da encontrada para o setor ${filtroSetor}.`;
             }
             tbody.innerHTML = `<tr><td colspan="6" class="text-center text-muted">${mensagem}</td></tr>`;
         }
     } catch (e) {
-        console.error("Erro ao carregar avaliações concluídas:", e);
-        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar histórico.</td></tr>';
+        console.error("Erro ao carregar avaliaÃ§Ãµes concluÃ­das:", e);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar histÃ³rico.</td></tr>';
     }
 }
 
@@ -768,8 +774,8 @@ async function visualizarAvaliacao(id) {
         
         imprimirAvaliacaoExperiencia(avaliacao, nomeFunc, setorFunc, gerenteSetor);
     } catch (e) {
-        console.error("Erro ao visualizar avaliação:", e);
-        mostrarMensagem("Erro ao carregar dados para visualização.", "error");
+        console.error("Erro ao visualizar avaliaÃ§Ã£o:", e);
+        mostrarMensagem("Erro ao carregar dados para visualizaÃ§Ã£o.", "error");
     }
 }
 
@@ -780,7 +786,7 @@ async function editarAvaliacao(id) {
         const avaliacao = doc.data();
         
         const funcDoc = await db.collection('funcionarios').doc(avaliacao.funcionarioId).get();
-        const nomeFunc = funcDoc.exists ? funcDoc.data().nome : 'Funcionário não encontrado';
+        const nomeFunc = funcDoc.exists ? funcDoc.data().nome : 'FuncionÃ¡rio nÃ£o encontrado';
 
         await abrirModalAvaliacaoExperiencia(avaliacao.funcionarioId, nomeFunc, avaliacao.periodo);
         
@@ -793,13 +799,13 @@ async function editarAvaliacao(id) {
             if (radio) radio.checked = true;
         }
 
-        // Mudar botão para atualizar
+        // Mudar botÃ£o para atualizar
         const btn = document.getElementById('btn-salvar-avaliacao-exp');
-        btn.textContent = 'Atualizar Avaliação';
+        btn.textContent = 'Atualizar AvaliaÃ§Ã£o';
         btn.onclick = () => atualizarAvaliacao(id);
 
     } catch (e) {
-        console.error("Erro ao carregar para edição:", e);
+        console.error("Erro ao carregar para ediÃ§Ã£o:", e);
     }
 }
 
@@ -823,7 +829,7 @@ async function atualizarAvaliacao(id) {
     try {
         await db.collection('avaliacoes_experiencia').doc(id).update(dadosForm);
         bootstrap.Modal.getInstance(document.getElementById('modalAvaliacaoExperiencia')).hide();
-        mostrarMensagem("Avaliação atualizada com sucesso!", "success");
+        mostrarMensagem("AvaliaÃ§Ã£o atualizada com sucesso!", "success");
         carregarAvaliacoesConcluidas();
     } catch (e) {
         console.error("Erro ao atualizar:", e);
@@ -831,9 +837,9 @@ async function atualizarAvaliacao(id) {
 }
 
 async function excluirAvaliacao(id) {
-    if (confirm('Tem certeza que deseja excluir permanentemente esta avaliação?')) {
+    if (confirm('Tem certeza que deseja excluir permanentemente esta avaliaÃ§Ã£o?')) {
         await db.collection('avaliacoes_experiencia').doc(id).delete();
-        mostrarMensagem('Avaliação excluída.');
+        mostrarMensagem('AvaliaÃ§Ã£o excluÃ­da.');
         carregarAvaliacoesConcluidas();
     }
 }
@@ -849,7 +855,7 @@ async function reimprimirCarta(id) {
     imprimirCartaParabenizacao(nomeFunc, avaliacao.periodo);
 }
 
-// Funções de Atribuição
+// FunÃ§Ãµes de AtribuiÃ§Ã£o
 async function abrirModalAtribuicaoExperiencia(id, nome, periodo) {
     const modalEl = document.getElementById('modalAtribuicaoExperiencia');
     if (!modalEl) return;
@@ -863,7 +869,7 @@ async function abrirModalAtribuicaoExperiencia(id, nome, periodo) {
     
     try {
         const usersSnap = await db.collection('usuarios').orderBy('nome').get();
-        select.innerHTML = '<option value="">Selecione um usuário</option>';
+        select.innerHTML = '<option value="">Selecione um usuÃ¡rio</option>';
         usersSnap.forEach(doc => {
             const user = doc.data();
             if (user.nome) {
@@ -871,7 +877,7 @@ async function abrirModalAtribuicaoExperiencia(id, nome, periodo) {
             }
         });
     } catch (e) {
-        console.error("Erro ao carregar usuários:", e);
+        console.error("Erro ao carregar usuÃ¡rios:", e);
         select.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 
@@ -886,7 +892,7 @@ async function salvarAtribuicaoExperiencia() {
     const usuarioNome = usuarioSelect.options[usuarioSelect.selectedIndex].text;
 
     if (!usuarioId) {
-        mostrarMensagem("Selecione um usuário.", "warning");
+        mostrarMensagem("Selecione um usuÃ¡rio.", "warning");
         return;
     }
 
@@ -903,12 +909,12 @@ async function salvarAtribuicaoExperiencia() {
         const modal = bootstrap.Modal.getInstance(document.getElementById('modalAtribuicaoExperiencia'));
         if (modal) modal.hide();
         
-        mostrarMensagem("Atribuição salva com sucesso!", "success");
+        mostrarMensagem("AtribuiÃ§Ã£o salva com sucesso!", "success");
         carregarPainelExperiencia();
 
     } catch (e) {
-        console.error("Erro ao salvar atribuição:", e);
-        mostrarMensagem("Erro ao salvar atribuição.", "error");
+        console.error("Erro ao salvar atribuiÃ§Ã£o:", e);
+        mostrarMensagem("Erro ao salvar atribuiÃ§Ã£o.", "error");
     }
 }
 
@@ -922,7 +928,7 @@ function exportarAvaliacoesConcluidasExcel() {
     }
 
     const tbody = document.getElementById('tabela-avaliacoes-concluidas');
-    if (!tbody) return mostrarMensagem("Tabela não encontrada.", "error");
+    if (!tbody) return mostrarMensagem("Tabela nÃ£o encontrada.", "error");
 
     const avaliacoesFiltradas = [];
     const rows = tbody.querySelectorAll('tr');
@@ -932,10 +938,10 @@ function exportarAvaliacoesConcluidasExcel() {
         if (cells.length >= 5) {
             avaliacoesFiltradas.push({
                 Colaborador: cells[0].textContent.trim(),
-                'Período': cells[1].textContent.trim(),
-                'Data Avaliação': cells[2].textContent.trim(),
+                'PerÃ­odo': cells[1].textContent.trim(),
+                'Data AvaliaÃ§Ã£o': cells[2].textContent.trim(),
                 Resultado: cells[3].textContent.trim(),
-                'Média': cells[4].textContent.trim()
+                'MÃ©dia': cells[4].textContent.trim()
             });
         }
     });
@@ -947,12 +953,12 @@ function exportarAvaliacoesConcluidasExcel() {
 
     const ws = XLSX.utils.json_to_sheet(avaliacoesFiltradas);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Avaliações Concluídas");
+    XLSX.utils.book_append_sheet(wb, ws, "AvaliaÃ§Ãµes ConcluÃ­das");
     XLSX.writeFile(wb, `Avaliacoes_Concluidas_${new Date().toISOString().split('T')[0]}.xlsx`);
     mostrarMensagem("Exportado com sucesso!", "success");
 }
 
-// Exportar funções
+// Exportar funÃ§Ãµes
 window.inicializarAvaliacaoExperiencia = inicializarAvaliacaoExperiencia;
 window.abrirModalAvaliacaoExperiencia = abrirModalAvaliacaoExperiencia;
 window.salvarAvaliacaoExperiencia = salvarAvaliacaoExperiencia;
@@ -963,3 +969,91 @@ window.editarAvaliacao = editarAvaliacao;
 window.excluirAvaliacao = excluirAvaliacao;
 window.reimprimirCarta = reimprimirCarta;
 window.exportarAvaliacoesConcluidasExcel = exportarAvaliacoesConcluidasExcel;
+
+// --- INTEGRAÇÃO ESCAVADOR (AVALIAÇÃO) ---
+window.consultarEscavadorAvaliacao = async function() {
+    const id = document.getElementById('aval-exp-funcionario-id').value;
+    const nome = document.getElementById('aval-exp-nome').value;
+    const area = document.getElementById('aval-exp-escavador-area');
+    const resultDiv = document.getElementById('aval-exp-escavador-resultado');
+
+    if (!id) return;
+
+    area.style.display = 'block';
+    resultDiv.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Consultando Escavador via API...</p></div>';
+
+    try {
+        const doc = await db.collection('funcionarios').doc(id).get();
+        if (!doc.exists) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Funcionário não encontrado.</div>';
+            return;
+        }
+        
+        const data = doc.data();
+        const cpfRaw = data.cpf || '';
+        const cpf = cpfRaw.replace(/\D/g, '');
+
+        if (!cpf || cpf.length !== 11) {
+            resultDiv.innerHTML = '<div class="alert alert-warning">CPF inválido ou não cadastrado para este colaborador.</div>';
+            return;
+        }
+
+        const response = await fetch('/api/legal/process-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                personId: id,
+                cpfRaw: cpf,
+                nomeRaw: nome,
+                mode: 'HOMONIMOS_ONLY' // Busca rápida (R$ 0,05)
+            })
+        });
+
+        const respData = await response.json();
+        
+        if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
+            const sum = respData.summary;
+            let html = 
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong><i class="fas fa-gavel"></i> \ processos encontrados</strong>
+                </div>
+                <div class="d-flex gap-2 mb-2 text-center" style="font-size: 0.8em;">
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">\</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">\</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">\</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">\</b></div>
+                </div>
+                <div class="list-group list-group-flush">
+            ;
+            
+            respData.processes.forEach(proc => {
+                let color = 'secondary';
+                if (proc.classificacao === 'CONFIRMADO') color = 'success';
+                else if (proc.classificacao === 'ALTA_PROBABILIDADE') color = 'primary';
+                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
+                else color = 'danger';
+                
+                html += 
+                    <div class="list-group-item px-0 py-2">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">\</h6>
+                            <span class="badge bg-\">\</span>
+                        </div>
+                        <p class="mb-1 small">\ x \</p>
+                        <small class="text-muted">\ - \</small>
+                    </div>
+                ;
+            });
+            html += \</div>\;
+            resultDiv.innerHTML = html;
+        } else if (response.ok && respData.status === 'SUCCESS_NO_RESULTS') {
+            resultDiv.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF/Nome.</div>';
+        } else {
+            resultDiv.innerHTML = \<div class="alert alert-danger py-2">Erro na consulta: \</div>\;
+        }
+    } catch (e) {
+        console.error("Erro Escavador na Avaliação:", e);
+        resultDiv.innerHTML = \<div class="alert alert-danger py-2">Falha de comunicação com a API Escavador.</div>\;
+    }
+};
+

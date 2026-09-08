@@ -17,7 +17,12 @@
                     <div class="row mb-3">
                         <div class="col-md-8">
                             <label class="form-label">Colaborador</label>
-                            <input type="text" class="form-control bg-light" id="aval-exp-nome" readonly>
+                            <div class="input-group">
+                                <input type="text" class="form-control bg-light" id="aval-exp-nome" readonly>
+                                <button class="btn btn-outline-secondary" type="button" onclick="consultarEscavadorAvaliacao()" title="Consultar antecedentes no Escavador via API">
+                                    <i class="fas fa-search"></i> Escavador
+                                </button>
+                            </div>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Data da Avaliação</label>
@@ -120,6 +125,11 @@
                     <div class="mb-3">
                         <label class="form-label">Observações</label>
                         <textarea class="form-control" id="aval-exp-obs" rows="3"></textarea>
+                    </div>
+
+                    <div id="aval-exp-escavador-area" class="mb-3" style="display: none;">
+                        <h6 class="border-bottom pb-2 mb-2 text-primary"><i class="fas fa-balance-scale"></i> Antecedentes (Escavador)</h6>
+                        <div id="aval-exp-escavador-resultado" class="border p-2 rounded bg-light" style="max-height: 250px; overflow-y: auto; font-size: 0.9em;"></div>
                     </div>
                 </form>
             </div>
