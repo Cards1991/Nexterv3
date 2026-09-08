@@ -238,7 +238,8 @@ async function salvarPermissoes() {
     const uid = document.getElementById('perm-user-uid').value;
     const nome = document.getElementById('perm-user-nome').value;
     const isAdmin = document.getElementById('perm-is-admin').checked;
-    const isMecanico = document.getElementById('perm-is-mecanico').checked;
+    const permIsMecanicoEl = document.getElementById('perm-is-mecanico');
+    const isMecanico = permIsMecanicoEl ? permIsMecanicoEl.checked : false;
     const isMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
     const isMecanicoAdmin = isMecanicoAdminEl ? isMecanicoAdminEl.checked : false;
     const hasIsoAccessEl = document.getElementById('perm-has-iso-access');
