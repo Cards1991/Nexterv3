@@ -243,105 +243,353 @@ async function inicializarGerenciarAvaliacoes() {
     const tbody = document.getElementById('tabela-ciclos-avaliacao');
     if (!tbody) return;
 
-    tbody.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando ciclos...</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando avaliações...</td></tr>';
 
     try {
-        const snap = await db.collection('avaliacoes_ciclos').orderBy('dataCiclo', 'desc').get();
+        const currentUserPermissions = window.currentUserPermissions || {};
+        const isAdmin = currentUserPermissions.isAdmin;
+        const gerenteId = currentUserPermissions.funcionarioId;
+        
+        let query = db.collection('avaliacoes_desempenho_iso');
+        
+        if (!isAdmin && gerenteId) {
+            query = query.where('avaliadorUid', '==', firebase.auth().currentUser.uid); // Filtra pelas que ele criou
+        }
+        
+        const snap = await query.get();
 
         if (snap.empty) {
-            tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Nenhum ciclo de avaliação salvo.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">Nenhuma avaliação salva.</td></tr>';
             return;
         }
 
-        tbody.innerHTML = '';
+        // Extrai os dados e ordena localmente para evitar erro de índice composto no Firebase
+        let avaliacoes = [];
         snap.forEach(doc => {
-            const ciclo = doc.data();
-            const dataCiclo = ciclo.dataCiclo?.toDate ? ciclo.dataCiclo.toDate().toLocaleString('pt-BR') : 'Data inválida';
+            avaliacoes.push({ id: doc.id, ...doc.data() });
+        });
+        
+        avaliacoes.sort((a, b) => {
+            const dateA = a.dataAvaliacao?.toDate ? a.dataAvaliacao.toDate().getTime() : 0;
+            const dateB = b.dataAvaliacao?.toDate ? b.dataAvaliacao.toDate().getTime() : 0;
+            return dateB - dateA; // Descending
+        });
+
+        // Buscar nomes dos funcionários para mapeamento
+        const funcIds = new Set();
+        avaliacoes.forEach(av => funcIds.add(av.funcionarioId));
+        
+        const funcMap = new Map();
+        if (funcIds.size > 0) {
+            const funcionariosSnap = await db.collection('funcionarios').get();
+            funcionariosSnap.forEach(fDoc => {
+                funcMap.set(fDoc.id, fDoc.data().nome);
+            });
+        }
+
+        tbody.innerHTML = '';
+        avaliacoes.forEach(avaliacao => {
+            const dataAvaliacao = avaliacao.dataAvaliacao?.toDate ? avaliacao.dataAvaliacao.toDate().toLocaleDateString('pt-BR') : 'Data inválida';
+            const nomeColaborador = funcMap.get(avaliacao.funcionarioId) || 'Colaborador não encontrado';
+            
+            const badgeClass = avaliacao.media >= 4 ? 'bg-success' : (avaliacao.media >= 3 ? 'bg-primary' : 'bg-warning text-dark');
+            
             const row = `
                 <tr>
-                    <td>${dataCiclo}</td>
-                    <td>${ciclo.avaliadorEmail || 'N/A'}</td>
-                    <td><span class="badge bg-secondary">${ciclo.totalAmostra}</span> / <span class="badge bg-info">${ciclo.totalAvaliados}</span></td>
-                    <td><span class="badge bg-primary">${ciclo.mediaGeral.toFixed(1)}</span></td>
+                    <td>${dataAvaliacao}</td>
+                    <td><strong>${nomeColaborador}</strong></td>
+                    <td>${avaliacao.avaliadorEmail || 'N/A'}</td>
+                    <td><span class="badge ${badgeClass} fs-6">${avaliacao.media.toFixed(1)}</span></td>
+                    <td>${avaliacao.resultado}</td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-info" onclick="visualizarDetalhesCiclo('${doc.id}')" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCicloAvaliacao('${doc.id}')" title="Excluir Ciclo"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-sm btn-outline-info" onclick="visualizarDetalhesAvaliacaoDesempenho('${avaliacao.id}')" title="Ver Detalhes"><i class="fas fa-eye"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirAvaliacaoDesempenho('${avaliacao.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             `;
             tbody.innerHTML += row;
         });
 
+        // ── Calcular e exibir Média Geral do Setor ──
+        const mediaGeralEl = document.getElementById('media-geral-setor');
+        if (mediaGeralEl) {
+            const avaliacoesComMedia = avaliacoes.filter(av => typeof av.media === 'number' && !isNaN(av.media));
+            if (avaliacoesComMedia.length > 0) {
+                const somaMedias = avaliacoesComMedia.reduce((acc, av) => acc + av.media, 0);
+                const mediaGeral = somaMedias / avaliacoesComMedia.length;
+                mediaGeralEl.textContent = mediaGeral.toFixed(1);
+
+                // Ajusta cor do card conforme desempenho
+                const card = mediaGeralEl.closest('.card');
+                if (card) {
+                    card.classList.remove('bg-primary', 'bg-success', 'bg-warning', 'bg-danger');
+                    if (mediaGeral >= 4) {
+                        card.classList.add('bg-success');
+                    } else if (mediaGeral >= 3) {
+                        card.classList.add('bg-primary');
+                    } else if (mediaGeral >= 2) {
+                        card.classList.add('bg-warning');
+                        card.querySelector('h6') && (card.querySelector('h6').classList.add('text-dark'));
+                        mediaGeralEl.classList.add('text-dark');
+                    } else {
+                        card.classList.add('bg-danger');
+                    }
+                }
+            } else {
+                mediaGeralEl.textContent = '-';
+            }
+        }
+
     } catch (error) {
-        console.error("Erro ao carregar ciclos de avaliação:", error);
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Erro ao carregar os ciclos.</td></tr>';
+        console.error("Erro ao carregar avaliações de desempenho:", error);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar as avaliações.</td></tr>';
     }
 }
 
-async function visualizarDetalhesCiclo(cicloId) {
+async function visualizarDetalhesAvaliacaoDesempenho(id) {
     try {
-        const snap = await db.collection('avaliacoes_colaboradores').where('cicloId', '==', cicloId).get();
-        if (snap.empty) {
-            mostrarMensagem("Nenhuma avaliação detalhada encontrada para este ciclo.", "info");
+        const doc = await db.collection('avaliacoes_desempenho_iso').doc(id).get();
+        if (!doc.exists) {
+            mostrarMensagem("Avaliação não encontrada.", "warning");
             return;
         }
+        const data = doc.data();
+        const funcDoc = await db.collection('funcionarios').doc(data.funcionarioId).get();
+        const nome = funcDoc.exists ? funcDoc.data().nome : "Desconhecido";
+        
+        const corpoModal = `
+            <div class="mb-3">
+                <h6>Colaborador: <span class="text-primary">${nome}</span></h6>
+                <small>Média Final: <strong>${data.media.toFixed(1)}</strong> | Resultado: <strong>${data.resultado}</strong></small>
+            </div>
+            <ul class="list-group mb-3">
+                <li class="list-group-item d-flex justify-content-between align-items-center">Assiduidade <span class="badge bg-primary rounded-pill">${data.notas.assiduidade}</span></li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">Pontualidade <span class="badge bg-primary rounded-pill">${data.notas.pontualidade}</span></li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">Produtividade <span class="badge bg-primary rounded-pill">${data.notas.produtividade}</span></li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">Relacionamento <span class="badge bg-primary rounded-pill">${data.notas.relacionamento}</span></li>
+                <li class="list-group-item d-flex justify-content-between align-items-center">Iniciativa <span class="badge bg-primary rounded-pill">${data.notas.iniciativa}</span></li>
+            </ul>
+            <div class="alert alert-secondary">
+                <strong>Observações:</strong><br/>
+                ${data.observacoes || "Nenhuma observação registrada."}
+            </div>
+        `;
+        abrirModalGenerico("Detalhes da Avaliação", corpoModal);
+    } catch (error) {
+        console.error("Erro ao visualizar:", error);
+    }
+}
 
+async function excluirAvaliacaoDesempenho(id) {
+    if (!confirm("Tem certeza que deseja excluir esta avaliação? Esta ação não pode ser desfeita.")) return;
+    try {
+        await db.collection('avaliacoes_desempenho_iso').doc(id).delete();
+        mostrarMensagem("Avaliação excluída com sucesso.", "success");
+        await inicializarGerenciarAvaliacoes();
+    } catch (error) {
+        console.error("Erro ao excluir avaliação:", error);
+        mostrarMensagem("Erro ao excluir a avaliação.", "error");
+    }
+}
+
+async function abrirModalNovaAvaliacaoDesempenho() {
+    const modalEl = document.getElementById('modalAvaliacaoDesempenho');
+    if (!modalEl) {
+        console.error("Modal Avaliação Desempenho não encontrado no DOM!");
+        return;
+    }
+    
+    // Mostra Passo 1 e Oculta Passo 2
+    document.getElementById('aval-step-1').style.display = 'block';
+    document.getElementById('aval-step-2').style.display = 'none';
+    
+    const tbody = document.getElementById('tabela-colaboradores-avaliacao');
+    tbody.innerHTML = '<tr><td colspan="4" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando colaboradores...</td></tr>';
+    
+    try {
         const currentUserPermissions = window.currentUserPermissions || {};
         const isAdmin = currentUserPermissions.isAdmin;
         const gerenteId = currentUserPermissions.funcionarioId;
-
-        const promessas = snap.docs.map(async doc => {
-            const avaliacao = doc.data();
-            const funcDoc = await db.collection('funcionarios').doc(avaliacao.funcionarioId).get();
-            if (funcDoc.exists) {
-                const funcData = funcDoc.data();
-                if (!isAdmin && gerenteId && funcData.liderId !== gerenteId) {
-                    return null;
-                }
-                return { nome: funcData.nome, nota: avaliacao.nota, setor: avaliacao.setor };
-            }
-            return null;
-        });
-
-        let funcionariosAvaliados = (await Promise.all(promessas)).filter(item => item !== null);
-
-        if (funcionariosAvaliados.length === 0) {
-            abrirModalGenerico("Detalhes do Ciclo", "<p>Nenhuma avaliação da sua equipe encontrada neste ciclo.</p>");
-            return;
+        
+        let query = db.collection('funcionarios').where('status', '==', 'Ativo');
+        if (!isAdmin && gerenteId) {
+            query = query.where('liderId', '==', gerenteId);
         }
-
-        let corpoModal = '<ul class="list-group">';
-        funcionariosAvaliados.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(item => {
-            corpoModal += `<li class="list-group-item d-flex justify-content-between align-items-center">${item.nome} <small class="text-muted">(${item.setor})</small> <span class="badge bg-primary rounded-pill">${item.nota}</span></li>`;
-        });
-        corpoModal += '</ul>';
-
-        abrirModalGenerico("Detalhes do Ciclo de Avaliação", corpoModal);
-
-    } catch (error) {
-        console.error("Erro ao buscar detalhes do ciclo:", error);
-        mostrarMensagem("Erro ao carregar detalhes do ciclo.", "error");
+        
+        const snap = await query.get();
+        
+        // Também vamos buscar quais já foram avaliados HOJE pelo gerente, para dar um feedback visual
+        const hojeInic = new Date();
+        hojeInic.setHours(0,0,0,0);
+        
+        let avaliacoesHoje = new Set();
+        try {
+            const avs = await db.collection('avaliacoes_desempenho_iso')
+                .where('avaliadorUid', '==', firebase.auth().currentUser.uid)
+                .where('dataAvaliacao', '>=', hojeInic)
+                .get();
+            avs.forEach(a => avaliacoesHoje.add(a.data().funcionarioId));
+        } catch(e) { console.warn("Aviso ao buscar avaliações do dia:", e); }
+        
+        if (snap.empty) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted">Nenhum colaborador encontrado sob sua liderança.</td></tr>';
+        } else {
+            let rows = '';
+            let funcs = [];
+            snap.forEach(doc => funcs.push({id: doc.id, ...doc.data()}));
+            funcs.sort((a, b) => a.nome.localeCompare(b.nome)).forEach(f => {
+                const jaAvaliado = avaliacoesHoje.has(f.id);
+                const statusBadge = jaAvaliado ? '<span class="badge bg-success">Avaliado Hoje</span>' : '<span class="badge bg-secondary">Pendente</span>';
+                const btnText = jaAvaliado ? 'Reavaliar' : 'Avaliar';
+                const btnClass = jaAvaliado ? 'btn-outline-secondary' : 'btn-primary';
+                
+                rows += `
+                    <tr>
+                        <td><strong>${f.nome}</strong></td>
+                        <td>${f.cargo || 'N/A'}</td>
+                        <td class="text-center" id="status-aval-${f.id}">${statusBadge}</td>
+                        <td class="text-end">
+                            <button class="btn btn-sm ${btnClass}" onclick="iniciarAvaliacaoIndividual('${f.id}', '${f.nome.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-clipboard-check me-1"></i> ${btnText}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+            tbody.innerHTML = rows;
+        }
+        
+        bootstrap.Modal.getOrCreateInstance(modalEl).show();
+        
+    } catch(e) {
+        console.error("Erro ao carregar lista de colaboradores:", e);
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center text-danger">Erro ao carregar colaboradores.</td></tr>';
     }
 }
 
-async function excluirCicloAvaliacao(cicloId) {
-    if (!confirm("Tem certeza que deseja excluir este ciclo de avaliação e todas as suas notas? Esta ação não pode ser desfeita.")) {
-        return;
+function iniciarAvaliacaoIndividual(id, nome) {
+    document.getElementById('aval-step-1').style.display = 'none';
+    document.getElementById('aval-step-2').style.display = 'block';
+    
+    document.getElementById('form-avaliacao-desempenho').reset();
+    document.getElementById('aval-des-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('aval-des-funcionario-id').value = id;
+    document.getElementById('aval-des-nome-colaborador').textContent = nome;
+    
+    document.getElementById('aval-des-media-display').textContent = '-';
+    document.getElementById('aval-des-resultado-display').innerHTML = '<span class="badge bg-secondary">Aguardando notas...</span>';
+    
+    // Adicionar listeners para calcular quando mudar rádio
+    document.querySelectorAll('input[type=radio][name^="aval-des-"]').forEach(radio => {
+        radio.addEventListener('change', calcularResultadoAutomaticoAvaliacaoDesempenho);
+    });
+    
+    const btnSalvar = document.getElementById('btn-salvar-avaliacao-desempenho');
+    const novoBtn = btnSalvar.cloneNode(true);
+    btnSalvar.parentNode.replaceChild(novoBtn, btnSalvar);
+    novoBtn.addEventListener('click', salvarNovaAvaliacaoDesempenho);
+}
+
+function voltarParaPasso1Avaliacao() {
+    document.getElementById('aval-step-2').style.display = 'none';
+    document.getElementById('aval-step-1').style.display = 'block';
+}
+
+function calcularResultadoAutomaticoAvaliacaoDesempenho() {
+    const criterios = ['assiduidade', 'pontualidade', 'produtividade', 'relacionamento', 'iniciativa'];
+    let soma = 0;
+    let preenchidos = 0;
+    
+    criterios.forEach(c => {
+        const radio = document.querySelector(`input[name="aval-des-${c}"]:checked`);
+        if (radio) {
+            soma += parseInt(radio.value);
+            preenchidos++;
+        }
+    });
+    
+    if (preenchidos === criterios.length) {
+        const media = soma / criterios.length;
+        document.getElementById('aval-des-media-display').textContent = media.toFixed(1);
+        
+        let resultadoTexto = "";
+        let badgeClass = "";
+        
+        if (media >= 4.5) { resultadoTexto = "Excelente"; badgeClass = "bg-success"; }
+        else if (media >= 3.5) { resultadoTexto = "Bom"; badgeClass = "bg-primary"; }
+        else if (media >= 2.5) { resultadoTexto = "Regular"; badgeClass = "bg-warning text-dark"; }
+        else { resultadoTexto = "Precisa Melhorar"; badgeClass = "bg-danger"; }
+        
+        document.getElementById('aval-des-resultado').value = resultadoTexto;
+        document.getElementById('aval-des-resultado-display').innerHTML = `<span class="badge ${badgeClass} fs-5">${resultadoTexto}</span>`;
     }
+}
 
+async function salvarNovaAvaliacaoDesempenho() {
+    const funcionarioId = document.getElementById('aval-des-funcionario-id').value;
+    const dataAvaliacao = document.getElementById('aval-des-data').value;
+    const resultado = document.getElementById('aval-des-resultado').value;
+    const observacoes = document.getElementById('aval-des-obs').value;
+    
+    const criterios = ['assiduidade', 'pontualidade', 'produtividade', 'relacionamento', 'iniciativa'];
+    const notas = {};
+    let media = 0;
+    let preenchidos = 0;
+    
+    for (let c of criterios) {
+        const radio = document.querySelector(`input[name="aval-des-${c}"]:checked`);
+        if (!radio) {
+            mostrarMensagem("Por favor, avalie todos os critérios de 1 a 5.", "warning");
+            return;
+        }
+        const val = parseInt(radio.value);
+        notas[c] = val;
+        media += val;
+        preenchidos++;
+    }
+    media = media / criterios.length;
+    
+    const btnSalvar = document.getElementById('btn-salvar-avaliacao-desempenho');
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+    
     try {
-        const batch = db.batch();
-        // Deletar o documento do ciclo
-        batch.delete(db.collection('avaliacoes_ciclos').doc(cicloId));
-        // Deletar todas as avaliações individuais associadas
-        const avaliacoesSnap = await db.collection('avaliacoes_colaboradores').where('cicloId', '==', cicloId).get();
-        avaliacoesSnap.forEach(doc => batch.delete(doc.ref));
-
-        await batch.commit();
-        mostrarMensagem("Ciclo de avaliação excluído com sucesso.", "success");
-        await inicializarGerenciarAvaliacoes(); // Recarrega a lista
-    } catch (error) {
-        console.error("Erro ao excluir ciclo de avaliação:", error);
-        mostrarMensagem("Erro ao excluir o ciclo.", "error");
+        const avaliador = firebase.auth().currentUser;
+        
+        // Ajustar a data para 12:00 para evitar fuso horário puxando para o dia anterior
+        const dataAjustada = new Date(dataAvaliacao + 'T12:00:00');
+        
+        const avaliacaoData = {
+            funcionarioId,
+            dataAvaliacao: dataAjustada,
+            notas,
+            media,
+            resultado,
+            observacoes,
+            avaliadorUid: avaliador.uid,
+            avaliadorEmail: avaliador.email,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+        
+        await db.collection('avaliacoes_desempenho_iso').add(avaliacaoData);
+        
+        mostrarMensagem("Avaliação salva com sucesso!", "success");
+        
+        // Atualiza a tabela do passo 1 visualmente
+        const statusTd = document.getElementById(`status-aval-${funcionarioId}`);
+        if (statusTd) {
+            statusTd.innerHTML = '<span class="badge bg-success">Avaliado Agora</span>';
+        }
+        
+        // Voltar para a lista e recarregar a tabela de fundo
+        voltarParaPasso1Avaliacao();
+        await inicializarGerenciarAvaliacoes();
+        
+    } catch(error) {
+        console.error("Erro ao salvar avaliação:", error);
+        mostrarMensagem("Erro ao salvar a avaliação.", "error");
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Avaliação';
     }
 }

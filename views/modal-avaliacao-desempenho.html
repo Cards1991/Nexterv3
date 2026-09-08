@@ -1,0 +1,142 @@
+<!-- Modal Nova Avaliação de Desempenho (ISO 9001) -->
+<div class="modal fade" id="modalAvaliacaoDesempenho" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl"> <!-- Aumentei para modal-xl para a tabela ficar boa -->
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="aval-des-titulo">Nova Avaliação de Desempenho</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                
+                <!-- PASSO 1: LISTA DE COLABORADORES -->
+                <div id="aval-step-1">
+                    <h6 class="mb-3 text-primary"><i class="fas fa-users me-2"></i>Sua Equipe (Selecione quem deseja avaliar)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle border">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Colaborador</th>
+                                    <th>Cargo</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-end">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-colaboradores-avaliacao">
+                                <!-- Preenchido dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- PASSO 2: FORMULÁRIO DE AVALIAÇÃO (Oculto inicialmente) -->
+                <div id="aval-step-2" style="display: none;">
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-3" onclick="voltarParaPasso1Avaliacao()">
+                        <i class="fas fa-arrow-left me-1"></i> Voltar para a lista
+                    </button>
+                    
+                    <div class="card bg-light border-0 mb-3">
+                        <div class="card-body py-2">
+                            <h5 class="mb-0 text-primary" id="aval-des-nome-colaborador">Nome do Colaborador</h5>
+                            <input type="hidden" id="aval-des-funcionario-id">
+                        </div>
+                    </div>
+
+                    <form id="form-avaliacao-desempenho">
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Data da Avaliação</label>
+                                <input type="date" class="form-control" id="aval-des-data" required>
+                            </div>
+                        </div>
+
+                        <h6 class="border-bottom pb-2 mb-3 text-primary mt-4 fw-bold">Critérios de Avaliação (1 a 5)</h6>
+
+                        <div class="table-responsive mb-4">
+                            <table class="table table-sm table-bordered">
+                                <thead class="table-light">
+                                    <tr class="text-center">
+                                        <th class="text-start">Critério</th>
+                                        <th width="15%">1 (Ruim)</th>
+                                        <th width="15%">2</th>
+                                        <th width="15%">3</th>
+                                        <th width="15%">4</th>
+                                        <th width="15%">5 (Excelente)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td class="fw-bold align-middle">Assiduidade</td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-assiduidade" value="1" required></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-assiduidade" value="2"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-assiduidade" value="3"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-assiduidade" value="4"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-assiduidade" value="5"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold align-middle">Pontualidade</td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-pontualidade" value="1" required></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-pontualidade" value="2"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-pontualidade" value="3"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-pontualidade" value="4"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-pontualidade" value="5"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold align-middle">Produtividade</td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-produtividade" value="1" required></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-produtividade" value="2"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-produtividade" value="3"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-produtividade" value="4"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-produtividade" value="5"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold align-middle">Relacionamento</td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-relacionamento" value="1" required></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-relacionamento" value="2"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-relacionamento" value="3"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-relacionamento" value="4"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-relacionamento" value="5"></td>
+                                    </tr>
+                                    <tr>
+                                        <td class="fw-bold align-middle">Iniciativa</td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-iniciativa" value="1" required></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-iniciativa" value="2"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-iniciativa" value="3"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-iniciativa" value="4"></td>
+                                        <td class="text-center"><input type="radio" class="form-check-input" name="aval-des-iniciativa" value="5"></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row mb-3 align-items-center bg-light p-3 rounded mx-0">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold mb-0">Média Calculada:</label>
+                                <h3 class="text-primary mb-0" id="aval-des-media-display">-</h3>
+                            </div>
+                            <div class="col-md-6 text-end">
+                                <label class="form-label fw-bold mb-0">Parecer Final Automático:</label>
+                                <h4 class="mb-0" id="aval-des-resultado-display">
+                                    <span class="badge bg-secondary">Aguardando notas...</span>
+                                </h4>
+                                <input type="hidden" id="aval-des-resultado">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">Observações (Opcional)</label>
+                            <textarea class="form-control" id="aval-des-obs" rows="3" placeholder="Insira comentários sobre o desempenho avaliado..."></textarea>
+                        </div>
+                    </form>
+                    
+                    <div class="d-flex justify-content-end gap-2 mt-4">
+                        <button type="button" class="btn btn-secondary" onclick="voltarParaPasso1Avaliacao()">Cancelar</button>
+                        <button type="button" class="btn btn-primary" id="btn-salvar-avaliacao-desempenho">
+                            <i class="fas fa-save me-1"></i> Salvar Avaliação
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

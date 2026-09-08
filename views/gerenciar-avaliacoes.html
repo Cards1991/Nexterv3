@@ -1,20 +1,41 @@
-<h2 class="page-title">Gerenciar Ciclos de Avaliação</h2>
-<div class="card">
-    <div class="card-header">Histórico de Avaliações Salvas</div>
+<h2 class="page-title">Controle de avaliações</h2>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card shadow-sm border-0 bg-primary text-white">
+            <div class="card-body py-3 d-flex align-items-center">
+                <i class="fas fa-chart-line fa-2x me-3"></i>
+                <div>
+                    <h6 class="mb-0 text-white-50">Média Geral do Setor</h6>
+                    <h3 class="mb-0 fw-bold" id="media-geral-setor">0.0</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card shadow-sm border-0">
+    <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold"><i class="fas fa-list-alt me-2"></i> Histórico de Avaliações</h5>
+        <button class="btn btn-primary" onclick="abrirModalNovaAvaliacaoDesempenho()">
+            <i class="fas fa-plus"></i> Nova Avaliação
+        </button>
+    </div>
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
+            <table class="table table-hover align-middle">
+                <thead class="table-light">
                     <tr>
-                        <th>Data do Ciclo</th>
+                        <th>Data</th>
+                        <th>Colaborador</th>
                         <th>Avaliador</th>
-                        <th>Amostra / Avaliados</th>
-                        <th>Média Geral</th>
+                        <th>Média Final</th>
+                        <th>Resultado</th>
                         <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tabela-ciclos-avaliacao">
-                    <!-- Os ciclos de avaliação serão carregados aqui -->
+                    <!-- Avaliações serão carregadas aqui -->
                 </tbody>
             </table>
         </div>

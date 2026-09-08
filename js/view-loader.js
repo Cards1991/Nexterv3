@@ -47,6 +47,7 @@ const ViewLoader = {
         { url: 'views/modal-treinamento-novo.html' },
         { url: 'views/modal-treinamento-prova.html' },
         { url: 'views/modal-avaliacao-experiencia.html' },
+        { url: 'views/modal-avaliacao-desempenho.html' },
         { url: 'views/modal-avaliacao-experiencia-atribuicao.html' },
         { url: 'views/modal-biometria-selecao.html' },
         { url: 'views/modal-login-manutencao.html' },
