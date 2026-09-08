@@ -120,7 +120,8 @@ async function abrirModalPermissoes(uid) {
     document.getElementById('perm-user-email').textContent = userData.email;
     document.getElementById('perm-user-nome').value = userData.nome || '';
     document.getElementById('perm-is-admin').checked = permissoes.isAdmin || false;
-    document.getElementById('perm-is-mecanico').checked = permissoes.isMecanico || false;
+    const permIsMecanicoEl = document.getElementById('perm-is-mecanico');
+    if (permIsMecanicoEl) permIsMecanicoEl.checked = permissoes.isMecanico || false;
     const permIsMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
     if (permIsMecanicoAdminEl) permIsMecanicoAdminEl.checked = permissoes.isMecanicoAdmin || false;
     const permHasIsoAccessEl = document.getElementById('perm-has-iso-access');

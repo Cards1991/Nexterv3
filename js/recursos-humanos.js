@@ -56,7 +56,7 @@ function renderizarTabelaMBTIEquipe(lista) {
                 </button>
             `;
         } else {
-            statusBadge = '<span class="badge bg-success"><i class="fas fa-check"></i> Concluí­do</span>';
+            statusBadge = '<span class="badge bg-success"><i class="fas fa-check"></i> Concluído</span>';
             dataStr = `<div class="small text-muted">Feito em: ${item.dataTeste ? new Date(item.dataTeste.toDate()).toLocaleDateString('pt-BR') : '-'}</div>`;
             acoesBtn = `
                 <button class="btn btn-sm btn-outline-info" onclick='verDetalhesMBTI(${JSON.stringify(item).replace(/'/g, "&apos;")})' title="Ver Detalhes">
@@ -72,7 +72,7 @@ function renderizarTabelaMBTIEquipe(lista) {
         }
 
         let toggleGerente = '-';
-        if (item.status === 'Concluí­do' && item.mbti) {
+        if (item.status === 'Concluído' && item.mbti) {
             const isGerente = item.isGerente === true ? 'checked' : '';
             toggleGerente = `
                 <div class="form-check form-switch d-flex justify-content-center">
@@ -379,7 +379,7 @@ function renderizarMatrizGerentes() {
 }
 
 function renderizarMapaVisualCorporativo() {
-    const testes = mbtiEquipeList.filter(x => x.status === 'Concluí­do' && x.mbti);
+    const testes = mbtiEquipeList.filter(x => x.status === 'Concluído' && x.mbti);
     const containerMapa = document.getElementById('heatmap-mbti-container');
     const ctxMacro = document.getElementById('chart-mbti-macro');
     
