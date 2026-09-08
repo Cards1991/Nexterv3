@@ -13,9 +13,41 @@ async function carregarMBTIEquipe() {
         const snapshot = await db.collection('equipe_mbti').orderBy('dataTeste', 'desc').get();
         mbtiEquipeList = [];
         
+        // Lógica de Permissão/Hierarquia
+        const currentUserPermissions = window.currentUserPermissions || {};
+        const isAdmin = currentUserPermissions.isAdmin;
+        const funcionarioId = currentUserPermissions.funcionarioId;
+        
+        let cpfsPermitidos = null;
+        if (!isAdmin && funcionarioId) {
+            cpfsPermitidos = new Set();
+            try {
+                const gerenteDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+                if (gerenteDoc.exists && gerenteDoc.data().cpf) {
+                    cpfsPermitidos.add(gerenteDoc.data().cpf.replace(/\D/g, ''));
+                }
+                const subordinadosSnap = await db.collection('funcionarios').where('liderId', '==', funcionarioId).get();
+                subordinadosSnap.forEach(doc => {
+                    if (doc.data().cpf) {
+                        cpfsPermitidos.add(doc.data().cpf.replace(/\D/g, ''));
+                    }
+                });
+            } catch(e) {
+                console.error("Erro ao buscar liderados:", e);
+            }
+        }
+        
         snapshot.forEach(doc => {
             const data = doc.data();
             data.id = doc.id;
+            
+            if (cpfsPermitidos !== null) {
+                const cpfTeste = data.cpf ? data.cpf.replace(/\D/g, '') : null;
+                if (!cpfTeste || !cpfsPermitidos.has(cpfTeste)) {
+                    return;
+                }
+            }
+            
             mbtiEquipeList.push(data);
         });
         

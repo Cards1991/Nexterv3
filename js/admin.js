@@ -217,12 +217,23 @@ async function abrirModalPermissoes(uid) {
     if (funcSelect) {
         funcSelect.innerHTML = '<option value="">Carregando...</option>';
         try {
-            const snap = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
+            const snap = await db.collection('funcionarios').get();
             funcSelect.innerHTML = '<option value="">Sem vínculo</option>';
+            
+            let funcionariosAtivos = [];
             snap.forEach(doc => {
                 const func = doc.data();
-                const selected = (userData.funcionarioId === doc.id) ? 'selected' : '';
-                funcSelect.innerHTML += `<option value="${doc.id}" ${selected}>${func.nome}</option>`;
+                if (func.status === 'Ativo') {
+                    funcionariosAtivos.push({ id: doc.id, nome: func.nome });
+                }
+            });
+            
+            // Ordenar por nome
+            funcionariosAtivos.sort((a, b) => a.nome.localeCompare(b.nome));
+            
+            funcionariosAtivos.forEach(func => {
+                const selected = (userData.funcionarioId === func.id) ? 'selected' : '';
+                funcSelect.innerHTML += `<option value="${func.id}" ${selected}>${func.nome}</option>`;
             });
         } catch (e) {
             console.error("Erro ao carregar funcionários:", e);
