@@ -1008,7 +1008,7 @@ window.consultarEscavadorAvaliacao = async function() {
                 personId: id,
                 cpfRaw: cpf,
                 nomeRaw: nome,
-                mode: 'HOMONIMOS_ONLY' // Busca rápida (R$ 0,05)
+                mode: 'CPF_ONLY' // Busca rápida (R$ 0,05)
             })
         });
 
@@ -1121,7 +1121,7 @@ window.consultarEscavadorMenu = async function(id, nome) {
                 personId: id,
                 cpfRaw: cpf,
                 nomeRaw: nome,
-                mode: 'HOMONIMOS_ONLY' // Busca rápida (R$ 0,05)
+                mode: 'CPF_ONLY' // Busca rápida (R$ 0,05)
             })
         });
 
