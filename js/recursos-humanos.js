@@ -173,30 +173,89 @@ function imprimirTratamentoMBTI() {
     const janela = window.open('', '', 'width=900,height=700');
     
     janela.document.write(`
-        <html>
+        <!DOCTYPE html>
+        <html lang="pt-BR">
         <head>
-            <title>Forma de Tratamento - ${nome}</title>
+            <meta charset="UTF-8">
+            <title>Guia de Relacionamento - ${nome}</title>
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
             <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
             <style>
-                body { padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-                .header-print { border-bottom: 2px solid #198754; margin-bottom: 20px; padding-bottom: 10px; }
-                h2 { color: #198754; }
-                .card { border: 1px solid #ddd !important; margin-bottom: 20px; page-break-inside: avoid; }
-                .bg-light { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                :root {
+                    --success-color: #198754;
+                    --danger-color: #dc3545;
+                    --text-color: #333;
+                }
+                body { 
+                    padding: 40px; 
+                    font-family: 'Inter', sans-serif; 
+                    color: var(--text-color);
+                    background-color: #f4f6f9;
+                }
+                .print-container {
+                    background: white;
+                    padding: 40px 50px;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+                    max-width: 900px;
+                    margin: 0 auto;
+                }
+                .header-print { 
+                    border-bottom: 3px solid var(--success-color); 
+                    margin-bottom: 35px; 
+                    padding-bottom: 25px; 
+                }
+                .header-print h1 { font-weight: 800; font-size: 32px; color: #2c3e50; text-transform: uppercase; letter-spacing: 0.5px;}
+                .header-print h3 { font-weight: 500; font-size: 22px; color: #555; margin-top: 15px; }
+                .header-print h4 { font-weight: 700; font-size: 18px; display: inline-block; padding: 6px 20px; background: rgba(25, 135, 84, 0.1); border-radius: 30px; margin-top: 5px;}
+                
+                #tratamento-mbti-tipo { color: var(--success-color); font-weight: 800; font-size: 26px; }
+                #tratamento-mbti-resumo { font-size: 16px; font-weight: 500; color: #555; max-width: 800px; margin: 0 auto 30px auto; line-height: 1.6;}
+                
+                h6 { font-size: 15px; font-weight: 700 !important; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 15px; }
+                
+                p, ul li { line-height: 1.7; font-size: 15px; color: #444; }
+                ul li { margin-bottom: 8px; }
+                
+                .card { 
+                    border: 1px solid rgba(0,0,0,0.08) !important; 
+                    border-radius: 12px;
+                    margin-bottom: 25px; 
+                    page-break-inside: avoid;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.02) !important;
+                }
+                .card-body { padding: 25px; }
+                
+                .bg-light { background-color: #f8f9fa !important; }
+                .border-success { border-color: rgba(25, 135, 84, 0.4) !important; background-color: rgba(25, 135, 84, 0.02) !important; }
+                .border-danger { border-color: rgba(220, 53, 69, 0.3) !important; background-color: rgba(220, 53, 69, 0.02) !important; }
+                
+                .border-bottom { border-bottom: 2px solid #e9ecef !important; margin-bottom: 15px; padding-bottom: 10px; }
+                
+                /* Subseções */
+                .mt-4 > h6 { color: #2c3e50 !important; border-bottom: 2px solid #e9ecef !important; }
+                
+                /* Force background colors and styles to show when printing */
+                * {
+                    -webkit-print-color-adjust: exact !important; 
+                    print-color-adjust: exact !important;
+                }
+                
                 @media print {
-                    body { padding: 0; }
+                    body { padding: 0; background-color: white; }
+                    .print-container { padding: 0; box-shadow: none; max-width: 100%; border-radius: 0; }
                     .btn, .modal-footer, .btn-close { display: none !important; }
-                    .card { box-shadow: none !important; }
+                    @page { margin: 1.5cm; }
                 }
             </style>
         </head>
         <body>
-            <div class="container">
+            <div class="print-container">
                 <div class="text-center header-print">
-                    <h1>Guia de Relacionamento Corporativo</h1>
-                    <h3 class="text-secondary">Colaborador: ${nome}</h3>
-                    <h4 class="text-success">Perfil: ${tipo}</h4>
+                    <h1><i class="fas fa-users-cog me-2" style="color: var(--success-color);"></i> Guia de Relacionamento</h1>
+                    <h3 class="text-secondary">Colaborador: <strong>${nome}</strong></h3>
+                    <h4 class="text-success mt-2">Perfil MBTI: ${tipo}</h4>
                 </div>
                 ${conteudo}
             </div>
@@ -204,7 +263,7 @@ function imprimirTratamentoMBTI() {
                 setTimeout(() => {
                     window.print();
                     // window.close();
-                }, 500);
+                }, 800);
             </script>
         </body>
         </html>
