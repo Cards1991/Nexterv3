@@ -56,7 +56,7 @@ function renderizarTabelaMBTIEquipe(lista) {
                 </button>
             `;
         } else {
-            statusBadge = '<span class="badge bg-success"><i class="fas fa-check"></i> Concluído</span>';
+            statusBadge = '<span class="badge bg-success"><i class="fas fa-check"></i> Concluí­do</span>';
             dataStr = `<div class="small text-muted">Feito em: ${item.dataTeste ? new Date(item.dataTeste.toDate()).toLocaleDateString('pt-BR') : '-'}</div>`;
             acoesBtn = `
                 <button class="btn btn-sm btn-outline-info" onclick='verDetalhesMBTI(${JSON.stringify(item).replace(/'/g, "&apos;")})' title="Ver Detalhes">
@@ -72,7 +72,7 @@ function renderizarTabelaMBTIEquipe(lista) {
         }
 
         let toggleGerente = '-';
-        if (item.status === 'Concluído' && item.mbti) {
+        if (item.status === 'Concluí­do' && item.mbti) {
             const isGerente = item.isGerente === true ? 'checked' : '';
             toggleGerente = `
                 <div class="form-check form-switch d-flex justify-content-center">
@@ -114,7 +114,7 @@ function verDetalhesMBTI(item) {
         document.getElementById('detalhe-mbti-grupo').textContent = item.mbti.grupo;
         document.getElementById('detalhe-mbti-desc').textContent = item.mbti.descricao;
         
-        // Pega as profissões estáticas do arquivo mbti.js (acessível via mbtiData se importado, 
+        // Pega as profissões estáticas do arquivo mbti.js (acessí­vel via mbtiData se importado, 
         // ou usa fallback)
         let profissoesStr = "Profissões não especificadas para este perfil.";
         if (typeof mbtiData !== 'undefined' && mbtiData.results[item.mbti.perfil]) {
@@ -126,7 +126,7 @@ function verDetalhesMBTI(item) {
         document.getElementById('detalhe-mbti-tipo').textContent = "Pendente";
         document.getElementById('detalhe-mbti-titulo').textContent = "";
         document.getElementById('detalhe-mbti-grupo').textContent = "";
-        document.getElementById('detalhe-mbti-desc').textContent = "Teste não concluído.";
+        document.getElementById('detalhe-mbti-desc').textContent = "Teste não concluí­do.";
         document.getElementById('detalhe-mbti-profissoes').textContent = "-";
     }
     
@@ -136,7 +136,7 @@ function verDetalhesMBTI(item) {
 
 function verTratamentoMBTI(perfil, nome) {
     if (typeof mbti_work_guidance === 'undefined' || !mbti_work_guidance[perfil]) {
-        mostrarMensagem('Guia de tratamento não encontrado para este perfil.', 'warning');
+        mostrarMensagem('Guia de tratamento n&atilde;o encontrado para este perfil.', 'warning');
         return;
     }
 
@@ -173,10 +173,8 @@ function imprimirTratamentoMBTI() {
     const janela = window.open('', '', 'width=900,height=700');
     
     janela.document.write(`
-        <!DOCTYPE html>
-        <html lang="pt-BR">
+        <html>
         <head>
-            <meta charset="UTF-8">
             <title>Guia de Relacionamento - ${nome}</title>
             <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
             <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -289,10 +287,10 @@ function copiarLinkConvite() {
     linkInput.setSelectionRange(0, 99999);
     try {
         document.execCommand('copy');
-        mostrarMensagem('Link copiado para a área de transferência!', 'success');
+        mostrarMensagem('Link copiado para a área de transferíªncia!', 'success');
     } catch (err) {
         navigator.clipboard.writeText(linkInput.value).then(() => {
-            mostrarMensagem('Link copiado para a área de transferência!', 'success');
+            mostrarMensagem('Link copiado para a área de transferíªncia!', 'success');
         });
     }
 }
@@ -300,7 +298,7 @@ function copiarLinkConvite() {
 function reenviarLinkConvite(id) {
     const url = window.location.origin + window.location.pathname.replace('index.html', '') + 'mbti-equipe.html?t=' + id;
     navigator.clipboard.writeText(url).then(() => {
-        mostrarMensagem('Link copiado para a área de transferência!', 'success');
+        mostrarMensagem('Link copiado para a área de transferíªncia!', 'success');
     });
 }
 
@@ -308,7 +306,7 @@ async function excluirConvite(id) {
     if (confirm("Deseja realmente excluir este registro?")) {
         try {
             await db.collection('equipe_mbti').doc(id).delete();
-            mostrarMensagem('Registro excluído com sucesso.', 'success');
+            mostrarMensagem('Registro excluí­do com sucesso.', 'success');
             carregarMBTIEquipe();
         } catch (error) {
             mostrarMensagem('Erro ao cancelar convite.', 'error');
@@ -322,7 +320,7 @@ async function marcarComoGerente(id, isGerente) {
             isGerente: isGerente
         });
         
-        // Atualiza a lista na memória
+        // Atualiza a lista na memí³ria
         const idx = mbtiEquipeList.findIndex(x => x.id === id);
         if (idx !== -1) {
             mbtiEquipeList[idx].isGerente = isGerente;
@@ -330,7 +328,7 @@ async function marcarComoGerente(id, isGerente) {
         
         // Atualiza apenas a matriz para não piscar a tabela inteira
         renderizarMatrizGerentes();
-        mostrarMensagem('Cargo de gerência atualizado.', 'success');
+        mostrarMensagem('Cargo de geríªncia atualizado.', 'success');
     } catch (error) {
         console.error("Erro ao marcar gerente:", error);
         mostrarMensagem('Erro ao atualizar gerente.', 'error');
@@ -381,7 +379,7 @@ function renderizarMatrizGerentes() {
 }
 
 function renderizarMapaVisualCorporativo() {
-    const testes = mbtiEquipeList.filter(x => x.status === 'Concluído' && x.mbti);
+    const testes = mbtiEquipeList.filter(x => x.status === 'Concluí­do' && x.mbti);
     const containerMapa = document.getElementById('heatmap-mbti-container');
     const ctxMacro = document.getElementById('chart-mbti-macro');
     
@@ -488,3 +486,4 @@ function renderizarMapaVisualCorporativo() {
         containerMapa.innerHTML = html;
     }
 }
+
