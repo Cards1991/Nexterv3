@@ -62,6 +62,9 @@ function renderizarTabelaMBTIEquipe(lista) {
                 <button class="btn btn-sm btn-outline-info" onclick='verDetalhesMBTI(${JSON.stringify(item).replace(/'/g, "&apos;")})' title="Ver Detalhes">
                     <i class="fas fa-eye"></i> Detalhes
                 </button>
+                <button class="btn btn-sm btn-outline-success ms-1" onclick="verTratamentoMBTI('${item.mbti.perfil}', '${item.nome || ''}')" title="Como Lidar">
+                    <i class="fas fa-handshake"></i> Como Lidar
+                </button>
                 <button class="btn btn-sm btn-outline-danger ms-1" onclick="excluirConvite('${item.id}')" title="Excluir Resultado">
                     <i class="fas fa-trash"></i>
                 </button>
@@ -128,6 +131,36 @@ function verDetalhesMBTI(item) {
     }
     
     const modal = new bootstrap.Modal(document.getElementById('modal-mbti-detalhes'));
+    modal.show();
+}
+
+function verTratamentoMBTI(perfil, nome) {
+    if (typeof mbti_work_guidance === 'undefined' || !mbti_work_guidance[perfil]) {
+        mostrarMensagem('Guia de tratamento não encontrado para este perfil.', 'warning');
+        return;
+    }
+
+    const guia = mbti_work_guidance[perfil];
+    
+    document.getElementById('tratamento-mbti-nome').textContent = nome || 'Colaborador';
+    document.getElementById('tratamento-mbti-tipo').textContent = perfil;
+    document.getElementById('tratamento-mbti-resumo').textContent = guia.quick_guide.best_approach;
+
+    const trabalharBemList = document.getElementById('tratamento-mbti-trabalhar-bem');
+    trabalharBemList.innerHTML = guia.quick_guide.to_work_well.map(item => `<li>${item}</li>`).join('');
+
+    const evitarList = document.getElementById('tratamento-mbti-evitar');
+    evitarList.innerHTML = guia.quick_guide.avoid.map(item => `<li>${item}</li>`).join('');
+
+    document.getElementById('tratamento-mbti-comunicacao').textContent = guia.communication;
+    document.getElementById('tratamento-mbti-delegacao').textContent = guia.delegation;
+    document.getElementById('tratamento-mbti-feedback').textContent = guia.feedback;
+
+    document.getElementById('tratamento-mbti-pressao-sinais').textContent = guia.pressure.signals;
+    document.getElementById('tratamento-mbti-pressao-agir').textContent = guia.pressure.act;
+    document.getElementById('tratamento-mbti-pressao-evitar').textContent = guia.pressure.avoid;
+
+    const modal = new bootstrap.Modal(document.getElementById('modal-mbti-tratamento'));
     modal.show();
 }
 

@@ -139,6 +139,64 @@
     </div>
 </div>
 
+<!-- Modal Forma de Tratamento -->
+<div class="modal fade" id="modal-mbti-tratamento" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-success text-white border-0">
+                <h5 class="modal-title"><i class="fas fa-handshake me-2"></i> Forma de Tratamento - <span id="tratamento-mbti-nome"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="text-center mb-4">
+                    <h2 class="mb-1 text-success fw-bold" id="tratamento-mbti-tipo"></h2>
+                    <p class="text-muted" id="tratamento-mbti-resumo"></p>
+                </div>
+                
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card h-100 border-success border-opacity-25 bg-light">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-success"><i class="fas fa-check-circle me-1"></i> Para Trabalhar Bem</h6>
+                                <ul id="tratamento-mbti-trabalhar-bem" class="ps-3 mb-0 text-dark small"></ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100 border-danger border-opacity-25 bg-light">
+                            <div class="card-body">
+                                <h6 class="fw-bold text-danger"><i class="fas fa-times-circle me-1"></i> O Que Evitar</h6>
+                                <ul id="tratamento-mbti-evitar" class="ps-3 mb-0 text-dark small"></ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <h6 class="fw-bold text-secondary border-bottom pb-2"><i class="fas fa-comments me-2"></i> Comunicação</h6>
+                    <p id="tratamento-mbti-comunicacao" class="text-dark small"></p>
+
+                    <h6 class="fw-bold text-secondary border-bottom pb-2 mt-3"><i class="fas fa-tasks me-2"></i> Delegação de Tarefas</h6>
+                    <p id="tratamento-mbti-delegacao" class="text-dark small"></p>
+
+                    <h6 class="fw-bold text-secondary border-bottom pb-2 mt-3"><i class="fas fa-comment-dots me-2"></i> Feedback</h6>
+                    <p id="tratamento-mbti-feedback" class="text-dark small"></p>
+
+                    <h6 class="fw-bold text-secondary border-bottom pb-2 mt-3"><i class="fas fa-bolt me-2"></i> Sob Pressão</h6>
+                    <div class="small bg-light p-2 rounded border">
+                        <p class="mb-1"><strong>Sinais:</strong> <span id="tratamento-mbti-pressao-sinais"></span></p>
+                        <p class="mb-1 text-success"><strong>Como Agir:</strong> <span id="tratamento-mbti-pressao-agir"></span></p>
+                        <p class="mb-0 text-danger"><strong>Evitar:</strong> <span id="tratamento-mbti-pressao-evitar"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal Gerar Convite -->
 <div class="modal fade" id="modal-gerar-convite" tabindex="-1">
     <div class="modal-dialog">
