@@ -164,6 +164,55 @@ function verTratamentoMBTI(perfil, nome) {
     modal.show();
 }
 
+function imprimirTratamentoMBTI() {
+    const modal = document.getElementById('modal-mbti-tratamento');
+    const conteudo = modal.querySelector('.modal-body').innerHTML;
+    const nome = document.getElementById('tratamento-mbti-nome').textContent;
+    const tipo = document.getElementById('tratamento-mbti-tipo').textContent;
+    
+    const janela = window.open('', '', 'width=900,height=700');
+    
+    janela.document.write(`
+        <html>
+        <head>
+            <title>Forma de Tratamento - ${nome}</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                body { padding: 40px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+                .header-print { border-bottom: 2px solid #198754; margin-bottom: 20px; padding-bottom: 10px; }
+                h2 { color: #198754; }
+                .card { border: 1px solid #ddd !important; margin-bottom: 20px; page-break-inside: avoid; }
+                .bg-light { background-color: #f8f9fa !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                @media print {
+                    body { padding: 0; }
+                    .btn, .modal-footer, .btn-close { display: none !important; }
+                    .card { box-shadow: none !important; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="text-center header-print">
+                    <h1>Guia de Relacionamento Corporativo</h1>
+                    <h3 class="text-secondary">Colaborador: ${nome}</h3>
+                    <h4 class="text-success">Perfil: ${tipo}</h4>
+                </div>
+                ${conteudo}
+            </div>
+            <script>
+                setTimeout(() => {
+                    window.print();
+                    // window.close();
+                }, 500);
+            </script>
+        </body>
+        </html>
+    `);
+    
+    janela.document.close();
+}
+
 async function abrirModalGerarConvite() {
     document.getElementById('area-link-gerado').classList.remove('d-none');
     
