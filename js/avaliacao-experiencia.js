@@ -1,4 +1,4 @@
-﻿// ========================================
+// ========================================
 // MÃƒÂ³dulo: AvaliaÃƒÂ§ÃƒÂ£o de ExperiÃƒÂªncia
 // ========================================
 let permissoesUsuario = {};
@@ -243,7 +243,10 @@ function renderizarTabelaExperiencia(lista) {
                 </td>
                 <td>${statusBadge}</td>
                 <td class="text-end">
-                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalAtribuicaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})" title="Atribuir ResponsÃƒÂ¡vel">
+                    <button class="btn btn-sm btn-outline-info me-1" onclick="consultarEscavadorMenu('${item.id}', '${item.nome}')" title="Consultar Antecedentes no Escavador">
+                        <i class="fas fa-balance-scale"></i>
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalAtribuicaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})" title="Atribuir Responsável">
                         <i class="fas fa-user-plus"></i>
                     </button>
                     <button class="btn btn-sm btn-primary" onclick="abrirModalAvaliacaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})">
@@ -970,7 +973,7 @@ window.excluirAvaliacao = excluirAvaliacao;
 window.reimprimirCarta = reimprimirCarta;
 window.exportarAvaliacoesConcluidasExcel = exportarAvaliacoesConcluidasExcel;
 
-// --- INTEGRAÃ‡ÃƒO ESCAVADOR (AVALIAÃ‡ÃƒO) ---
+// --- INTEGRAÇÃO ESCAVADOR (AVALIAÇÃO) ---
 window.consultarEscavadorAvaliacao = async function() {
     const id = document.getElementById('aval-exp-funcionario-id').value;
     const nome = document.getElementById('aval-exp-nome').value;
@@ -985,7 +988,7 @@ window.consultarEscavadorAvaliacao = async function() {
     try {
         const doc = await db.collection('funcionarios').doc(id).get();
         if (!doc.exists) {
-            resultDiv.innerHTML = '<div class="alert alert-danger">FuncionÃ¡rio nÃ£o encontrado.</div>';
+            resultDiv.innerHTML = '<div class="alert alert-danger">Funcionário não encontrado.</div>';
             return;
         }
         
@@ -994,7 +997,7 @@ window.consultarEscavadorAvaliacao = async function() {
         const cpf = cpfRaw.replace(/\D/g, '');
 
         if (!cpf || cpf.length !== 11) {
-            resultDiv.innerHTML = '<div class="alert alert-warning">CPF invÃ¡lido ou nÃ£o cadastrado para este colaborador.</div>';
+            resultDiv.innerHTML = '<div class="alert alert-warning">CPF inválido ou não cadastrado para este colaborador.</div>';
             return;
         }
 
@@ -1005,7 +1008,7 @@ window.consultarEscavadorAvaliacao = async function() {
                 personId: id,
                 cpfRaw: cpf,
                 nomeRaw: nome,
-                mode: 'HOMONIMOS_ONLY' // Busca rÃ¡pida (R$ 0,05)
+                mode: 'HOMONIMOS_ONLY' // Busca rápida (R$ 0,05)
             })
         });
 
@@ -1013,18 +1016,18 @@ window.consultarEscavadorAvaliacao = async function() {
         
         if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
             const sum = respData.summary;
-            let html = 
+            let html = `
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong><i class="fas fa-gavel"></i> \ processos encontrados</strong>
+                    <strong><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</strong>
                 </div>
                 <div class="d-flex gap-2 mb-2 text-center" style="font-size: 0.8em;">
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">PossÃ­vel: <b class="text-warning">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">HomÃ´nimos: <b class="text-danger">\</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms}</b></div>
                 </div>
                 <div class="list-group list-group-flush">
-            ;
+            `;
             
             respData.processes.forEach(proc => {
                 let color = 'secondary';
@@ -1033,31 +1036,29 @@ window.consultarEscavadorAvaliacao = async function() {
                 else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
                 else color = 'danger';
                 
-                html += 
+                html += `
                     <div class="list-group-item px-0 py-2">
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">\</h6>
-                            <span class="badge bg-\">\</span>
+                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">${proc.numero_cnj || 'S/N'}</h6>
+                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
                         </div>
-                        <p class="mb-1 small">\ x \</p>
-                        <small class="text-muted">\ - \</small>
+                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
+                        <small class="text-muted">${proc.capa?.orgao_julgador || ''} - ${proc.capa?.situacao || ''}</small>
                     </div>
-                ;
+                `;
             });
-            html += \</div>\;
+            html += `</div>`;
             resultDiv.innerHTML = html;
         } else if (response.ok && respData.status === 'SUCCESS_NO_RESULTS') {
             resultDiv.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF/Nome.</div>';
         } else {
-            resultDiv.innerHTML = \<div class="alert alert-danger py-2">Erro na consulta: \</div>\;
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.error || respData.message || 'Desconhecido'}</div>`;
         }
     } catch (e) {
-        console.error("Erro Escavador na AvaliaÃ§Ã£o:", e);
-        resultDiv.innerHTML = \<div class="alert alert-danger py-2">Falha de comunicaÃ§Ã£o com a API Escavador.</div>\;
+        console.error("Erro Escavador:", e);
+        resultDiv.innerHTML = `<div class="alert alert-danger py-2">Falha de comunicação com a API Escavador.</div>`;
     }
 };
-
-
 
 // --- INTEGRAÇÃO ESCAVADOR (MENU PRINCIPAL) ---
 window.consultarEscavadorMenu = async function(id, nome) {
@@ -1066,7 +1067,7 @@ window.consultarEscavadorMenu = async function(id, nome) {
     // Criar modal dinâmico se não existir
     let modalEl = document.getElementById('modalEscavadorGenerico');
     if (!modalEl) {
-        const modalHtml = \
+        const modalHtml = `
         <div class="modal fade" id="modalEscavadorGenerico" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -1084,7 +1085,7 @@ window.consultarEscavadorMenu = async function(id, nome) {
                     </div>
                 </div>
             </div>
-        </div>\;
+        </div>`;
         document.body.insertAdjacentHTML('beforeend', modalHtml);
         modalEl = document.getElementById('modalEscavadorGenerico');
     }
@@ -1128,18 +1129,18 @@ window.consultarEscavadorMenu = async function(id, nome) {
         
         if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
             const sum = respData.summary;
-            let html = \
+            let html = `
                 <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong><i class="fas fa-gavel"></i> \ processos encontrados</strong>
+                    <strong><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</strong>
                 </div>
                 <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">\</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">\</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible}</b></div>
+                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms}</b></div>
                 </div>
                 <div class="list-group list-group-flush">
-            \;
+            `;
             
             respData.processes.forEach(proc => {
                 let color = 'secondary';
@@ -1148,26 +1149,26 @@ window.consultarEscavadorMenu = async function(id, nome) {
                 else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
                 else color = 'danger';
                 
-                html += \
+                html += `
                     <div class="list-group-item px-0 py-2">
                         <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">\</h6>
-                            <span class="badge bg-\">\</span>
+                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">${proc.numero_cnj || 'S/N'}</h6>
+                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
                         </div>
-                        <p class="mb-1 small">\ x \</p>
-                        <small class="text-muted">\ - \</small>
+                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
+                        <small class="text-muted">${proc.capa?.orgao_julgador || ''} - ${proc.capa?.situacao || ''}</small>
                     </div>
-                \;
+                `;
             });
-            html += \</div>\;
+            html += `</div>`;
             resultDiv.innerHTML = html;
         } else if (response.ok && respData.status === 'SUCCESS_NO_RESULTS') {
             resultDiv.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF.</div>';
         } else {
-            resultDiv.innerHTML = \<div class="alert alert-danger py-2">Erro na consulta: \</div>\;
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.message || 'Desconhecido'}</div>`;
         }
     } catch (e) {
         console.error("Erro Escavador Menu:", e);
-        resultDiv.innerHTML = \<div class="alert alert-danger py-2">Falha de comunicação com a API Escavador.</div>\;
+        resultDiv.innerHTML = `<div class="alert alert-danger py-2">Falha de comunicação com a API Escavador.</div>`;
     }
 };
