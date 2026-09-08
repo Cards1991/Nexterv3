@@ -200,97 +200,97 @@ const mbtiData = {
             group: "Os Idealistas",
             title: "O Conselheiro (INFJ)",
             description: "Sensitivo, profundo e algumas vezes místico. Sério ao considerar valores pessoais e convicções. Tem vida interior rica e valoriza a integridade pessoal. Criativo, original e idealista. Reservado, gentil e compassivo. Aprecia a solidão e sente grande necessidade de harmonia. Consciencioso, determinado e perseverante.",
-            profissoes: "Psicólogo, Conselheiro, Professor, Escritor, Assistente Social"
+            profissoes: "Psicólogo, Conselheiro, Professor, Escritor, Assistente Social, Terapeuta Hol�stico, Coach, Designer UX, Mediador, Cientista Ambiental"
         },
         "ISTJ": {
             group: "Os Administradores",
             title: "O Inspetor (ISTJ)",
             description: "Reservado, perseverante, fiel e cuidadoso. Sistemático, organizado e atento aos fatos. Trabalhador, meticuloso, obediente. Pé no chão, pragmático, honesto, honra seus compromissos. Faz o que é certo e espera o mesmo dos outros. É calmo e firme em momentos de crise.",
-            profissoes: "Contador, Auditor, Administrador, Engenheiro, Policial"
+            profissoes: "Contador, Auditor, Administrador, Engenheiro, Policial, Gerente de Projetos, Analista Financeiro, Inspetor de Qualidade, Diretor de Opera��es, Militar"
         },
         "ISFJ": {
             group: "Os Administradores",
             title: "O Protetor (ISFJ)",
             description: "Consciencioso, honesto e cooperativo. Leal, digno de crédito e autodisciplinado. Demonstra respeitar a ética profissional e completa suas tarefas nos prazos. Excelente memória para detalhes. Amigo silencioso, sério e reservado. Frequentemente trabalha nos bastidores, ajudando os outros. Modesto e simples. Emotivo, diplomata e gentil.",
-            profissoes: "Enfermeiro, Professor Infantil, Assistente Social, Nutricionista, RH"
+            profissoes: "Enfermeiro, Professor Infantil, Assistente Social, Nutricionista, RH, Assistente Administrativo, Psic�logo Cl�nico, Bibliotec�rio, Odontologista, Fisioterapeuta"
         },
         "INTJ": {
             group: "Os Pesquisadores",
             title: "O Arquiteto (INTJ)",
             description: "Independente e individualista. Tem muita perspicácia e visão. Hábil em criar teorias e métodos. Estimula a si mesmo e aos outros para alcançar seus objetivos e auto-desenvolvimento. Engenhoso e criativo ao resolver problemas. Organizado, determinado e líder confiável. Responsável, reservado e discreto.",
-            profissoes: "Engenheiro, Cientista, Estrategista de TI, Arquiteto, Analista de Dados"
+            profissoes: "Engenheiro, Cientista, Estrategista de TI, Arquiteto, Analista de Dados, Desenvolvedor de Software, Consultor Financeiro, Diretor de Planejamento, Pesquisador, Advogado Corporativo"
         },
         "ISTP": {
             group: "Os Ativos",
             title: "O Artesão (ISTP)",
             description: "Prefere agir do que conversar. Gosta de aventura e desafios. Resolve bem as crises. Se sai bem em trabalhos com ferramentas, máquinas ou quaisquer outros que requerem habilidade manual. Cheio de expediente, independente e determinado. Coerente, realista e prático. Reservado, desapegado, observador curioso.",
-            profissoes: "Mecânico, Engenheiro Civil, Desenvolvedor de Software, Piloto, Analista de Sistemas"
+            profissoes: "Mecânico, Engenheiro Civil, Desenvolvedor de Software, Piloto, Analista de Sistemas, T�cnico de Inform�tica, Eletricista, Investigador, Atleta, Operador de M�quinas"
         },
         "ISFP": {
             group: "Os Ativos",
             title: "O Compositor (ISFP)",
             description: "Gentil, leal e compassivo. Aparenta ser reservado e simples. Ajuda os outros discretamente. Paciente, sabe aceitar as coisas como são e não faz julgamentos. É a favor da filosofia do viver e deixar viver. Sensibiliza-se com conflitos e discórdias. Tem pouca necessidade de dominar ou controlar os outros.",
-            profissoes: "Designer, Artista, Músico, Fotógrafo, Estilista"
+            profissoes: "Designer, Artista, M�sico, Fot�grafo, Estilista, Chef de Cozinha, Joalheiro, Fisioterapeuta, Paisagista, Marceneiro"
         },
         "INFP": {
             group: "Os Idealistas",
             title: "O Curador (INFP)",
             description: "Devotado, compassivo, mente aberta e gentil. Detesta regras, ordens, planejamentos e prazos. Gosta de aprender e estar envolvido em projetos próprios. Tem convicções apaixonadas e persegue ideais. Estabelece padrões elevados para si mesmo. Idealista, sensível e criativo. Pode ser reservado e contemplativo.",
-            profissoes: "Escritor, Artista, Psicólogo, Editor, Tradutor"
+            profissoes: "Escritor, Artista, Psic�logo, Editor, Tradutor, Professor Universit�rio, Fil�sofo, Especialista Ambiental, Rela��es P�blicas (ONGs), Terapeuta Ocupacional"
         },
         "INTP": {
             group: "Os Pesquisadores",
             title: "O Pensador (INTP)",
             description: "Analítico e brilhante. Pensador original, competente para solucionar problemas. Idiossincrático e não-conformista. Valoriza a precisão no pensar e no falar. Observa a inconsistência, as contradições e os lapsos no discurso alheio. Independente, curioso e compreensivo. Discreto, reservado e introspectivo.",
-            profissoes: "Programador, Matemático, Analista Financeiro, Pesquisador, Cientista"
+            profissoes: "Programador, Matem�tico, Analista Financeiro, Pesquisador, Cientista, Engenheiro Biom�dico, F�sico, Arquiteto de Software, Fil�sofo, Professor"
         },
         "ESTP": {
             group: "Os Ativos",
             title: "O Promotor (ESTP)",
             description: "Gosta de enfrentar riscos, desafios e aventuras. Cheio de energia, vive em constante movimento. Leva a vida às últimas consequências. Atento, confiante e persuasivo. Pode ser escandaloso, direto, impulsivo. Competente, cheio de expedientes, responde bem às crises. Realista e pragmático. Negociador habilidoso.",
-            profissoes: "Vendedor, Empreendedor, Corretor, Bombeiro, Gestor de Crises"
+            profissoes: "Vendedor, Empreendedor, Corretor, Bombeiro, Gestor de Crises, Policial, Piloto, Analista Financeiro de Risco, Agente de Esportes, Engenheiro de Campo"
         },
         "ESFP": {
             group: "Os Ativos",
             title: "O Animador (ESFP)",
             description: "Solícito, generoso, cooperativo, gosta de ajudar os outros. Amigável, gregário, enérgico, vivaz e charmoso. É quase sempre a alma da festa. Tolerante, aceita a si mesmo e aos outros. Tem senso prático. Enfatiza o positivo. Gosta de novas experiências e tem entusiasmo pela vida.",
-            profissoes: "Ator, Relações Públicas, Designer, Organizador de Eventos, Recreador"
+            profissoes: "Ator, Relações Públicas, Designer, Organizador de Eventos, Recreador, Vendedor de Varejo, Nutricionista, Esteticista, Produtor, Guia Tur�stico"
         },
         "ENFP": {
             group: "Os Idealistas",
             title: "O Campeão (ENFP)",
             description: "Acolhedor, prestativo, respeitador e compassivo. Cheio de entusiasmo e novas ideias. Valoriza a liberdade e a autonomia. Sabe se comunicar muito bem e inspirar ações. Criativo, espontâneo, positivo e amante de diversões. Individualista, introspectivo, perceptivo.",
-            profissoes: "Jornalista, Ator, Consultor de RH, Publicitário, Empreendedor Criativo"
+            profissoes: "Jornalista, Ator, Consultor de RH, Publicit�rio, Empreendedor Criativo, Rela��es P�blicas, Psic�logo, Diretor de Arte, Consultor de Marketing, Guia Tur�stico"
         },
         "ENTP": {
             group: "Os Pesquisadores",
             title: "O Inventor (ENTP)",
             description: "Franco, é desenvolto em desafios e debates. Entusiasta, charmoso e espirituoso. Valoriza a liberdade e a independência. Criativo, empreendedor e competente. Espontâneo e impulsivo. Gosta de enfrentar riscos e está atento a todas as possibilidades. Inquiridor e curioso.",
-            profissoes: "Consultor, Empreendedor, Relações Públicas, Advogado, Diretor de Criação"
+            profissoes: "Consultor, Empreendedor, Relações Públicas, Advogado, Diretor de Cria��o, Desenvolvedor de Novos Neg�cios, Analista de Sistemas, Agente de Vendas, Jornalista, Estrategista"
         },
         "ESTJ": {
             group: "Os Administradores",
             title: "O Supervisor (ESTJ)",
             description: "Extrovertido, ativo, fidedigno. Eficiente, organizado e decidido. Gosta de administrar e dirigir. Ótimo para definir e aplicar políticas e procedimentos. Afirmativo, franco e direto. Preocupa-se em solucionar problemas. Responsável, esforçado, bom planejador. Consistente, pragmático e coerente.",
-            profissoes: "Gerente, Diretor, Juiz, Policial, Executivo"
+            profissoes: "Gerente, Diretor, Juiz, Policial, Executivo, Oficial Militar, Administrador de Banco de Dados, Agente Imobili�rio, Analista de Cr�dito, Inspetor Escolar"
         },
         "ESFJ": {
             group: "Os Administradores",
             title: "O Provedor (ESFJ)",
             description: "Entusiasta, sociável, cativante. Gosta de se sentir necessário e estimado. Bem-apessoado, compreensivo e cooperativo. É solidário e diligente em tarefas organizacionais. Digno de confiança, leal e responsável. Valoriza a harmonia e demonstra seu amor através de atitudes práticas.",
-            profissoes: "Professor, Enfermeiro, Analista de RH, Varejista, Assistente Social"
+            profissoes: "Professor, Enfermeiro, Analista de RH, Varejista, Assistente Social, Gerente de Vendas, Recepcionista, Organizador de Eventos, Assistente Executivo, Nutricionista"
         },
         "ENFJ": {
             group: "Os Idealistas",
             title: "O Professor (ENFJ)",
             description: "Amigável, charmoso, entusiasta e socialmente ativo. Orador persuasivo e inspirado, líder carismático que motiva outras pessoas. Simpático, caloroso, prestativo e solidário. Pode idealizar pessoas e relacionamentos. Responsável, consciente e idealista. Diplomático e bom em promover harmonia.",
-            profissoes: "Professor, Gerente de RH, Palestrante, Facilitador, Político"
+            profissoes: "Professor, Gerente de RH, Palestrante, Facilitador, Pol�tico, Consultor Educacional, Diretor de Comunica��es, Coach Executivo, Terapeuta Familiar, Rela��es P�blicas"
         },
         "ENTJ": {
             group: "Os Pesquisadores",
             title: "O Comandante (ENTJ)",
             description: "Líder confiável que gosta de estar no comando. Decidido e ambicioso. Aprecia o intercâmbio intelectual. Engenhoso e competente para resolver problemas complexos. Inovador, analítico e coerente. Determinado e independente. Aspira ser o melhor em tudo o que faz.",
-            profissoes: "Executivo (CEO), Empreendedor, Advogado, Analista de Gestão, Consultor Corporativo"
+            profissoes: "Executivo (CEO), Empreendedor, Advogado, Analista de Gest�o, Consultor Corporativo, Juiz, Gerente de Projetos de TI, Professor Universit�rio, CFO, Planejador Estrat�gico"
         }
     }
 };
@@ -496,3 +496,5 @@ style.innerHTML = `
     }
 `;
 document.head.appendChild(style);
+
+
