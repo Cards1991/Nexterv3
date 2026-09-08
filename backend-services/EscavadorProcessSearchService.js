@@ -173,7 +173,7 @@ class EscavadorProcessSearchService {
     };
 
     try {
-      if (deepSearchMode !== 'HOMONIMOS_ONLY') {
+      if (deepSearchMode !== 'HOMONIMOS_ONLY' && deepSearchMode !== 'NAME_ONLY') {
         // Camada 1 - CPF Exato
         strategiesExecuted.push('CPF_EXACT');
         const resCpfExato = await this.getAllPages('/envolvido/processos', {
@@ -203,7 +203,9 @@ class EscavadorProcessSearchService {
         });
 
         resCpfHomonimos.items.forEach(p => addProcess(p, 'CPF_HOMONYMS'));
+      }
 
+      if (needsDeepSearch || deepSearchMode === 'NAME_ONLY') {
         // Camada 3 - Nome
         strategiesExecuted.push('NAME_SEARCH');
         const searchName = nomeEscavador ? nomeEscavador : nomeNorm;

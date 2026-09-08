@@ -3692,6 +3692,9 @@ async function carregarMBTIFuncionario(funcionarioId) {
                     <span class="badge bg-primary fs-6 mb-1 align-self-start">${data.mbti.tipo}</span>
                     <strong class="text-dark">${data.mbti.titulo}</strong>
                     <span class="text-muted small">${data.mbti.grupo}</span>
+                    <button class="btn btn-sm btn-outline-info mt-2 align-self-start" onclick="abrirGuiaMBTI('${data.mbti.tipo}')">
+                        <i class="fas fa-brain me-1"></i> Como trabalhar com este perfil
+                    </button>
                 </div>
             `;
         } else {
