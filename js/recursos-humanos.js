@@ -114,10 +114,12 @@ function renderizarTabelaMBTIEquipe(lista) {
 
         let toggleGerente = '-';
         if (item.status === 'Concluído' && item.mbti) {
-            const isGerente = item.isGerente === true ? 'checked' : '';
+            const isGerenteChecked = item.isGerente === true ? 'checked' : '';
+            const isMaster = window.currentUserPermissions?.isAdmin;
+            const disabledAttr = isMaster ? '' : 'disabled';
             toggleGerente = `
                 <div class="form-check form-switch d-flex justify-content-center">
-                    <input class="form-check-input cursor-pointer" type="checkbox" onchange="marcarComoGerente('${item.id}', this.checked)" ${isGerente}>
+                    <input class="form-check-input cursor-pointer" type="checkbox" onchange="marcarComoGerente('${item.id}', this.checked)" ${isGerenteChecked} ${disabledAttr}>
                 </div>
             `;
         }

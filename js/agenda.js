@@ -13,6 +13,13 @@ let domCache = {};
 
 // Função para inicializar a Agenda quando a view for injetada
 function inicializarAgenda() {
+    if (!window.currentUserPermissions?.isAdmin) {
+        const tabEquipe = document.getElementById('tarefas-equipe-tab');
+        if (tabEquipe && tabEquipe.parentElement) {
+            tabEquipe.parentElement.style.display = 'none';
+        }
+    }
+
     // Configura os filtros de data e o botão de aplicar
     const btnFiltrarAgenda = document.getElementById('btn-filtrar-agenda');
     if (btnFiltrarAgenda) {

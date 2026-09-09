@@ -247,9 +247,11 @@ function renderizarTabelaExperiencia(lista) {
                 </td>
                 <td>${statusBadge}</td>
                 <td class="text-end">
+                    ${window.currentUserPermissions?.isAdmin ? `
                     <button class="btn btn-sm btn-outline-info me-1" onclick="consultarEscavadorMenu('${item.id}', '${item.nome}')" title="Consultar Antecedentes no Escavador">
                         <i class="fas fa-balance-scale"></i>
                     </button>
+                    ` : ''}
                     <button class="btn btn-sm btn-outline-secondary me-1" onclick="abrirModalAtribuicaoExperiencia('${item.id}', '${item.nome}', ${item.periodo})" title="Atribuir Responsável">
                         <i class="fas fa-user-plus"></i>
                     </button>
@@ -273,6 +275,13 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     console.log(`[AvalExp] Abrindo modal para ${nome} (${periodo} dias)`);
     const modalEl = document.getElementById('modalAvaliacaoExperiencia');
     const form = document.getElementById('form-avaliacao-experiencia');
+    if (!modalEl || !form) return;
+
+    const btnEscavador = document.getElementById('btn-escavador-avaliacao');
+    if (btnEscavador) {
+        btnEscavador.style.display = window.currentUserPermissions?.isAdmin ? 'inline-block' : 'none';
+    }
+
     const alertContainer = document.getElementById('aval-exp-alerts');
     
     if (!modalEl || !form) {
