@@ -77,7 +77,7 @@ const ScriptLoader = {
         'producao-bonus': ['js/producao-gestao.js'],
         'producao-produtos': ['js/producao-gestao.js'],
         'producao-leitura': ['js/producao-gestao.js'],
-        'avaliacao-experiencia': ['js/avaliacao-experiencia.js'],
+        'avaliacao-experiencia': ['js/avaliacao-experiencia.js', 'js/experiencia-export.js'],
         'cid-manager': ['js/cid-manager.js'],
         'analise-atestados': ['js/analise-atestados.js'],
         'indicadores-direcao': ['js/indicadores-direcao.js'],
