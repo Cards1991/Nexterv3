@@ -614,18 +614,8 @@ window.consultarEscavadorAPI = async function(modeToUse) {
 
     try {
         // Chamada para o Backend
-        const response = await fetch('/api/legal/process-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                personId: personId || null,
-                cpfRaw: cpf,
-                nomeRaw: inputNome.value.trim(),
-                mode: modeToUse
-            })
-        });
-
-        const data = await response.json();
+        const data = await window.frontendEscavadorSearch(cpf, inputNome ? inputNome.value : '', modeToUse);
+        const response = { ok: data.status === 'SUCCESS_WITH_RESULTS' || data.status === 'SUCCESS_NO_RESULTS' };
         
         let htmlResultados = '';
 

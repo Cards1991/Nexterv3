@@ -1017,18 +1017,8 @@ window.consultarEscavadorAvaliacao = async function() {
             return;
         }
 
-        const response = await fetch('/api/legal/process-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                personId: id,
-                cpfRaw: cpf,
-                nomeRaw: nome,
-                mode: 'NAME_ONLY' // Busca rápida (R$ 0,05)
-            })
-        });
-
-        const respData = await response.json();
+        const respData = await window.frontendEscavadorSearch(cpf, nome, 'NAME_ONLY');
+        const response = { ok: respData.status === 'SUCCESS_WITH_RESULTS' || respData.status === 'SUCCESS_NO_RESULTS' };
         
         if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
             const sum = respData.summary;
@@ -1130,18 +1120,8 @@ window.consultarEscavadorMenu = async function(id, nome) {
             return;
         }
 
-        const response = await fetch('/api/legal/process-search', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                personId: id,
-                cpfRaw: cpf,
-                nomeRaw: nome,
-                mode: 'NAME_ONLY' // Busca rápida (R$ 0,05)
-            })
-        });
-
-        const respData = await response.json();
+        const respData = await window.frontendEscavadorSearch(cpf, nome, 'NAME_ONLY');
+        const response = { ok: respData.status === 'SUCCESS_WITH_RESULTS' || respData.status === 'SUCCESS_NO_RESULTS' };
         
         if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
             const sum = respData.summary;
