@@ -1434,85 +1434,127 @@ function iniciarMBTICandidato() {
 
 async function calcularMatchMBTI(candidatoMBTI) {
     const matchContainer = document.getElementById('gerente-mbti-resultado');
-    const vagaId = document.getElementById('candidatoVagaId').value;
+    const btnAnalise = document.getElementById('btnAnalisarCompatibilidade');
     
-    if(!vagaId) {
-        matchContainer.innerHTML = '<span class="text-muted fst-italic small">Selecione uma vaga para carregar o perfil do gestor.</span>';
-        return;
-    }
-    
-    try {
-        // 1. Pegar a Vaga
-        const vagaDoc = await db.collection('vagas').doc(vagaId).get();
-        if(!vagaDoc.exists) throw new Error('Vaga não encontrada');
-        const setorId = vagaDoc.data().setorId;
-        
-        if(!setorId) {
-            matchContainer.innerHTML = '<span class="text-muted small">Vaga não vinculada a um setor específico.</span>';
-            return;
-        }
-        
-        // 2. Pegar o Setor (para achar o Lider/Gerente)
-        const setorDoc = await db.collection('setores').doc(setorId).get();
-        if(!setorDoc.exists) throw new Error('Setor não encontrado');
-        const liderId = setorDoc.data().liderId;
-        const liderNome = setorDoc.data().liderNome || 'Gerente';
-        
-        if(!liderId) {
-            matchContainer.innerHTML = `<span class="text-muted small">Setor <strong>${setorDoc.data().nome}</strong> não possui gerente definido.</span>`;
-            return;
-        }
-        
-        // 3. Pegar o MBTI do Gerente
-        const funcDoc = await db.collection('funcionarios').doc(liderId).get();
-        if(!funcDoc.exists) throw new Error('Gerente não encontrado');
-        const gerenteData = funcDoc.data();
-        const gerenteMBTI = gerenteData.mbti;
-        
-        if(!gerenteMBTI) {
-            matchContainer.innerHTML = `
-                <div class="alert alert-warning py-2 mb-0 small">
-                    <i class="fas fa-exclamation-triangle"></i> O gestor <strong>${liderNome}</strong> ainda não realizou o Teste MBTI.
-                </div>`;
-            return;
-        }
-        
-        // 4. Calcular e Exibir Match
-        let matchText = '<div class="alert alert-info py-2 mb-0 small"><i class="fas fa-info-circle"></i> O candidato precisa fazer o teste para calcular a compatibilidade.</div>';
-        
-        if(candidatoMBTI) {
-            // Lógica Básica de Match (Exemplo simples baseado em letras em comum)
-            let letrasIguais = 0;
-            for(let i=0; i<4; i++) {
-                if(candidatoMBTI.tipo[i] === gerenteMBTI.tipo[i]) letrasIguais++;
-            }
-            
-            let percentual = (letrasIguais / 4) * 100;
-            let badgeClass = percentual >= 75 ? 'bg-success' : (percentual === 50 ? 'bg-warning text-dark' : 'bg-danger');
-            let txtCompatibilidade = percentual >= 75 ? 'Alta afinidade' : (percentual === 50 ? 'Afinidade moderada' : 'Perfis complementares/opostos');
-            
-            matchText = `
-                <div class="d-flex align-items-center mb-2">
-                    <span class="badge ${badgeClass} fs-6 me-2">${percentual}% Match</span>
-                    <span class="fw-bold text-secondary">${txtCompatibilidade}</span>
-                </div>
-            `;
-        }
-        
-        matchContainer.innerHTML = `
-            <div class="mb-2">
-                <span class="badge bg-secondary mb-1">${gerenteMBTI.tipo}</span>
-                <strong class="text-dark d-block" style="font-size:0.9rem;">${liderNome}</strong>
-                <span class="text-muted small">${gerenteMBTI.titulo}</span>
-            </div>
-            ${matchText}
-        `;
-        
-    } catch(e) {
-        console.error("Erro ao calcular match", e);
-        matchContainer.innerHTML = '<span class="text-danger small">Erro ao carregar dados do gerente.</span>';
+    if(candidatoMBTI) {
+        btnAnalise.style.display = 'block';
+        window.currentCandidatoMBTI = candidatoMBTI;
+        window.currentCandidatoNome = document.getElementById('candidatoNome').value || 'Candidato';
+        matchContainer.innerHTML = `<div class="alert alert-success py-2 mb-0 small"><i class="fas fa-check-circle"></i> Perfil detectado. Clique no botão abaixo para analisar o ranking de gestores.</div>`;
+    } else {
+        btnAnalise.style.display = 'none';
+        matchContainer.innerHTML = '<span class="text-muted fst-italic small">Aplique o teste MBTI no candidato primeiro.</span>';
     }
 }
+
+let cachedGestores = null;
+
+async function abrirRankingMBTI() {
+    if(!window.currentCandidatoMBTI) return;
+    const candType = window.currentCandidatoMBTI.tipo || window.currentCandidatoMBTI.perfil;
+    
+    document.getElementById('mbtiRankCandidatoNome').textContent = window.currentCandidatoNome;
+    document.getElementById('mbtiRankCandidatoPerfil').textContent = candType;
+    document.getElementById('mbtiRankDetalhes').style.display = 'none';
+    document.getElementById('mbtiRankPlaceholder').style.display = 'flex';
+    document.getElementById('mbtiRankingList').innerHTML = '<div class="p-4 text-center text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Buscando gestores...</div>';
+
+    const modal = new bootstrap.Modal(document.getElementById('modalMBTICompatibilidade'));
+    modal.show();
+
+    try {
+        if(!cachedGestores) {
+            const funcs = await db.collection('funcionarios').get();
+            cachedGestores = [];
+            funcs.forEach(doc => {
+                const data = doc.data();
+                if(data.mbti && (data.cargo && (data.cargo.toLowerCase().includes('gerente') || data.cargo.toLowerCase().includes('coordenador') || data.cargo.toLowerCase().includes('lider')))) {
+                    cachedGestores.push({ id: doc.id, nome: data.nome, mbti: data.mbti.tipo || data.mbti.perfil });
+                } else if(data.mbti && data.isAdmin) {
+                    cachedGestores.push({ id: doc.id, nome: data.nome, mbti: data.mbti.tipo || data.mbti.perfil });
+                }
+            });
+        }
+
+        if(cachedGestores.length === 0) {
+            document.getElementById('mbtiRankingList').innerHTML = '<div class="alert alert-warning m-3">Nenhum gestor com perfil MBTI encontrado no sistema.</div>';
+            return;
+        }
+
+        const resultados = cachedGestores.map(gest => {
+            const calc = MBTICompatibilityEngine.calcular(candType, gest.mbti);
+            return { ...gest, ...calc };
+        });
+
+        resultados.sort((a, b) => b.geral - a.geral);
+
+        let html = '';
+        resultados.forEach((res, index) => {
+            let medal = '';
+            if(index === 0) medal = '🥇 ';
+            else if(index === 1) medal = '🥈 ';
+            else if(index === 2) medal = '🥉 ';
+            else medal = `${index+1}º `;
+
+            html += `
+                <a href="#" class="list-group-item list-group-item-action py-3" onclick="mostrarDetalheRanking(${index}); return false;">
+                    <div class="d-flex w-100 justify-content-between align-items-center">
+                        <div class="text-truncate">
+                            <h6 class="mb-1 text-dark fw-bold">${medal}${res.nome}</h6>
+                            <span class="badge bg-light text-dark border">${res.mbti}</span>
+                            <span class="badge bg-${res.color} ms-1">${res.classificacao}</span>
+                        </div>
+                        <div class="text-end ms-2">
+                            <h4 class="mb-0 fw-bold" style="color: var(--bs-${res.color});">${res.geral}%</h4>
+                        </div>
+                    </div>
+                </a>
+            `;
+        });
+
+        window.currentMBTIResultados = resultados;
+        document.getElementById('mbtiRankingList').innerHTML = html;
+
+    } catch(e) {
+        console.error("Erro ao buscar ranking", e);
+        document.getElementById('mbtiRankingList').innerHTML = '<div class="alert alert-danger m-3">Erro ao analisar compatibilidade.</div>';
+    }
+}
+
+window.mostrarDetalheRanking = function(index) {
+    if(!window.currentMBTIResultados) return;
+    const res = window.currentMBTIResultados[index];
+    if(!res) return;
+
+    document.getElementById('mbtiRankPlaceholder').style.display = 'none';
+    document.getElementById('mbtiRankDetalhes').style.display = 'flex';
+
+    document.getElementById('mbtiDetalheGestorNome').textContent = res.nome;
+    document.getElementById('mbtiDetalheGestorPerfil').textContent = res.mbti;
+    document.getElementById('mbtiDetalheGeral').textContent = res.geral + '%';
+    document.getElementById('mbtiDetalheGeral').style.color = `var(--bs-${res.color})`;
+    document.getElementById('mbtiDetalheClassificacao').textContent = res.classificacao;
+    document.getElementById('mbtiDetalheClassificacao').className = `badge bg-${res.color}`;
+
+    document.getElementById('mbtiValCom').textContent = res.comunicacao;
+    document.getElementById('mbtiBarCom').style.width = res.comunicacao + '%';
+    
+    document.getElementById('mbtiValLid').textContent = res.lideranca;
+    document.getElementById('mbtiBarLid').style.width = res.lideranca + '%';
+
+    document.getElementById('mbtiValOpe').textContent = res.operacional;
+    document.getElementById('mbtiBarOpe').style.width = res.operacional + '%';
+
+    document.getElementById('mbtiValRel').textContent = res.relacional;
+    document.getElementById('mbtiBarRel').style.width = res.relacional + '%';
+
+    document.getElementById('mbtiDetalheStrengths').innerHTML = res.strengths.map(s => `<li>${s}</li>`).join('');
+    document.getElementById('mbtiDetalheAttention').innerHTML = res.attention.map(s => `<li>${s}</li>`).join('');
+
+    const recs = MBTICompatibilityEngine.getRecomendacoes(window.currentCandidatoMBTI.tipo || window.currentCandidatoMBTI.perfil, res.mbti);
+    document.getElementById('mbtiDetalheRecs').innerHTML = recs.map(s => `<li>${s}</li>`).join('');
+};
+
 
 /* =============================================
    AÇÕES DO KANBAN CARD

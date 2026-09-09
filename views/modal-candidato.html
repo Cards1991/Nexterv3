@@ -109,11 +109,16 @@
                                 </div>
                                 <!-- Gerente/Match -->
                                 <div class="col-md-6">
-                                    <div class="border rounded p-3 bg-light h-100" id="mbti-match-container">
-                                        <h6 class="text-muted mb-2 fs-6">Gerente da Vaga (Match)</h6>
-                                        <div id="gerente-mbti-resultado">
-                                            <span class="text-muted fst-italic small">Selecione uma vaga ou aguarde o carregamento para ver a compatibilidade.</span>
+                                    <div class="border rounded p-3 bg-light h-100 d-flex flex-column justify-content-between" id="mbti-match-container">
+                                        <div>
+                                            <h6 class="text-muted mb-2 fs-6">Compatibilidade e Gestão</h6>
+                                            <div id="gerente-mbti-resultado">
+                                                <span class="text-muted fst-italic small">Aplique o teste MBTI no candidato primeiro.</span>
+                                            </div>
                                         </div>
+                                        <button type="button" class="btn btn-outline-primary btn-sm mt-3 align-self-start" id="btnAnalisarCompatibilidade" style="display: none;" onclick="abrirRankingMBTI()">
+                                            <i class="fas fa-project-diagram me-1"></i> Analisar Gestores Disponíveis
+                                        </button>
                                     </div>
                                 </div>
                             </div>

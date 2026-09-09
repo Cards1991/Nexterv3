@@ -1,0 +1,118 @@
+<!-- Modal MBTI Compatibilidade Detalhada -->
+<div class="modal fade" id="modalMBTICompatibilidade" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header text-white" style="background-color: #6f42c1;">
+                <h5 class="modal-title"><i class="fas fa-project-diagram me-2"></i> Motor de Compatibilidade MBTI</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light p-4">
+                
+                <!-- Cabeçalho do Candidato -->
+                <div class="card border-0 shadow-sm mb-4">
+                    <div class="card-body d-flex align-items-center justify-content-between">
+                        <div>
+                            <h5 class="mb-1 text-dark fw-bold" id="mbtiRankCandidatoNome">Nome do Candidato</h5>
+                            <span class="badge bg-primary fs-6" id="mbtiRankCandidatoPerfil">ENFP</span>
+                        </div>
+                        <div class="text-end text-muted small">
+                            <i class="fas fa-info-circle"></i> O resultado é uma ferramenta de apoio à decisão<br>e não determina previsão de desempenho.
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-4">
+                    <!-- Coluna do Ranking -->
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                                <h6 class="mb-0 text-secondary fw-bold">Ranking de Gestores</h6>
+                                <p class="small text-muted mb-2">Clique em um gestor para ver o detalhamento.</p>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="list-group list-group-flush" id="mbtiRankingList">
+                                    <!-- Itens do ranking injetados via JS -->
+                                    <div class="p-4 text-center text-muted">
+                                        <i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Analisando compatibilidade...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Coluna do Detalhamento -->
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm h-100" id="mbtiRankDetalhes" style="display: none;">
+                            <div class="card-body p-4">
+                                <div class="d-flex justify-content-between align-items-start mb-4 border-bottom pb-3">
+                                    <div>
+                                        <h5 class="fw-bold text-dark mb-1" id="mbtiDetalheGestorNome">Nome do Gestor</h5>
+                                        <span class="badge bg-secondary" id="mbtiDetalheGestorPerfil">INTJ</span>
+                                    </div>
+                                    <div class="text-end">
+                                        <h2 class="mb-0 fw-bold" id="mbtiDetalheGeral" style="color: #6f42c1;">87%</h2>
+                                        <span class="badge" id="mbtiDetalheClassificacao">ALTA COMPATIBILIDADE</span>
+                                    </div>
+                                </div>
+
+                                <!-- Barras de Progresso -->
+                                <div class="row g-3 mb-4">
+                                    <div class="col-6">
+                                        <label class="small text-muted fw-bold mb-1">Comunicação (<span id="mbtiValCom">0</span>%)</label>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-info" id="mbtiBarCom" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-muted fw-bold mb-1">Liderança (<span id="mbtiValLid">0</span>%)</label>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-primary" id="mbtiBarLid" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-muted fw-bold mb-1">Operacional (<span id="mbtiValOpe">0</span>%)</label>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar bg-success" id="mbtiBarOpe" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="small text-muted fw-bold mb-1">Relacional (<span id="mbtiValRel">0</span>%)</label>
+                                        <div class="progress" style="height: 8px;">
+                                            <div class="progress-bar" style="background-color: #6f42c1;" id="mbtiBarRel" role="progressbar" style="width: 0%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-4 mt-2">
+                                    <div class="col-12">
+                                        <h6 class="text-success fw-bold"><i class="fas fa-check-circle me-1"></i> Pontos Favoráveis</h6>
+                                        <ul class="text-muted small mb-0 ps-3" id="mbtiDetalheStrengths"></ul>
+                                    </div>
+                                    <div class="col-12 mt-3">
+                                        <h6 class="text-warning fw-bold" style="color: #fd7e14 !important;"><i class="fas fa-exclamation-triangle me-1"></i> Pontos de Atenção</h6>
+                                        <ul class="text-muted small mb-0 ps-3" id="mbtiDetalheAttention"></ul>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 p-3 bg-light border rounded">
+                                    <h6 class="fw-bold" style="color: #6f42c1;"><i class="fas fa-lightbulb me-1"></i> Como o gestor deve trabalhar com este candidato</h6>
+                                    <ul class="text-muted small mb-0 ps-3 mt-2" id="mbtiDetalheRecs"></ul>
+                                </div>
+
+                            </div>
+                        </div>
+                        
+                        <div class="card border-0 shadow-sm h-100 d-flex align-items-center justify-content-center" id="mbtiRankPlaceholder">
+                            <div class="text-center text-muted p-5">
+                                <i class="fas fa-hand-pointer fa-3x mb-3 text-light"></i>
+                                <h6>Selecione um gestor no ranking</h6>
+                                <p class="small">Clique em um dos gestores ao lado para visualizar a análise completa de compatibilidade e orientações de liderança.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+</div>

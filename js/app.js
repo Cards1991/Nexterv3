@@ -16,7 +16,7 @@ const TODAS_SECOES = [
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
-    'dashboard-inicial', 'recrutamento', 'recursos-humanos'
+    'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz'
 ];
 
 let currentUserPermissions = {};

@@ -59,6 +59,7 @@ const ViewLoader = {
         { url: 'views/modal-candidato.html' },
         { url: 'views/modal-documentos-escavador.html' },
         { url: 'views/modal-mbti.html' },
+        { url: 'views/modal-mbti-ranking.html' },
         { url: 'views/ai-chat.html' }
     ],
 

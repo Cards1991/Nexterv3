@@ -1,0 +1,261 @@
+<div class="container-fluid p-4 fade-in">
+
+    <!-- Cabeçalho -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="h3 mb-1"><i class="fas fa-comments text-danger me-2"></i>Entrevista de Desligamento</h2>
+            <p class="text-muted mb-0">Formulário confidencial de coleta de feedback para colaboradores em processo de desligamento.</p>
+        </div>
+        <button class="btn btn-outline-secondary btn-sm" onclick="window.entrevistaDesligamento.exportarPDF()" id="btnExportarEntrevista" style="display:none;">
+            <i class="fas fa-file-pdf me-1"></i> Exportar PDF
+        </button>
+    </div>
+
+    <!-- Etapa 1: Busca por CPF -->
+    <div class="row justify-content-center" id="etapa-busca-cpf">
+        <div class="col-md-8 col-lg-6">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="rounded-circle bg-danger bg-opacity-10 d-inline-flex align-items-center justify-content-center mb-3" style="width: 72px; height: 72px;">
+                            <i class="fas fa-id-card fa-2x text-danger"></i>
+                        </div>
+                        <h5 class="fw-bold">Identificar Colaborador</h5>
+                        <p class="text-muted small">Digite o CPF do colaborador para carregar automaticamente as informações e iniciar a entrevista.</p>
+                    </div>
+                    <div class="input-group input-group-lg shadow-sm">
+                        <span class="input-group-text bg-white border-end-0"><i class="fas fa-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="entrevista-cpf-input" placeholder="000.000.000-00" maxlength="14" oninput="window.entrevistaDesligamento.formatarCPF(this)">
+                        <button class="btn btn-danger px-4" onclick="window.entrevistaDesligamento.buscarColaborador()">
+                            <i class="fas fa-arrow-right me-1"></i> Continuar
+                        </button>
+                    </div>
+                    <div id="entrevista-busca-feedback" class="mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Etapa 2: Formulário de Entrevista (inicialmente oculto) -->
+    <div id="etapa-formulario" style="display: none;">
+        <form id="form-entrevista-desligamento">
+            <input type="hidden" id="entrevista-funcionario-id">
+            <input type="hidden" id="entrevista-funcionario-cpf">
+
+            <!-- Bloco: Informações do Funcionário -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-danger text-white py-3">
+                    <h6 class="mb-0 fw-bold"><i class="fas fa-user me-2"></i>Informações do Funcionário</h6>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Nome</label>
+                            <input type="text" class="form-control bg-light" id="entrevista-nome" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Cargo</label>
+                            <input type="text" class="form-control bg-light" id="entrevista-cargo" readonly>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-muted small">Departamento / Setor</label>
+                            <input type="text" class="form-control bg-light" id="entrevista-setor" readonly>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-muted small">Data de Desligamento <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="entrevista-data-desligamento" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-muted small">Data da Entrevista</label>
+                            <input type="date" class="form-control bg-light" id="entrevista-data-entrevista" readonly>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco: Motivos do Desligamento -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-clipboard-list text-danger me-2"></i>Motivos do Desligamento</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Pergunta 1 -->
+                    <div class="mb-4">
+                        <p class="fw-semibold mb-3">1. Quais foram os principais motivos que levaram à sua decisão de deixar a empresa?</p>
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="motivo-carreira" name="motivos" value="Mudança de carreira">
+                                    <label class="form-check-label" for="motivo-carreira">Mudança de carreira</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="motivo-relacionamento" name="motivos" value="Problemas de relacionamento">
+                                    <label class="form-check-label" for="motivo-relacionamento">Problemas de relacionamento</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="motivo-insatisfacao" name="motivos" value="Insatisfação com o trabalho">
+                                    <label class="form-check-label" for="motivo-insatisfacao">Insatisfação com o trabalho</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="motivo-salario" name="motivos" value="Questões salariais">
+                                    <label class="form-check-label" for="motivo-salario">Questões salariais</label>
+                                </div>
+                            </div>
+                            <div class="col-md-12 mt-2">
+                                <label class="form-label small text-muted">Outros:</label>
+                                <input type="text" class="form-control" id="motivo-outros" placeholder="Descreva aqui...">
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Pergunta 2 -->
+                    <div class="border-top pt-4">
+                        <p class="fw-semibold mb-3">2. Você se sentiu apoiado pela empresa durante seu tempo aqui?</p>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="apoio-empresa" id="apoio-sim" value="Sim">
+                                <label class="form-check-label" for="apoio-sim">Sim</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="apoio-empresa" id="apoio-nao" value="Não">
+                                <label class="form-check-label" for="apoio-nao">Não</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control mt-2" id="apoio-comentarios" placeholder="Comentários (opcional)...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco: Experiência na Empresa -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-star text-warning me-2"></i>Experiência na Empresa</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Pergunta 3 -->
+                    <div class="mb-4">
+                        <p class="fw-semibold mb-3">3. Como você avalia sua experiência geral na empresa?</p>
+                        <div class="d-flex gap-3 flex-wrap mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao-geral" id="avalia-excelente" value="Excelente">
+                                <label class="form-check-label" for="avalia-excelente">Excelente</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao-geral" id="avalia-boa" value="Boa">
+                                <label class="form-check-label" for="avalia-boa">Boa</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao-geral" id="avalia-regular" value="Regular">
+                                <label class="form-check-label" for="avalia-regular">Regular</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="avaliacao-geral" id="avalia-ruim" value="Ruim">
+                                <label class="form-check-label" for="avalia-ruim">Ruim</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control" id="avaliacao-comentarios" placeholder="Comentários (opcional)...">
+                    </div>
+                    <!-- Pergunta 4 -->
+                    <div class="mb-4 border-top pt-4">
+                        <label class="fw-semibold mb-2">4. Quais foram os pontos positivos do seu trabalho aqui?</label>
+                        <textarea class="form-control" id="pontos-positivos" rows="3" placeholder="Descreva os pontos positivos..."></textarea>
+                    </div>
+                    <!-- Pergunta 5 -->
+                    <div class="border-top pt-4">
+                        <label class="fw-semibold mb-2">5. Quais foram os principais desafios que você enfrentou?</label>
+                        <textarea class="form-control" id="desafios-enfrentados" rows="3" placeholder="Descreva os desafios..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco: Sugestões e Feedback -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-lightbulb text-success me-2"></i>Sugestões e Feedback</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Pergunta 6 -->
+                    <div class="mb-4">
+                        <label class="fw-semibold mb-2">6. O que a empresa poderia fazer para melhorar o ambiente de trabalho?</label>
+                        <textarea class="form-control" id="sugestoes-melhoria" rows="3" placeholder="Suas sugestões são valiosas..."></textarea>
+                    </div>
+                    <!-- Pergunta 7 -->
+                    <div class="border-top pt-4">
+                        <label class="fw-semibold mb-2">7. Há algo que você gostaria de adicionar sobre sua experiência?</label>
+                        <textarea class="form-control" id="comentario-adicional" rows="3" placeholder="Comentários livres..."></textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco: Considerações Finais -->
+            <div class="card border-0 shadow-sm mb-4">
+                <div class="card-header bg-white border-bottom py-3">
+                    <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-handshake text-primary me-2"></i>Considerações Finais</h6>
+                </div>
+                <div class="card-body">
+                    <!-- Pergunta 8 -->
+                    <div class="mb-4">
+                        <p class="fw-semibold mb-3">8. Você recomendaria a empresa para outros profissionais?</p>
+                        <div class="d-flex gap-3 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recomendaria" id="rec-sim" value="Sim">
+                                <label class="form-check-label" for="rec-sim">Sim</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="recomendaria" id="rec-nao" value="Não">
+                                <label class="form-check-label" for="rec-nao">Não</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control" id="recomendaria-porque" placeholder="Por quê?">
+                    </div>
+                    <!-- Pergunta 9 -->
+                    <div class="border-top pt-4">
+                        <p class="fw-semibold mb-3">9. Você tem interesse em retornar à empresa no futuro?</p>
+                        <div class="d-flex gap-3 mb-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="retornar" id="ret-sim" value="Sim">
+                                <label class="form-check-label" for="ret-sim">Sim</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="retornar" id="ret-nao" value="Não">
+                                <label class="form-check-label" for="ret-nao">Não</label>
+                            </div>
+                        </div>
+                        <input type="text" class="form-control" id="retornar-comentarios" placeholder="Comentários...">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bloco: Previsão de Acerto Rescisório (automático) -->
+            <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning" id="card-acerto-rescisorio" style="display:none;">
+                <div class="card-body py-3">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="rounded-circle bg-warning bg-opacity-15 d-flex align-items-center justify-content-center" style="width:48px; height:48px; min-width:48px;">
+                            <i class="fas fa-calendar-check text-warning fs-5"></i>
+                        </div>
+                        <div>
+                            <p class="mb-0 text-muted small">Acerto Rescisório (8 dias úteis após desligamento)</p>
+                            <h5 class="mb-0 fw-bold text-dark" id="label-data-acerto">—</h5>
+                            <span class="badge bg-warning text-dark mt-1 small">Será adicionado automaticamente à Agenda</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div class="d-flex gap-2 justify-content-between">
+                <button type="button" class="btn btn-outline-secondary" onclick="window.entrevistaDesligamento.resetar()">
+                    <i class="fas fa-arrow-left me-1"></i> Nova Entrevista
+                </button>
+                <button type="submit" class="btn btn-danger px-5" id="btn-salvar-entrevista">
+                    <i class="fas fa-save me-1"></i> Salvar Entrevista &amp; Agendar Acerto
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
