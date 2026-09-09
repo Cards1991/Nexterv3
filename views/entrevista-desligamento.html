@@ -11,36 +11,27 @@
         </button>
     </div>
 
-    <!-- Painel de Configuração (visível apenas para Admins) -->
-    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary" id="card-config-responsavel">
-        <div class="card-body py-3">
-            <div class="row align-items-center g-3">
-                <div class="col-auto">
-                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px;">
-                        <i class="fas fa-cog text-primary"></i>
-                    </div>
-                </div>
-                <div class="col">
-                    <p class="mb-0 fw-bold text-dark small">Configuração do Fluxo</p>
-                    <p class="mb-0 text-muted" style="font-size:0.8rem;">Defina quem receberá automaticamente os eventos de Acerto Rescisório na agenda.</p>
-                </div>
-                <div class="col-md-4">
-                    <div class="input-group">
-                        <select class="form-select form-select-sm" id="config-responsavel-select">
-                            <option value="">⏳ Carregando usuários...</option>
-                        </select>
-                        <button class="btn btn-primary btn-sm px-3" onclick="window.entrevistaDesligamento.salvarConfigResponsavel()" title="Salvar configuração">
-                            <i class="fas fa-save"></i>
-                        </button>
-                    </div>
-                    <div class="mt-1" id="config-responsavel-status"></div>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- Navegação por Abas -->
+    <ul class="nav nav-tabs mb-4" id="entrevistaTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold" id="tab-aplicar" data-bs-toggle="tab" data-bs-target="#pane-aplicar" type="button" role="tab" aria-selected="true">
+                <i class="fas fa-edit me-1"></i> Aplicar Entrevista
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold" id="tab-historico" data-bs-toggle="tab" data-bs-target="#pane-historico" type="button" role="tab" aria-selected="false" onclick="window.entrevistaDesligamento.carregarHistorico()">
+                <i class="fas fa-history me-1"></i> Histórico e Respostas
+            </button>
+        </li>
+    </ul>
 
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="entrevistaTabsContent">
+        
+        <!-- ABA 1: APLICAR ENTREVISTA -->
+        <div class="tab-pane fade show active" id="pane-aplicar" role="tabpanel">
 
-    <div class="row justify-content-center" id="etapa-busca-cpf">
+            <div class="row justify-content-center" id="etapa-busca-cpf">
         <div class="col-md-8 col-lg-6">
             <div class="card border-0 shadow-sm">
                 <div class="card-body p-5 text-center">
@@ -269,5 +260,111 @@
                 </button>
             </div>
         </form>
+            </div>
+        </div> <!-- Fim Aba 1 -->
+
+        <!-- ABA 2: HISTÓRICO -->
+        <div class="tab-pane fade" id="pane-historico" role="tabpanel">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0" id="tabela-historico-entrevistas">
+                            <thead class="bg-light">
+                                <tr>
+                                    <th class="ps-4">Funcionário</th>
+                                    <th>Cargo</th>
+                                    <th>Data da Entrevista</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-historico-entrevistas">
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">Carregando histórico...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div> <!-- Fim Aba 2 -->
+
+    </div> <!-- Fim Tab Content -->
+    
+</div>
+
+<!-- Modal Visualizar Entrevista -->
+<div class="modal fade" id="modalVisualizarEntrevista" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-file-alt me-2"></i>Resultados da Entrevista</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-0">
+                <!-- Cabeçalho do Funcionário -->
+                <div class="bg-light p-4 border-bottom">
+                    <h4 class="fw-bold mb-1" id="vis-nome">—</h4>
+                    <p class="text-muted mb-0"><i class="fas fa-briefcase me-1"></i> <span id="vis-cargo">—</span> | <i class="fas fa-sitemap me-1 ms-2"></i> <span id="vis-setor">—</span></p>
+                    <p class="text-muted small mt-2 mb-0"><i class="far fa-calendar-alt me-1"></i> Entrevista realizada em: <span id="vis-data" class="fw-semibold">—</span></p>
+                </div>
+
+                <div class="p-4">
+                    <!-- Motivos -->
+                    <h6 class="fw-bold text-danger mb-3 border-bottom pb-2">1. Motivos do Desligamento</h6>
+                    <div id="vis-motivos" class="mb-4 d-flex flex-wrap gap-2"></div>
+                    
+                    <!-- Avaliação Geral -->
+                    <h6 class="fw-bold text-danger mb-3 border-bottom pb-2">2. Avaliação da Empresa</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-sm-6">
+                            <p class="text-muted small mb-1">Experiência Geral</p>
+                            <p class="fw-semibold" id="vis-avaliacao">—</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="text-muted small mb-1">Sentiu-se apoiado?</p>
+                            <p class="fw-semibold" id="vis-apoio">—</p>
+                        </div>
+                        <div class="col-12">
+                            <p class="text-muted small mb-1">Comentários sobre a avaliação</p>
+                            <p class="bg-light p-2 rounded" id="vis-avaliacao-comentarios">—</p>
+                        </div>
+                    </div>
+
+                    <!-- Pontos e Desafios -->
+                    <h6 class="fw-bold text-danger mb-3 border-bottom pb-2">3. Pontos Fortes e Desafios</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-1"><i class="fas fa-thumbs-up text-success me-1"></i> Pontos Positivos</p>
+                            <p class="bg-light p-2 rounded" id="vis-pontos">—</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p class="text-muted small mb-1"><i class="fas fa-mountain text-warning me-1"></i> Desafios Enfrentados</p>
+                            <p class="bg-light p-2 rounded" id="vis-desafios">—</p>
+                        </div>
+                    </div>
+
+                    <!-- Sugestões e Considerações -->
+                    <h6 class="fw-bold text-danger mb-3 border-bottom pb-2">4. Sugestões e Considerações Finais</h6>
+                    <div class="mb-3">
+                        <p class="text-muted small mb-1">Sugestões de Melhoria</p>
+                        <p class="bg-light p-2 rounded" id="vis-sugestoes">—</p>
+                    </div>
+                    
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <p class="text-muted small mb-1">Recomendaria a empresa?</p>
+                            <p class="fw-semibold" id="vis-recomendaria">—</p>
+                        </div>
+                        <div class="col-sm-6">
+                            <p class="text-muted small mb-1">Interesse em retornar?</p>
+                            <p class="fw-semibold" id="vis-retornar">—</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light border-top-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
     </div>
 </div>

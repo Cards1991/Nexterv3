@@ -107,7 +107,8 @@ window.entrevistaDesligamento = (function () {
 
             const entrevistaData = {
                 funcionarioId: document.getElementById('entrevista-funcionario-id').value,
-                funcionarioNome: nomeFuncionario,
+                funcionarioNome: nomeFuncionario, // SALVA CORRETAMENTE COMO funcionarioNome
+                nomeFuncionario: nomeFuncionario, // TAMBÉM SALVO COMO nomeFuncionario para retrocompatibilidade
                 cargo: document.getElementById('entrevista-cargo').value,
                 setor: document.getElementById('entrevista-setor').value,
                 dataDesligamento,
@@ -148,7 +149,8 @@ window.entrevistaDesligamento = (function () {
             }
 
             await db.collection('agenda_atividades').add({
-                titulo: 'Acerto Rescisório — ' + nomeFuncionario,
+                titulo: 'Acerto Rescisório - ' + nomeFuncionario, // retrocompatibilidade
+                assunto: 'Acerto Rescisório - ' + nomeFuncionario, // Usado na view da agenda.js
                 descricao: 'Acerto trabalhista referente ao desligamento em ' + new Date(dataDesligamento + 'T12:00:00').toLocaleDateString('pt-BR') + '. Cargo: ' + entrevistaData.cargo + ' | Setor: ' + entrevistaData.setor,
                 tipo: 'Acerto',
                 status: 'Pendente',
@@ -187,10 +189,6 @@ window.entrevistaDesligamento = (function () {
     }
 
     function resetar() {
-        const isAdmin = window.currentUserPermissions?.isAdmin;
-        const configCard = document.getElementById('card-config-responsavel');
-        if (configCard) configCard.style.display = isAdmin ? 'block' : 'none';
-
         const etapaBusca = document.getElementById('etapa-busca-cpf');
         const etapaForm = document.getElementById('etapa-formulario');
         const cpfInput = document.getElementById('entrevista-cpf-input');
@@ -208,5 +206,120 @@ window.entrevistaDesligamento = (function () {
         if (form) form.reset();
     }
 
-    return { buscarColaborador, formatarCPF, resetar };
+    // ─── ABA DE HISTÓRICO ───────────────────────────────────────────────
+
+    let _historicoCache = [];
+
+    async function carregarHistorico() {
+        const tbody = document.getElementById('tbody-historico-entrevistas');
+        if (!tbody) return;
+
+        try {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin me-2"></i> Carregando histórico...</td></tr>';
+            
+            const snap = await db.collection('entrevistas_desligamento')
+                .orderBy('dataDesligamento', 'desc')
+                .get();
+
+            _historicoCache = [];
+            let html = '';
+
+            snap.forEach(doc => {
+                const data = doc.data();
+                data.id = doc.id;
+                _historicoCache.push(data);
+
+                // Tratamento de datas
+                let dataExibicao = data.dataEntrevista || data.dataDesligamento || '';
+                if (dataExibicao && dataExibicao.includes('-')) {
+                    const [ano, mes, dia] = dataExibicao.split('-');
+                    dataExibicao = `${dia}/${mes}/${ano}`;
+                }
+
+                html += `
+                    <tr>
+                        <td class="ps-4 fw-semibold text-dark">${data.nomeFuncionario || data.funcionarioNome || '—'}</td>
+                        <td class="text-muted small">${data.cargo || '—'}</td>
+                        <td class="text-muted small">${dataExibicao}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger me-1" onclick="window.entrevistaDesligamento.abrirVisualizacao('${data.id}')" title="Visualizar Respostas">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="window.entrevistaDesligamento.excluirEntrevista('${data.id}')" title="Excluir Entrevista">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            if (_historicoCache.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhuma entrevista registrada ainda.</td></tr>';
+            } else {
+                tbody.innerHTML = html;
+            }
+
+        } catch (e) {
+            console.error("Erro ao carregar histórico:", e);
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-danger">Erro ao carregar o histórico.</td></tr>';
+        }
+    }
+
+    function abrirVisualizacao(id) {
+        const entrevista = _historicoCache.find(e => e.id === id);
+        if (!entrevista) return;
+
+        // Cabeçalho
+        document.getElementById('vis-nome').textContent = entrevista.nomeFuncionario || '—';
+        document.getElementById('vis-cargo').textContent = entrevista.cargo || '—';
+        document.getElementById('vis-setor').textContent = entrevista.setor || '—';
+        
+        let dataExibicao = entrevista.dataEntrevista || entrevista.dataDesligamento || '—';
+        if (dataExibicao && dataExibicao.includes('-')) {
+            const [ano, mes, dia] = dataExibicao.split('-');
+            dataExibicao = `${dia}/${mes}/${ano}`;
+        }
+        document.getElementById('vis-data').textContent = dataExibicao;
+
+        // Motivos
+        const motivosContainer = document.getElementById('vis-motivos');
+        const motivos = entrevista.motivos || [];
+        if (motivos.length > 0) {
+            motivosContainer.innerHTML = motivos.map(m => `<span class="badge bg-danger bg-opacity-10 text-danger border border-danger p-2">${m}</span>`).join('');
+        } else {
+            motivosContainer.innerHTML = '<span class="text-muted small">Nenhum motivo selecionado.</span>';
+        }
+
+        // Avaliação
+        document.getElementById('vis-avaliacao').textContent = entrevista.avaliacaoGeral || '—';
+        document.getElementById('vis-apoio').textContent = entrevista.apoioEmpresa || '—';
+        document.getElementById('vis-avaliacao-comentarios').textContent = entrevista.apoioComentarios || entrevista.avaliacaoComentarios || 'Sem comentários.';
+
+        // Pontos e Desafios
+        document.getElementById('vis-pontos').textContent = entrevista.pontosPositivos || '—';
+        document.getElementById('vis-desafios').textContent = entrevista.desafiosEnfrentados || '—';
+
+        // Sugestões e Recomendação
+        document.getElementById('vis-sugestoes').textContent = (entrevista.sugestoesMelhoria || '') + (entrevista.comentarioAdicional ? '\n' + entrevista.comentarioAdicional : '') || '—';
+        document.getElementById('vis-recomendaria').textContent = entrevista.recomendaria || '—';
+        document.getElementById('vis-retornar').textContent = (entrevista.retornarEmpresa || '—') + (entrevista.retornarComentarios ? ` (${entrevista.retornarComentarios})` : '');
+
+        // Abrir Modal
+        const modal = new bootstrap.Modal(document.getElementById('modalVisualizarEntrevista'));
+        modal.show();
+    }
+
+    async function excluirEntrevista(id) {
+        if (!confirm("Tem certeza que deseja excluir o registro desta entrevista permanentemente?")) return;
+        try {
+            await db.collection('entrevistas_desligamento').doc(id).delete();
+            if (typeof mostrarMensagem === 'function') mostrarMensagem("Entrevista excluída com sucesso.", "success");
+            await carregarHistorico();
+        } catch (e) {
+            console.error("Erro ao excluir entrevista:", e);
+            if (typeof mostrarMensagem === 'function') mostrarMensagem("Erro ao excluir entrevista.", "error");
+        }
+    }
+
+    return { buscarColaborador, formatarCPF, resetar, carregarHistorico, abrirVisualizacao, excluirEntrevista };
 })();
