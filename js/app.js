@@ -16,7 +16,8 @@ const TODAS_SECOES = [
     'gestao-cipa', 'brigada-incendio', 'controle-extintores',
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
-    'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz'
+    'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz',
+    'cadastro-terceirizados',
 ];
 
 let currentUserPermissions = {};
@@ -460,6 +461,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'recursos-humanos':
                 if (typeof initRecursosHumanos === 'function') await initRecursosHumanos();
+                break;
+            case 'cadastro-terceirizados':
+                if (typeof inicializarTerceirizados === 'function') await inicializarTerceirizados();
                 break;
         }
     } catch (error) {

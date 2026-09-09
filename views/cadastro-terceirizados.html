@@ -1,0 +1,117 @@
+<!-- ============================================================
+     Painel de Terceirizados — sem o modal (carregado via view-loader)
+     ============================================================ -->
+<style>
+.terc-header {
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 60%, #0f172a 100%);
+    border-radius: 1.25rem; padding: 2rem 2.5rem; margin-bottom: 1.75rem;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35); position: relative; overflow: hidden;
+}
+.terc-header::before {
+    content: ''; position: absolute; top: -60px; right: -60px;
+    width: 220px; height: 220px;
+    background: radial-gradient(circle, rgba(99,102,241,0.25) 0%, transparent 70%);
+    border-radius: 50%;
+}
+.terc-header h2 { font-family: 'Inter', sans-serif; font-size: 1.6rem; font-weight: 700; color: #f1f5f9; margin: 0; }
+.terc-header p { color: #94a3b8; font-size: 0.875rem; margin: 0.25rem 0 0; }
+.badge-terceir {
+    background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+    font-size: 0.7rem; padding: 0.3rem 0.75rem; border-radius: 999px;
+    font-weight: 600; letter-spacing: 0.04em; text-transform: uppercase;
+}
+.btn-terc-novo {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none; color: #fff; font-weight: 600; border-radius: 999px;
+    padding: 0.55rem 1.4rem; font-size: 0.875rem;
+    box-shadow: 0 4px 15px rgba(99,102,241,0.4); transition: all 0.25s; cursor: pointer;
+}
+.btn-terc-novo:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,0.5); color:#fff; }
+.terc-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 1rem; margin-bottom: 1.75rem; }
+.terc-stat-card { background: #1e293b; border: 1px solid rgba(255,255,255,0.07); border-radius: 1rem; padding: 1.25rem 1.5rem; text-align: center; transition: transform 0.2s; }
+.terc-stat-card:hover { transform: translateY(-3px); }
+.terc-stat-icon { font-size: 1.6rem; margin-bottom: 0.5rem; }
+.terc-stat-num { font-size: 1.75rem; font-weight: 700; color: #f1f5f9; font-family:'Inter',sans-serif; }
+.terc-stat-lbl { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; }
+.terc-table-wrap { background: #1e293b; border: 1px solid rgba(255,255,255,0.07); border-radius: 1.25rem; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.2); }
+.terc-search-bar { padding: 1.25rem 1.5rem; border-bottom: 1px solid rgba(255,255,255,0.06); display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap; }
+.terc-search-bar input { background: rgba(15,23,42,0.8); border: 1px solid rgba(255,255,255,0.1); color: #e2e8f0; border-radius: 999px; padding: 0.5rem 1rem; font-size: 0.875rem; flex: 1; min-width: 200px; }
+.terc-search-bar input::placeholder { color:#64748b; }
+.terc-search-bar input:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.2); }
+.terc-table { width: 100%; border-collapse: collapse; }
+.terc-table thead th { background: rgba(15,23,42,0.6); color: #94a3b8; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.06em; padding: 0.9rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,0.06); font-weight: 600; }
+.terc-table tbody tr { border-bottom: 1px solid rgba(255,255,255,0.04); transition: background 0.18s; }
+.terc-table tbody tr:hover { background: rgba(99,102,241,0.06); }
+.terc-table td { padding: 0.9rem 1.25rem; color: #cbd5e1; font-size: 0.875rem; vertical-align: middle; }
+.terc-avatar { width: 36px; height: 36px; border-radius: 50%; background: linear-gradient(135deg,#6366f1,#8b5cf6); display: inline-flex; align-items: center; justify-content: center; color:#fff; font-weight: 700; font-size: 0.85rem; margin-right: 0.5rem; flex-shrink: 0; }
+.terc-cpf-badge { background: rgba(99,102,241,0.12); color: #a5b4fc; border-radius: 0.4rem; padding: 0.15rem 0.5rem; font-family: monospace; font-size: 0.8rem; }
+.terc-status-ativo { background: rgba(16,185,129,0.12); color: #34d399; border-radius: 999px; padding: 0.2rem 0.65rem; font-size: 0.72rem; font-weight: 600; }
+.btn-terc-edit { background: rgba(99,102,241,0.15); color: #a5b4fc; border: none; border-radius: 0.5rem; padding: 0.35rem 0.6rem; font-size: 0.8rem; transition: all 0.2s; cursor: pointer; }
+.btn-terc-edit:hover { background: #6366f1; color:#fff; }
+.btn-terc-del { background: rgba(239,68,68,0.12); color: #f87171; border: none; border-radius: 0.5rem; padding: 0.35rem 0.6rem; font-size: 0.8rem; transition: all 0.2s; cursor: pointer; }
+.btn-terc-del:hover { background: #ef4444; color:#fff; }
+</style>
+
+<div class="container-fluid py-4" style="max-width:1400px;">
+
+  <!-- Header -->
+  <div class="terc-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div>
+      <div class="mb-2"><span class="badge-terceir"><i class="fas fa-user-tie me-1"></i> PJ / Terceirizados</span></div>
+      <h2>Gestão de Terceirizados</h2>
+      <p>Colaboradores com contrato PJ, integrados à hierarquia da empresa</p>
+    </div>
+    <button class="btn-terc-novo" id="btn-novo-terceirizado" onclick="abrirModalTerceirizado()">
+      <i class="fas fa-plus me-1"></i> Novo Terceirizado
+    </button>
+  </div>
+
+  <!-- Stats -->
+  <div class="terc-stats">
+    <div class="terc-stat-card">
+      <div class="terc-stat-icon" style="color:#6366f1">👥</div>
+      <div class="terc-stat-num" id="terc-stat-total">--</div>
+      <div class="terc-stat-lbl">Total</div>
+    </div>
+    <div class="terc-stat-card">
+      <div class="terc-stat-icon" style="color:#10b981">✅</div>
+      <div class="terc-stat-num" id="terc-stat-ativos">--</div>
+      <div class="terc-stat-lbl">Ativos</div>
+    </div>
+    <div class="terc-stat-card">
+      <div class="terc-stat-icon" style="color:#f59e0b">🏢</div>
+      <div class="terc-stat-num" id="terc-stat-empresas">--</div>
+      <div class="terc-stat-lbl">Empresas</div>
+    </div>
+    <div class="terc-stat-card">
+      <div class="terc-stat-icon" style="color:#8b5cf6">⭐</div>
+      <div class="terc-stat-num" id="terc-stat-lideres">--</div>
+      <div class="terc-stat-lbl">Líderes</div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="terc-table-wrap">
+    <div class="terc-search-bar">
+      <i class="fas fa-search" style="color:#475569;"></i>
+      <input type="text" id="terc-busca" placeholder="Buscar por nome, CPF, cargo..." oninput="filtrarTerceirizados(this.value)">
+      <span style="color:#475569;font-size:0.8rem;" id="terc-count-label"></span>
+    </div>
+    <div class="table-responsive">
+      <table class="terc-table">
+        <thead>
+          <tr>
+            <th>Colaborador</th>
+            <th>CPF</th>
+            <th>Empresa</th>
+            <th>Cargo / Setor</th>
+            <th>Líder</th>
+            <th>Status</th>
+            <th style="text-align:right;">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tabela-terceirizados"></tbody>
+      </table>
+    </div>
+  </div>
+</div>

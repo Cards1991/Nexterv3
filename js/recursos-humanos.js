@@ -76,6 +76,71 @@ async function carregarMBTIEquipe() {
     }
 }
 
+// ── Mapa canônico de perfil → grupo ──────────────────────────────
+const MBTI_GRUPO_MAP = {
+    INFJ: 'Os Idealistas',  INFP: 'Os Idealistas',  ENFJ: 'Os Idealistas',  ENFP: 'Os Idealistas',
+    INTJ: 'Os Pesquisadores', INTP: 'Os Pesquisadores', ENTJ: 'Os Pesquisadores', ENTP: 'Os Pesquisadores',
+    ISTJ: 'Os Administradores', ISFJ: 'Os Administradores', ESTJ: 'Os Administradores', ESFJ: 'Os Administradores',
+    ISTP: 'Os Ativos', ISFP: 'Os Ativos', ESTP: 'Os Ativos', ESFP: 'Os Ativos'
+};
+
+/**
+ * Reprocessa todos os testes de equipe_mbti:
+ *  - detecta registros com grupo incorreto ('Finalizado', vazio, ou errado)
+ *  - recalcula o grupo correto com base no perfil (ex: ENTJ → Os Pesquisadores)
+ *  - salva os documentos corrigidos no Firestore
+ *  - recarrega a tela
+ */
+window.reprocessarPerfisMBTI = async function() {
+    const btn = document.getElementById('btn-reprocessar-mbti');
+    if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Reprocessando...'; }
+
+    try {
+        const snap = await db.collection('equipe_mbti').get();
+        const gruposValidos = new Set(Object.values(MBTI_GRUPO_MAP));
+        let corrigidos = 0;
+        const batch = db.batch();
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            if (!data.mbti || !data.mbti.perfil) return; // sem perfil, nada a fazer
+
+            const perfil = data.mbti.perfil.trim().toUpperCase();
+            const grupoCorreto = MBTI_GRUPO_MAP[perfil];
+            if (!grupoCorreto) return; // perfil inválido
+
+            const grupoAtual = (data.mbti.grupo || '').trim();
+
+            // Corrige se grupo está errado, vazio ou é 'Finalizado'
+            if (grupoAtual !== grupoCorreto) {
+                batch.update(doc.ref, {
+                    'mbti.grupo': grupoCorreto,
+                    'mbti.perfil': perfil // garante maiúsculas corretas
+                });
+                corrigidos++;
+                console.log(`Corrigindo ${doc.id}: perfil=${perfil}, grupo "${grupoAtual}" → "${grupoCorreto}"`);
+            }
+        });
+
+        if (corrigidos > 0) {
+            await batch.commit();
+            mostrarMensagem(`✅ ${corrigidos} perfil(s) reprocessado(s) com sucesso!`, 'success');
+        } else {
+            mostrarMensagem('ℹ️ Todos os perfis já estavam consistentes. Nenhuma correção necessária.', 'info');
+        }
+
+        // Recarregar tela para refletir mudanças
+        await carregarMBTIEquipe();
+
+    } catch(err) {
+        console.error('Erro ao reprocessar perfis MBTI:', err);
+        mostrarMensagem('Erro ao reprocessar. Verifique o console.', 'error');
+    } finally {
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-sync me-1"></i> Reprocessar Perfis'; }
+    }
+};
+
+
 function renderizarTabelaMBTIEquipe(lista, permitirGerente) {
     const tbody = document.getElementById('lista-mbti-equipe');
     tbody.innerHTML = '';

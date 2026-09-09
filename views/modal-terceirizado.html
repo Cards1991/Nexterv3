@@ -1,0 +1,289 @@
+<!-- ============================================================
+     Modal Terceirizado (carregado pelo view-loader, persiste no DOM)
+     ============================================================ -->
+<style>
+/* ── Modal ───────────────────────────────────────────── */
+#terceirizadoModal .modal-content {
+    background: #0f172a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.25rem;
+    box-shadow: 0 24px 80px rgba(0,0,0,0.6);
+    color: #e2e8f0;
+}
+#terceirizadoModal .modal-header {
+    background: linear-gradient(135deg,#1e293b,#0f172a);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    border-radius: 1.25rem 1.25rem 0 0;
+    padding: 1.5rem 2rem;
+}
+#terceirizadoModal .modal-title { font-family:'Inter',sans-serif; font-weight:700; color:#f1f5f9; font-size:1.2rem; }
+#terceirizadoModal .btn-close { filter: invert(1) brightness(0.7); }
+#terceirizadoModal .modal-body { padding: 2rem; }
+#terceirizadoModal .modal-footer {
+    border-top: 1px solid rgba(255,255,255,0.07);
+    padding: 1.25rem 2rem;
+    background: rgba(15,23,42,0.5);
+    border-radius: 0 0 1.25rem 1.25rem;
+}
+.modal-section-title {
+    font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em;
+    color: #6366f1; font-weight: 700; margin: 1.5rem 0 0.75rem;
+    display: flex; align-items: center; gap: 0.4rem;
+}
+.modal-section-title:first-child { margin-top: 0; }
+.cpf-search-row { display: flex; gap: 0.5rem; align-items: flex-end; }
+.cpf-search-row .form-control { border-radius: 0.65rem 0 0 0.65rem; border-right: none; }
+.btn-search-hub {
+    background: linear-gradient(135deg,#6366f1,#8b5cf6);
+    border: none; color: #fff; padding: 0.55rem 1rem;
+    border-radius: 0 0.65rem 0.65rem 0; font-size: 0.875rem;
+    font-weight: 600; white-space: nowrap; transition: all 0.2s; min-width: 110px;
+}
+.btn-search-hub:hover { filter: brightness(1.15); transform: translateY(-1px); }
+#terceirizadoModal .form-control,
+#terceirizadoModal .form-select {
+    background: rgba(30,41,59,0.9);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #e2e8f0; border-radius: 0.65rem; font-size: 0.875rem;
+    padding: 0.55rem 0.9rem; transition: border-color 0.2s, box-shadow 0.2s;
+}
+#terceirizadoModal .form-control:focus,
+#terceirizadoModal .form-select:focus {
+    background: rgba(30,41,59,1); border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.2); color: #f1f5f9; outline: none;
+}
+#terceirizadoModal .form-control::placeholder { color: #475569; }
+#terceirizadoModal .form-label {
+    font-size: 0.78rem; font-weight: 600; color: #94a3b8;
+    text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 0.35rem;
+}
+#terceirizadoModal select option { background:#1e293b; color:#e2e8f0; }
+.hub-result-card {
+    background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.08));
+    border: 1px solid rgba(99,102,241,0.25); border-radius: 1rem;
+    padding: 1.25rem 1.5rem; margin-top: 1rem; display: none;
+    animation: fadeInUp 0.3s ease;
+}
+.hub-result-card.show { display: block; }
+.hub-result-card .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px,1fr)); gap: 0.75rem; }
+.hub-result-item label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; color:#6366f1; font-weight:700; display:block; margin-bottom:0.2rem; }
+.hub-result-item span { font-size: 0.875rem; color:#e2e8f0; font-weight:500; }
+.hub-result-divider { height:1px; background: rgba(255,255,255,0.07); margin: 0.75rem 0; }
+.btn-terc-save {
+    background: linear-gradient(135deg,#6366f1,#8b5cf6); border:none; color:#fff;
+    font-weight:700; border-radius: 999px; padding: 0.6rem 2rem; font-size: 0.9rem;
+    box-shadow: 0 4px 15px rgba(99,102,241,0.4); transition: all 0.25s;
+}
+.btn-terc-save:hover { filter: brightness(1.12); transform:translateY(-2px); box-shadow: 0 8px 25px rgba(99,102,241,0.5); color:#fff; }
+.btn-terc-save:disabled { opacity:0.5; transform:none; cursor:not-allowed; }
+.btn-terc-cancel { background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); color:#94a3b8; border-radius:999px; padding:0.6rem 1.5rem; transition:all 0.2s; }
+.btn-terc-cancel:hover { background:rgba(255,255,255,0.1); color:#e2e8f0; }
+.turbo-switch { display:flex; align-items:center; gap:0.5rem; font-size:0.8rem; color:#94a3b8; cursor:pointer; margin-top:0.35rem; }
+.turbo-switch input { accent-color:#6366f1; }
+@keyframes fadeInUp { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+</style>
+
+<div class="modal fade" id="terceirizadoModal" tabindex="-1" aria-labelledby="terceirizadoModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+
+      <div class="modal-header">
+        <div>
+          <h5 class="modal-title" id="terceirizadoModalLabel">
+            <i class="fas fa-user-tie me-2" style="color:#6366f1;"></i>
+            <span id="terc-modal-title-text">Novo Terceirizado</span>
+          </h5>
+          <small style="color:#475569;font-size:0.75rem;" id="terc-modal-subtitle">Preencha o CPF e clique em buscar para carregar as informações automaticamente</small>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+      </div>
+
+      <div class="modal-body">
+        <input type="hidden" id="terc-edit-id">
+
+        <!-- ── 1. Busca por CPF ── -->
+        <div class="modal-section-title"><i class="fas fa-search"></i> Identificação via Hub do Desenvolvedor</div>
+        <div class="row g-3 align-items-end">
+          <div class="col-md-4">
+            <label class="form-label">CPF *</label>
+            <div class="cpf-search-row">
+              <input type="text" class="form-control" id="terc-cpf" placeholder="000.000.000-00"
+                     oninput="formatarCPFInput(this)" maxlength="14" autocomplete="off">
+              <button class="btn-search-hub" onclick="buscarCpfTerceirizado()" id="btn-buscar-terc" type="button">
+                <i class="fas fa-search me-1"></i> Buscar
+              </button>
+            </div>
+            <label class="turbo-switch mt-1">
+              <input type="checkbox" id="terc-turbo"> Modo Turbo (mais rápido)
+            </label>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Data de Nascimento <small style="color:#475569">(opcional, melhora busca)</small></label>
+            <input type="date" class="form-control" id="terc-data-nasc">
+          </div>
+          <div class="col-md-4" id="terc-hub-status-col">
+            <div id="terc-hub-status"></div>
+          </div>
+        </div>
+
+        <!-- Hub Result Card -->
+        <div class="hub-result-card" id="terc-hub-result">
+          <div style="display:flex;align-items:center;gap:0.75rem;margin-bottom:0.75rem;">
+            <div style="width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;">
+              <i class="fas fa-check" style="color:#fff;font-size:1rem;"></i>
+            </div>
+            <div>
+              <div style="font-weight:700;color:#f1f5f9;font-size:1.05rem;" id="terc-hub-nome-display">—</div>
+              <div style="font-size:0.75rem;color:#94a3b8;">Dados encontrados no Hub do Desenvolvedor</div>
+            </div>
+          </div>
+          <div class="hub-result-divider"></div>
+          <div class="result-grid" id="terc-hub-grid"></div>
+        </div>
+
+        <!-- ── 2. Dados Pessoais ── -->
+        <div class="modal-section-title"><i class="fas fa-id-card"></i> Dados Pessoais</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Nome Completo *</label>
+            <input type="text" class="form-control" id="terc-nome" placeholder="Nome completo">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Data de Nascimento</label>
+            <input type="date" class="form-control" id="terc-nascimento">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Gênero</label>
+            <select class="form-select" id="terc-genero">
+              <option value="">-- Selecione --</option>
+              <option>Masculino</option>
+              <option>Feminino</option>
+              <option>Outro</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">E-mail</label>
+            <input type="email" class="form-control" id="terc-email" placeholder="email@exemplo.com">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Telefone</label>
+            <input type="text" class="form-control" id="terc-telefone" placeholder="(00) 00000-0000">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">RG</label>
+            <input type="text" class="form-control" id="terc-rg" placeholder="Número do RG">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nome da Mãe</label>
+            <input type="text" class="form-control" id="terc-nome-mae" placeholder="Nome completo da mãe">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Nome do Pai</label>
+            <input type="text" class="form-control" id="terc-nome-pai" placeholder="Nome completo do pai">
+          </div>
+        </div>
+
+        <!-- ── 3. Endereço ── -->
+        <div class="modal-section-title"><i class="fas fa-map-marker-alt"></i> Endereço</div>
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">CEP</label>
+            <input type="text" class="form-control" id="terc-cep" placeholder="00000-000">
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Logradouro</label>
+            <input type="text" class="form-control" id="terc-logradouro" placeholder="Rua, Av...">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Número</label>
+            <input type="text" class="form-control" id="terc-numero" placeholder="Nº">
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Bairro</label>
+            <input type="text" class="form-control" id="terc-bairro" placeholder="Bairro">
+          </div>
+          <div class="col-md-5">
+            <label class="form-label">Cidade</label>
+            <input type="text" class="form-control" id="terc-cidade" placeholder="Cidade">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">UF</label>
+            <input type="text" class="form-control" id="terc-uf" placeholder="UF" maxlength="2">
+          </div>
+        </div>
+
+        <!-- ── 4. Vínculo Contratual ── -->
+        <div class="modal-section-title"><i class="fas fa-file-contract"></i> Vínculo Contratual</div>
+        <div class="row g-3">
+          <div class="col-md-4">
+            <label class="form-label">Empresa *</label>
+            <select class="form-select" id="empresa-terceirizado">
+              <option value="">-- Selecione --</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Setor</label>
+            <select class="form-select" id="setor-terceirizado">
+              <option value="">-- Selecione empresa --</option>
+            </select>
+          </div>
+          <div class="col-md-4">
+            <label class="form-label">Cargo</label>
+            <select class="form-select" id="cargo-terceirizado">
+              <option value="">-- Selecione empresa --</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Data de Admissão</label>
+            <input type="date" class="form-control" id="terc-admissao">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Tipo de Contrato</label>
+            <select class="form-select" id="terc-tipo-contrato">
+              <option value="PJ">PJ</option>
+              <option value="CLT">CLT</option>
+              <option value="Estágio">Estágio</option>
+              <option value="Temporário">Temporário</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Salário / Honorário (R$)</label>
+            <input type="number" class="form-control" id="terc-salario" placeholder="0,00" min="0" step="0.01">
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="terc-status">
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+              <option value="Afastado">Afastado</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- ── 5. Hierarquia ── -->
+        <div class="modal-section-title"><i class="fas fa-sitemap"></i> Hierarquia</div>
+        <div class="row g-3">
+          <div class="col-md-6">
+            <label class="form-label">Líder / Superior Direto</label>
+            <select class="form-select" id="lider-terceirizado">
+              <option value="">-- Sem líder definido --</option>
+            </select>
+          </div>
+          <div class="col-md-6">
+            <label class="form-label">Observações</label>
+            <input type="text" class="form-control" id="terc-obs" placeholder="Ex.: Terceirizado da TI, responsável pelo ERP...">
+          </div>
+        </div>
+
+      </div><!-- /modal-body -->
+
+      <div class="modal-footer">
+        <button type="button" class="btn-terc-cancel" data-bs-dismiss="modal">Cancelar</button>
+        <button type="button" class="btn-terc-save" id="btnSalvarTerceirizado" onclick="salvarTerceirizado()">
+          <i class="fas fa-save me-2"></i> Salvar Terceirizado
+        </button>
+      </div>
+
+    </div>
+  </div>
+</div>
