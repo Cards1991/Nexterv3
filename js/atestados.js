@@ -1473,7 +1473,13 @@ async function abrirModalAcompanhamentoPsicossocial(atestadoId) {
 
     // Limpa o formulário para uma nova entrada
     document.getElementById('psico-observacoes').value = '';
-    document.getElementById('psico-atribuir-para').value = atestado.investigacaoPsicossocial?.atribuidoParaId || '';
+    
+    // Define responsável (tenta pegar do atestado primeiro, senão usa a config global)
+    let responsavel = atestado.investigacaoPsicossocial?.atribuidoParaId || '';
+    if (!responsavel && typeof window.configFluxos !== 'undefined') {
+        responsavel = (await window.configFluxos.getConfiguracao('psicossocialId')) || '';
+    }
+    document.getElementById('psico-atribuir-para').value = responsavel;
 
     // Carrega o histórico e define o estágio atual
     const investigacao = atestado.investigacaoPsicossocial || {};

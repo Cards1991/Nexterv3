@@ -1,0 +1,69 @@
+<div class="container-fluid p-4 fade-in">
+    <!-- Cabeçalho -->
+    <div class="d-flex align-items-center justify-content-between mb-4">
+        <div>
+            <h2 class="h3 mb-1"><i class="fas fa-network-wired text-primary me-2"></i>Gestão de Atribuições</h2>
+            <p class="text-muted mb-0">Central de configuração de responsáveis para processos e fluxos automatizados do sistema.</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- 1. Acertos Rescisórios -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm border-start border-4 border-danger">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-danger bg-opacity-10 d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                            <i class="fas fa-file-invoice-dollar text-danger fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title fw-bold mb-1">Acertos Rescisórios</h5>
+                            <h6 class="card-subtitle text-muted small">Módulo: Entrevista de Desligamento</h6>
+                        </div>
+                    </div>
+                    <p class="card-text small text-muted">Define o responsável por receber o agendamento automático na agenda quando uma entrevista de desligamento é finalizada.</p>
+                    
+                    <div class="mt-3">
+                        <label class="form-label fw-semibold text-dark small"><i class="fas fa-user-check me-1"></i> Responsável Padrão</label>
+                        <select class="form-select" id="config-acerto-responsavel">
+                            <option value="">⏳ Carregando usuários...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Acompanhamento Psicossocial -->
+        <div class="col-md-6 mb-4">
+            <div class="card h-100 border-0 shadow-sm border-start border-4 border-info">
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="rounded-circle bg-info bg-opacity-10 d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px;">
+                            <i class="fas fa-brain text-info fs-5"></i>
+                        </div>
+                        <div>
+                            <h5 class="card-title fw-bold mb-1">Acompanhamento Psicossocial</h5>
+                            <h6 class="card-subtitle text-muted small">Módulo: Atestados</h6>
+                        </div>
+                    </div>
+                    <p class="card-text small text-muted">Define o responsável por receber as tarefas de follow-up ao registrar um atestado que requer acompanhamento psicológico/social.</p>
+                    
+                    <div class="mt-3">
+                        <label class="form-label fw-semibold text-dark small"><i class="fas fa-user-check me-1"></i> Responsável Padrão</label>
+                        <select class="form-select" id="config-psicossocial-responsavel">
+                            <option value="">⏳ Carregando usuários...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Barra de Ação Fixa -->
+    <div class="d-flex justify-content-end mt-4 p-3 bg-white rounded shadow-sm">
+        <div id="config-fluxos-feedback" class="me-3 d-flex align-items-center"></div>
+        <button class="btn btn-primary px-4" id="btn-salvar-config-fluxos" onclick="window.configFluxos.salvarConfiguracoes()">
+            <i class="fas fa-save me-1"></i> Salvar Todas as Configurações
+        </button>
+    </div>
+</div>

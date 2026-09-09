@@ -6,8 +6,8 @@
 const ViewLoader = {
     // Registered views to be loaded
     views: [
-        { id: 'sidebar', url: 'views/sidebar.html' },
-        { id: 'header-container', url: 'views/header.html' }
+        { id: 'sidebar', url: `views/sidebar.html?v=${new Date().getTime()}` },
+        { id: 'header-container', url: `views/header.html?v=${new Date().getTime()}` }
     ],
 
     // Registered modals to be loaded at the bottom of the body

@@ -11,7 +11,35 @@
         </button>
     </div>
 
-    <!-- Etapa 1: Busca por CPF -->
+    <!-- Painel de Configuração (visível apenas para Admins) -->
+    <div class="card border-0 shadow-sm mb-4 border-start border-4 border-primary" id="card-config-responsavel">
+        <div class="card-body py-3">
+            <div class="row align-items-center g-3">
+                <div class="col-auto">
+                    <div class="rounded-circle bg-primary bg-opacity-10 d-flex align-items-center justify-content-center" style="width:44px;height:44px;">
+                        <i class="fas fa-cog text-primary"></i>
+                    </div>
+                </div>
+                <div class="col">
+                    <p class="mb-0 fw-bold text-dark small">Configuração do Fluxo</p>
+                    <p class="mb-0 text-muted" style="font-size:0.8rem;">Defina quem receberá automaticamente os eventos de Acerto Rescisório na agenda.</p>
+                </div>
+                <div class="col-md-4">
+                    <div class="input-group">
+                        <select class="form-select form-select-sm" id="config-responsavel-select">
+                            <option value="">⏳ Carregando usuários...</option>
+                        </select>
+                        <button class="btn btn-primary btn-sm px-3" onclick="window.entrevistaDesligamento.salvarConfigResponsavel()" title="Salvar configuração">
+                            <i class="fas fa-save"></i>
+                        </button>
+                    </div>
+                    <div class="mt-1" id="config-responsavel-status"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
     <div class="row justify-content-center" id="etapa-busca-cpf">
         <div class="col-md-8 col-lg-6">
             <div class="card border-0 shadow-sm">
@@ -231,29 +259,13 @@
                 </div>
             </div>
 
-            <!-- Bloco: Previsão de Acerto Rescisório (automático) -->
-            <div class="card border-0 shadow-sm mb-4 border-start border-4 border-warning" id="card-acerto-rescisorio" style="display:none;">
-                <div class="card-body py-3">
-                    <div class="d-flex align-items-center gap-3">
-                        <div class="rounded-circle bg-warning bg-opacity-15 d-flex align-items-center justify-content-center" style="width:48px; height:48px; min-width:48px;">
-                            <i class="fas fa-calendar-check text-warning fs-5"></i>
-                        </div>
-                        <div>
-                            <p class="mb-0 text-muted small">Acerto Rescisório (8 dias úteis após desligamento)</p>
-                            <h5 class="mb-0 fw-bold text-dark" id="label-data-acerto">—</h5>
-                            <span class="badge bg-warning text-dark mt-1 small">Será adicionado automaticamente à Agenda</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Botões de Ação -->
             <div class="d-flex gap-2 justify-content-between">
                 <button type="button" class="btn btn-outline-secondary" onclick="window.entrevistaDesligamento.resetar()">
                     <i class="fas fa-arrow-left me-1"></i> Nova Entrevista
                 </button>
                 <button type="submit" class="btn btn-danger px-5" id="btn-salvar-entrevista">
-                    <i class="fas fa-save me-1"></i> Salvar Entrevista &amp; Agendar Acerto
+                    <i class="fas fa-save me-1"></i> Salvar Entrevista
                 </button>
             </div>
         </form>

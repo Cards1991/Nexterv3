@@ -6,7 +6,7 @@
 const TODAS_SECOES = [
     'empresas', 'funcionarios', 'afastamentos', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',
-    'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
+    'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'config-fluxos', 'entrevista-desligamento', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
@@ -214,6 +214,9 @@ async function carregarDadosSecao(sectionName) {
             case 'painel-demitidos':
                 if (typeof inicializarPainelDemitidos === 'function') await inicializarPainelDemitidos();
                 break;
+            case 'entrevista-desligamento':
+                if (typeof window.entrevistaDesligamento?.inicializarTela === 'function') await window.entrevistaDesligamento.inicializarTela();
+                break;
             case 'admissao':
             case 'demissao':
                 if (window.movimentacoesManager) {
@@ -268,6 +271,9 @@ async function carregarDadosSecao(sectionName) {
                 } else if (typeof carregarAgenda === 'function') {
                     await carregarAgenda();
                 }
+                break;
+            case 'config-fluxos':
+                if (typeof window.configFluxos?.inicializarTela === 'function') await window.configFluxos.inicializarTela();
                 break;
             case 'admin-usuarios':
                 if (typeof inicializarAdmin === 'function') await inicializarAdmin();

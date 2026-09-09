@@ -1,9 +1,11 @@
 /**
  * Módulo: Entrevista de Desligamento
- * Lógica de CPF lookup, cálculo de dias úteis e integração com Agenda
+ * Lógica de CPF lookup, cálculo de dias úteis e integração com Agenda.
+ * O responsável pelo acerto é configurado pelo gestor e salvo no Firestore.
  */
 window.entrevistaDesligamento = (function () {
 
+    // ─── UTILITÁRIOS ────────────────────────────────────────────────────
     function formatarCPF(input) {
         let v = input.value.replace(/\D/g, '');
         if (v.length > 3) v = v.slice(0, 3) + '.' + v.slice(3);
@@ -17,7 +19,7 @@ window.entrevistaDesligamento = (function () {
         let adicionados = 0;
         while (adicionados < dias) {
             d.setDate(d.getDate() + 1);
-            const dia = d.getDay(); // 0 = Dom, 6 = Sáb
+            const dia = d.getDay();
             if (dia !== 0 && dia !== 6) adicionados++;
         }
         return d;
@@ -28,6 +30,8 @@ window.entrevistaDesligamento = (function () {
             weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
         });
     }
+
+    // ─── FLUXO PRINCIPAL ────────────────────────────────────────────────
 
     async function buscarColaborador() {
         const input = document.getElementById('entrevista-cpf-input');
@@ -60,24 +64,14 @@ window.entrevistaDesligamento = (function () {
             document.getElementById('entrevista-setor').value = data.setor || data.setorNome || '';
             document.getElementById('entrevista-data-entrevista').value = new Date().toISOString().split('T')[0];
 
-            // Mostrar formulário
             document.getElementById('etapa-busca-cpf').style.display = 'none';
+            const configCard = document.getElementById('card-config-responsavel');
+            if (configCard) configCard.style.display = 'none';
             document.getElementById('etapa-formulario').style.display = 'block';
             document.getElementById('btnExportarEntrevista').style.display = 'inline-block';
 
-            // Calcular acerto ao preencher data
-            const campoData = document.getElementById('entrevista-data-desligamento');
-            campoData.addEventListener('change', function () {
-                if (this.value) {
-                    const dataAcerto = adicionarDiasUteis(this.value, 8);
-                    document.getElementById('label-data-acerto').textContent = formatarDataBR(dataAcerto);
-                    document.getElementById('card-acerto-rescisorio').style.display = 'block';
-                }
-            });
-
-            // Submissão do formulário
+            // Submissão
             const form = document.getElementById('form-entrevista-desligamento');
-            // Remove listeners antigos clonando o form
             const novoForm = form.cloneNode(true);
             form.parentNode.replaceChild(novoForm, form);
             novoForm.addEventListener('submit', async function (e) {
@@ -109,13 +103,14 @@ window.entrevistaDesligamento = (function () {
             if (motivoOutros) motivosSelecionados.push('Outros: ' + motivoOutros);
 
             const nomeFuncionario = document.getElementById('entrevista-nome').value;
+            const uid = (typeof currentUser !== 'undefined' && currentUser?.uid) || 'sistema';
 
             const entrevistaData = {
                 funcionarioId: document.getElementById('entrevista-funcionario-id').value,
                 funcionarioNome: nomeFuncionario,
                 cargo: document.getElementById('entrevista-cargo').value,
                 setor: document.getElementById('entrevista-setor').value,
-                dataDesligamento: dataDesligamento,
+                dataDesligamento,
                 dataEntrevista: document.getElementById('entrevista-data-entrevista').value,
                 motivosDesligamento: motivosSelecionados,
                 apoioEmpresa: document.querySelector('input[name="apoio-empresa"]:checked')?.value || '',
@@ -131,45 +126,57 @@ window.entrevistaDesligamento = (function () {
                 retornar: document.querySelector('input[name="retornar"]:checked')?.value || '',
                 retornarComentarios: document.getElementById('retornar-comentarios').value,
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-                criadoPor: (typeof currentUser !== 'undefined' && currentUser?.uid) || 'sistema'
+                criadoPor: uid
             };
 
             // 1. Salvar entrevista
             await db.collection('entrevistas_desligamento').add(entrevistaData);
 
-            // 2. Criar evento na agenda (acerto rescisório)
+            // 2. Criar evento na agenda — responsável definido pelo gestor na Configuração Global
             const dataAcerto = adicionarDiasUteis(dataDesligamento, 8);
-            const agendaItem = {
-                titulo: `Acerto Rescisório — ${nomeFuncionario}`,
-                descricao: `Acerto trabalhista referente ao desligamento em ${new Date(dataDesligamento + 'T12:00:00').toLocaleDateString('pt-BR')}. Cargo: ${entrevistaData.cargo} | Setor: ${entrevistaData.setor}`,
+            
+            let respId = uid;
+            let respNome = typeof currentUser !== 'undefined' ? (currentUser.displayName || currentUser.email) : 'Sistema';
+            
+            if (typeof window.configFluxos !== 'undefined') {
+                const configId = await window.configFluxos.getConfiguracao('acertoRescisorioId');
+                const configNome = await window.configFluxos.getConfiguracao('acertoRescisorioNome');
+                if (configId && configNome) {
+                    respId = configId;
+                    respNome = configNome;
+                }
+            }
+
+            await db.collection('agenda_atividades').add({
+                titulo: 'Acerto Rescisório — ' + nomeFuncionario,
+                descricao: 'Acerto trabalhista referente ao desligamento em ' + new Date(dataDesligamento + 'T12:00:00').toLocaleDateString('pt-BR') + '. Cargo: ' + entrevistaData.cargo + ' | Setor: ' + entrevistaData.setor,
                 tipo: 'Acerto',
                 status: 'Pendente',
                 data: firebase.firestore.Timestamp.fromDate(dataAcerto),
                 cor: '#dc3545',
-                criadoPor: (typeof currentUser !== 'undefined' && currentUser?.uid) || 'sistema',
+                criadoPor: uid,
                 criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                atribuidoParaId: respId,
+                atribuidoParaNome: respNome,
                 funcionarioId: entrevistaData.funcionarioId,
                 funcionarioNome: nomeFuncionario
-            };
-            await db.collection('agenda_atividades').add(agendaItem);
+            });
 
-            // 3. Atualizar status do funcionário no quadro de funcionários
-            const funcionarioId = entrevistaData.funcionarioId;
-            const dataDesligamentoTimestamp = firebase.firestore.Timestamp.fromDate(
-                new Date(dataDesligamento + 'T12:00:00')
-            );
-            await db.collection('funcionarios').doc(funcionarioId).update({
+            // 3. Atualizar quadro de funcionários
+            await db.collection('funcionarios').doc(entrevistaData.funcionarioId).update({
                 status: 'Inativo',
-                dataDesligamento: dataDesligamentoTimestamp,
+                dataDesligamento: firebase.firestore.Timestamp.fromDate(new Date(dataDesligamento + 'T12:00:00')),
                 motivoDesligamento: motivosSelecionados.join(', ') || 'Pedido de Demissão',
                 entrevistaDesligamentoRealizada: true,
                 dataEntrevistaDesligamento: firebase.firestore.Timestamp.fromDate(new Date())
             });
 
             if (typeof mostrarMensagem === 'function') {
-                mostrarMensagem(`Entrevista salva! Quadro atualizado. Acerto rescisório agendado para ${formatarDataBR(dataAcerto)}.`, 'success');
-            }
-            resetar();
+                mostrarMensagem(
+                    `Entrevista salva com sucesso!`,
+                    'success'
+                );
+            }resetar();
 
         } catch (e) {
             console.error('Erro ao salvar:', e);
@@ -180,25 +187,23 @@ window.entrevistaDesligamento = (function () {
     }
 
     function resetar() {
+        const isAdmin = window.currentUserPermissions?.isAdmin;
+        const configCard = document.getElementById('card-config-responsavel');
+        if (configCard) configCard.style.display = isAdmin ? 'block' : 'none';
+
         const etapaBusca = document.getElementById('etapa-busca-cpf');
         const etapaForm = document.getElementById('etapa-formulario');
-        const btnExportar = document.getElementById('btnExportarEntrevista');
         const cpfInput = document.getElementById('entrevista-cpf-input');
         const feedback = document.getElementById('entrevista-busca-feedback');
-        const cardAcerto = document.getElementById('card-acerto-rescisorio');
+        const btnExportar = document.getElementById('btnExportarEntrevista');
         const btn = document.getElementById('btn-salvar-entrevista');
-
+        
         if (etapaBusca) etapaBusca.style.display = 'block';
         if (etapaForm) etapaForm.style.display = 'none';
-        if (btnExportar) btnExportar.style.display = 'none';
         if (cpfInput) cpfInput.value = '';
         if (feedback) feedback.innerHTML = '';
-        if (cardAcerto) cardAcerto.style.display = 'none';
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Entrevista & Agendar Acerto';
-        }
-
+        if (btnExportar) btnExportar.style.display = 'none';
+        if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Entrevista'; }
         const form = document.getElementById('form-entrevista-desligamento');
         if (form) form.reset();
     }
