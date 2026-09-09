@@ -395,6 +395,7 @@ async function salvarEdicaoDemissao() {
     const motivo = document.getElementById('edit-demissao-motivo').value;
     const aviso = document.getElementById('edit-demissao-aviso').value;
     const obs = document.getElementById('edit-demissao-obs').value;
+    const blockRehire = document.getElementById('edit-demissao-bloquear-readmissao').checked;
 
     if (!movId || !funcId || !data || !tipo) {
         alert("Preencha os campos obrigatórios (Data e Tipo).");
@@ -770,6 +771,7 @@ window.salvarRegistroLivre = async function() {
     const demissao = document.getElementById('rl-demissao').value;
     const motivo = document.getElementById('rl-motivo').value;
     const obs = document.getElementById('rl-observacoes').value;
+    const blockRehire = document.getElementById('rl-bloquear-readmissao').checked;
 
     if (!demissao || !motivo) {
         alert('Por favor, preencha a Data de Demissão e o Motivo.');
@@ -797,6 +799,7 @@ window.salvarRegistroLivre = async function() {
             observacoesHistorico: obs,
             status: 'Inativo',
             registroLivre: true,
+            bloquearReadmissao: blockRehire,
             criadoEm: firebase.firestore.FieldValue.serverTimestamp()
         });
 

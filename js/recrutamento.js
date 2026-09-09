@@ -1575,3 +1575,17 @@ async function excluirCandidato(event, id) {
 }
 
 
+
+// Inject pulse animation globally
+if (!document.getElementById('pulse-animation-style')) {
+    const style = document.createElement('style');
+    style.id = 'pulse-animation-style';
+    style.innerHTML = `
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+        }
+    `;
+    document.head.appendChild(style);
+}
