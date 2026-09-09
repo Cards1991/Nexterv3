@@ -1,0 +1,31 @@
+<div class="container-fluid p-4 fade-in">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="page-title mb-0"><i class="fas fa-stethoscope text-success me-2"></i> Exames Demissionais / Ocupacionais</h2>
+            <p class="text-muted small mb-0">Gestão de exames gerados a partir do Acerto Rescisório</p>
+        </div>
+        <button class="btn btn-outline-secondary" onclick="inicializarExamesOcupacionais()">
+            <i class="fas fa-sync-alt me-1"></i> Atualizar
+        </button>
+    </div>
+
+    <div class="card shadow-sm border-0">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tabela-exames-ocupacionais">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Colaborador</th>
+                            <th>Data do Exame</th>
+                            <th>Situação</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lista-exames-ocupacionais">
+                        <tr><td colspan="4" class="text-center py-4">⏳ Carregando...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,87 @@
+<!-- Modal de Execução de Acerto Rescisório -->
+<div class="modal fade" id="modal-executar-acerto" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger text-white border-0">
+                <h5 class="modal-title"><i class="fas fa-file-invoice-dollar me-2"></i> Agendamento de Rescisão e Exames</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info border-0 shadow-sm mb-4">
+                    <i class="fas fa-info-circle me-2"></i> Confirme as datas para a Rescisão e Exame Demissional. O sistema gerará a mensagem final e agendará o exame para o responsável.
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pb-0 pt-3">
+                                <h6 class="fw-bold text-danger"><i class="fas fa-handshake me-1"></i> Data do Acerto</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Data Prevista</label>
+                                    <input type="date" class="form-control" id="acerto-data-modal">
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-semibold text-muted">Horário</label>
+                                    <input type="time" class="form-control" id="acerto-hora-modal" value="16:00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="card border-0 shadow-sm h-100">
+                            <div class="card-header bg-white border-0 pb-0 pt-3">
+                                <h6 class="fw-bold text-success"><i class="fas fa-stethoscope me-1"></i> Exame Demissional</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    <label class="form-label small fw-semibold text-muted">Data do Exame <small>(Ter, Qua, Qui)</small></label>
+                                    <input type="date" class="form-control" id="exame-data-modal">
+                                </div>
+                                <div>
+                                    <label class="form-label small fw-semibold text-muted">Horário</label>
+                                    <input type="time" class="form-control" id="exame-hora-modal" value="07:00">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3 mb-4">
+                    <div class="col-12">
+                        <div class="form-check form-switch fs-6">
+                            <input class="form-check-input cursor-pointer" type="checkbox" id="check-pedido-demissao">
+                            <label class="form-check-label fw-bold text-dark" for="check-pedido-demissao">Gerar termo de Pedido de Demissão na impressão</label>
+                            <p class="text-muted small mb-0 mt-1">Marque esta opção caso o desligamento tenha sido a pedido do colaborador. A impressão incluirá a carta formal de pedido de demissão para assinatura.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Textarea for the generated message (HIDDEN) -->
+                <div class="card border-0 shadow-sm mt-3" id="area-mensagem-acerto" style="display: none;">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-center mt-2 gap-2">
+                            <button type="button" class="btn btn-primary px-4" onclick="imprimirCartaExame()">
+                                <i class="fas fa-print me-2"></i> Imprimir Encaminhamento e Pedido
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+            <div class="modal-footer border-0 bg-white" id="footer-acoes-acerto">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger px-4" id="btn-confirmar-acerto" onclick="confirmarExecucaoAcerto()">
+                    <i class="fas fa-check me-1"></i> Confirmar Agendamento e Gerar Mensagem
+                </button>
+            </div>
+            <div class="modal-footer border-0 bg-white" id="footer-finalizado-acerto" style="display: none;">
+                <button type="button" class="btn btn-success px-4" onclick="fecharModalAcertoComSucesso()">
+                    <i class="fas fa-check-double me-1"></i> Finalizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -19,6 +19,7 @@ window.configFluxos = (function () {
     async function popularSelects() {
         const selAcerto = document.getElementById('config-acerto-responsavel');
         const selPsico = document.getElementById('config-psicossocial-responsavel');
+        const selExame = document.getElementById('config-exame-responsavel');
         
         try {
             const snap = await db.collection('usuarios').orderBy('nome').get();
@@ -31,10 +32,12 @@ window.configFluxos = (function () {
 
             if (selAcerto) selAcerto.innerHTML = optionsHTML;
             if (selPsico) selPsico.innerHTML = optionsHTML;
+            if (selExame) selExame.innerHTML = optionsHTML;
         } catch (e) {
             console.error('Erro ao carregar usuários:', e);
             if (selAcerto) selAcerto.innerHTML = '<option value="">Erro ao carregar</option>';
             if (selPsico) selPsico.innerHTML = '<option value="">Erro ao carregar</option>';
+            if (selExame) selExame.innerHTML = '<option value="">Erro ao carregar</option>';
         }
     }
 
@@ -55,6 +58,11 @@ window.configFluxos = (function () {
                     selPsico.value = cfg.psicossocialId;
                 }
 
+                const selExame = document.getElementById('config-exame-responsavel');
+                if (selExame && cfg.exameDemissionalId) {
+                    selExame.value = cfg.exameDemissionalId;
+                }
+
                 const chkEscavador = document.getElementById('config-permitir-escavador');
                 if (chkEscavador) chkEscavador.checked = cfg.permitirEscavador === true;
 
@@ -71,6 +79,7 @@ window.configFluxos = (function () {
         const feedback = document.getElementById('config-fluxos-feedback');
         const selAcerto = document.getElementById('config-acerto-responsavel');
         const selPsico = document.getElementById('config-psicossocial-responsavel');
+        const selExame = document.getElementById('config-exame-responsavel');
         const chkEscavador = document.getElementById('config-permitir-escavador');
         const chkGerente = document.getElementById('config-permitir-gerente-mbti');
 
@@ -85,6 +94,9 @@ window.configFluxos = (function () {
                 
                 psicossocialId: selPsico.value || null,
                 psicossocialNome: selPsico.value ? selPsico.options[selPsico.selectedIndex].text : null,
+
+                exameDemissionalId: selExame.value || null,
+                exameDemissionalNome: selExame.value ? selExame.options[selExame.selectedIndex].text : null,
 
                 permitirEscavador: chkEscavador ? chkEscavador.checked : false,
                 permitirGerenteMbti: chkGerente ? chkGerente.checked : false,

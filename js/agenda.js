@@ -13,10 +13,27 @@ let domCache = {};
 
 // Função para inicializar a Agenda quando a view for injetada
 function inicializarAgenda() {
-    if (!window.currentUserPermissions?.isAdmin) {
+    // Se não for admin e não tiver permissões gerenciais, oculta as abas avançadas
+    if (!window.currentUserPermissions?.isAdmin && !window.currentUserPermissions?.isManager) { // Adicionando isManager
         const tabEquipe = document.getElementById('tarefas-equipe-tab');
         if (tabEquipe && tabEquipe.parentElement) {
             tabEquipe.parentElement.style.display = 'none';
+        }
+        
+        const tabVisaoGeral = document.getElementById('visao-geral-tab');
+        if (tabVisaoGeral && tabVisaoGeral.parentElement) {
+            tabVisaoGeral.parentElement.style.display = 'none';
+            // Se visão geral estava ativa, muda para minhas tarefas
+            if (tabVisaoGeral.classList.contains('active')) {
+                tabVisaoGeral.classList.remove('active');
+                document.getElementById('visao-geral').classList.remove('show', 'active');
+                
+                const tabMinhas = document.getElementById('minhas-tarefas-tab');
+                if (tabMinhas) tabMinhas.classList.add('active');
+                
+                const panelMinhas = document.getElementById('minhas-tarefas');
+                if (panelMinhas) panelMinhas.classList.add('show', 'active');
+            }
         }
     }
 
@@ -1738,14 +1755,19 @@ async function concluirEvento(id, collection) {
         return;
     }
 
-    if (!confirm("Deseja marcar esta tarefa como concluída?")) {
-        return;
-    }
-
     try {
         const docRef = db.collection(collection).doc(id);
         const doc = await docRef.get();
         const dados = doc.data();
+
+        if (dados.assunto && dados.assunto.startsWith('Acerto Rescisório') && typeof abrirModalExecutarAcerto === 'function') {
+            abrirModalExecutarAcerto(id, dados);
+            return;
+        }
+
+        if (!confirm("Deseja marcar esta tarefa como concluída?")) {
+            return;
+        }
 
         // CORREÇÃO: Usa o tempo de início da execução se existir, senão usa o tempo de criação.
         const startTime = dados.executionStartTime || dados.criadoEm;

@@ -4,7 +4,7 @@
 
 // Lista de todas as seções disponíveis no sistema
 const TODAS_SECOES = [
-    'empresas', 'funcionarios', 'afastamentos', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
+    'empresas', 'funcionarios', 'afastamentos', 'exames-ocupacionais', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'config-fluxos', 'entrevista-desligamento', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
@@ -431,6 +431,9 @@ async function carregarDadosSecao(sectionName) {
             case 'afastamentos':
                 if (typeof inicializarAfastamentos === 'function') inicializarAfastamentos();
                 break;
+            case 'exames-ocupacionais':
+                if (typeof inicializarExamesOcupacionais === 'function') inicializarExamesOcupacionais();
+                break;
             case 'gestao-cipa':
                 if (typeof inicializarGestaoCipa === 'function') await inicializarGestaoCipa();
                 break;
@@ -846,7 +849,7 @@ document.addEventListener('viewsLoaded', function () {
                     isMecanico: false, 
                     isMecanicoAdmin: false, 
                     hasIsoAccess: true, 
-                    secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot', 'manutencao-mecanico'], 
+                    secoesPermitidas: ['agenda', 'saude-psicossocial', 'atestados', 'afastamentos', 'exames-ocupacionais', 'iso-manutencao', 'iso-maquinas', 'iso-organograma', 'iso-swot', 'manutencao-mecanico'], 
                     restricaoSetor: null 
                 };
                 window.currentUserPermissions = currentUserPermissions;
