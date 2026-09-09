@@ -258,6 +258,7 @@ async function salvarVaga() {
 }
 
 function abrirModalCandidato() {
+    _checarPermissaoEscavadorCandidato();
     document.getElementById('formCandidato').reset();
     document.getElementById('candidatoId').value = '';
     document.getElementById('candidatoFaseAtual').value = 'triagem';
@@ -285,6 +286,8 @@ function formatarCPF(input) {
 async function editarCandidato(id) {
     const cand = candidatosAtuais.find(c => c.id === id);
     if (!cand) return;
+    
+    _checarPermissaoEscavadorCandidato();
     
     document.getElementById('candidatoId').value = cand.id;
     document.getElementById('candidatoVagaId').value = cand.vagaId;
@@ -345,6 +348,16 @@ async function editarCandidato(id) {
 
     // Carregar MBTI do candidato e Match
     carregarMBTICandidato(id);
+}
+
+async function _checarPermissaoEscavadorCandidato() {
+    const btn = document.getElementById('btn-escavador-candidato');
+    if (!btn) return;
+    let permitir = window.currentUserPermissions?.isAdmin;
+    if (!permitir && window.configFluxos) {
+        permitir = await window.configFluxos.getConfiguracao('permitirEscavador') === true;
+    }
+    btn.style.display = permitir ? 'inline-block' : 'none';
 }
 
 async function salvarCandidato() {

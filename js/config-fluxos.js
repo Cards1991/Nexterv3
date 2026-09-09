@@ -5,6 +5,7 @@
 window.configFluxos = (function () {
 
     const CONFIG_DOC = 'configuracoes/atribuicoes_automaticas';
+    let _cacheConfig = null;
 
     async function inicializarTela() {
         if (!window.currentUserPermissions?.isAdmin) {
@@ -42,6 +43,7 @@ window.configFluxos = (function () {
             const snap = await db.doc(CONFIG_DOC).get();
             if (snap.exists) {
                 const cfg = snap.data();
+                _cacheConfig = cfg;
                 
                 const selAcerto = document.getElementById('config-acerto-responsavel');
                 if (selAcerto && cfg.acertoRescisorioId) {
@@ -52,6 +54,12 @@ window.configFluxos = (function () {
                 if (selPsico && cfg.psicossocialId) {
                     selPsico.value = cfg.psicossocialId;
                 }
+
+                const chkEscavador = document.getElementById('config-permitir-escavador');
+                if (chkEscavador) chkEscavador.checked = cfg.permitirEscavador === true;
+
+                const chkGerente = document.getElementById('config-permitir-gerente-mbti');
+                if (chkGerente) chkGerente.checked = cfg.permitirGerenteMbti === true;
             }
         } catch (e) {
             console.error('Erro ao carregar configurações de fluxos:', e);
@@ -63,6 +71,8 @@ window.configFluxos = (function () {
         const feedback = document.getElementById('config-fluxos-feedback');
         const selAcerto = document.getElementById('config-acerto-responsavel');
         const selPsico = document.getElementById('config-psicossocial-responsavel');
+        const chkEscavador = document.getElementById('config-permitir-escavador');
+        const chkGerente = document.getElementById('config-permitir-gerente-mbti');
 
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Salvando...';
@@ -76,11 +86,15 @@ window.configFluxos = (function () {
                 psicossocialId: selPsico.value || null,
                 psicossocialNome: selPsico.value ? selPsico.options[selPsico.selectedIndex].text : null,
 
+                permitirEscavador: chkEscavador ? chkEscavador.checked : false,
+                permitirGerenteMbti: chkGerente ? chkGerente.checked : false,
+
                 atualizadoPor: window.currentUser?.uid || 'sistema',
                 atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
             };
 
             await db.doc(CONFIG_DOC).set(configData, { merge: true });
+            _cacheConfig = { ..._cacheConfig, ...configData };
 
             feedback.innerHTML = '<span class="text-success small fw-bold"><i class="fas fa-check-circle me-1"></i>Configurações salvas com sucesso!</span>';
             setTimeout(() => { feedback.innerHTML = ''; }, 4000);
@@ -96,10 +110,14 @@ window.configFluxos = (function () {
 
     // Helper global para outros scripts buscarem configurações de fluxo rapidamente
     async function getConfiguracao(chaveFluxo) {
+        if (_cacheConfig && _cacheConfig.hasOwnProperty(chaveFluxo)) {
+            return _cacheConfig[chaveFluxo];
+        }
         try {
             const snap = await db.doc(CONFIG_DOC).get();
             if (snap.exists) {
-                return snap.data()[chaveFluxo] || null;
+                _cacheConfig = snap.data();
+                return _cacheConfig[chaveFluxo] !== undefined ? _cacheConfig[chaveFluxo] : null;
             }
         } catch (e) {
             console.error('Erro ao buscar configuração de fluxo:', e);

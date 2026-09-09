@@ -60,8 +60,13 @@ async function carregarMBTIEquipe() {
             mbtiEquipeList.push(data);
         });
         
+        let permitirGerente = window.currentUserPermissions?.isAdmin;
+        if (!permitirGerente && window.configFluxos) {
+            permitirGerente = await window.configFluxos.getConfiguracao('permitirGerenteMbti') === true;
+        }
+
         document.getElementById('mbti-total-testes').textContent = mbtiEquipeList.length;
-        renderizarTabelaMBTIEquipe(mbtiEquipeList);
+        renderizarTabelaMBTIEquipe(mbtiEquipeList, permitirGerente);
         renderizarMatrizGerentes();
         renderizarMapaVisualCorporativo();
         
@@ -71,7 +76,7 @@ async function carregarMBTIEquipe() {
     }
 }
 
-function renderizarTabelaMBTIEquipe(lista) {
+function renderizarTabelaMBTIEquipe(lista, permitirGerente) {
     const tbody = document.getElementById('lista-mbti-equipe');
     tbody.innerHTML = '';
     
@@ -115,8 +120,7 @@ function renderizarTabelaMBTIEquipe(lista) {
         let toggleGerente = '-';
         if (item.status === 'Concluído' && item.mbti) {
             const isGerenteChecked = item.isGerente === true ? 'checked' : '';
-            const isMaster = window.currentUserPermissions?.isAdmin;
-            const disabledAttr = isMaster ? '' : 'disabled';
+            const disabledAttr = permitirGerente ? '' : 'disabled';
             toggleGerente = `
                 <div class="form-check form-switch d-flex justify-content-center">
                     <input class="form-check-input cursor-pointer" type="checkbox" onchange="marcarComoGerente('${item.id}', this.checked)" ${isGerenteChecked} ${disabledAttr}>
