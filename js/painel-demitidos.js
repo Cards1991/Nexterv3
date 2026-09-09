@@ -719,8 +719,8 @@ window.buscarCpfReceita = async function() {
 
     try {
         const tokenHub = '214312030idUEkpCDXn386933872';
-        // Build request exactly as the PHP example, including http:// and empty data param if not provided
-        let url = `http://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}`;
+        // Build request exactly as the PHP example, mas usando https:// para evitar erro de Mixed Content na Vercel
+        let url = `https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}`;
         url += `&data=${(dataNasc && dataNasc.trim() !== '') ? dataNasc.trim() : ''}`;
         url += `&token=${tokenHub}`;
         
