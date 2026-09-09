@@ -5,7 +5,7 @@
 let dadosDemitidosExportacao = [];
 
 async function inicializarPainelDemitidos() {
-    console.log("Inicializando Painel de Demitidos...");
+    
     
     // Configurar filtros de data e botões
     const btnFiltrar = document.getElementById('btn-filtrar-demitidos');
@@ -162,7 +162,7 @@ async function carregarPainelDemitidos() {
 
             // Verifica se já tem custo lançado
             const custoLancado = custosMap[doc.id];
-            console.log(`[DEBUG] Funcionário: ${f.nome}, Custo Lançado: ${custoLancado}`);
+            
             let btnAcao = '';
             let btnCancelar = '';
             let btnEditar = '';
@@ -196,7 +196,7 @@ async function carregarPainelDemitidos() {
                     <i class="fas fa-edit"></i>
                 </button>
             `;
-            console.log(`[DEBUG] Botão Cancelar HTML para ${f.nome}: ${btnCancelar}`);
+            
 
             html += `
                 <tr>
@@ -666,3 +666,153 @@ window.cancelarDemissao = cancelarDemissao;
 window.abrirModalEditarDemissao = abrirModalEditarDemissao;
 window.salvarEdicaoDemissao = salvarEdicaoDemissao;
 window.exportarPainelDemitidosExcel = exportarPainelDemitidosExcel;
+
+// =================================================================
+// FUNÇÕES DE REGISTRO LIVRE (EX-COLABORADORES)
+// =================================================================
+
+window.abrirModalRegistroLivre = function() {
+    // Limpar formulário
+    document.getElementById('rl-cpf').value = '';
+    document.getElementById('rl-data-nasc').value = '';
+    document.getElementById('rl-turbo').checked = false;
+    document.getElementById('resultadoBuscaHub').innerHTML = '';
+    
+    document.getElementById('rl-nome').value = '';
+    document.getElementById('rl-cargo').value = '';
+    document.getElementById('rl-admissao').value = '';
+    document.getElementById('rl-demissao').value = '';
+    document.getElementById('rl-motivo').value = '';
+    document.getElementById('rl-observacoes').value = '';
+    
+    // Desabilitar campos de cadastro
+    document.getElementById('rl-cargo').disabled = true;
+    document.getElementById('rl-admissao').disabled = true;
+    document.getElementById('rl-demissao').disabled = true;
+    document.getElementById('rl-motivo').disabled = true;
+    document.getElementById('rl-observacoes').disabled = true;
+    document.getElementById('btnSalvarRL').disabled = true;
+
+    // Aplicar máscaras (se a função existir no escopo global)
+    if (typeof applyMasks === 'function') applyMasks();
+
+    const modal = new bootstrap.Modal(document.getElementById('modalRegistroLivre'));
+    modal.show();
+}
+
+window.buscarCpfReceita = async function() {
+    const cpf = document.getElementById('rl-cpf').value.replace(/\D/g, '');
+    const dataNasc = document.getElementById('rl-data-nasc').value.trim();
+    const useTurbo = document.getElementById('rl-turbo').checked;
+    const resultDiv = document.getElementById('resultadoBuscaHub');
+    const btnBuscar = document.getElementById('btnBuscarHub');
+
+    if (cpf.length !== 11) {
+        resultDiv.innerHTML = '<div class="alert alert-warning py-2 mb-0"><i class="fas fa-exclamation-triangle"></i> CPF inválido. Digite 11 números.</div>';
+        return;
+    }
+
+    btnBuscar.disabled = true;
+    btnBuscar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando...';
+    resultDiv.innerHTML = '';
+
+    try {
+        const tokenHub = '214312030idUEkpCDXn386933872';
+        // Build request exactly as the PHP example, including http:// and empty data param if not provided
+        let url = `http://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}`;
+        url += `&data=${(dataNasc && dataNasc.trim() !== '') ? dataNasc.trim() : ''}`;
+        url += `&token=${tokenHub}`;
+        
+        if (useTurbo) {
+            url += `&turbo=1`;
+        }
+        
+        console.log('Hub API request URL:', url);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: { 'Accept': 'application/json' }
+        });
+        const data = await response.json();
+
+        if (response.ok && data.return === 'OK' && data.result && data.result.nome_da_pf) {
+            // Sucesso
+            resultDiv.innerHTML = `<div class="alert alert-success py-2 mb-0"><i class="fas fa-check-circle"></i> Encontrado: ${data.result.nome_da_pf}</div>`;
+            
+            // Preencher campos de cadastro e liberar
+            document.getElementById('rl-nome').value = data.result.nome_da_pf;
+            document.getElementById('rl-cargo').disabled = false;
+            document.getElementById('rl-admissao').disabled = false;
+            document.getElementById('rl-demissao').disabled = false;
+            document.getElementById('rl-motivo').disabled = false;
+            document.getElementById('rl-observacoes').disabled = false;
+            document.getElementById('btnSalvarRL').disabled = false;
+
+        } else {
+            // Falha na busca ou NOK
+            const msgErro = data.message || data.error || 'Não foi possível encontrar o CPF.';
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2 mb-0"><i class="fas fa-times-circle"></i> ${msgErro}</div>`;
+        }
+
+    } catch (error) {
+        console.error('Erro na consulta Hub:', error);
+        resultDiv.innerHTML = '<div class="alert alert-danger py-2 mb-0"><i class="fas fa-wifi"></i> Erro de conexão com a API de busca.</div>';
+    } finally {
+        btnBuscar.disabled = false;
+        btnBuscar.innerHTML = '<i class="fas fa-search me-1"></i> Buscar Nome';
+    }
+}
+
+window.salvarRegistroLivre = async function() {
+    const nome = document.getElementById('rl-nome').value;
+    const cpf = document.getElementById('rl-cpf').value;
+    const cargo = document.getElementById('rl-cargo').value;
+    const admissao = document.getElementById('rl-admissao').value;
+    const demissao = document.getElementById('rl-demissao').value;
+    const motivo = document.getElementById('rl-motivo').value;
+    const obs = document.getElementById('rl-observacoes').value;
+
+    if (!demissao || !motivo) {
+        alert('Por favor, preencha a Data de Demissão e o Motivo.');
+        return;
+    }
+
+    const btnSalvar = document.getElementById('btnSalvarRL');
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+
+    try {
+        const novoId = cpf.replace(/\D/g, '') + '_' + Date.now();
+        const docRef = db.collection('funcionarios').doc(novoId);
+
+        const admissaoDate = admissao ? new Date(admissao + 'T12:00:00Z') : null;
+        const demissaoDate = new Date(demissao + 'T12:00:00Z');
+
+        await docRef.set({
+            nome: nome,
+            cpf: cpf,
+            cargo: cargo,
+            dataAdmissao: admissaoDate,
+            dataDemissao: demissaoDate,
+            motivoDesligamento: motivo,
+            observacoesHistorico: obs,
+            status: 'Inativo',
+            registroLivre: true,
+            criadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        alert('Registro Livre criado com sucesso!');
+        bootstrap.Modal.getInstance(document.getElementById('modalRegistroLivre')).hide();
+        
+        // Recarregar a lista do painel
+        if (typeof carregarPainelDemitidos === 'function') {
+            carregarPainelDemitidos();
+        }
+
+    } catch (error) {
+        console.error('Erro ao salvar registro livre:', error);
+        alert('Erro ao salvar o registro livre no banco de dados.');
+    } finally {
+        btnSalvar.disabled = false;
+        btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Registro Livre';
+    }
+}

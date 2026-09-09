@@ -607,8 +607,8 @@ window.inicializarHistoricoColaborador = inicializarHistoricoColaborador;
 window.imprimirHistoricoColaborador = imprimirHistoricoColaborador;
 
 // Adiciona um pouco de estilo para a timeline e lista
-const style = document.createElement('style');
-style.innerHTML = `
+const hcStyle = document.createElement('style');
+hcStyle.innerHTML = `
 .collaborator-item {
     transition: all 0.2s ease;
     border-left: 4px solid transparent !important;
@@ -682,4 +682,4 @@ style.innerHTML = `
     background: transparent;
 }
 `;
-document.head.appendChild(style);
+document.head.appendChild(hcStyle);

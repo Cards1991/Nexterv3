@@ -216,7 +216,7 @@ async function drop(e, faseDestino) {
 }
 
 /* =============================================
-   GESTÃO DE MODAIS E FORMULÁRIOS
+   GESTÃO DE MODAIS E FORMULÃRIOS
    ============================================= */
 
 function abrirModalVaga() {
@@ -329,7 +329,7 @@ async function editarCandidato(id) {
             } else {
                 let badges = `<span class="badge bg-secondary mb-1">Total: ${sum.total}</span> `;
                 if(sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
-                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
+                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">HomÃ´nimos: ${sum.homonyms}</span> `;
                 if(sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
                 escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Ver Detalhes (Buscando Novamente)</small>`;
             }
@@ -446,9 +446,141 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
         } catch(e) {}
     }
 
-    // 3. Buscar Processos via NEXTER Backend (Escavador V2)
-    area.style.display = 'block';
+
+    // Esconder painéis seguintes
+    areaInterna.style.display = 'none';
+    area.style.display = 'none';
     
+    // Injetar botões de ação do Passo 1
+    const resultHistorico = document.getElementById('resultadoHistorico');
+    if (!funcionarioEncontradoInternamente) {
+        resultHistorico.innerHTML = `
+            <div class="card shadow-sm border-0 rounded-3 bg-light">
+                <div class="card-body py-3">
+                    <span class="text-success fw-medium"><i class="fas fa-check-circle me-2"></i>Nenhum histórico de trabalho anterior encontrado na empresa.</span>
+                </div>
+            </div>`;
+    }
+    
+    resultHistorico.innerHTML += `
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="reprovarCandidatoImediato()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
+            </button>
+            <button type="button" class="btn btn-primary px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="consultarPasso2Juridico()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                Avançar p/ Passo 2 <i class="fas fa-play ms-1"></i>
+            </button>
+        </div>
+    `;
+    
+    document.getElementById('areaHistoricoColaborador').style.display = 'block';
+}
+
+window.consultarPasso2Juridico = async function() {
+    const inputNome = document.getElementById('candidatoNome');
+    const areaInterna = document.getElementById('areaProcessosInternos');
+    const divResultInterno = document.getElementById('resultadoProcessosInternos');
+    
+    const nomeAtual = inputNome.value.trim().toLowerCase();
+    areaInterna.style.display = 'block';
+    
+    if (!nomeAtual) {
+        divResultInterno.innerHTML = `
+            <div class="card shadow-sm border-0 rounded-3 bg-light">
+                <div class="card-body py-3">
+                    <span class="text-warning fw-medium"><i class="fas fa-exclamation-triangle me-2"></i>Nome não preenchido para buscar no Jurídico Interno.</span>
+                </div>
+            </div>`;
+    } else {
+        let htmlInternos = `
+            <div class="card shadow-sm border-0 rounded-3 bg-light">
+                <div class="card-body py-3">
+        `;
+        try {
+            const processosJuridicosSnap = await db.collection('processos_juridicos').get();
+            const processosContraEmpresa = processosJuridicosSnap.docs.filter(doc => {
+                const data = doc.data();
+                return data.parteContraria && data.parteContraria.toLowerCase() === nomeAtual;
+            });
+
+            if (processosContraEmpresa.length > 0) {
+                htmlInternos += `<h6 class="text-danger mb-3"><i class="fas fa-exclamation-circle me-2"></i>Foram encontrados processos contra a empresa:</h6><ul class="list-group list-group-flush small">`;
+                processosContraEmpresa.forEach(doc => {
+                    const proc = doc.data();
+                    htmlInternos += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fas fa-gavel text-muted me-2"></i><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} <span class="badge bg-secondary ms-2">${proc.status || 'N/A'}</span></li>`;
+                });
+                htmlInternos += `</ul>`;
+            } else {
+                htmlInternos += `<span class="text-success fw-medium"><i class="fas fa-check-circle me-2"></i>Nada consta no sistema Jurídico Interno para este nome.</span>`;
+            }
+        } catch (err) {
+            htmlInternos += `<span class="text-warning fw-medium"><i class="fas fa-exclamation-triangle me-2"></i>Sistema Jurídico Interno indisponível.</span>`;
+        }
+        htmlInternos += `</div></div>`;
+        divResultInterno.innerHTML = htmlInternos;
+    }
+
+    divResultInterno.innerHTML += `
+        <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+            <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="reprovarCandidatoImediato()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
+            </button>
+            <button type="button" class="btn btn-primary px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="prepararPasso3Escavador()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                Avançar p/ Passo 3 <i class="fas fa-play ms-1"></i>
+            </button>
+        </div>
+    `;
+}
+
+window.prepararPasso3Escavador = function() {
+    const area = document.getElementById('areaEscavador');
+    const divResult = document.getElementById('resultadoEscavador');
+    const exactCheck = document.getElementById('buscaExataCpf');
+    const modeToUse = (exactCheck && exactCheck.checked) ? 'AUTO' : 'HOMONIMOS_ONLY';
+
+    area.style.display = 'block';
+    divResult.innerHTML = `
+        <div class="card shadow-sm border-warning rounded-3 border-top border-warning border-3">
+            <div class="card-body">
+                <h6 class="card-title text-warning-emphasis"><i class="fas fa-search-dollar me-2"></i>Consulta de Antecedentes Externa (Escavador)</h6>
+                <p class="small text-muted mb-4">A consulta processual em tribunais gera custos adicionais para a empresa por CPF. Verifique as informações internas nos passos anteriores. Se for necessário confirmar antecedentes na justiça, execute a busca externa abaixo.</p>
+                
+                <div class="d-flex justify-content-between align-items-center mt-2 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="reprovarCandidatoImediato()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
+                    </button>
+                    <button type="button" class="btn btn-warning px-4 rounded-pill fw-bold shadow-sm transition-transform text-dark" onclick="consultarEscavadorAPI('${modeToUse}')" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+                        <i class="fas fa-balance-scale me-1"></i> Consultar Antecedentes
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+window.reprovarCandidatoImediato = function() {
+    const statusSelect = document.getElementById('candidatoStatus');
+    if (statusSelect) {
+        statusSelect.value = 'Reprovado';
+    }
+    mostrarMensagem('Candidato reprovado na triagem. Status atualizado.', 'warning');
+    if (typeof salvarCandidato === 'function') {
+        salvarCandidato();
+    }
+}
+
+window.consultarEscavadorAPI = async function(modeToUse) {
+    const cpfRaw = document.getElementById('candidatoCpf').value;
+    const cpf = cpfRaw.replace(/\D/g, '');
+    const divResult = document.getElementById('resultadoEscavador');
+    const inputNome = document.getElementById('candidatoNome');
+    const personId = document.getElementById('candidatoId').value || currentCandidatoId;
+
+    if (!modeToUse) {
+        const exactCheck = document.getElementById('buscaExataCpf');
+        modeToUse = (exactCheck && exactCheck.checked) ? 'AUTO' : 'HOMONIMOS_ONLY';
+    }
+
     // Novo Loading Flow Interativo
     divResult.innerHTML = `
         <div class="escavador-loading-steps">
@@ -504,7 +636,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
             htmlResultados += `
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0 text-primary"><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</h5>
-                    ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-secondary" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada</button>` : ''}
+                    ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-secondary" onclick="consultarEscavadorAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada</button>` : ''}
                 </div>
             `;
 
@@ -525,7 +657,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                     </div>
                     <div class="summary-card" style="border-left: 4px solid var(--nexter-danger);">
                         <div class="count text-danger">${sum.homonyms}</div>
-                        <div class="label">Possíveis Homônimos</div>
+                        <div class="label">Possíveis HomÃ´nimos</div>
                     </div>
                 </div>
                 
@@ -560,7 +692,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                         </div>
                         <div class="process-details">
                             <p><strong>Tribunal/UF:</strong> ${proc.estado_origem?.sigla || ''} - ${proc.capa?.orgao_julgador || 'N/I'}</p>
-                            <p><strong>Área:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
+                            <p><strong>Ã rea:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
                             <p><strong>Classe:</strong> ${proc.capa?.classe || 'N/I'}</p>
                             <p><strong>Status:</strong> ${proc.capa?.situacao || 'Desconhecido'}</p>
                             <p><strong>Distribuição:</strong> ${proc.capa?.data_distribuicao ? new Date(proc.capa.data_distribuicao).toLocaleDateString() : 'N/A'}</p>
@@ -572,7 +704,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                             ${proc.classificacao !== 'CONFIRMADO' ? `
                                 <div class="review-actions">
                                     <button class="btn btn-sm btn-success text-white" onclick="revisarCorrespondencia('${personId}', '${proc.numero_cnj}', 'CONFIRMED')"><i class="fas fa-check"></i> Confirmar</button>
-                                    <button class="btn btn-sm btn-warning" onclick="revisarCorrespondencia('${personId}', '${proc.numero_cnj}', 'HOMONYM')"><i class="fas fa-ban"></i> Homônimo</button>
+                                    <button class="btn btn-sm btn-warning" onclick="revisarCorrespondencia('${personId}', '${proc.numero_cnj}', 'HOMONYM')"><i class="fas fa-ban"></i> HomÃ´nimo</button>
                                 </div>
                             ` : ''}
                         </div>
@@ -586,7 +718,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                     <i class="fas fa-check-circle"></i> Não foram encontrados processos nas fontes consultadas. 
                     <br><small>A ausência de resultados não significa necessariamente inexistência de processos, pois alguns tribunais podem não disponibilizar CPF/CNPJ das partes.</small>
                 </div>
-                ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="consultarCandidatoAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada (Deep Search)</button>` : ''}
+                ${modeToUse !== 'ALWAYS' ? `<button class="btn btn-sm btn-outline-primary mt-2" onclick="consultarEscavadorAPI('ALWAYS')"><i class="fas fa-search-plus"></i> Executar busca ampliada (Deep Search)</button>` : ''}
             `;
         } else {
             // Tratamento de Erros Retornados pelo Backend
@@ -595,34 +727,6 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
             if (data.status === 'NO_CREDIT') errorMsg = 'Consulta temporariamente indisponível (Sem Saldo).';
             if (data.status === 'RATE_LIMIT') errorMsg = 'Muitas consultas simultâneas. Tente novamente em breve.';
             htmlResultados += `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${errorMsg}</div>`;
-        }
-
-        // -- MÓDULO JURÍDICO INTERNO --
-        const nomeAtual = inputNome.value.trim().toLowerCase();
-        if (nomeAtual && areaInterna && divResultInterno) {
-            areaInterna.style.display = 'block';
-            let htmlInternos = '';
-            try {
-                const processosJuridicosSnap = await db.collection('processos_juridicos').get();
-                const processosContraEmpresa = processosJuridicosSnap.docs.filter(doc => {
-                    const data = doc.data();
-                    return data.parteContraria && data.parteContraria.toLowerCase() === nomeAtual;
-                });
-
-                if (processosContraEmpresa.length > 0) {
-                    htmlInternos += `<ul class="mt-2 pl-3">`;
-                    processosContraEmpresa.forEach(doc => {
-                        const proc = doc.data();
-                        htmlInternos += `<li><strong class="text-danger">${proc.numeroProcesso || 'S/N'}</strong> - ${proc.tipoAcao || 'Ação'} - Status: ${proc.status || 'N/A'}</li>`;
-                    });
-                    htmlInternos += '</ul>';
-                } else {
-                    htmlInternos += `<span class="text-success"><i class="fas fa-check-circle"></i> Sistema Jurídico Interno: Nada consta para este nome.</span><br>`;
-                }
-            } catch (err) {
-                htmlInternos += `<span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Sistema Jurídico Interno indisponível.</span><br>`;
-            }
-            divResultInterno.innerHTML = htmlInternos;
         }
 
         divResult.innerHTML = htmlResultados;
@@ -659,7 +763,7 @@ window.revisarCorrespondencia = async function(personId, numeroCnj, decision) {
 
 
 /* =============================================
-   HISTÓRICO INTERNO DO EX-COLABORADOR
+   HISTÃ“RICO INTERNO DO EX-COLABORADOR
    ============================================= */
 async function consultarHistoricoInterno(cpfFomatado) {
     const areaHistorico = document.getElementById('areaHistoricoColaborador');
@@ -690,98 +794,141 @@ async function consultarHistoricoInterno(cpfFomatado) {
         const funcId = funcDoc.id;
 
         areaHistorico.style.display = 'block';
-        let html = `<strong>Status Atual:</strong> <span class="badge ${funcData.status === 'Ativo' ? 'bg-success' : 'bg-danger'}">${funcData.status || 'Desconhecido'}</span><br>`;
-        html += `<strong>Nome no Sistema:</strong> ${funcData.nome}<br>`;
+
+        let html = `
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title text-primary"><i class="fas fa-id-badge me-2"></i>Informações do Cadastro</h6>
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Status Atual</small>
+                            <span class="badge ${funcData.status === 'Ativo' ? 'bg-success' : 'bg-danger'} rounded-pill px-3 py-2">${funcData.status || 'Desconhecido'}</span>
+                        </div>
+                        <div class="col-md-6">
+                            <small class="text-muted d-block">Nome no Sistema</small>
+                            <span class="fw-bold">${funcData.nome}</span>
+                        </div>
+        `;
 
         if (funcData.status !== 'Ativo') {
-            html += `<strong>Motivo Desligamento:</strong> ${funcData.motivoDesligamento || funcData.tipoDemissao || 'Não informado no cadastro'}<br>`;
+            html += `
+                        <div class="col-12 mt-2">
+                            <small class="text-muted d-block">Motivo do Desligamento</small>
+                            <span class="fw-bold text-danger"><i class="fas fa-sign-out-alt me-1"></i>${funcData.motivoDesligamento || funcData.tipoDemissao || 'Não informado'}</span>
+                        </div>
+            `;
         }
+        html += `</div></div></div>`;
 
         // 2. Buscar Ocorrências e Atestados
         const ocorrenciasSnap = await db.collection('ocorrencias_saude').where('colaboradorId', '==', funcId).get();
-        html += `<hr class="my-2"><strong>Ocorrências / Atestados (Saúde):</strong> `;
+        html += `
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title text-warning"><i class="fas fa-notes-medical me-2"></i>Ocorrências e Atestados Médicos</h6>
+        `;
         if (!ocorrenciasSnap.empty) {
-            html += `${ocorrenciasSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            html += `<span class="badge bg-warning text-dark mb-2">${ocorrenciasSnap.size} registro(s)</span><ul class="list-group list-group-flush small">`;
             ocorrenciasSnap.docs.forEach(doc => {
                 const oc = doc.data();
-                html += `<li><small>${oc.data ? new Date(oc.data.seconds * 1000).toLocaleDateString() : 'Data não info.'} - ${oc.tipo || 'Sem tipo'} (${oc.descricao || 'Sem motivo'})</small></li>`;
+                html += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fas fa-caret-right text-muted me-2"></i>${oc.data ? new Date(oc.data.seconds * 1000).toLocaleDateString() : 'Data não informada'} - <strong>${oc.tipo || 'Sem tipo'}</strong> <span class="text-muted">(${oc.descricao || 'Sem motivo'})</span></li>`;
             });
             html += `</ul>`;
         } else {
-            html += `<span class="text-success">Nenhum atestado/ocorrência.</span><br>`;
+            html += `<div class="text-success small fw-medium"><i class="fas fa-check-circle me-1"></i>Nenhum atestado ou ocorrência médica.</div>`;
         }
+        html += `</div></div>`;
 
         // Buscar Histórico de Faltas
         const faltasSnap = await db.collection('faltas').where('funcionarioId', '==', funcId).get();
-        html += `<hr class="my-2"><strong>Histórico de Faltas:</strong> `;
+        html += `
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title text-danger"><i class="fas fa-user-clock me-2"></i>Histórico de Faltas</h6>
+        `;
         if (!faltasSnap.empty) {
-            html += `${faltasSnap.size} falta(s) registrada(s).<br><ul class="mb-1 pl-3">`;
+            html += `<span class="badge bg-danger mb-2">${faltasSnap.size} falta(s)</span><ul class="list-group list-group-flush small">`;
             faltasSnap.docs.forEach(doc => {
                 const f = doc.data();
-                const dataFalta = f.data && f.data.seconds ? new Date(f.data.seconds * 1000).toLocaleDateString() : (f.data ? new Date(f.data).toLocaleDateString() : 'Data não info.');
-                html += `<li><small>${dataFalta} - ${f.justificada ? 'Justificada' : 'Injustificada'}</small></li>`;
+                const dataFalta = f.data && f.data.seconds ? new Date(f.data.seconds * 1000).toLocaleDateString() : (f.data ? new Date(f.data).toLocaleDateString() : 'Data não informada');
+                html += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fas fa-caret-right text-muted me-2"></i>${dataFalta} - <span class="${f.justificada ? 'text-warning' : 'text-danger fw-bold'}">${f.justificada ? 'Justificada' : 'Injustificada'}</span></li>`;
             });
             html += `</ul>`;
         } else {
-            html += `<span class="text-success">Nenhuma falta registrada.</span><br>`;
+            html += `<div class="text-success small fw-medium"><i class="fas fa-check-circle me-1"></i>Nenhuma falta registrada.</div>`;
         }
+        html += `</div></div>`;
 
         // Buscar Histórico Disciplinar
         const disciplinarSnap = await db.collection('registros_disciplinares').where('funcionarioId', '==', funcId).get();
-        html += `<hr class="my-2"><strong class="text-danger">Histórico Disciplinar:</strong> `;
+        html += `
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title text-danger"><i class="fas fa-gavel me-2"></i>Histórico Disciplinar</h6>
+        `;
         if (!disciplinarSnap.empty) {
-            html += `${disciplinarSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            html += `<span class="badge bg-danger mb-2">${disciplinarSnap.size} registro(s)</span><ul class="list-group list-group-flush small">`;
             disciplinarSnap.docs.forEach(doc => {
                 const d = doc.data();
-                const dataOcorrencia = d.dataOcorrencia && d.dataOcorrencia.seconds ? new Date(d.dataOcorrencia.seconds * 1000).toLocaleDateString() : (d.dataOcorrencia ? new Date(d.dataOcorrencia).toLocaleDateString() : 'Data não info.');
-                html += `<li><small class="text-danger">${dataOcorrencia} - ${d.classificacao || 'Advertência'} / ${d.medidaAplicada || 'N/A'}: ${d.descricao || 'Sem motivo registrado'}</small></li>`;
+                const dataOcorrencia = d.dataOcorrencia && d.dataOcorrencia.seconds ? new Date(d.dataOcorrencia.seconds * 1000).toLocaleDateString() : (d.dataOcorrencia ? new Date(d.dataOcorrencia).toLocaleDateString() : 'Data não informada');
+                html += `<li class="list-group-item px-0 py-1 bg-transparent border-0"><i class="fas fa-caret-right text-muted me-2"></i>${dataOcorrencia} - <strong>${d.classificacao || 'Advertência'}</strong> / ${d.medidaAplicada || 'N/A'}: <span class="text-muted">${d.descricao || 'Sem motivo registrado'}</span></li>`;
             });
             html += `</ul>`;
         } else {
-            html += `<span class="text-success">Nenhuma ocorrência disciplinar.</span><br>`;
+            html += `<div class="text-success small fw-medium"><i class="fas fa-check-circle me-1"></i>Nenhuma ocorrência disciplinar.</div>`;
         }
+        html += `</div></div>`;
 
         // 3. Buscar Entrevista Demissional
         const entrevistasSnap = await db.collection('entrevistas_demissionais').where('funcionarioId', '==', funcId).get();
         if (!entrevistasSnap.empty) {
             const ent = entrevistasSnap.docs[0].data();
-            html += `<hr class="my-2"><strong>Entrevista Demissional:</strong><br>`;
-            html += `<small><b>Motivo Alegado pelo Funcionário:</b> ${ent.motivoDesligamento || '-'}<br>`;
-            html += `<b>Recomendaria a empresa?</b> ${ent.recomendariaEmpresa === 'sim' ? 'Sim' : 'Não'}<br>`;
-            html += `<b>Interesse em retornar?</b> ${ent.interesseRetornar === 'sim' ? 'Sim' : 'Não'}<br>`;
-            if (ent.pontosPositivos) html += `<b>Pontos Positivos:</b> ${ent.pontosPositivos}<br>`;
-            if (ent.principaisDesafios) html += `<b>Desafios:</b> ${ent.principaisDesafios}</small><br>`;
+            html += `
+            <div class="card shadow-sm border-0 rounded-3 mb-3 bg-light">
+                <div class="card-body">
+                    <h6 class="card-title text-secondary"><i class="fas fa-comments me-2"></i>Entrevista Demissional</h6>
+                    <div class="small">
+                        <b>Motivo Alegado:</b> ${ent.motivoDesligamento || '-'}<br>
+                        <b>Recomendaria a empresa?</b> ${ent.recomendariaEmpresa === 'sim' ? '<span class="text-success fw-bold">Sim</span>' : '<span class="text-danger fw-bold">Não</span>'}<br>
+                        <b>Interesse em retornar?</b> ${ent.interesseRetornar === 'sim' ? '<span class="text-success fw-bold">Sim</span>' : '<span class="text-danger fw-bold">Não</span>'}<br>
+            `;
+            if (ent.pontosPositivos) html += `<b>Pontos Positivos:</b> <span class="text-muted">${ent.pontosPositivos}</span><br>`;
+            if (ent.principaisDesafios) html += `<b>Desafios:</b> <span class="text-muted">${ent.principaisDesafios}</span><br>`;
+            html += `</div></div></div>`;
         }
 
         // 4. Buscar Gestão de Sumidos (Abandono)
         const sumidosSnap = await db.collection('casos_sumidos').where('funcionarioId', '==', funcId).get();
-        html += `<hr class="my-2"><strong>Gestão de Sumidos (Abandono de Emprego):</strong> `;
+        html += `
+            <div class="card shadow-sm border-0 rounded-3 mb-3">
+                <div class="card-body">
+                    <h6 class="card-title text-danger"><i class="fas fa-user-ninja me-2"></i>Abandono de Emprego (Gestão de Sumidos)</h6>
+        `;
         if (!sumidosSnap.empty) {
-            html += `${sumidosSnap.size} registro(s) encontrado(s).<br><ul class="mb-1 pl-3">`;
+            html += `<span class="badge bg-danger mb-2">${sumidosSnap.size} registro(s)</span><ul class="list-group list-group-flush small">`;
             sumidosSnap.docs.forEach(doc => {
                 const s = doc.data();
                 const dataUltimoPonto = s.dataUltimoPonto && s.dataUltimoPonto.seconds ? new Date(s.dataUltimoPonto.seconds * 1000) : (s.dataUltimoPonto ? new Date(s.dataUltimoPonto) : null);
-                let detalhes = `Último ponto: ${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString() : 'Desconhecida'} - Status: ${s.status}`;
+                let detalhes = `Último ponto: <strong>${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString() : 'Desconhecida'}</strong> - Status: <span class="badge bg-secondary">${s.status}</span>`;
                 
-                // Calcula os dias sumidos se houver data de rescisão
                 const dataRescisaoRaw = funcData.dataDesligamento || funcData.dataDemissao;
                 if (dataUltimoPonto && dataRescisaoRaw) {
                     const dataRescisao = dataRescisaoRaw.seconds ? new Date(dataRescisaoRaw.seconds * 1000) : new Date(dataRescisaoRaw);
                     const diffTime = Math.abs(dataRescisao - dataUltimoPonto);
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    detalhes += `<br><span class="text-danger">-> ${diffDays} dia(s) sumido até a rescisão.</span>`;
+                    detalhes += `<div class="text-danger mt-1"><i class="fas fa-exclamation-circle me-1"></i>${diffDays} dia(s) sumido até a rescisão.</div>`;
                 }
-
-                html += `<li><small>${detalhes}</small></li>`;
+                html += `<li class="list-group-item px-0 py-1 bg-transparent border-0">${detalhes}</li>`;
             });
             html += `</ul>`;
         } else {
-            html += `<span class="text-success">Nenhum registro de abandono.</span><br>`;
+            html += `<div class="text-success small fw-medium"><i class="fas fa-check-circle me-1"></i>Nenhum registro de abandono.</div>`;
         }
+        html += `</div></div>`;
 
         // Alertas visuais
         if (funcData.status === 'Ativo') {
-            html = `<div class="alert alert-danger mb-0"><strong>Atenção:</strong> Este CPF pertence a um colaborador ATUALMENTE ATIVO na empresa.</div>` + html;
+            html = `<div class="alert alert-danger shadow-sm border-0"><i class="fas fa-exclamation-triangle me-2"></i><strong>Atenção:</strong> Este CPF pertence a um colaborador ATUALMENTE ATIVO na empresa.</div>` + html;
         }
 
         areaHistorico.style.display = 'block';
@@ -796,7 +943,7 @@ async function consultarHistoricoInterno(cpfFomatado) {
 }
 
 // -----------------------------------------------------
-// FUNÇÕES DO MODAL DE DOCUMENTOS DO ESCAVADOR (PDF)
+// FUNÇÃ•ES DO MODAL DE DOCUMENTOS DO ESCAVADOR (PDF)
 // -----------------------------------------------------
 
 window.abrirDocumentosEscavador = async function(numeroCnj) {
@@ -1378,7 +1525,7 @@ async function calcularMatchMBTI(candidatoMBTI) {
 }
 
 /* =============================================
-   A��ES DO KANBAN CARD
+   AÇÕES DO KANBAN CARD
    ============================================= */
 
 async function avancarFaseCandidato(event, id, faseAtual) {
@@ -1389,15 +1536,15 @@ async function avancarFaseCandidato(event, id, faseAtual) {
         let proximaFase = fases[idx + 1];
         try {
             await db.collection('candidatos').doc(id).update({ faseAtual: proximaFase });
-            mostrarMensagem('Candidato avan�ado com sucesso!');
+            mostrarMensagem('Candidato avançado com sucesso!');
         } catch(e) {
             console.error(e);
-            mostrarMensagem('Erro ao avan�ar candidato.', 'error');
+            mostrarMensagem('Erro ao avançar candidato.', 'error');
         }
     } else if (idx === 3) {
-        mostrarMensagem('Candidato j� est� na �ltima fase (Aprovado)!', 'warning');
+        mostrarMensagem('Candidato já está na última fase (Aprovado)!', 'warning');
     } else {
-        mostrarMensagem('Candidato est� no banco de talentos. Mova manualmente.', 'warning');
+        mostrarMensagem('Candidato está no banco de talentos. Mova manualmente.', 'warning');
     }
 }
 
@@ -1419,7 +1566,7 @@ async function excluirCandidato(event, id) {
     if(confirm('Tem certeza que deseja excluir este candidato permanentemente?')) {
         try {
             await db.collection('candidatos').doc(id).delete();
-            mostrarMensagem('Candidato exclu�do com sucesso.');
+            mostrarMensagem('Candidato excluído com sucesso.');
         } catch(e) {
             console.error(e);
             mostrarMensagem('Erro ao excluir candidato.', 'error');
