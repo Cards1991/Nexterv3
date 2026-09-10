@@ -434,14 +434,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
     if (!funcionarioEncontradoInternamente) {
         try {
             mostrarMensagem('Buscando dados na Receita Federal...', 'info');
-            
-            // Tentativa via Escavador API de Receita Federal
-            if (typeof window.frontendEscavadorReceitaSearch === 'function') {
-                const resEscavador = await window.frontendEscavadorReceitaSearch(cpf);
-                if (resEscavador.status === 'SUCCESS' && resEscavador.data) {
-                    inputNome.value = resEscavador.data.nome_pf || resEscavador.data.nome || '';
-                }
-            } else if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
+            if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
                 // Tentativa via Hub Desenvolvedor
                 const urlHub = `https://api.hubdesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`;
                 const resHub = await fetch(urlHub);
@@ -452,7 +445,8 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                     }
                 }
             } else {
-                console.warn('Nenhum token configurado para busca na Receita Federal.');
+                console.warn('Nenhum token configurado para busca na Receita Federal (Hub Desenvolvedor).');
+                mostrarMensagem('Configure o token do Hub Desenvolvedor no arquivo recrutamento.js para buscar o nome automaticamente.', 'warning');
             }
         } catch (error) {
             console.error("Erro busca Receita Federal:", error);
