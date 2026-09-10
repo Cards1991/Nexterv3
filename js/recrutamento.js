@@ -652,7 +652,7 @@ window.consultarEscavadorAPI = async function(modeToUse) {
                     </div>
                 </div>
                 
-                <div class="alert alert-info small py-2"><i class="fas fa-info-circle"></i> <strong>Estratégia:</strong> Pesquisa ampliada realizada utilizando documento, nome e critérios de correspondência (${data.strategiesExecuted.join(', ')}).</div>
+                <div class="alert alert-info small py-2"><i class="fas fa-info-circle"></i> <strong>Estratégia:</strong> Pesquisa ampliada realizada utilizando documento, nome e critérios de correspondência (${(data.strategiesExecuted || []).join(', ')}).</div>
             `;
 
             if (sum.homonyms > 0 || sum.possible > 0) {
