@@ -37,7 +37,7 @@ async function carregarSetoresVaga() {
     try {
         const snapshot = await db.collection('setores').get();
         const select = document.getElementById('vagaSetor');
-        if(!select) return;
+        if (!select) return;
         select.innerHTML = '<option value="">Selecione...</option>';
         snapshot.forEach(doc => {
             const setor = doc.data();
@@ -54,20 +54,20 @@ async function carregarVagas() {
         vagasAtivas = [];
         const filtro = document.getElementById('filtro-vaga-kanban');
         const selectModal = document.getElementById('candidatoVagaId');
-        
-        if(filtro) filtro.innerHTML = '<option value="">Todas as Vagas</option>';
-        if(selectModal) selectModal.innerHTML = '<option value="">Selecione a vaga...</option>';
+
+        if (filtro) filtro.innerHTML = '<option value="">Todas as Vagas</option>';
+        if (selectModal) selectModal.innerHTML = '<option value="">Selecione a vaga...</option>';
 
         snapshot.forEach(doc => {
             const vaga = { id: doc.id, ...doc.data() };
             vagasAtivas.push(vaga);
-            
+
             if (vaga.status !== 'Fechada') {
-                if(filtro) filtro.innerHTML += `<option value="${vaga.id}">${vaga.titulo} (${vaga.local})</option>`;
-                if(selectModal) selectModal.innerHTML += `<option value="${vaga.id}">${vaga.titulo}</option>`;
+                if (filtro) filtro.innerHTML += `<option value="${vaga.id}">${vaga.titulo} (${vaga.local})</option>`;
+                if (selectModal) selectModal.innerHTML += `<option value="${vaga.id}">${vaga.titulo}</option>`;
             }
         });
-        
+
         if (vagasAtivas.length > 0) {
             carregarKanbanCandidatos();
         }
@@ -78,7 +78,7 @@ async function carregarVagas() {
 
 function carregarKanbanCandidatos() {
     const vagaFiltro = document.getElementById('filtro-vaga-kanban')?.value;
-    
+
     if (unsubscribeCandidatos) {
         unsubscribeCandidatos();
     }
@@ -105,31 +105,31 @@ function renderizarKanban() {
     colunas.forEach(col => {
         const div = document.getElementById(`cards-${col}`);
         const count = document.getElementById(`count-${col}`);
-        if(div) div.innerHTML = '';
-        if(count) count.innerText = '0';
+        if (div) div.innerHTML = '';
+        if (count) count.innerText = '0';
     });
 
     let contadores = { triagem: 0, entrevista: 0, avaliacao: 0, aprovado: 0, banco: 0 };
 
     candidatosAtuais.forEach(cand => {
         if (busca && !cand.nome.toLowerCase().includes(busca) && !cand.cpf.includes(busca)) return;
-        
+
         const fase = cand.faseAtual || 'triagem';
         const div = document.getElementById(`cards-${fase}`);
-        
+
         if (div) {
             const vagaTitle = vagasAtivas.find(v => v.id === cand.vagaId)?.titulo || 'Vaga Excluída';
-            
+
             const card = document.createElement('div');
             card.className = 'kanban-card fade-in';
             card.draggable = true;
             card.id = `cand-${cand.id}`;
             card.dataset.id = cand.id;
-            
+
             // Eventos Drag
             card.addEventListener('dragstart', dragStart);
             card.addEventListener('dragend', dragEnd);
-            
+
             let tagsHtml = '';
             if (cand.mbti) {
                 tagsHtml += `<span class="badge bg-primary mb-1 me-1" title="Perfil MBTI"><i class="fas fa-brain"></i> ${cand.mbti.perfil}</span>`;
@@ -163,7 +163,7 @@ function renderizarKanban() {
                     </div>
                 </div>
             `;
-            
+
             div.appendChild(card);
             contadores[fase]++;
         }
@@ -172,7 +172,7 @@ function renderizarKanban() {
     // Atualiza badges
     colunas.forEach(col => {
         const count = document.getElementById(`count-${col}`);
-        if(count) count.innerText = contadores[col];
+        if (count) count.innerText = contadores[col];
     });
 }
 
@@ -196,13 +196,13 @@ function dragEnd() {
 function allowDrop(e) {
     e.preventDefault();
     const column = e.target.closest('.kanban-column');
-    if(column) column.classList.add('drag-over');
+    if (column) column.classList.add('drag-over');
 }
 
 async function drop(e, faseDestino) {
     e.preventDefault();
     document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('drag-over'));
-    
+
     const candId = e.dataTransfer.getData('text/plain');
     if (!candId || !faseDestino) return;
 
@@ -266,7 +266,7 @@ function abrirModalCandidato() {
     document.getElementById('areaEscavador').style.display = 'none';
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
-    
+
     // MBTI Removido
 
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
@@ -284,9 +284,9 @@ function formatarCPF(input) {
 async function editarCandidato(id) {
     const cand = candidatosAtuais.find(c => c.id === id);
     if (!cand) return;
-    
+
     _checarPermissaoEscavadorCandidato();
-    
+
     document.getElementById('candidatoId').value = cand.id;
     document.getElementById('candidatoVagaId').value = cand.vagaId;
     document.getElementById('candidatoNome').value = cand.nome;
@@ -297,23 +297,23 @@ async function editarCandidato(id) {
     document.getElementById('candidatoEmail').value = cand.email || '';
     document.getElementById('candidatoAnotacoes').value = cand.anotacoes || '';
     document.getElementById('candidatoFaseAtual').value = cand.faseAtual || 'triagem';
-    
+
     const linkDiv = document.getElementById('linkCurriculoAtual');
     if (cand.curriculoUrl) {
         linkDiv.innerHTML = `<a href="${cand.curriculoUrl}" target="_blank"><i class="fas fa-file-pdf"></i> Visualizar Currículo Atual</a>`;
     } else {
         linkDiv.innerHTML = 'Nenhum currículo anexado.';
     }
-    
+
     document.getElementById('areaEscavador').style.display = 'none';
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
-    
+
     // Renderizar Painel de Resumo do Totem
     const painelResumo = document.getElementById('painel-resumo-totem');
     if (cand.escavador_summary) {
         painelResumo.style.display = 'block';
-        
+
         const escavadorDiv = document.getElementById('totem-resumo-escavador');
         if (escavadorDiv) {
             const sum = cand.escavador_summary;
@@ -321,16 +321,16 @@ async function editarCandidato(id) {
                 escavadorDiv.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Nada Consta</span>';
             } else {
                 let badges = `<span class="badge bg-secondary mb-1">Total: ${sum.total}</span> `;
-                if(sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
-                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
-                if(sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
+                if (sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
+                if (sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
+                if (sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
                 escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Ver Detalhes (Buscando Novamente)</small>`;
             }
         }
     } else {
         painelResumo.style.display = 'none';
     }
-    
+
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
 
@@ -404,7 +404,7 @@ async function salvarCandidato() {
    ============================================= */
 
 // Token placeholder (Substitua depois pelo seu token do Hub Desenvolvedor)
-const HUB_DESENVOLVEDOR_TOKEN = 'SEU_TOKEN_AQUI';
+const HUB_DESENVOLVEDOR_TOKEN = '214312030idUEkpCDXn386933872';
 
 async function consultarCandidatoAPI(deepSearchModeParam = null) {
     const cpfRaw = document.getElementById('candidatoCpf').value;
@@ -454,17 +454,17 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
     } else {
         try {
             const funcSnap = await db.collection('funcionarios').where('cpf', '==', cpfRaw).get();
-            if(!funcSnap.empty) {
+            if (!funcSnap.empty) {
                 inputNome.value = funcSnap.docs[0].data().nome;
             }
-        } catch(e) {}
+        } catch (e) { }
     }
 
 
     // Esconder painéis seguintes
     areaInterna.style.display = 'none';
     area.style.display = 'none';
-    
+
     // Injetar botões de ação do Passo 1
     const resultHistorico = document.getElementById('resultadoHistorico');
     if (!funcionarioEncontradoInternamente) {
@@ -475,7 +475,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                 </div>
             </div>`;
     }
-    
+
     resultHistorico.innerHTML += `
         <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
             <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="reprovarCandidatoImediato()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
@@ -486,18 +486,18 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
             </button>
         </div>
     `;
-    
+
     document.getElementById('areaHistoricoColaborador').style.display = 'block';
 }
 
-window.consultarPasso2Juridico = async function() {
+window.consultarPasso2Juridico = async function () {
     const inputNome = document.getElementById('candidatoNome');
     const areaInterna = document.getElementById('areaProcessosInternos');
     const divResultInterno = document.getElementById('resultadoProcessosInternos');
-    
+
     const nomeAtual = inputNome.value.trim().toLowerCase();
     areaInterna.style.display = 'block';
-    
+
     if (!nomeAtual) {
         divResultInterno.innerHTML = `
             <div class="card shadow-sm border-0 rounded-3 bg-light">
@@ -546,7 +546,7 @@ window.consultarPasso2Juridico = async function() {
     `;
 }
 
-window.prepararPasso3Escavador = function() {
+window.prepararPasso3Escavador = function () {
     const area = document.getElementById('areaEscavador');
     const divResult = document.getElementById('resultadoEscavador');
     const exactCheck = document.getElementById('buscaExataCpf');
@@ -572,7 +572,7 @@ window.prepararPasso3Escavador = function() {
     `;
 }
 
-window.reprovarCandidatoImediato = function() {
+window.reprovarCandidatoImediato = function () {
     const statusSelect = document.getElementById('candidatoStatus');
     if (statusSelect) {
         statusSelect.value = 'Reprovado';
@@ -583,7 +583,7 @@ window.reprovarCandidatoImediato = function() {
     }
 }
 
-window.consultarEscavadorAPI = async function(modeToUse) {
+window.consultarEscavadorAPI = async function (modeToUse) {
     const cpfRaw = document.getElementById('candidatoCpf').value;
     const cpf = cpfRaw.replace(/\D/g, '');
     const divResult = document.getElementById('resultadoEscavador');
@@ -605,37 +605,37 @@ window.consultarEscavadorAPI = async function(modeToUse) {
         </div>
     `;
 
-    const s1 = setTimeout(() => { 
-        const e1 = document.getElementById('step-cpf'); 
+    const s1 = setTimeout(() => {
+        const e1 = document.getElementById('step-cpf');
         const e2 = document.getElementById('step-analysis');
-        if(e1) e1.classList.replace('active', 'completed'); 
-        if(e2) e2.classList.add('active'); 
+        if (e1) e1.classList.replace('active', 'completed');
+        if (e2) e2.classList.add('active');
     }, 1500);
 
-    const s2 = setTimeout(() => { 
+    const s2 = setTimeout(() => {
         const e1 = document.getElementById('step-analysis');
         const e2 = document.getElementById('step-name');
-        if(e1) e1.classList.replace('active', 'completed'); 
-        if(e2) e2.classList.add('active'); 
+        if (e1) e1.classList.replace('active', 'completed');
+        if (e2) e2.classList.add('active');
     }, 3000);
 
-    const s3 = setTimeout(() => { 
+    const s3 = setTimeout(() => {
         const e1 = document.getElementById('step-name');
         const e2 = document.getElementById('step-consolidation');
-        if(e1) e1.classList.replace('active', 'completed'); 
-        if(e2) e2.classList.add('active'); 
+        if (e1) e1.classList.replace('active', 'completed');
+        if (e2) e2.classList.add('active');
     }, 5000);
 
     try {
         // Chamada para o Backend
         const data = await window.frontendEscavadorSearch(cpf, inputNome ? inputNome.value : '', modeToUse);
         const response = { ok: data.status === 'SUCCESS_WITH_RESULTS' || data.status === 'SUCCESS_NO_RESULTS' };
-        
+
         let htmlResultados = '';
 
         if (response.ok && data.status === 'SUCCESS_WITH_RESULTS') {
             const sum = data.summary;
-            
+
             // Header
             htmlResultados += `
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -669,11 +669,11 @@ window.consultarEscavadorAPI = async function(modeToUse) {
             `;
 
             if (sum.homonyms > 0 || sum.possible > 0) {
-                 htmlResultados += `<div class="alert alert-warning small py-2"><i class="fas fa-exclamation-triangle"></i> Encontramos processos associados ao mesmo nome, porém o CPF não foi identificado diretamente na fonte judicial. Revise as correspondências sinalizadas.</div>`;
+                htmlResultados += `<div class="alert alert-warning small py-2"><i class="fas fa-exclamation-triangle"></i> Encontramos processos associados ao mesmo nome, porém o CPF não foi identificado diretamente na fonte judicial. Revise as correspondências sinalizadas.</div>`;
             }
 
             htmlResultados += `<div class="process-list mt-3">`;
-            
+
             data.processes.forEach(proc => {
                 let badgeClass = 'homonym';
                 if (proc.classificacao === 'CONFIRMADO') badgeClass = 'confirmed';
@@ -737,26 +737,26 @@ window.consultarEscavadorAPI = async function(modeToUse) {
         }
 
         divResult.innerHTML = htmlResultados;
-        
+
     } catch (error) {
         console.error('Erro consulta processos (Network):', error);
         divResult.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> Consulta temporariamente indisponível. Erro de conexão com o servidor.</div>`;
     }
 }
 
-window.revisarCorrespondencia = async function(personId, numeroCnj, decision) {
-    if(!personId || personId === 'undefined') {
+window.revisarCorrespondencia = async function (personId, numeroCnj, decision) {
+    if (!personId || personId === 'undefined') {
         mostrarMensagem('Salve o candidato antes de revisar a correspondência.', 'warning');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/legal/review-match', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ personId, numeroCnj, decision, reviewedBy: 'Usuario' })
         });
-        
+
         if (response.ok) {
             mostrarMensagem('Revisão salva com sucesso!', 'success');
             // Opcional: Atualizar UI via JS ou re-pesquisar
@@ -775,7 +775,7 @@ window.revisarCorrespondencia = async function(personId, numeroCnj, decision) {
 async function consultarHistoricoInterno(cpfFomatado) {
     const areaHistorico = document.getElementById('areaHistoricoColaborador');
     const resultHistorico = document.getElementById('resultadoHistorico');
-    
+
     // Pegar apenas números do CPF pesquisado
     const searchCpf = cpfFomatado.replace(/\D/g, '');
 
@@ -783,7 +783,7 @@ async function consultarHistoricoInterno(cpfFomatado) {
         // 1. Buscar o funcionário (traz todos e filtra no JS para garantir match de CPF independente de máscara no BD)
         const allFuncsSnap = await db.collection('funcionarios').get();
         let funcDoc = null;
-        
+
         for (let doc of allFuncsSnap.docs) {
             const data = doc.data();
             if (data.cpf && data.cpf.replace(/\D/g, '') === searchCpf) {
@@ -791,12 +791,12 @@ async function consultarHistoricoInterno(cpfFomatado) {
                 break;
             }
         }
-        
+
         if (!funcDoc) {
             areaHistorico.style.display = 'none';
             return false; // Não encontrou nenhum colaborador com esse CPF
         }
-        
+
         const funcData = funcDoc.data();
         const funcId = funcDoc.id;
 
@@ -917,7 +917,7 @@ async function consultarHistoricoInterno(cpfFomatado) {
                 const s = doc.data();
                 const dataUltimoPonto = s.dataUltimoPonto && s.dataUltimoPonto.seconds ? new Date(s.dataUltimoPonto.seconds * 1000) : (s.dataUltimoPonto ? new Date(s.dataUltimoPonto) : null);
                 let detalhes = `Último ponto: <strong>${dataUltimoPonto ? dataUltimoPonto.toLocaleDateString() : 'Desconhecida'}</strong> - Status: <span class="badge bg-secondary">${s.status}</span>`;
-                
+
                 const dataRescisaoRaw = funcData.dataDesligamento || funcData.dataDemissao;
                 if (dataUltimoPonto && dataRescisaoRaw) {
                     const dataRescisao = dataRescisaoRaw.seconds ? new Date(dataRescisaoRaw.seconds * 1000) : new Date(dataRescisaoRaw);
@@ -953,7 +953,7 @@ async function consultarHistoricoInterno(cpfFomatado) {
 // FUNÇÃ•ES DO MODAL DE DOCUMENTOS DO ESCAVADOR (PDF)
 // -----------------------------------------------------
 
-window.abrirDocumentosEscavador = async function(numeroCnj) {
+window.abrirDocumentosEscavador = async function (numeroCnj) {
     if (!escavadorToken) {
         alert("Token do Escavador não encontrado.");
         return;
@@ -964,12 +964,12 @@ window.abrirDocumentosEscavador = async function(numeroCnj) {
     const listaContainer = document.getElementById('listaDocumentosContainer');
     const pdfFrame = document.getElementById('escavadorPdfFrame');
     const overlay = document.getElementById('pdfViewerOverlay');
-    
+
     listaContainer.innerHTML = '<div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin fa-2x mb-2"></i><br>Buscando documentos públicos...</div>';
     pdfFrame.style.display = 'none';
     pdfFrame.src = '';
     overlay.style.display = 'flex';
-    
+
     // Mostra o modal (precisa garantir que foi carregado pelo view-loader)
     const modalEl = document.getElementById('modalDocumentosEscavador');
     if (!modalEl) {
@@ -985,16 +985,16 @@ window.abrirDocumentosEscavador = async function(numeroCnj) {
         });
 
         if (!response.ok) {
-            if(response.status === 404) {
-                 listaContainer.innerHTML = '<div class="alert alert-warning m-2">Nenhum documento público encontrado para este processo.</div>';
-                 return;
+            if (response.status === 404) {
+                listaContainer.innerHTML = '<div class="alert alert-warning m-2">Nenhum documento público encontrado para este processo.</div>';
+                return;
             }
             throw new Error(`Erro API Escavador: ${response.status}`);
         }
 
         const data = await response.json();
         const itens = data.items || [];
-        
+
         if (itens.length === 0) {
             listaContainer.innerHTML = '<div class="alert alert-warning m-2">Nenhum documento público disponível nesta rota para este processo.</div>';
             return;
@@ -1022,9 +1022,9 @@ window.abrirDocumentosEscavador = async function(numeroCnj) {
     }
 };
 
-window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
+window.carregarPDFEscavador = async function (event, numeroCnj, docId) {
     event.preventDefault();
-    
+
     // Atualiza UI da lista para mostrar o selecionado
     const links = document.getElementById('listaDocumentosContainer').querySelectorAll('a.list-group-item');
     links.forEach(el => el.classList.remove('active', 'bg-light'));
@@ -1032,7 +1032,7 @@ window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
 
     const pdfFrame = document.getElementById('escavadorPdfFrame');
     const overlay = document.getElementById('pdfViewerOverlay');
-    
+
     // Mostra loading no overlay
     overlay.innerHTML = '<i class="fas fa-spinner fa-spin fa-3x mb-3 text-secondary"></i><h5>Baixando e decodificando PDF...</h5>';
     overlay.style.display = 'flex';
@@ -1044,27 +1044,27 @@ window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
         });
 
         if (!response.ok) throw new Error(`Erro API ao baixar documento: ${response.status}`);
-        
+
         // A API de download do Escavador geralmente retorna os bytes do PDF
         const blob = await response.blob();
-        
+
         // Verifica se realmente é um PDF ou JSON (erro mascarado)
         if (blob.type.includes("json")) {
-             const text = await blob.text();
-             const json = JSON.parse(text);
-             throw new Error(json.message || "Erro desconhecido da API");
+            const text = await blob.text();
+            const json = JSON.parse(text);
+            throw new Error(json.message || "Erro desconhecido da API");
         }
-        
+
         const blobUrl = URL.createObjectURL(blob);
         pdfFrame.src = blobUrl;
-        
+
         // Esconde o overlay e mostra o iframe
-        pdfFrame.onload = function() {
+        pdfFrame.onload = function () {
             overlay.style.display = 'none';
             pdfFrame.style.display = 'block';
         };
 
-    } catch(error) {
+    } catch (error) {
         console.error("Erro no PDF:", error);
         overlay.innerHTML = `<i class="fas fa-exclamation-triangle fa-3x mb-3 text-warning"></i><h5 class="text-white">Erro ao visualizar PDF</h5><p class="small text-white-50">${error.message}</p>`;
     }
@@ -1073,7 +1073,7 @@ window.carregarPDFEscavador = async function(event, numeroCnj, docId) {
 /* =============================================
    IMPRESSÃO DA FICHA DO CANDIDATO
    ============================================= */
-window.imprimirFichaCandidato = function() {
+window.imprimirFichaCandidato = function () {
     const nome = document.getElementById('candidatoNome').value || 'Não informado';
     let cpf = document.getElementById('candidatoCpf').value || 'Não informado';
     const telefone = document.getElementById('candidatoTelefone').value || 'Não informado';
@@ -1081,7 +1081,7 @@ window.imprimirFichaCandidato = function() {
     const vagaSelect = document.getElementById('candidatoVagaId');
     const vaga = vagaSelect.options[vagaSelect.selectedIndex]?.text || 'Não informada';
     const anotacoes = document.getElementById('candidatoAnotacoes').value || 'Sem anotações.';
-    
+
     // Fallbacks if elements are hidden/empty before fetching
     const elHistInterno = document.getElementById('resultadoHistorico');
     const elEscavador = document.getElementById('resultadoEscavador');
@@ -1396,20 +1396,20 @@ window.imprimirFichaCandidato = function() {
 document.body.addEventListener('change', (e) => {
     if (e.target && e.target.id === 'candidatoVagaId') {
         const id = document.getElementById('candidatoId').value;
-        if(id) carregarMBTICandidato(id);
+        if (id) carregarMBTICandidato(id);
     }
 });
 
 async function carregarMBTICandidato(candidatoId) {
     const container = document.getElementById('candidato-mbti-resultado');
-    if(!container) return;
-    
+    if (!container) return;
+
     let candidatoMBTI = null;
-    
+
     try {
         const doc = await db.collection('candidatos').doc(candidatoId).get();
         const data = doc.data();
-        if(data && data.mbti) {
+        if (data && data.mbti) {
             candidatoMBTI = data.mbti;
             container.innerHTML = `
                 <div class="d-flex flex-column">
@@ -1424,25 +1424,25 @@ async function carregarMBTICandidato(candidatoId) {
         } else {
             container.innerHTML = `<span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>`;
         }
-        
+
         await calcularMatchMBTI(candidatoMBTI);
-    } catch(e) {
+    } catch (e) {
         console.error("Erro ao carregar MBTI", e);
     }
 }
 
 function iniciarMBTICandidato() {
     const id = document.getElementById('candidatoId').value;
-    if(!id) {
-        if(typeof mostrarMensagem === 'function') {
+    if (!id) {
+        if (typeof mostrarMensagem === 'function') {
             mostrarMensagem('Salve o candidato primeiro para gerar a ficha, depois aplique o teste.', 'warning');
         } else {
             alert('Salve o candidato primeiro para gerar a ficha, depois aplique o teste.');
         }
         return;
     }
-    
-    if(typeof abrirModalMBTI === 'function') {
+
+    if (typeof abrirModalMBTI === 'function') {
         abrirModalMBTI(id, 'candidato');
     } else {
         console.error('Função abrirModalMBTI não encontrada.');
@@ -1452,8 +1452,8 @@ function iniciarMBTICandidato() {
 async function calcularMatchMBTI(candidatoMBTI) {
     const matchContainer = document.getElementById('gerente-mbti-resultado');
     const btnAnalise = document.getElementById('btnAnalisarCompatibilidade');
-    
-    if(candidatoMBTI) {
+
+    if (candidatoMBTI) {
         btnAnalise.style.display = 'block';
         window.currentCandidatoMBTI = candidatoMBTI;
         window.currentCandidatoNome = document.getElementById('candidatoNome').value || 'Candidato';
@@ -1467,9 +1467,9 @@ async function calcularMatchMBTI(candidatoMBTI) {
 let cachedGestores = null;
 
 async function abrirRankingMBTI() {
-    if(!window.currentCandidatoMBTI) return;
+    if (!window.currentCandidatoMBTI) return;
     const candType = window.currentCandidatoMBTI.tipo || window.currentCandidatoMBTI.perfil;
-    
+
     document.getElementById('mbtiRankCandidatoNome').textContent = window.currentCandidatoNome;
     document.getElementById('mbtiRankCandidatoPerfil').textContent = candType;
     document.getElementById('mbtiRankDetalhes').style.display = 'none';
@@ -1480,20 +1480,20 @@ async function abrirRankingMBTI() {
     modal.show();
 
     try {
-        if(!cachedGestores) {
+        if (!cachedGestores) {
             const funcs = await db.collection('funcionarios').get();
             cachedGestores = [];
             funcs.forEach(doc => {
                 const data = doc.data();
-                if(data.mbti && (data.cargo && (data.cargo.toLowerCase().includes('gerente') || data.cargo.toLowerCase().includes('coordenador') || data.cargo.toLowerCase().includes('lider')))) {
+                if (data.mbti && (data.cargo && (data.cargo.toLowerCase().includes('gerente') || data.cargo.toLowerCase().includes('coordenador') || data.cargo.toLowerCase().includes('lider')))) {
                     cachedGestores.push({ id: doc.id, nome: data.nome, mbti: data.mbti.tipo || data.mbti.perfil });
-                } else if(data.mbti && data.isAdmin) {
+                } else if (data.mbti && data.isAdmin) {
                     cachedGestores.push({ id: doc.id, nome: data.nome, mbti: data.mbti.tipo || data.mbti.perfil });
                 }
             });
         }
 
-        if(cachedGestores.length === 0) {
+        if (cachedGestores.length === 0) {
             document.getElementById('mbtiRankingList').innerHTML = '<div class="alert alert-warning m-3">Nenhum gestor com perfil MBTI encontrado no sistema.</div>';
             return;
         }
@@ -1508,10 +1508,10 @@ async function abrirRankingMBTI() {
         let html = '';
         resultados.forEach((res, index) => {
             let medal = '';
-            if(index === 0) medal = '🥇 ';
-            else if(index === 1) medal = '🥈 ';
-            else if(index === 2) medal = '🥉 ';
-            else medal = `${index+1}º `;
+            if (index === 0) medal = '🥇 ';
+            else if (index === 1) medal = '🥈 ';
+            else if (index === 2) medal = '🥉 ';
+            else medal = `${index + 1}º `;
 
             html += `
                 <a href="#" class="list-group-item list-group-item-action py-3" onclick="mostrarDetalheRanking(${index}); return false;">
@@ -1532,16 +1532,16 @@ async function abrirRankingMBTI() {
         window.currentMBTIResultados = resultados;
         document.getElementById('mbtiRankingList').innerHTML = html;
 
-    } catch(e) {
+    } catch (e) {
         console.error("Erro ao buscar ranking", e);
         document.getElementById('mbtiRankingList').innerHTML = '<div class="alert alert-danger m-3">Erro ao analisar compatibilidade.</div>';
     }
 }
 
-window.mostrarDetalheRanking = function(index) {
-    if(!window.currentMBTIResultados) return;
+window.mostrarDetalheRanking = function (index) {
+    if (!window.currentMBTIResultados) return;
     const res = window.currentMBTIResultados[index];
-    if(!res) return;
+    if (!res) return;
 
     document.getElementById('mbtiRankPlaceholder').style.display = 'none';
     document.getElementById('mbtiRankDetalhes').style.display = 'flex';
@@ -1555,7 +1555,7 @@ window.mostrarDetalheRanking = function(index) {
 
     document.getElementById('mbtiValCom').textContent = res.comunicacao;
     document.getElementById('mbtiBarCom').style.width = res.comunicacao + '%';
-    
+
     document.getElementById('mbtiValLid').textContent = res.lideranca;
     document.getElementById('mbtiBarLid').style.width = res.lideranca + '%';
 
@@ -1578,15 +1578,15 @@ window.mostrarDetalheRanking = function(index) {
    ============================================= */
 
 async function avancarFaseCandidato(event, id, faseAtual) {
-    if(event) event.stopPropagation();
+    if (event) event.stopPropagation();
     const fases = ['triagem', 'entrevista', 'avaliacao', 'aprovado', 'banco'];
     let idx = fases.indexOf(faseAtual);
-    if(idx >= 0 && idx < 3) {
+    if (idx >= 0 && idx < 3) {
         let proximaFase = fases[idx + 1];
         try {
             await db.collection('candidatos').doc(id).update({ faseAtual: proximaFase });
             mostrarMensagem('Candidato avançado com sucesso!');
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             mostrarMensagem('Erro ao avançar candidato.', 'error');
         }
@@ -1598,12 +1598,12 @@ async function avancarFaseCandidato(event, id, faseAtual) {
 }
 
 async function reprovarCandidato(event, id) {
-    if(event) event.stopPropagation();
-    if(confirm('Deseja mover este candidato para o Banco de Talentos (Reprovado)?')) {
+    if (event) event.stopPropagation();
+    if (confirm('Deseja mover este candidato para o Banco de Talentos (Reprovado)?')) {
         try {
             await db.collection('candidatos').doc(id).update({ faseAtual: 'banco' });
             mostrarMensagem('Candidato movido para o Banco de Talentos.');
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             mostrarMensagem('Erro ao mover candidato.', 'error');
         }
@@ -1611,12 +1611,12 @@ async function reprovarCandidato(event, id) {
 }
 
 async function excluirCandidato(event, id) {
-    if(event) event.stopPropagation();
-    if(confirm('Tem certeza que deseja excluir este candidato permanentemente?')) {
+    if (event) event.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir este candidato permanentemente?')) {
         try {
             await db.collection('candidatos').doc(id).delete();
             mostrarMensagem('Candidato excluído com sucesso.');
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             mostrarMensagem('Erro ao excluir candidato.', 'error');
         }
