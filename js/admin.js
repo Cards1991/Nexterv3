@@ -124,6 +124,8 @@ async function abrirModalPermissoes(uid) {
     if (permIsMecanicoEl) permIsMecanicoEl.checked = permissoes.isMecanico || false;
     const permIsMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
     if (permIsMecanicoAdminEl) permIsMecanicoAdminEl.checked = permissoes.isMecanicoAdmin || false;
+    const permPermitirEscavadorEl = document.getElementById('perm-permitir-escavador');
+    if (permPermitirEscavadorEl) permPermitirEscavadorEl.checked = permissoes.permitirEscavador || false;
     const permHasIsoAccessEl = document.getElementById('perm-has-iso-access');
     if (permHasIsoAccessEl) permHasIsoAccessEl.checked = permissoes.hasIsoAccess !== false;
 
@@ -253,6 +255,8 @@ async function salvarPermissoes() {
     const isMecanico = permIsMecanicoEl ? permIsMecanicoEl.checked : false;
     const isMecanicoAdminEl = document.getElementById('perm-is-mecanico-admin');
     const isMecanicoAdmin = isMecanicoAdminEl ? isMecanicoAdminEl.checked : false;
+    const permPermitirEscavadorEl = document.getElementById('perm-permitir-escavador');
+    const permitirEscavador = permPermitirEscavadorEl ? permPermitirEscavadorEl.checked : false;
     const hasIsoAccessEl = document.getElementById('perm-has-iso-access');
     const hasIsoAccess = hasIsoAccessEl ? hasIsoAccessEl.checked : false;
     const restricaoSetor = document.getElementById('perm-user-setor').value;
@@ -272,6 +276,7 @@ async function salvarPermissoes() {
                 isAdmin: isAdmin,
                 isMecanico: isMecanico,
                 isMecanicoAdmin: isMecanicoAdmin,
+                permitirEscavador: permitirEscavador,
                 hasIsoAccess: hasIsoAccess,
                 secoesPermitidas: secoesPermitidas,
                 restricaoSetor: restricaoSetor || null

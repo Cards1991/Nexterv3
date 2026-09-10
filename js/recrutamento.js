@@ -341,7 +341,7 @@ async function editarCandidato(id) {
 async function _checarPermissaoEscavadorCandidato() {
     const btn = document.getElementById('btn-escavador-candidato');
     if (!btn) return;
-    let permitir = window.currentUserPermissions?.isAdmin;
+    let permitir = window.currentUserPermissions?.isAdmin || window.currentUserPermissions?.permitirEscavador;
     if (!permitir && window.configFluxos) {
         permitir = await window.configFluxos.getConfiguracao('permitirEscavador') === true;
     }
