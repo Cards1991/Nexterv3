@@ -2,33 +2,33 @@
 <div class="modal fade" id="modalCandidato" tabindex="-1">
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="fas fa-user-plus"></i> Ficha do Candidato</h5>
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i> Ficha do Candidato</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body">
-                <form id="formCandidato">
+            <div class="modal-body bg-light">
+                <form id="formCandidato" class="card border-0 shadow-sm p-4">
                     <input type="hidden" id="candidatoId">
                     <input type="hidden" id="candidatoFaseAtual" value="triagem"> <!-- Fase inicial -->
                     
-                    <div class="row g-3">
+                    <div class="row g-4">
                         <div class="col-md-12">
-                            <label class="form-label required">Vaga Pretendida</label>
-                            <select id="candidatoVagaId" class="form-select" required>
+                            <label class="form-label fw-semibold required">Vaga Pretendida</label>
+                            <select id="candidatoVagaId" class="form-select form-select-lg bg-light" required>
                                 <option value="">Selecione a vaga...</option>
                                 <!-- Preenchido dinamicamente -->
                             </select>
                         </div>
-                        <div class="col-12 col-md-6 col-lg-8">
-                            <label class="form-label required">Nome Completo</label>
-                            <input type="text" id="candidatoNome" class="form-control" required>
+                        <div class="col-12 col-md-7 col-lg-7">
+                            <label class="form-label fw-semibold required">Nome Completo</label>
+                            <input type="text" id="candidatoNome" class="form-control form-control-lg" required>
                         </div>
-                        <div class="col-12 col-md-6 col-lg-4">
-                            <label class="form-label required">CPF</label>
-                            <div class="input-group">
-                                <input type="text" id="candidatoCpf" class="form-control" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="formatarCPF(this)" required>
-                                <button type="button" id="btn-escavador-candidato" class="btn btn-outline-secondary" onclick="consultarCandidatoAPI()" title="Buscar Antecedentes no Escavador">
-                                    <i class="fas fa-search"></i>
+                        <div class="col-12 col-md-5 col-lg-5">
+                            <label class="form-label fw-semibold required">CPF</label>
+                            <div class="input-group shadow-sm">
+                                <input type="text" id="candidatoCpf" class="form-control form-control-lg" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="formatarCPF(this)" required>
+                                <button type="button" id="btn-escavador-candidato" class="btn btn-primary px-3 fw-bold" onclick="consultarCandidatoAPI()" title="Buscar Antecedentes" style="z-index: 0;">
+                                    <i class="fas fa-search me-1"></i> Buscar
                                 </button>
                             </div>
                         </div>
@@ -53,16 +53,16 @@
                         </div>
 
                         <div class="col-md-6">
-                            <label class="form-label required">Telefone/WhatsApp</label>
-                            <input type="text" id="candidatoTelefone" class="form-control" required>
+                            <label class="form-label fw-semibold required">Telefone/WhatsApp</label>
+                            <input type="text" id="candidatoTelefone" class="form-control form-control-lg" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">E-mail</label>
-                            <input type="email" id="candidatoEmail" class="form-control">
+                            <label class="form-label fw-semibold">E-mail</label>
+                            <input type="email" id="candidatoEmail" class="form-control form-control-lg">
                         </div>
                         <div class="col-md-12">
-                            <label class="form-label">Anexar Currículo (PDF/DOC)</label>
-                            <input type="file" id="candidatoCurriculo" class="form-control" accept=".pdf,.doc,.docx">
+                            <label class="form-label fw-semibold">Anexar Currículo (PDF/DOC)</label>
+                            <input type="file" id="candidatoCurriculo" class="form-control form-control-lg bg-white" accept=".pdf,.doc,.docx">
                             <small class="text-muted" id="linkCurriculoAtual"></small>
                         </div>
                         
@@ -119,8 +119,8 @@
                         </div>
                         
                         <div class="col-12 mt-3">
-                            <label class="form-label">Anotações / Entrevista</label>
-                            <textarea id="candidatoAnotacoes" class="form-control" rows="4"></textarea>
+                            <label class="form-label fw-semibold">Anotações / Entrevista</label>
+                            <textarea id="candidatoAnotacoes" class="form-control bg-white" rows="4" placeholder="Adicione observações sobre a entrevista..."></textarea>
                         </div>
                     </div>
                 </form>
