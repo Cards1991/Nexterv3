@@ -315,12 +315,75 @@ async function showCollaboratorHistory(funcionarioId) {
         // Armazena no cache
         __all_history_cache[funcionarioId] = sortedHistory;
         
+        renderDashboard(sortedHistory);
         renderTimeline(sortedHistory);
 
     } catch (error) {
         console.error("Erro ao buscar histórico do colaborador:", error);
         timelineContainer.innerHTML = '<p class="text-center text-danger">Erro ao carregar o histórico.</p>';
     }
+}
+
+/**
+ * Renderiza o dashboard resumo do histórico do colaborador.
+ * @param {Array} history - O array de histórico ordenado.
+ */
+function renderDashboard(history) {
+    const dashboardContainer = document.getElementById('historico-dashboard');
+    if (!dashboardContainer) return;
+
+    if (history.length === 0) {
+        dashboardContainer.classList.add('d-none');
+        return;
+    }
+
+    let atestados = 0, faltas = 0, medidas = 0, ocorrencias = 0;
+    history.forEach(item => {
+        if (item.type === 'Atestado' || item.type === 'Acidente (Atestado)') atestados++;
+        if (item.type === 'Falta') faltas++;
+        if (item.type === 'Medida Disciplinar') medidas++;
+        if (item.type === 'Ocorrência') ocorrencias++;
+    });
+
+    dashboardContainer.innerHTML = `
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm bg-warning bg-opacity-10">
+                <div class="card-body text-center p-3">
+                    <i class="fas fa-file-medical-alt text-warning fa-2x mb-2"></i>
+                    <h4 class="mb-0 text-dark fw-bold">${atestados}</h4>
+                    <span class="small text-muted fw-semibold">Atestados</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm bg-danger bg-opacity-10">
+                <div class="card-body text-center p-3">
+                    <i class="fas fa-calendar-times text-danger fa-2x mb-2"></i>
+                    <h4 class="mb-0 text-dark fw-bold">${faltas}</h4>
+                    <span class="small text-muted fw-semibold">Faltas</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm bg-primary bg-opacity-10">
+                <div class="card-body text-center p-3">
+                    <i class="fas fa-gavel text-primary fa-2x mb-2"></i>
+                    <h4 class="mb-0 text-dark fw-bold">${medidas}</h4>
+                    <span class="small text-muted fw-semibold">Medidas Discipl.</span>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="card border-0 shadow-sm bg-info bg-opacity-10">
+                <div class="card-body text-center p-3">
+                    <i class="fas fa-exclamation-circle text-info fa-2x mb-2"></i>
+                    <h4 class="mb-0 text-dark fw-bold">${ocorrencias}</h4>
+                    <span class="small text-muted fw-semibold">Ocorrências</span>
+                </div>
+            </div>
+        </div>
+    `;
+    dashboardContainer.classList.remove('d-none');
 }
 
 /**

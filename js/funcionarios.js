@@ -134,7 +134,7 @@ async function carregarFuncionarios() {
         funcionarios = [];
 
         if (funcionariosSnapshot.empty) {
-            tbody.innerHTML = '<tr><td colspan="10" class="text-center">Nenhum funcionário cadastrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-3 d-block opacity-50"></i>Nenhum funcionário cadastrado.</td></tr>';
             return;
         }
 
@@ -219,8 +219,22 @@ async function carregarFuncionarios() {
         const dashFem = document.getElementById('dash-genero-fem');
         if (dashFem) dashFem.innerHTML = `<i class="fas fa-venus me-1"></i>${fem} Fem.`;
 
+        // 🏷️ Terceirizados indicator
+        const tiposTerc = ['PJ', 'Estágio', 'Temporário'];
+        const totalTerc = funcionariosFiltrados.filter(f => tiposTerc.includes(f.tipoContrato)).length;
+        const dashTerc = document.getElementById('dash-total-terceirizados');
+        if (dashTerc) dashTerc.innerText = totalTerc.toLocaleString();
+        const dashTercTipos = document.getElementById('dash-terceirizados-tipos');
+        if (dashTercTipos) {
+            const contagens = tiposTerc.map(t => {
+                const n = funcionariosFiltrados.filter(f => f.tipoContrato === t).length;
+                return n > 0 ? `${n} ${t}` : null;
+            }).filter(Boolean);
+            dashTercTipos.textContent = contagens.length > 0 ? contagens.join(' · ') : 'PJ / Estágio / Temp.';
+        }
+
         if (funcionariosFiltrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-3 d-block opacity-50"></i>Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="10" class="text-center py-5 text-muted"><i class="fas fa-inbox fa-2x mb-3 d-block opacity-50"></i>Nenhum funcionário encontrado para os filtros aplicados.</td></tr>';
             return;
         }
 
@@ -249,19 +263,35 @@ async function carregarFuncionarios() {
                 </div>
             </div>`;
 
-            const setorBadge = funcionario.setor ? `<span class="badge bg-light text-secondary border px-2 py-1" style="font-size: 0.75rem;">${funcionario.setor}</span>` : `<span class="text-muted small"><em>Não definido</em></span>`;
-            const cargoLabel = `<div class="fw-medium text-dark" style="font-size: 0.85rem;">${funcionario.cargo || '--'}</div>`;
+            const setorBadge = funcionario.setor
+                ? `<span class="badge bg-light text-secondary border px-2 py-1" style="font-size:0.75rem;">${funcionario.setor}</span>`
+                : `<span class="text-muted small"><em>Não definido</em></span>`;
+            const cargoLabel = `<div class="fw-medium text-dark" style="font-size:0.85rem;">${funcionario.cargo || '--'}</div>`;
 
-            row.innerHTML = `  
-                <td class="ps-3">${avatar}</td>
-                <td><code class="text-secondary" style="font-size: 0.8rem;">${funcionario.cpf || '--'}</code></td>
-                <td><span class="fw-semibold text-secondary" style="font-size: 0.85rem;">${nomeEmpresa}</span></td>
+            // ── Tipo / Terceirizado badge ──────────────────────────
+            const tipoContrato = funcionario.tipoContrato || 'CLT';
+            let tipoBadge;
+            if (tipoContrato === 'PJ') {
+                tipoBadge = `<span class="badge-tipo-pj"><i class="fas fa-user-tie"></i> PJ</span>`;
+            } else if (tipoContrato === 'Estágio') {
+                tipoBadge = `<span class="badge-tipo-estagio"><i class="fas fa-graduation-cap"></i> Estágio</span>`;
+            } else if (tipoContrato === 'Temporário') {
+                tipoBadge = `<span class="badge-tipo-temp"><i class="fas fa-clock"></i> Temporário</span>`;
+            } else {
+                tipoBadge = `<span class="badge-tipo-clt"><i class="fas fa-id-card"></i> CLT</span>`;
+            }
+
+            row.innerHTML = `
+                <td class="ps-4">${avatar}</td>
+                <td><code class="text-secondary" style="font-size:0.8rem;">${funcionario.cpf || '--'}</code></td>
+                <td><span class="fw-semibold text-secondary" style="font-size:0.85rem;">${nomeEmpresa}</span></td>
                 <td>${setorBadge}</td>
                 <td>${cargoLabel}</td>
-                <td class="fw-semibold text-secondary" style="font-size: 0.85rem;">${idade}</td>
-                <td><small class="text-muted" style="font-size: 0.8rem;">${tempoDeEmpresa}</small></td>
+                <td>${tipoBadge}</td>
+                <td class="fw-semibold text-secondary" style="font-size:0.85rem;">${idade}</td>
+                <td><small class="text-muted" style="font-size:0.8rem;">${tempoDeEmpresa}</small></td>
                 <td><span class="badge-status badge ${statusClass}">${status}</span></td>
-                <td class="pe-3">
+                <td class="pe-4">
                     <div class="d-flex justify-content-end gap-2">
                         <button class="btn btn-sm btn-outline-primary btn-action" onclick="editarFuncionario('${docIdEscaped}')" title="Editar Colaborador">
                             <i class="fas fa-edit"></i>
