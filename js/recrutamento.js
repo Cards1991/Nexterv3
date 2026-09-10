@@ -267,9 +267,7 @@ function abrirModalCandidato() {
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
     
-    // Clear MBTI
-    document.getElementById('candidato-mbti-resultado').innerHTML = '<span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>';
-    document.getElementById('gerente-mbti-resultado').innerHTML = '<span class="text-muted fst-italic small">Selecione uma vaga para carregar o perfil do gestor e calcular a compatibilidade.</span>';
+    // MBTI Removido
 
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
@@ -313,31 +311,21 @@ async function editarCandidato(id) {
     
     // Renderizar Painel de Resumo do Totem
     const painelResumo = document.getElementById('painel-resumo-totem');
-    if (cand.escavador_summary || cand.mbti) {
+    if (cand.escavador_summary) {
         painelResumo.style.display = 'block';
         
-        const mbtiDiv = document.getElementById('totem-resumo-mbti');
-        if (cand.mbti) {
-            mbtiDiv.innerHTML = `<span class="badge bg-primary fs-6 mb-1">${cand.mbti.perfil}</span><br>
-                                 <small class="text-muted">${cand.mbti.titulo}</small>`;
-        } else {
-            mbtiDiv.innerHTML = '<span class="text-muted">Pendente</span>';
-        }
-        
         const escavadorDiv = document.getElementById('totem-resumo-escavador');
-        if (cand.escavador_summary) {
+        if (escavadorDiv) {
             const sum = cand.escavador_summary;
             if (sum.total === 0) {
                 escavadorDiv.innerHTML = '<span class="badge bg-success"><i class="fas fa-check"></i> Nada Consta</span>';
             } else {
                 let badges = `<span class="badge bg-secondary mb-1">Total: ${sum.total}</span> `;
                 if(sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
-                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">HomÃ´nimos: ${sum.homonyms}</span> `;
+                if(sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
                 if(sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
                 escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Ver Detalhes (Buscando Novamente)</small>`;
             }
-        } else {
-            escavadorDiv.innerHTML = '<span class="text-muted">Pendente</span>';
         }
     } else {
         painelResumo.style.display = 'none';
@@ -346,8 +334,8 @@ async function editarCandidato(id) {
     const modal = new bootstrap.Modal(document.getElementById('modalCandidato'));
     modal.show();
 
-    // Carregar MBTI do candidato e Match
-    carregarMBTICandidato(id);
+    // MBTI e Match Comportamental movidos para o módulo de RH
+    // carregarMBTICandidato(id);
 }
 
 async function _checarPermissaoEscavadorCandidato() {

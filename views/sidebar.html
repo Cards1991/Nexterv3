@@ -11,94 +11,59 @@
                     <span>Acesso Restrito</span>
                 </div>
             </div>
+            
             <!-- Painel Inicial -->
             <li class="nav-item">
                 <a class="nav-link" href="#" data-target="dashboard-inicial">
                     <i class="fas fa-home"></i> Painel Inicial
                 </a>
             </li>
-            <!-- Agenda -->
-            <li class="nav-item">
-                <a class="nav-link" href="#" data-target="agenda">
-                    <i class="fas fa-calendar-alt"></i> Agenda
-                </a>
-            </li>
-            <!-- Controle de Reuniões -->
-            <li class="nav-item">
-                <a class="nav-link" href="#" data-target="controle-reunioes">
-                    <i class="fas fa-users-cog"></i> Controle de Reuniões
-                </a>
-            </li>
-            <!-- Módulo Dashboards -->
-            <li class="nav-item" id="menu-analise">
-                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
-                    href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                    <i class="fas fa-chart-pie"></i> Análise
-                </a>
-                <div class="collapse" id="dashboardsSubmenu">
 
+            <!-- Comunicação & Agenda -->
+            <li class="nav-item">
+                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
+                    href="#agendaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-calendar-alt"></i> Comunicação & Agenda
+                </a>
+                <div class="collapse" id="agendaSubmenu">
                     <ul class="nav flex-column">
                         <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="indicadores-direcao"><i
-                                    class="fas fa-tachometer-alt"></i> Indicadores Direção</a>
+                            <a class="nav-link submenu-link" href="#" data-target="agenda"><i class="fas fa-calendar-day"></i> Agenda Pessoal</a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="analise-rescisao">
-                                <i class="fas fa-user-slash"></i> Análise de Rescisões
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="analise-pessoas">
-                                <i class="fas fa-chart-bar"></i> Análise de Pessoas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="analise-atestados">
-                                <i class="fas fa-user-md"></i> Análise de Atestados
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="dashboard-atividades">
-                                <i class="fas fa-tasks"></i> Dashboard de Atividades
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="dashboard-faltas">
-                                <i class="fas fa-calendar-times"></i> Dashboard de Faltas
-                            </a>
-                        </li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="dashboard-manutencao"><i class="fas fa-tools"></i> Dashboard de
-                                Manutenção</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-dashboard"><i
-                                    class="fas fa-truck"></i> Dashboard
-                                Logística</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-dashboard"><i class="fas fa-gavel"></i> Dashboard
-                                Jurídico</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras"><i
-                                    class="fas fa-clock"></i> Dashboard Horas
-                                Extras</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-epi"><i
-                                    class="fas fa-hard-hat"></i> Análise de Consumo de EPI</a>
-                        </li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-lotacao"><i
-                                    class="fas fa-users-cog"></i> Análise de
-                                Lotação</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i
-                                    class="fas fa-coins"></i> Análise de Custos</a>
+                            <a class="nav-link submenu-link" href="#" data-target="controle-reunioes"><i class="fas fa-users-cog"></i> Controle de Reuniões</a>
                         </li>
                     </ul>
                 </div>
             </li>
-            <!-- Módulo Treinamento -->
-            <li class="nav-item">
-                <a class="nav-link d-flex align-items-center justify-content-start gap-2" href="#"
-                    data-target="treinamento" onclick="selecionarTemaTreinamento('')">
-                    <i class="fas fa-graduation-cap"></i> Treinamento
+
+            <!-- Módulo Dashboards -->
+            <li class="nav-item" id="menu-analise">
+                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
+                    href="#dashboardsSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-chart-pie"></i> Análise e Dashboards
                 </a>
+                <div class="collapse" id="dashboardsSubmenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="indicadores-direcao"><i class="fas fa-tachometer-alt"></i> Indicadores Direção</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-rescisao"><i class="fas fa-user-slash"></i> Análise de Rescisões</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-pessoas"><i class="fas fa-chart-bar"></i> Análise de Pessoas</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-atestados"><i class="fas fa-user-md"></i> Análise de Atestados</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dashboard-atividades"><i class="fas fa-tasks"></i> Dashboard de Atividades</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dashboard-faltas"><i class="fas fa-calendar-times"></i> Dashboard de Faltas</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dashboard-manutencao"><i class="fas fa-tools"></i> Dashboard de Manutenção</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-dashboard"><i class="fas fa-truck"></i> Dashboard Logística</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-dashboard"><i class="fas fa-gavel"></i> Dashboard Jurídico</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-extras"><i class="fas fa-clock"></i> Dashboard Horas Extras</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-epi"><i class="fas fa-hard-hat"></i> Análise de Consumo de EPI</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-lotacao"><i class="fas fa-users-cog"></i> Análise de Lotação</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i class="fas fa-coins"></i> Análise de Custos</a></li>
+                    </ul>
+                </div>
             </li>
-            <li class="nav-item"> <!-- MODIFICADO -->
+
+            <!-- Empresas e Setores -->
+            <li class="nav-item"> 
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
                     href="#empresasSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
                     <i class="fas fa-building"></i> Empresas e Setores
@@ -108,21 +73,28 @@
                         <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="empresas">Cadastro de Empresas</a></li>
                         <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="setores">Cadastro de Setores</a></li>
                         <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="funcoes">Cadastro de Funções</a></li>
-                                                <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="setor-macro">Cadastro de Setor Macro</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="setor-macro">Cadastro de Setor Macro</a></li>
                     </ul>
                 </div>
             </li>
-            <!-- Módulo Recursos Humanos (MBTI Equipe) -->
+
+            <!-- Módulo Recursos Humanos (NOVO AGRUPAMENTO) -->
             <li class="nav-item">
-                <a class="nav-link d-flex align-items-center justify-content-start gap-2" href="#" data-target="recursos-humanos">
-                    <i class="fas fa-users-cog"></i> Recursos Humanos
+                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#rhSubmenu"
+                    data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-users"></i> Recursos Humanos
                 </a>
+                <div class="collapse" id="rhSubmenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="recursos-humanos"><i class="fas fa-chart-line me-2"></i> Dashboard RH</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="recrutamento"><i class="fas fa-user-plus me-2"></i> Recrutamento e Seleção</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="mbti-matriz"><i class="fas fa-th text-primary me-2"></i> Matriz MBTI</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="avaliacao-experiencia"><i class="fas fa-user-clock me-2"></i> Avaliação de Experiência</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="treinamento" onclick="selecionarTemaTreinamento('')"><i class="fas fa-graduation-cap me-2"></i> Treinamento e Desenvolv.</a></li>
+                    </ul>
+                </div>
             </li>
-            <li class="nav-item">
-                <a class="nav-link d-flex align-items-center justify-content-start gap-2" href="#" data-target="mbti-matriz">
-                    <i class="fas fa-th text-primary"></i> Matriz MBTI
-                </a>
-            </li>
+
             <!-- Módulo Departamento Pessoal -->
             <li class="nav-item">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#dpSubmenu"
@@ -131,16 +103,9 @@
                 </a>
                 <div class="collapse" id="dpSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="funcionarios">Funcionários</a></li>
-                        <li class="nav-item">
-                             <a class="nav-link submenu-link" href="#" data-target="cadastro-terceirizados">Terceirizados</a>
-                         </li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="recrutamento"><i class="fas fa-user-plus"></i> Recrutamento e Seleção</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="avaliacao-experiencia"><i class="fas fa-user-clock"></i> Avaliação
-                                de Experiência</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="funcionarios">Funcionários</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="cadastro-terceirizados">Terceirizados</a></li>
+                        
                         <!-- Submenu para Demissão -->
                         <li class="nav-item">
                             <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
@@ -150,20 +115,19 @@
                             </a>
                             <div class="collapse" id="demissaoSubmenu">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="demissao">Registrar Demissão</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="painel-demitidos"><i class="fas fa-user-times"></i>
-                                            Painel de Demitidos</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="entrevista-desligamento"><i class="fas fa-comments"></i>
-                                            Entrevista de Desligamento</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="demissao">Registrar Demissão</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="painel-demitidos"><i class="fas fa-user-times"></i> Painel de Demitidos</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="entrevista-desligamento"><i class="fas fa-comments"></i> Entrevista de Desligamento</a></li>
                                 </ul>
                             </div>
                         </li>
-                        <!-- Fim do Submenu para Demissão -->
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="alteracao-funcao">Alteração de Função</a></li>
+                        
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="alteracao-funcao">Alteração de Função</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="transferencia">Transferência</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="movimentacoes">Movimentações</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="historico-colaborador"><i class="fas fa-history"></i> Histórico do Colaborador</a></li>
+                        
+                        <!-- Submenu Cálculos -->
                         <li class="nav-item">
                             <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
                                 href="#dpCalculosSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false"
@@ -172,97 +136,57 @@
                             </a>
                             <div class="collapse" id="dpCalculosSubmenu">
                                 <ul class="nav flex-column">
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="dp-calculos">Folha de Pagamento</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="controle-cestas">Controle de Cestas</a></li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="dp-horas-solicitacao">Solicitação de Horas Extras</a>
-                                    </li>
-                                    <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                            data-target="ponto-pf"><i class="fas fa-fingerprint"></i> Ponto
-                                            P.F.</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-calculos">Folha de Pagamento</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-cestas">Controle de Cestas</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="dp-horas-solicitacao">Solicitação de Horas Extras</a></li>
+                                    <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ponto-pf"><i class="fas fa-fingerprint"></i> Ponto P.F.</a></li>
                                 </ul>
                             </div>
                         </li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="transferencia">Transferência</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="faltas">Faltas
-                                Diárias</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="ponto-eletronico">Ponto Eletrônico</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="controle-disciplinar">Controle Disciplinar</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="historico-colaborador"><i class="fas fa-history"></i> Histórico do
-                                Colaborador</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="gestao-sumidos">Gestão de Sumidos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="movimentacoes">Movimentações</a></li>
-                    </ul>
-                </div>
-            </li>
-            <!-- Módulo Saúde Ocupacional -->
-            <li class="nav-item">
-                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#saudeSubmenu"
-                    data-bs-toggle="collapse" role="button" aria-expanded="false">
-                    <i class="fas fa-heart-pulse"></i> Saúde Ocupacional
-                </a>
-                <div class="collapse" id="saudeSubmenu">
-                    <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="exames-ocupacionais"><i class="fas fa-stethoscope"></i> Exames Ocupacionais</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="afastamentos">Afastamentos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="saude-psicossocial"><i class="fas fa-brain"></i> Gestão
-                                Psicossocial</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="atestados">Atestados</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="cid-manager">Cadastro de CIDs</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque
-                                de EPI</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo
-                                de EPI</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="epi-compras">Solicitações de Compras</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="cadastro-epis"><i class="fas fa-plus-circle"></i> Cadastro de EPIs</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="entrega-epis"><i class="fas fa-shipping-fast"></i> Entrega de EPIs</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ocorrencias"><i
-                                    class="fas fa-exclamation-circle me-2"></i>Ocorrências</a></li>
-                    </ul>
-                </div>
-            </li>
-            <!-- Módulo Segurança do Trabalho (NOVO) -->
-            <li class="nav-item">
-                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
-                    href="#segurancaTrabalhoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
-                    <i class="fas fa-hard-hat"></i> Segurança do Trabalho
-                </a>
-                <div class="collapse" id="segurancaTrabalhoSubmenu">
-                    <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="gestao-cipa">
-                                <i class="fas fa-shield-alt me-2"></i>CIPA
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="brigada-incendio">
-                                <i class="fas fa-fire me-2"></i>Brigada de Incêndio
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="controle-extintores">
-                                <i class="fas fa-fire-extinguisher me-2"></i>Extintores
-                            </a>
-                        </li>
+                        
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="faltas">Faltas Diárias</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ponto-eletronico">Ponto Eletrônico</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-disciplinar">Controle Disciplinar</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="gestao-sumidos">Gestão de Sumidos</a></li>
                     </ul>
                 </div>
             </li>
 
-            <!-- Módulo Controle de Produção (NOVO) -->
+            <!-- Módulo SESMT (Saúde Ocupacional e Segurança) -->
+            <li class="nav-item">
+                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#sesmtSubmenu"
+                    data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-heart-pulse"></i> SESMT
+                </a>
+                <div class="collapse" id="sesmtSubmenu">
+                    <ul class="nav flex-column pb-2">
+                        <!-- Saúde Ocupacional -->
+                        <div class="text-uppercase text-muted fw-bold small px-3 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Saúde Ocupacional</div>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="exames-ocupacionais">Exames Ocupacionais</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="afastamentos">Afastamentos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="saude-psicossocial">Gestão Psicossocial</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="atestados">Atestados</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="cid-manager">Cadastro de CIDs</a></li>
+                        
+                        <!-- Segurança do Trabalho -->
+                        <div class="text-uppercase text-muted fw-bold small px-3 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Segurança no Trabalho</div>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="gestao-cipa">CIPA</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="brigada-incendio">Brigada de Incêndio</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="controle-extintores">Extintores</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="ocorrencias">Ocorrências</a></li>
+                        
+                        <!-- Gestão de EPIs -->
+                        <div class="text-uppercase text-muted fw-bold small px-3 mt-3 mb-1" style="font-size: 0.7rem; letter-spacing: 0.5px;">Gestão de EPIs</div>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="estoque-epi">Estoque de EPI</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="consumo-epi">Consumo de EPI</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="epi-compras">Solicitações de Compras</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="cadastro-epis">Cadastro de EPIs</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="entrega-epis">Entrega de EPIs</a></li>
+                    </ul>
+                </div>
+            </li>
+
+            <!-- Módulo Controle de Produção -->
             <li class="nav-item">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
                     href="#producaoSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
@@ -270,36 +194,12 @@
                 </a>
                 <div class="collapse" id="producaoSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-gestao">
-                                <i class="fas fa-chart-line me-2"></i>Dashboard & Metas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-lancamento">
-                                <i class="fas fa-edit me-2"></i>Lançar Produção
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-produtos">
-                                <i class="fas fa-tags me-2"></i>Grade de Produtos (SKU)
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-leitura">
-                                <i class="fas fa-barcode me-2"></i>Estação de Leitura
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-auditoria">
-                                <i class="fas fa-qrcode me-2"></i>Auditoria de Fichas
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="producao-bonus">
-                                <i class="fas fa-hand-holding-dollar me-2"></i>Bônus Gestores
-                            </a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-gestao"><i class="fas fa-chart-line me-2"></i>Dashboard & Metas</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-lancamento"><i class="fas fa-edit me-2"></i>Lançar Produção</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-produtos"><i class="fas fa-tags me-2"></i>Grade de Produtos (SKU)</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-leitura"><i class="fas fa-barcode me-2"></i>Estação de Leitura</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-auditoria"><i class="fas fa-qrcode me-2"></i>Auditoria de Fichas</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="producao-bonus"><i class="fas fa-hand-holding-dollar me-2"></i>Bônus Gestores</a></li>
                     </ul>
                 </div>
             </li>
@@ -312,16 +212,13 @@
                 </a>
                 <div class="collapse" id="controladoriaSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="financeiro">Painel
-                                Financeiro</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="control-horas-autorizacao">Autorização de Horas Extras</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i
-                                    class="fas fa-coins"></i> Análise de Custos</a>
-                        </li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="financeiro">Painel Financeiro</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="control-horas-autorizacao">Autorização de Horas Extras</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="analise-custos"><i class="fas fa-coins"></i> Análise de Custos</a></li>
                     </ul>
                 </div>
             </li>
+
             <!-- Módulo ISO 9001 -->
             <li class="nav-item">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
@@ -330,54 +227,20 @@
                 </a>
                 <div class="collapse" id="iso9001Submenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="manutencao-mecanico" onclick="event.preventDefault(); showSection('manutencao-mecanico');">
-                                <i class="fas fa-user-hard-hat"></i> Meus Chamados
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link text-success fw-bold" href="mecanico-mobile.html" target="_blank" data-target="mecanico-mobile">
-                                <i class="fas fa-mobile-alt"></i> Versão Mobile (App)
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="iso-manutencao">
-                                <i class="fas fa-tools"></i> Painel de Manutenção
-                            </a>
-                        </li>
-                        <li class="nav-item mecanico-admin-only">
-                            <a class="nav-link submenu-link" href="#" data-target="iso-maquinas">
-                                <i class="fas fa-cogs"></i> Gerenciar Máquinas
-                            </a>
-                        </li>
-                        <li class="nav-item mecanico-admin-only">
-                            <a class="nav-link submenu-link" href="#" data-target="cadastro-mecanicos">
-                                <i class="fas fa-users-cog"></i> Cadastro Mecânicos
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="iso-temperatura-injetoras">
-                                <i class="fas fa-thermometer-half"></i> Temperatura Injetoras
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="iso-organograma">
-                                <i class="fas fa-sitemap"></i> Organograma
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link submenu-link" href="#" data-target="gerenciar-avaliacoes">
-                                <i class="fas fa-tasks"></i> Gerenciar Avaliações
-                            </a>
-                        </li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-swot"><i
-                                    class="fas fa-chart-line"></i> Análise SWOT</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="iso-avaliacao-colaboradores"><i class="fas fa-users-cog"></i>
-                                Análise de Colaboradores</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="manutencao-mecanico" onclick="event.preventDefault(); showSection('manutencao-mecanico');"><i class="fas fa-user-hard-hat"></i> Meus Chamados</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link text-success fw-bold" href="mecanico-mobile.html" target="_blank" data-target="mecanico-mobile"><i class="fas fa-mobile-alt"></i> Versão Mobile (App)</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-manutencao"><i class="fas fa-tools"></i> Painel de Manutenção</a></li>
+                        <li class="nav-item mecanico-admin-only"><a class="nav-link submenu-link" href="#" data-target="iso-maquinas"><i class="fas fa-cogs"></i> Gerenciar Máquinas</a></li>
+                        <li class="nav-item mecanico-admin-only"><a class="nav-link submenu-link" href="#" data-target="cadastro-mecanicos"><i class="fas fa-users-cog"></i> Cadastro Mecânicos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-temperatura-injetoras"><i class="fas fa-thermometer-half"></i> Temperatura Injetoras</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-organograma"><i class="fas fa-sitemap"></i> Organograma</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="gerenciar-avaliacoes"><i class="fas fa-tasks"></i> Gerenciar Avaliações</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-swot"><i class="fas fa-chart-line"></i> Análise SWOT</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="iso-avaliacao-colaboradores"><i class="fas fa-users-cog"></i> Análise de Colaboradores</a></li>
                     </ul>
                 </div>
             </li>
+
             <!-- Módulo Logística -->
             <li class="nav-item">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
@@ -386,20 +249,14 @@
                 </a>
                 <div class="collapse" id="logisticaSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="frota-veiculos">Veículos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="frota-motoristas">Motoristas</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="frota-utilizacao">Utilização</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="frota-destinos">Cadastros de Destinos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="frota-tabelas-frete">Tabelas de Frete</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-veiculos">Veículos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-motoristas">Motoristas</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-utilizacao">Utilização</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-destinos">Cadastros de Destinos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="frota-tabelas-frete">Tabelas de Frete</a></li>
                     </ul>
                 </div>
             </li>
-
 
             <!-- Módulo Jurídico -->
             <li class="nav-item">
@@ -409,45 +266,34 @@
                 </a>
                 <div class="collapse" id="juridicoSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-processos">Gestão de Processos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-clientes">Gestão de Clientes</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-automacao">Automação de Peças</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-financeiro">Financeiro Jurídico</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-documentos">Documentos Inteligentes</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="compliance-denuncia"><i class="fas fa-bullhorn me-2"></i>Canal de
-                                Denúncia</a></li>
-                        <li class="nav-item admin-only"><a class="nav-link submenu-link text-warning" href="#"
-                                data-target="gestao-denuncias"><i class="fas fa-shield-alt me-2"></i>Gestão de
-                                Denúncias</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="juridico-analise-cpf"><i class="fas fa-search me-2"></i>Antecedentes
-                                Criminais</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-processos">Gestão de Processos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-clientes">Gestão de Clientes</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-automacao">Automação de Peças</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-financeiro">Financeiro Jurídico</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-documentos">Documentos Inteligentes</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="compliance-denuncia"><i class="fas fa-bullhorn me-2"></i>Canal de Denúncia</a></li>
+                        <li class="nav-item admin-only"><a class="nav-link submenu-link text-warning" href="#" data-target="gestao-denuncias"><i class="fas fa-shield-alt me-2"></i>Gestão de Denúncias</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="juridico-analise-cpf"><i class="fas fa-search me-2"></i>Antecedentes Criminais</a></li>
                     </ul>
                 </div>
             </li>
-<li class="nav-item admin-only">
+
+            <!-- Admin -->
+            <li class="nav-item admin-only">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2" href="#adminSubmenu"
                     data-bs-toggle="collapse" role="button" aria-expanded="false">
                     <i class="fas fa-user-shield"></i> Admin - Usuários
                 </a>
-
                 <div class="collapse" id="adminSubmenu">
                     <ul class="nav flex-column">
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="admin-usuarios">Gerenciar Usuários</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="config-fluxos">Configurações de Fluxos</a></li>
-                        <li class="nav-item"><a class="nav-link submenu-link" href="#"
-                                data-target="sistema-autocorretivo">Agente Autocorretivo</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="admin-usuarios">Gerenciar Usuários</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="config-fluxos">Configurações de Fluxos</a></li>
+                        <li class="nav-item"><a class="nav-link submenu-link" href="#" data-target="sistema-autocorretivo">Agente Autocorretivo</a></li>
                     </ul>
                 </div>
             </li>
+
+            <!-- Sair -->
             <li class="nav-item" id="btn-sair-sidebar" style="display: none;">
                 <a class="nav-link" href="#">
                     <i class="fas fa-sign-out-alt"></i> Sair

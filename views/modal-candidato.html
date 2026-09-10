@@ -1,137 +1,202 @@
-<!-- Modal Novo Candidato -->
+<!-- Modal Novo Candidato - Premium UX/UI -->
 <div class="modal fade" id="modalCandidato" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-primary text-white border-0">
-                <h5 class="modal-title fw-bold"><i class="fas fa-user-plus me-2"></i> Ficha do Candidato</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 1.25rem; overflow: hidden;">
+            
+            <!-- ══ Header ══ -->
+            <div class="modal-header border-0 px-4 py-4" style="background: linear-gradient(135deg, #4f46e5, #6366f1); position: relative;">
+                <!-- Decorative glow -->
+                <div class="position-absolute" style="top: -50px; right: -50px; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%); border-radius: 50%; pointer-events: none;"></div>
+                
+                <div class="d-flex align-items-center gap-3 position-relative z-1">
+                    <div class="bg-white bg-opacity-25 rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 48px; height: 48px; backdrop-filter: blur(5px);">
+                        <i class="fas fa-user-plus text-white fs-4"></i>
+                    </div>
+                    <div>
+                        <h4 class="modal-title fw-bold text-white mb-0" style="letter-spacing: -0.5px;">Ficha do Candidato</h4>
+                        <span class="text-white text-opacity-75 small">Cadastro, triagem e análise comportamental</span>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white z-1" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body bg-light">
-                <form id="formCandidato" class="card border-0 shadow-sm p-4">
+
+            <!-- ══ Body ══ -->
+            <div class="modal-body p-0 bg-light">
+                <form id="formCandidato">
                     <input type="hidden" id="candidatoId">
-                    <input type="hidden" id="candidatoFaseAtual" value="triagem"> <!-- Fase inicial -->
+                    <input type="hidden" id="candidatoFaseAtual" value="triagem">
                     
-                    <div class="row g-4">
-                        <div class="col-md-12">
-                            <label class="form-label fw-semibold required">Vaga Pretendida</label>
-                            <select id="candidatoVagaId" class="form-select form-select-lg bg-light" required>
-                                <option value="">Selecione a vaga...</option>
-                                <!-- Preenchido dinamicamente -->
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-7 col-lg-7">
-                            <label class="form-label fw-semibold required">Nome Completo</label>
-                            <input type="text" id="candidatoNome" class="form-control form-control-lg" required>
-                        </div>
-                        <div class="col-12 col-md-5 col-lg-5">
-                            <label class="form-label fw-semibold required">CPF</label>
-                            <div class="input-group shadow-sm">
-                                <input type="text" id="candidatoCpf" class="form-control form-control-lg" placeholder="000.000.000-00" maxlength="14" inputmode="numeric" oninput="formatarCPF(this)" required>
-                                <button type="button" id="btn-escavador-candidato" class="btn btn-primary px-3 fw-bold" onclick="consultarCandidatoAPI()" title="Buscar Antecedentes" style="z-index: 0;">
-                                    <i class="fas fa-search me-1"></i> Buscar
-                                </button>
-                            </div>
-                        </div>
+                    <div class="p-4">
                         
-                        <!-- Painel de Resumo do Totem (Preenchido dinamicamente se houver dados do Escavador) -->
-                        <div class="col-12 mb-3" id="painel-resumo-totem" style="display: none;">
-                            <div class="card border-0 bg-primary bg-opacity-10 shadow-sm">
-                                <div class="card-body">
-                                    <h5 class="text-primary mb-3"><i class="fas fa-clipboard-check me-2"></i>Resumo da Automação (Totem)</h5>
-                                    <div class="row g-3">
-                                        <div class="col-md-6 border-end border-primary border-opacity-25">
-                                            <h6 class="text-dark fw-bold mb-2">Background Check (Escavador)</h6>
-                                            <div id="totem-resumo-escavador">Carregando...</div>
-                                        </div>
-                                        <div class="col-md-6">
-                                            <h6 class="text-dark fw-bold mb-2">Perfil Comportamental (MBTI)</h6>
-                                            <div id="totem-resumo-mbti">Carregando...</div>
+                        <!-- 1. Informações Básicas -->
+                        <div class="card border-0 shadow-sm rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="text-uppercase text-primary fw-bold mb-4 d-flex align-items-center gap-2" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                    <i class="fas fa-id-badge fs-6"></i> Dados Principais
+                                </h6>
+                                <div class="row g-4">
+                                    <div class="col-md-12">
+                                        <div class="form-floating">
+                                            <select id="candidatoVagaId" class="form-select bg-light border-0 fw-medium" required>
+                                                <option value="">Selecione a vaga...</option>
+                                                <!-- Preenchido dinamicamente -->
+                                            </select>
+                                            <label class="required text-muted">Vaga Pretendida</label>
                                         </div>
                                     </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold required">Telefone/WhatsApp</label>
-                            <input type="text" id="candidatoTelefone" class="form-control form-control-lg" required>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold">E-mail</label>
-                            <input type="email" id="candidatoEmail" class="form-control form-control-lg">
-                        </div>
-                        <div class="col-md-12">
-                            <label class="form-label fw-semibold">Anexar Currículo (PDF/DOC)</label>
-                            <input type="file" id="candidatoCurriculo" class="form-control form-control-lg bg-white" accept=".pdf,.doc,.docx">
-                            <small class="text-muted" id="linkCurriculoAtual"></small>
-                        </div>
-                        
-                        <div class="col-12 mt-4" id="areaHistoricoColaborador" style="display: none;">
-                            <div id="resultadoHistorico" style="max-height: 60vh; overflow-y: auto; overflow-x: hidden;">
-                                <!-- Conteúdo gerado dinamicamente -->
-                            </div>
-                        </div>
-
-                        <div class="col-12 mt-3" id="areaProcessosInternos" style="display: none;">
-                            <div id="resultadoProcessosInternos" style="max-height: 50vh; overflow-y: auto; overflow-x: hidden;">
-                                <!-- Conteúdo gerado dinamicamente -->
-                            </div>
-                        </div>
-
-                        <div class="col-12 mt-3" id="areaEscavador" style="display: none;">
-                            <div id="resultadoEscavador" style="max-height: 55vh; overflow-y: auto; overflow-x: hidden;">
-                                <!-- Conteúdo gerado dinamicamente -->
-                            </div>
-                        </div>
-                        
-                        <div class="col-12 mt-4">
-                            <h6 class="text-primary"><i class="fas fa-brain me-1"></i> Perfil Comportamental (MBTI) e Match</h6>
-                            <div class="row g-3">
-                                <!-- Candidato -->
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3 bg-light h-100 d-flex flex-column justify-content-between">
-                                        <div>
-                                            <h6 class="text-muted mb-2 fs-6">Candidato</h6>
-                                            <div id="candidato-mbti-resultado">
-                                                <span class="text-muted fst-italic small">Teste MBTI ainda não realizado.</span>
+                                    
+                                    <div class="col-12 col-md-7">
+                                        <div class="form-floating">
+                                            <input type="text" id="candidatoNome" class="form-control bg-light border-0 fw-medium" placeholder="Nome Completo" required>
+                                            <label class="required text-muted">Nome Completo</label>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-12 col-md-5">
+                                        <div class="input-group">
+                                            <div class="form-floating flex-grow-1">
+                                                <input type="text" id="candidatoCpf" class="form-control bg-light border-0 fw-medium rounded-start-3" placeholder="CPF" maxlength="14" inputmode="numeric" oninput="formatarCPF(this)" required>
+                                                <label class="required text-muted">CPF</label>
                                             </div>
+                                            <button type="button" id="btn-escavador-candidato" class="btn btn-primary px-4 fw-bold shadow-none rounded-end-3" onclick="consultarCandidatoAPI()" title="Buscar Antecedentes" style="z-index: 0;">
+                                                <i class="fas fa-search me-1"></i> Buscar
+                                            </button>
                                         </div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm mt-3 align-self-start" onclick="iniciarMBTICandidato()">
-                                            <i class="fas fa-play me-1"></i> Aplicar Teste
-                                        </button>
-                                    </div>
-                                </div>
-                                <!-- Gerente/Match -->
-                                <div class="col-md-6">
-                                    <div class="border rounded p-3 bg-light h-100 d-flex flex-column justify-content-between" id="mbti-match-container">
-                                        <div>
-                                            <h6 class="text-muted mb-2 fs-6">Compatibilidade e Gestão</h6>
-                                            <div id="gerente-mbti-resultado">
-                                                <span class="text-muted fst-italic small">Aplique o teste MBTI no candidato primeiro.</span>
-                                            </div>
-                                        </div>
-                                        <button type="button" class="btn btn-outline-primary btn-sm mt-3 align-self-start" id="btnAnalisarCompatibilidade" style="display: none;" onclick="abrirRankingMBTI()">
-                                            <i class="fas fa-project-diagram me-1"></i> Analisar Gestores Disponíveis
-                                        </button>
                                     </div>
                                 </div>
                             </div>
                         </div>
                         
-                        <div class="col-12 mt-3">
-                            <label class="form-label fw-semibold">Anotações / Entrevista</label>
-                            <textarea id="candidatoAnotacoes" class="form-control bg-white" rows="4" placeholder="Adicione observações sobre a entrevista..."></textarea>
+                        <!-- Painel de Resumo do Totem -->
+                        <div class="col-12 mb-4" id="painel-resumo-totem" style="display: none;">
+                            <div class="card border-0 bg-primary bg-opacity-10 shadow-sm rounded-4">
+                                <div class="card-body p-4">
+                                    <h6 class="text-primary fw-bold mb-3 d-flex align-items-center gap-2" style="letter-spacing: -0.5px;">
+                                        <i class="fas fa-clipboard-check"></i> Resumo da Automação (Totem)
+                                    </h6>
+                                    <div class="row g-4">
+                                        <div class="col-md-12">
+                                            <h6 class="text-dark fw-bold mb-2 small text-uppercase">Background Check (Escavador)</h6>
+                                            <div id="totem-resumo-escavador" class="text-muted">Carregando...</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <!-- 2. Contato e Anexos -->
+                        <div class="card border-0 shadow-sm rounded-4 mb-4">
+                            <div class="card-body p-4">
+                                <h6 class="text-uppercase text-primary fw-bold mb-4 d-flex align-items-center gap-2" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                    <i class="fas fa-address-book fs-6"></i> Contato & Documentos
+                                </h6>
+                                <div class="row g-4">
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="text" id="candidatoTelefone" class="form-control bg-light border-0 fw-medium" placeholder="Telefone" required>
+                                            <label class="required text-muted">Telefone / WhatsApp</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-floating">
+                                            <input type="email" id="candidatoEmail" class="form-control bg-light border-0 fw-medium" placeholder="E-mail">
+                                            <label class="text-muted">E-mail</label>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label text-muted small fw-semibold mb-2">Anexar Currículo (PDF/DOC)</label>
+                                        <input type="file" id="candidatoCurriculo" class="form-control form-control-lg bg-light border-0 text-muted" accept=".pdf,.doc,.docx">
+                                        <small class="text-primary mt-2 d-block fw-medium" id="linkCurriculoAtual"></small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Áreas de Integração Dinâmicas -->
+                        <div id="areaHistoricoColaborador" style="display: none;" class="mb-4">
+                            <div class="card border-0 shadow-sm rounded-4">
+                                <div class="card-body p-4" id="resultadoHistorico" style="max-height: 400px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div id="areaProcessosInternos" style="display: none;" class="mb-4">
+                            <div class="card border-0 shadow-sm rounded-4">
+                                <div class="card-body p-4" id="resultadoProcessosInternos" style="max-height: 400px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        <div id="areaEscavador" style="display: none;" class="mb-4">
+                            <div class="card border-0 shadow-sm rounded-4">
+                                <div class="card-body p-4" id="resultadoEscavador" style="max-height: 400px; overflow-y: auto;"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 3. Observações Finais -->
+                        <div class="card border-0 shadow-sm rounded-4">
+                            <div class="card-body p-4">
+                                <h6 class="text-uppercase text-primary fw-bold mb-3 d-flex align-items-center gap-2" style="font-size: 0.75rem; letter-spacing: 1px;">
+                                    <i class="fas fa-comment-alt fs-6"></i> Anotações da Entrevista
+                                </h6>
+                                <textarea id="candidatoAnotacoes" class="form-control bg-light border-0 p-3" rows="4" placeholder="Adicione observações, percepções ou notas sobre o candidato..." style="border-radius: 0.75rem;"></textarea>
+                            </div>
+                        </div>
+
                     </div>
                 </form>
             </div>
-            <div class="modal-footer d-flex justify-content-between">
-                <button type="button" class="btn btn-outline-dark" onclick="imprimirFichaCandidato()"><i class="fas fa-print"></i> Imprimir Ficha</button>
-                <div>
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="salvarCandidato()">Salvar Candidato</button>
+            
+            <!-- ══ Footer ══ -->
+            <div class="modal-footer bg-white border-top-0 px-4 py-3 d-flex justify-content-between rounded-bottom-4">
+                <button type="button" class="btn btn-light fw-bold text-dark border shadow-sm px-4 rounded-pill" onclick="imprimirFichaCandidato()">
+                    <i class="fas fa-print me-2 text-muted"></i> Imprimir
+                </button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-light fw-bold text-secondary border-0 px-4 rounded-pill hover-bg-gray" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary fw-bold px-4 rounded-pill shadow-sm" onclick="salvarCandidato()">
+                        <i class="fas fa-save me-2"></i>Salvar Candidato
+                    </button>
                 </div>
             </div>
+            
         </div>
     </div>
 </div>
+
+<style>
+/* Estilos Complementares - Modal Premium */
+.form-floating > .form-control:focus, .form-floating > .form-select:focus {
+    background-color: #fff !important;
+    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15) !important;
+    border-color: #6366f1 !important;
+}
+.hover-shadow:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+}
+.transition-all {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hover-bg-gray:hover {
+    background-color: #f3f4f6 !important;
+}
+.required::after {
+    content: ' *';
+    color: #ef4444;
+}
+/* Scrollbar bonita para as divs de integração */
+#resultadoHistorico::-webkit-scrollbar, 
+#resultadoProcessosInternos::-webkit-scrollbar, 
+#resultadoEscavador::-webkit-scrollbar {
+    width: 6px;
+}
+#resultadoHistorico::-webkit-scrollbar-track, 
+#resultadoProcessosInternos::-webkit-scrollbar-track, 
+#resultadoEscavador::-webkit-scrollbar-track {
+    background: #f1f5f9; 
+    border-radius: 10px;
+}
+#resultadoHistorico::-webkit-scrollbar-thumb, 
+#resultadoProcessosInternos::-webkit-scrollbar-thumb, 
+#resultadoEscavador::-webkit-scrollbar-thumb {
+    background: #cbd5e1; 
+    border-radius: 10px;
+}
+</style>
