@@ -430,11 +430,19 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
     // 1. Dispara a busca interna e aguarda o resultado
     const funcionarioEncontradoInternamente = await consultarHistoricoInterno(cpf);
 
-    // 2. Pré-Cadastro via Hub Desenvolvedor (Receita Federal)
+    // 2. Pré-Cadastro via Receita Federal (Hub ou Escavador)
     if (!funcionarioEncontradoInternamente) {
         try {
             mostrarMensagem('Buscando dados na Receita Federal...', 'info');
-            if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
+            
+            // Tentativa via Escavador API de Receita Federal
+            if (typeof window.frontendEscavadorReceitaSearch === 'function') {
+                const resEscavador = await window.frontendEscavadorReceitaSearch(cpf);
+                if (resEscavador.status === 'SUCCESS' && resEscavador.data) {
+                    inputNome.value = resEscavador.data.nome_pf || resEscavador.data.nome || '';
+                }
+            } else if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
+                // Tentativa via Hub Desenvolvedor
                 const urlHub = `https://api.hubdesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`;
                 const resHub = await fetch(urlHub);
                 if (resHub.ok) {
@@ -444,10 +452,10 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
                     }
                 }
             } else {
-                console.warn('Token do Hub Desenvolvedor não configurado.');
+                console.warn('Nenhum token configurado para busca na Receita Federal.');
             }
         } catch (error) {
-            console.error("Erro Hub Desenvolvedor:", error);
+            console.error("Erro busca Receita Federal:", error);
         }
     } else {
         try {
@@ -678,12 +686,16 @@ window.consultarEscavadorAPI = async function(modeToUse) {
                 else if (proc.classificacao === 'ALTA_PROBABILIDADE') badgeClass = 'high';
                 else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') badgeClass = 'possible';
 
+                const assuntoBadge = proc.capa?.assunto_principal_normalizado?.nome || (proc.capa?.assuntos && proc.capa.assuntos.length > 0 ? proc.capa.assuntos[0].nome : '');
+                const areaBadge = proc.capa?.area || '';
+
                 htmlResultados += `
                     <div class="process-card fade-in">
                         <div class="process-header">
                             <div>
                                 <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
                                 <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
+                                ${assuntoBadge ? `<div class="mt-1"><span class="badge bg-light text-dark border border-secondary shadow-sm"><i class="fas fa-tag text-muted me-1"></i>${assuntoBadge}</span> ${areaBadge ? `<span class="badge bg-light text-dark border shadow-sm ms-1">${areaBadge}</span>` : ''}</div>` : ''}
                             </div>
                             <div class="d-flex flex-column align-items-end">
                                 <span class="match-badge ${badgeClass}" title="${proc.match_documento_por}">
@@ -694,8 +706,6 @@ window.consultarEscavadorAPI = async function(modeToUse) {
                         </div>
                         <div class="process-details">
                             <p><strong>Tribunal/UF:</strong> ${proc.estado_origem?.sigla || ''} - ${proc.capa?.orgao_julgador || 'N/I'}</p>
-                            <p><strong>Área/Tipo:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
-                            <p><strong>Assunto:</strong> ${proc.capa?.assunto_principal_normalizado?.nome || (proc.capa?.assuntos && proc.capa.assuntos.length > 0 ? proc.capa.assuntos[0].nome : 'N/I')}</p>
                             <p><strong>Classe:</strong> ${proc.capa?.classe || 'N/I'}</p>
                             <p><strong>Status:</strong> ${proc.capa?.situacao || 'Desconhecido'}</p>
                             <p><strong>Distribuição:</strong> ${proc.capa?.data_distribuicao ? new Date(proc.capa.data_distribuicao).toLocaleDateString() : 'N/A'}</p>
