@@ -690,6 +690,7 @@ window.consultarEscavadorAPI = async function (modeToUse) {
                                 <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
                                 <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
                                 ${assuntoBadge ? `<div class="mt-1"><span class="badge bg-light text-dark border border-secondary shadow-sm"><i class="fas fa-tag text-muted me-1"></i>${assuntoBadge}</span> ${areaBadge ? `<span class="badge bg-light text-dark border shadow-sm ms-1">${areaBadge}</span>` : ''}</div>` : ''}
+                                <div class="process-type"><strong>Tipo:</strong> ${proc.capa?.classe || 'N/I'}</div>
                             </div>
                             <div class="d-flex flex-column align-items-end">
                                 <span class="match-badge ${badgeClass}" title="${proc.match_documento_por}">
