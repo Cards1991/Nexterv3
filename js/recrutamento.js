@@ -434,7 +434,18 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
     if (!funcionarioEncontradoInternamente) {
         try {
             mostrarMensagem('Buscando dados na Receita Federal...', 'info');
-            // MOCK/PLACEHOLDER: Integração Receita Federal
+            if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
+                const urlHub = `https://api.hubdesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`;
+                const resHub = await fetch(urlHub);
+                if (resHub.ok) {
+                    const dataHub = await resHub.json();
+                    if (dataHub.status && dataHub.result && dataHub.result.nome_da_pf) {
+                        inputNome.value = dataHub.result.nome_da_pf;
+                    }
+                }
+            } else {
+                console.warn('Token do Hub Desenvolvedor não configurado.');
+            }
         } catch (error) {
             console.error("Erro Hub Desenvolvedor:", error);
         }
@@ -683,7 +694,8 @@ window.consultarEscavadorAPI = async function(modeToUse) {
                         </div>
                         <div class="process-details">
                             <p><strong>Tribunal/UF:</strong> ${proc.estado_origem?.sigla || ''} - ${proc.capa?.orgao_julgador || 'N/I'}</p>
-                            <p><strong>Ã rea:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
+                            <p><strong>Área/Tipo:</strong> <span class="badge bg-secondary">${proc.capa?.area || 'Não especificada'}</span></p>
+                            <p><strong>Assunto:</strong> ${proc.capa?.assunto_principal_normalizado?.nome || (proc.capa?.assuntos && proc.capa.assuntos.length > 0 ? proc.capa.assuntos[0].nome : 'N/I')}</p>
                             <p><strong>Classe:</strong> ${proc.capa?.classe || 'N/I'}</p>
                             <p><strong>Status:</strong> ${proc.capa?.situacao || 'Desconhecido'}</p>
                             <p><strong>Distribuição:</strong> ${proc.capa?.data_distribuicao ? new Date(proc.capa.data_distribuicao).toLocaleDateString() : 'N/A'}</p>
