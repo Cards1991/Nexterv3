@@ -436,7 +436,7 @@ async function consultarCandidatoAPI(deepSearchModeParam = null) {
             mostrarMensagem('Buscando dados na Receita Federal...', 'info');
             if (HUB_DESENVOLVEDOR_TOKEN && HUB_DESENVOLVEDOR_TOKEN !== 'SEU_TOKEN_AQUI') {
                 // Tentativa via Hub Desenvolvedor
-                const urlHub = `https://api.hubdesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`;
+                const urlHub = `https://ws.hubdodesenvolvedor.com.br/v2/cpf/?cpf=${cpf}&token=${HUB_DESENVOLVEDOR_TOKEN}`;
                 const resHub = await fetch(urlHub);
                 if (resHub.ok) {
                     const dataHub = await resHub.json();
