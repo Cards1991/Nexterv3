@@ -986,42 +986,79 @@ function renderizarMetricasManutencao(chamados) {
     const paradas = chamados.filter(c => c.maquinaParada).length;
     const urgentes = chamados.filter(c => c.prioridade === 'Urgente' && (c.status === 'Aberto' || c.status === 'Em Andamento')).length;
 
-    const getBlinkClass = (count) => count > 0 ? 'card-alert-blink' : '';
+    const getBlinkClass = (count, type) => {
+        if (count === 0) return '';
+        if (type === 'warning') return 'blink-warning';
+        if (type === 'danger') return 'blink-danger';
+        if (type === 'dark') return 'blink-dark';
+        return 'card-alert-blink';
+    };
 
     container.innerHTML = `
+        <style>
+        @keyframes pulse-warning { 0% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(255, 193, 7, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); } }
+        @keyframes pulse-danger { 0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(220, 53, 69, 0); } 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); } }
+        @keyframes pulse-dark { 0% { box-shadow: 0 0 0 0 rgba(33, 37, 41, 0.7); } 70% { box-shadow: 0 0 0 15px rgba(33, 37, 41, 0); } 100% { box-shadow: 0 0 0 0 rgba(33, 37, 41, 0); } }
+        .blink-warning { animation: pulse-warning 2s infinite; }
+        .blink-danger { animation: pulse-danger 2s infinite; }
+        .blink-dark { animation: pulse-dark 2s infinite; }
+        .modern-stat-card { transition: all 0.3s ease; cursor: default; }
+        .modern-stat-card:hover { transform: translateY(-5px); box-shadow: 0 .5rem 1rem rgba(0,0,0,.15)!important; }
+        .icon-shape { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; }
+        </style>
+        
         <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
-            <div class="card stat-card bg-warning text-dark h-100 ${getBlinkClass(abertos)}">
-                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
-                    <i class="fas fa-exclamation-circle fa-2x mb-3 opacity-75"></i>
-                    <div class="number display-6 fw-bold mb-2">${abertos}</div>
-                    <div class="label text-uppercase small fw-semibold">Chamados em Aberto</div>
+            <div class="card border-0 shadow-sm h-100 rounded-4 modern-stat-card ${getBlinkClass(abertos, 'warning')}" style="border-left: 5px solid #ffc107 !important; background: #ffffff;">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-shape bg-warning bg-opacity-10 text-warning rounded-circle me-3">
+                        <i class="fas fa-exclamation-circle fa-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted text-uppercase mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 600;">Em Aberto</p>
+                        <h3 class="mb-0 fw-bold text-dark lh-1" style="font-size: 1.8rem;">${abertos}</h3>
+                    </div>
                 </div>
             </div>
         </div>
+        
         <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
-            <div class="card stat-card bg-info text-white h-100">
-                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
-                    <i class="fas fa-tools fa-2x mb-3 opacity-75"></i>
-                    <div class="number display-6 fw-bold mb-2">${normais}</div>
-                    <div class="label text-uppercase small fw-semibold">Chamados Normais</div>
+            <div class="card border-0 shadow-sm h-100 rounded-4 modern-stat-card" style="border-left: 5px solid #0dcaf0 !important; background: #ffffff;">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-shape bg-info bg-opacity-10 text-info rounded-circle me-3">
+                        <i class="fas fa-tools fa-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted text-uppercase mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 600;">Normais</p>
+                        <h3 class="mb-0 fw-bold text-dark lh-1" style="font-size: 1.8rem;">${normais}</h3>
+                    </div>
                 </div>
             </div>
         </div>
+        
         <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
-            <div class="card stat-card bg-danger text-white h-100 ${getBlinkClass(urgentes)}">
-                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
-                    <i class="fas fa-exclamation-triangle fa-2x mb-3 opacity-75"></i>
-                    <div class="number display-6 fw-bold mb-2">${urgentes}</div>
-                    <div class="label text-uppercase small fw-semibold">Urgentes</div>
+            <div class="card border-0 shadow-sm h-100 rounded-4 modern-stat-card ${getBlinkClass(urgentes, 'danger')}" style="border-left: 5px solid #dc3545 !important; background: #ffffff;">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-shape bg-danger bg-opacity-10 text-danger rounded-circle me-3">
+                        <i class="fas fa-exclamation-triangle fa-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted text-uppercase mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 600;">Urgentes</p>
+                        <h3 class="mb-0 fw-bold text-dark lh-1" style="font-size: 1.8rem;">${urgentes}</h3>
+                    </div>
                 </div>
             </div>
         </div>
+        
         <div class="col-lg-3 col-md-6 col-sm-6 col-12 mb-4">
-            <div class="card stat-card bg-dark text-white h-100 ${getBlinkClass(paradas)}">
-                <div class="card-body text-center d-flex flex-column justify-content-center h-100">
-                    <i class="fas fa-industry fa-2x mb-3 opacity-75"></i>
-                    <div class="number display-6 fw-bold mb-2">${paradas}</div>
-                    <div class="label text-uppercase small fw-semibold">Máquinas Paradas</div>
+            <div class="card border-0 shadow-sm h-100 rounded-4 modern-stat-card ${getBlinkClass(paradas, 'dark')}" style="border-left: 5px solid #212529 !important; background: #ffffff;">
+                <div class="card-body p-4 d-flex align-items-center">
+                    <div class="icon-shape bg-dark bg-opacity-10 text-dark rounded-circle me-3">
+                        <i class="fas fa-industry fa-xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-muted text-uppercase mb-1" style="font-size: 0.75rem; letter-spacing: 0.5px; font-weight: 600;">Máquinas Paradas</p>
+                        <h3 class="mb-0 fw-bold text-dark lh-1" style="font-size: 1.8rem;">${paradas}</h3>
+                    </div>
                 </div>
             </div>
         </div>

@@ -10,12 +10,40 @@ const PEDIDOS_POR_TIPO_ACAO = {
     // Adicione outros tipos de ação e seus pedidos aqui
 };
 
+// Instâncias dos gráficos
+let chartEvolucao = null;
+let chartFinanceiro = null;
+let chartStatus = null;
+
 async function inicializarGestaoProcessos() {
     await carregarProcessosJuridicos();
     document.getElementById('jur-tipo-acao')?.addEventListener('change', atualizarPedidosDoProcesso);
     document.getElementById('btn-filtrar-processos')?.addEventListener('click', carregarProcessosJuridicos);
     document.getElementById('jur-pedidos-container')?.addEventListener('input', calcularValorCausaAutomatico);
     document.getElementById('jur-pedidos-container')?.addEventListener('change', calcularValorCausaAutomatico);
+    
+    document.getElementById('jur-status')?.addEventListener('change', toggleAbaEncerramento);
+    document.getElementById('jur-resultado-processo')?.addEventListener('change', toggleValoresEncerramento);
+}
+
+function toggleAbaEncerramento() {
+    const status = document.getElementById('jur-status').value;
+    const navItem = document.getElementById('nav-item-encerramento');
+    if (status === 'Finalizado') {
+        navItem.style.display = 'block';
+    } else {
+        navItem.style.display = 'none';
+    }
+}
+
+function toggleValoresEncerramento() {
+    const resultado = document.getElementById('jur-resultado-processo').value;
+    const bloco = document.getElementById('bloco-valores-encerramento');
+    if (resultado === 'Acordo') {
+        bloco.style.display = 'block';
+    } else {
+        bloco.style.display = 'none';
+    }
 }
 
 function atualizarPedidosDoProcesso() {
@@ -78,7 +106,7 @@ function calcularValorCausaAutomatico() {
 }
 
 async function carregarProcessosJuridicos() {
-    const tbody = document.getElementById('tabela-processos-juridicos');
+    const tbody = document.getElementById('tabela-processos-juridico');
     if (!tbody) return;
 
     tbody.innerHTML = '<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Carregando processos...</td></tr>';
@@ -102,11 +130,15 @@ async function carregarProcessosJuridicos() {
         }
 
         const processos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const processosFiltrados = processos;
         
         tbody.innerHTML = '';
-        processos.forEach(proc => {
+        // Renderiza os gráficos antes de popular a tabela
+        renderizarGraficosProcessos(processosFiltrados);
+
+        processosFiltrados.forEach(proc => {
             let riscoClass = '';
-            switch (proc.riscoGeral) { // Usa o risco geral calculado
+            switch (proc.riscoGeral) {
                 case 'Alto': riscoClass = 'bg-danger'; break;
                 case 'Médio': riscoClass = 'bg-warning text-dark'; break;
                 case 'Baixo': riscoClass = 'bg-success'; break;
@@ -114,26 +146,55 @@ async function carregarProcessosJuridicos() {
             }
 
             let statusClass = '';
+            let styleLine = '';
             switch (proc.status) {
                 case 'Ativo': statusClass = 'bg-primary'; break;
-                case 'Finalizado': statusClass = 'bg-success'; break;
+                case 'Finalizado': 
+                    statusClass = 'bg-success'; 
+                    styleLine = 'background-color: #f0fdf4; opacity: 0.8;';
+                    break;
+                case 'Arquivado':
+                    statusClass = 'bg-secondary';
+                    styleLine = 'background-color: #f8f9fa; opacity: 0.6;';
+                    break;
                 default: statusClass = 'bg-secondary';
+            }
+            
+            // Exibir valor final do acordo se for finalizado
+            let valorExibir = `R$ ${(proc.valorCausa || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}`;
+            let riscoExibir = `<div class="fw-bold text-${riscoClass.replace('bg-', '')}">${proc.riscoGeral || 'N/A'}</div>`;
+            if (proc.status === 'Finalizado' && proc.encerramento?.resultado === 'Acordo') {
+                valorExibir = `<span class="text-success fw-bold" title="Valor do Acordo Fechado"><i class="fas fa-handshake"></i> R$ ${(proc.encerramento.valorFinal || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</span>`;
+                riscoExibir = `<div class="fw-bold text-success">Resolvido (Acordo)</div>`;
+            } else if (proc.status === 'Finalizado') {
+                riscoExibir = `<div class="fw-bold text-secondary">Resolvido (${proc.encerramento?.resultado || 'S/N'})</div>`;
             }
 
             const row = `
-                <tr>
-                    <td class="fw-bold">${proc.numeroProcesso || '-'}</td>
-                    <td>${proc.cliente || '-'}</td>
-                    <td>${proc.parteContraria || '-'}</td>
-                    <td><span class="badge bg-info text-dark">${proc.tipoAcao || '-'}</span></td>
-                    <td><span class="badge ${riscoClass}">${proc.riscoGeral || 'N/A'}</span></td>
-                    <td><span class="badge ${statusClass}">${proc.status || '-'}</span></td>
-                    <td>${proc.dataConciliacao ? formatarData(proc.dataConciliacao.toDate()) : 'N/A'}</td>
+                <tr style="${styleLine}">
+                    <td>
+                        <div class="fw-bold text-dark">${proc.numeroProcesso || '-'}</div>
+                        <span class="badge bg-light text-dark border">${proc.tipoAcao || '-'}</span>
+                    </td>
+                    <td>
+                        <div class="fw-bold">${proc.funcionarioNome || proc.cliente || '-'}</div>
+                    </td>
+                    <td>
+                        <div class="fw-bold"><span class="badge ${statusClass}">${proc.status || '-'}</span></div>
+                        <small class="text-muted"><i class="fas fa-briefcase"></i> ${proc.escritorio || proc.parteContraria || '-'}</small>
+                    </td>
+                    <td>
+                        ${riscoExibir}
+                        <small class="text-muted">${valorExibir}</small>
+                    </td>
+                    <td>
+                        <span class="badge border border-secondary text-secondary bg-white"><i class="far fa-calendar-alt"></i> ${proc.dataConciliacao ? formatarData(proc.dataConciliacao.toDate()) : 'Sem prazo'}</span>
+                    </td>
                     <td class="text-end">
-                        <button class="btn btn-sm btn-outline-secondary" onclick="visualizarProcessoCompacto('${proc.id}')" title="Visualizar Resumo"><i class="fas fa-search-plus"></i></button>
-                        <button class="btn btn-sm btn-outline-info" onclick="abrirModalAnaliseRiscoIA('${proc.id}')" title="Análise de Risco (IA)"><i class="fas fa-brain"></i></button>
-                        <button class="btn btn-sm btn-outline-primary" onclick="abrirModalProcesso('${proc.id}')" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirProcessoJuridico('${proc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                        <button class="btn btn-sm btn-light border" onclick="visualizarProcessoCompacto('${proc.id}')" title="Visualizar Resumo"><i class="fas fa-eye text-primary"></i></button>
+                        <button class="btn btn-sm btn-light border" onclick="abrirModalAnaliseRiscoIA('${proc.id}')" title="Análise de Risco (IA)"><i class="fas fa-brain text-info"></i></button>
+                        <button class="btn btn-sm btn-light border" onclick="abrirModalProcesso('${proc.id}')" title="Editar"><i class="fas fa-edit text-secondary"></i></button>
+                        <button class="btn btn-sm btn-light border" onclick="excluirProcessoJuridico('${proc.id}')" title="Excluir"><i class="fas fa-trash text-danger"></i></button>
                     </td>
                 </tr>
             `;
@@ -152,12 +213,136 @@ function atualizarMetricasJuridicas(processos) {
     const ativos = processos.filter(p => p.status === 'Ativo');
     const riscoAlto = ativos.filter(p => p.riscoGeral === 'Alto');
     
-    document.getElementById('jur-total-processos').textContent = ativos.length;
-    document.getElementById('jur-risco-alto').textContent = riscoAlto.length;
-    // Placeholders para outras métricas
-    document.getElementById('jur-prazos-mes').textContent = 0;
-    document.getElementById('jur-finalizados-mes').textContent = 0;
+    const elTotal = document.getElementById('jur-total-processos');
+    const elRisco = document.getElementById('jur-risco-alto');
+    const elPrazos = document.getElementById('jur-prazos-mes');
+    const elFinalizados = document.getElementById('jur-finalizados-mes');
+
+    if (elTotal) elTotal.textContent = ativos.length;
+    if (elRisco) elRisco.textContent = riscoAlto.length;
+    if (elPrazos) elPrazos.textContent = 0;
+    if (elFinalizados) elFinalizados.textContent = 0;
 }
+
+function renderizarGraficosProcessos(processos) {
+    if (chartEvolucao) chartEvolucao.destroy();
+    if (chartFinanceiro) chartFinanceiro.destroy();
+    if (chartStatus) chartStatus.destroy();
+
+    // 1. Gráfico de Status (Donut)
+    const ctxStatus = document.getElementById('chart-jur-status');
+    if (ctxStatus) {
+        const counts = { Ativo: 0, Arquivado: 0, Suspenso: 0, Finalizado: 0 };
+        processos.forEach(p => { if (counts[p.status] !== undefined) counts[p.status]++; });
+        
+        chartStatus = new Chart(ctxStatus, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys(counts),
+                datasets: [{
+                    data: Object.values(counts),
+                    backgroundColor: ['#0d6efd', '#6c757d', '#ffc107', '#198754'],
+                    borderWidth: 0
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        });
+    }
+
+    // 2. Gráfico Financeiro (Barras - Acordos)
+    const ctxFinanceiro = document.getElementById('chart-jur-financeiro');
+    if (ctxFinanceiro) {
+        let totalPedido = 0, totalTeto = 0, totalFinal = 0;
+        let qtdAcordos = 0;
+        
+        processos.forEach(p => {
+            if (p.status === 'Finalizado' && p.encerramento?.resultado === 'Acordo') {
+                totalPedido += (p.encerramento.valorPedido || 0);
+                totalTeto += (p.encerramento.valorTeto || 0);
+                totalFinal += (p.encerramento.valorFinal || 0);
+                qtdAcordos++;
+            }
+        });
+        
+        // Se não houver acordos, mostra zerado
+        chartFinanceiro = new Chart(ctxFinanceiro, {
+            type: 'bar',
+            data: {
+                labels: ['Valores (Acordos)'],
+                datasets: [
+                    { label: 'Pedido (Autora)', data: [totalPedido], backgroundColor: '#dc3545', borderRadius: 4 },
+                    { label: 'Teto (Direção)', data: [totalTeto], backgroundColor: '#ffc107', borderRadius: 4 },
+                    { label: 'Fechado (Final)', data: [totalFinal], backgroundColor: '#198754', borderRadius: 4 }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } },
+                    tooltip: { callbacks: { label: function(context) { return 'R$ ' + context.raw.toLocaleString('pt-BR', {minimumFractionDigits: 2}); } } }
+                },
+                scales: { y: { beginAtZero: true, ticks: { callback: function(value) { return 'R$ ' + value; } } } }
+            }
+        });
+    }
+
+    // 3. Gráfico de Evolução (Linha) - Distribuição vs Encerramento nos últimos 6 meses
+    const ctxEvolucao = document.getElementById('chart-jur-evolucao');
+    if (ctxEvolucao) {
+        const mesesNomes = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        const hoje = new Date();
+        const labels = [];
+        const entradas = [0, 0, 0, 0, 0, 0];
+        const saidas = [0, 0, 0, 0, 0, 0];
+        
+        // Prepara os últimos 6 meses
+        for (let i = 5; i >= 0; i--) {
+            let d = new Date(hoje.getFullYear(), hoje.getMonth() - i, 1);
+            labels.push(mesesNomes[d.getMonth()] + '/' + d.getFullYear().toString().substring(2));
+        }
+
+        processos.forEach(p => {
+            // Entrada
+            if (p.dataDistribuicao) {
+                try {
+                    let data = p.dataDistribuicao.toDate ? p.dataDistribuicao.toDate() : new Date(p.dataDistribuicao + 'T12:00:00');
+                    for (let i = 0; i < 6; i++) {
+                        let ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
+                        if (data.getMonth() === ref.getMonth() && data.getFullYear() === ref.getFullYear()) { entradas[i]++; }
+                    }
+                } catch(e) {}
+            }
+            // Saída
+            if (p.status === 'Finalizado' && p.updatedAt) {
+                try {
+                    let data = p.updatedAt.toDate ? p.updatedAt.toDate() : new Date(); // Aproximação
+                    for (let i = 0; i < 6; i++) {
+                        let ref = new Date(hoje.getFullYear(), hoje.getMonth() - (5 - i), 1);
+                        if (data.getMonth() === ref.getMonth() && data.getFullYear() === ref.getFullYear()) { saidas[i]++; }
+                    }
+                } catch(e) {}
+            }
+        });
+
+        chartEvolucao = new Chart(ctxEvolucao, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    { label: 'Entradas', data: entradas, borderColor: '#0d6efd', backgroundColor: '#0d6efd', tension: 0.3, fill: false },
+                    { label: 'Finalizados', data: saidas, borderColor: '#198754', backgroundColor: '#198754', tension: 0.3, fill: false }
+                ]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } },
+                scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+            }
+        });
+    }
+}
+
+let __cacheFuncionariosHTML = null;
 
 async function abrirModalProcesso(processoId = null) {
     const modalEl = document.getElementById('processoJuridicoModal');
@@ -168,14 +353,28 @@ async function abrirModalProcesso(processoId = null) {
     document.getElementById('jur-pedidos-container').innerHTML = '<p class="text-muted">Selecione um "Tipo de Ação" para ver os pedidos.</p>';
     document.getElementById('jur-historico-container').innerHTML = '<p class="text-muted">Nenhuma alteração registrada.</p>';
 
-    // Resetar e popular select de clientes
-    const clienteSelect = document.getElementById('jur-cliente');
-    clienteSelect.innerHTML = '<option value="">Carregando...</option>';
-    const clientesSnap = await db.collection('clientes_juridicos').orderBy('nomeFantasia').get();
-    clienteSelect.innerHTML = '<option value="">Selecione um cliente</option>';
-    clientesSnap.forEach(doc => {
-        clienteSelect.innerHTML += `<option value="${doc.data().nomeFantasia}">${doc.data().nomeFantasia}</option>`;
-    });
+    // Resetar e popular select de funcionários (com cache e concatenação rápida)
+    const funcionarioSelect = document.getElementById('jur-funcionario');
+    if (!__cacheFuncionariosHTML) {
+        funcionarioSelect.innerHTML = '<option value="">Carregando...</option>';
+        try {
+            const funcSnap = await db.collection('funcionarios').orderBy('nome').get();
+            let html = '<option value="">Selecione um funcionário/reclamante</option>';
+            funcSnap.forEach(doc => {
+                const nome = doc.data().nome;
+                html += `<option value="${nome}">${nome}</option>`;
+            });
+            __cacheFuncionariosHTML = html;
+        } catch (e) {
+            console.error("Erro ao carregar funcionários", e);
+            funcionarioSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+        }
+    }
+    
+    // Aplica o HTML otimizado de uma vez
+    if (__cacheFuncionariosHTML) {
+        funcionarioSelect.innerHTML = __cacheFuncionariosHTML;
+    }
 
     if (processoId) {
         modalTitle.textContent = 'Editar Processo';
@@ -186,8 +385,18 @@ async function abrirModalProcesso(processoId = null) {
 
             document.getElementById('jur-numero-processo').value = data.numeroProcesso;
             document.getElementById('jur-data-distribuicao').value = formatarDataParaInput(data.dataDistribuicao);
-            document.getElementById('jur-cliente').value = data.cliente;
-            document.getElementById('jur-parte-contraria').value = data.parteContraria;
+            
+            // Tratamento para garantir compatibilidade com registros antigos
+            let funcNome = data.funcionarioNome || data.cliente || '';
+            const funcSelect = document.getElementById('jur-funcionario');
+            
+            // Se o nome não existir no select (mesmo com cache), adiciona ele
+            if (funcNome && !__cacheFuncionariosHTML.includes(`value="${funcNome}"`)) {
+                funcSelect.innerHTML += `<option value="${funcNome}">${funcNome} (Histórico)</option>`;
+            }
+            funcSelect.value = funcNome;
+            document.getElementById('jur-escritorio').value = data.escritorio || data.parteContraria || '';
+            
             document.getElementById('jur-tipo-acao').value = data.tipoAcao;
             document.getElementById('jur-status').value = data.status;
             document.getElementById('jur-descricao').value = data.descricao;
@@ -199,6 +408,13 @@ async function abrirModalProcesso(processoId = null) {
             document.getElementById('jur-analise-pontos').value = data.analise?.pontos || '';
             document.getElementById('jur-analise-testemunhas').value = data.analise?.testemunhas || '';
             document.getElementById('jur-analise-documentos').value = data.analise?.documentos || '';
+            
+            // Preenche a aba Encerramento
+            document.getElementById('jur-resultado-processo').value = data.encerramento?.resultado || '';
+            document.getElementById('jur-valor-pedido-acordo').value = data.encerramento?.valorPedido || '';
+            document.getElementById('jur-valor-teto-acordo').value = data.encerramento?.valorTeto || '';
+            document.getElementById('jur-valor-final-acordo').value = data.encerramento?.valorFinal || '';
+            document.getElementById('jur-obs-encerramento').value = data.encerramento?.observacoes || '';
 
 
             // Popula os pedidos
@@ -226,6 +442,10 @@ async function abrirModalProcesso(processoId = null) {
         modalTitle.textContent = 'Novo Processo';
         window.__processo_original = null;
     }
+
+    // Atualizar visibilidade das abas de acordo e status
+    toggleAbaEncerramento();
+    toggleValoresEncerramento();
 
     // Garante que a primeira aba esteja ativa
     new bootstrap.Tab(document.getElementById('processo-dados-tab')).show();
@@ -259,8 +479,10 @@ async function salvarProcessoJuridico() {
     const dados = {
         numeroProcesso: document.getElementById('jur-numero-processo').value,
         dataDistribuicao: new Date(document.getElementById('jur-data-distribuicao').value.replace(/-/g, '\/')),
-        cliente: document.getElementById('jur-cliente').value,
-        parteContraria: document.getElementById('jur-parte-contraria').value,
+        funcionarioNome: document.getElementById('jur-funcionario').value,
+        cliente: document.getElementById('jur-funcionario').value, // Compatibilidade com dados antigos
+        escritorio: document.getElementById('jur-escritorio').value,
+        parteContraria: document.getElementById('jur-escritorio').value, // Compatibilidade
         tipoAcao: document.getElementById('jur-tipo-acao').value,
         status: document.getElementById('jur-status').value,
         descricao: document.getElementById('jur-descricao').value.trim(),
@@ -274,10 +496,17 @@ async function salvarProcessoJuridico() {
             testemunhas: document.getElementById('jur-analise-testemunhas').value.trim(),
             documentos: document.getElementById('jur-analise-documentos').value.trim()
         },
+        encerramento: {
+            resultado: document.getElementById('jur-resultado-processo').value,
+            valorPedido: parseFloat(document.getElementById('jur-valor-pedido-acordo').value.replace(',', '.')) || 0,
+            valorTeto: parseFloat(document.getElementById('jur-valor-teto-acordo').value.replace(',', '.')) || 0,
+            valorFinal: parseFloat(document.getElementById('jur-valor-final-acordo').value.replace(',', '.')) || 0,
+            observacoes: document.getElementById('jur-obs-encerramento').value.trim()
+        },
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    if (!dados.numeroProcesso || !dados.cliente || !dados.parteContraria || !dados.tipoAcao) {
+    if (!dados.numeroProcesso || !dados.funcionarioNome || !dados.tipoAcao) {
         mostrarMensagem("Preencha os campos obrigatórios.", "warning");
         return;
     }
@@ -290,12 +519,14 @@ async function salvarProcessoJuridico() {
                 await db.collection('processos_juridicos').doc(processoId).collection('historico').add(log);
             }
             mostrarMensagem("Processo atualizado com sucesso!", "success");
+            await syncAgendaJuridica(processoId, dados);
         } else {
             dados.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             const docRef = await db.collection('processos_juridicos').add(dados);
             mostrarMensagem("Processo cadastrado com sucesso!", "success");
             const log = { alteracao: 'Processo criado.', usuario: firebase.auth().currentUser.email, data: new Date() };
             await db.collection('processos_juridicos').doc(docRef.id).collection('historico').add(log);
+            await syncAgendaJuridica(docRef.id, dados);
         }
 
         bootstrap.Modal.getInstance(document.getElementById('processoJuridicoModal')).hide();
@@ -314,11 +545,67 @@ async function excluirProcessoJuridico(processoId) {
 
     try {
         await db.collection('processos_juridicos').doc(processoId).delete();
+        
+        // Excluir também da agenda
+        const snap = await db.collection('agenda_atividades').where('referenciaId', '==', processoId).get();
+        const batch = db.batch();
+        snap.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+        await batch.commit();
+
         mostrarMensagem("Processo excluído com sucesso.", "success");
         await carregarProcessosJuridicos();
     } catch (error) {
         console.error("Erro ao excluir processo:", error);
         mostrarMensagem("Falha ao excluir o processo.", "error");
+    }
+}
+
+async function syncAgendaJuridica(processoId, dadosProcesso) {
+    try {
+        const userId = firebase.auth().currentUser.uid;
+        const userNome = firebase.auth().currentUser.displayName || firebase.auth().currentUser.email;
+        
+        const syncEvento = async (tipo, dataEvento) => {
+            const snap = await db.collection('agenda_atividades')
+                                 .where('moduloOrigem', '==', 'Jurídico')
+                                 .where('referenciaId', '==', processoId)
+                                 .where('tipoEvento', '==', tipo)
+                                 .get();
+                                 
+            if (dataEvento) {
+                const eventoData = {
+                    titulo: `${tipo} - Processo ${dadosProcesso.numeroProcesso}`,
+                    descricao: `Processo Trabalhista / Cível: ${dadosProcesso.numeroProcesso}\\nReclamante/Autor: ${dadosProcesso.funcionarioNome}`,
+                    data: dataEvento,
+                    status: 'Pendente',
+                    moduloOrigem: 'Jurídico',
+                    referenciaId: processoId,
+                    tipoEvento: tipo,
+                    atribuidoParaId: userId,
+                    atribuidoParaNome: userNome,
+                    criadoPor: userId,
+                    atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                if (snap.empty) {
+                    await db.collection('agenda_atividades').add(eventoData);
+                } else {
+                    await db.collection('agenda_atividades').doc(snap.docs[0].id).update(eventoData);
+                }
+            } else {
+                if (!snap.empty) {
+                    await db.collection('agenda_atividades').doc(snap.docs[0].id).delete();
+                }
+            }
+        };
+        
+        await syncEvento('Audiência Conciliação', dadosProcesso.dataConciliacao);
+        await syncEvento('Audiência Instrução', dadosProcesso.dataInstrucao);
+        
+    } catch (error) {
+        console.error("Erro ao sincronizar com agenda:", error);
     }
 }
 
@@ -508,8 +795,8 @@ async function visualizarProcessoCompacto(processoId) {
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 mb-3"><small class="text-muted">Cliente</small><p>${proc.cliente || 'N/A'}</p></div>
-                <div class="col-md-6 mb-3"><small class="text-muted">Parte Contrária</small><p>${proc.parteContraria || 'N/A'}</p></div>
+                <div class="col-md-6 mb-3"><small class="text-muted">Reclamante / Autor</small><p>${proc.funcionarioNome || proc.cliente || 'N/A'}</p></div>
+                <div class="col-md-6 mb-3"><small class="text-muted">Escritório / Advogado</small><p>${proc.escritorio || proc.parteContraria || 'N/A'}</p></div>
             </div>
             <div class="row">
                 <div class="col-md-6 mb-3"><small class="text-muted">Tipo de Ação</small><p><span class="badge bg-info text-dark">${proc.tipoAcao || 'N/A'}</span></p></div>

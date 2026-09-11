@@ -17,6 +17,8 @@
                     <li class="nav-item" role="presentation"><button class="nav-link" id="processo-analise-tab"
                             data-bs-toggle="tab" data-bs-target="#tab-processo-analise" type="button">Provas e
                             Análise</button></li>
+                    <li class="nav-item" role="presentation" id="nav-item-encerramento" style="display: none;"><button class="nav-link text-success fw-bold" id="processo-encerramento-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-encerramento" type="button"><i class="fas fa-flag-checkered me-1"></i> Encerramento</button></li>
                     <li class="nav-item" role="presentation"><button class="nav-link" id="processo-historico-tab"
                             data-bs-toggle="tab" data-bs-target="#tab-processo-historico"
                             type="button">Histórico</button></li>
@@ -30,12 +32,13 @@
                             <div class="row g-3">
                                 <div class="col-md-6"><label class="form-label">Nº do Processo</label><input type="text"
                                         class="form-control" id="jur-numero-processo" required></div>
-                                <div class="col-md-6"><label class="form-label">Data de Distribuição</label><input
-                                        type="date" class="form-control" id="jur-data-distribuicao" required></div>
-                                <div class="col-md-6"><label class="form-label">Cliente</label><select
-                                        class="form-select" id="jur-cliente" required></select></div>
-                                <div class="col-md-6"><label class="form-label">Parte Contrária</label><input
-                                        type="text" class="form-control" id="jur-parte-contraria" required></div>
+                                <div class="col-md-6"><label class="form-label">Data de Distribuição</label><input type="date" class="form-control" id="jur-data-distribuicao" required></div>
+                                <div class="col-md-6"><label class="form-label">Funcionário / Ex-Func.</label>
+                                    <select class="form-select" id="jur-funcionario" required>
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6"><label class="form-label">Escritório Terceirizado / Advogado</label><input type="text" class="form-control" id="jur-escritorio" required></div>
                                 <div class="col-md-6">
                                     <label class="form-label">Tipo de Ação</label>
                                     <select class="form-select" id="jur-tipo-acao" required>
@@ -109,6 +112,59 @@
                                     etc.)</label>
                                 <textarea class="form-control" id="jur-analise-documentos" rows="3"
                                     placeholder="Ex: E-mails indicam jornada extraordinária não registrada, contrato de trabalho sem cláusula de confidencialidade..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Aba Encerramento (Exibida Apenas Quando Status = Finalizado) -->
+                    <div class="tab-pane fade" id="tab-processo-encerramento" role="tabpanel">
+                        <div class="alert alert-success mt-3" role="alert">
+                            <h6 class="alert-heading"><i class="fas fa-check-circle me-1"></i> Dados de Encerramento</h6>
+                            <p class="mb-0 text-muted small">Preencha os valores acordados ou sentenciados para calcular o impacto financeiro.</p>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Resultado do Processo</label>
+                                <select class="form-select border-success" id="jur-resultado-processo">
+                                    <option value="">Selecione o resultado...</option>
+                                    <option value="Acordo">Acordo entre as partes</option>
+                                    <option value="Vitoria">Vitória da Empresa (Improcedente)</option>
+                                    <option value="Derrota">Derrota da Empresa (Procedente)</option>
+                                </select>
+                            </div>
+                            
+                            <!-- Bloco de Valores (Geralmente Acordo) -->
+                            <div class="col-12" id="bloco-valores-encerramento" style="display: none;">
+                                <div class="card bg-light border-0">
+                                    <div class="card-body row g-3">
+                                        <div class="col-md-4">
+                                            <label class="form-label text-danger small fw-bold">1. Valor Pedido (Proposta Autora)</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">R$</span>
+                                                <input type="number" step="0.01" class="form-control" id="jur-valor-pedido-acordo" placeholder="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label text-warning small fw-bold">2. Teto Permitido (Direção)</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text">R$</span>
+                                                <input type="number" step="0.01" class="form-control" id="jur-valor-teto-acordo" placeholder="0.00">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label text-success small fw-bold">3. Valor Final Fechado</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text text-success bg-white border-success">R$</span>
+                                                <input type="number" step="0.01" class="form-control border-success fw-bold" id="jur-valor-final-acordo" placeholder="0.00">
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="col-12">
+                                <label class="form-label">Observações Finais do Encerramento</label>
+                                <textarea class="form-control" id="jur-obs-encerramento" rows="2" placeholder="Detalhes sobre a sentença ou condições do acordo..."></textarea>
                             </div>
                         </div>
                     </div>
