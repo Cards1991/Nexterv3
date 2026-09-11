@@ -6,7 +6,7 @@
 const TODAS_SECOES = [
     'empresas', 'funcionarios', 'afastamentos', 'exames-ocupacionais', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
     'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',
-    'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'config-fluxos', 'entrevista-desligamento', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
+    'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'admin-config-iso', 'config-fluxos', 'entrevista-desligamento', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
     'control-horas-autorizacao', 'juridico-analise-cpf',
@@ -17,7 +17,7 @@ const TODAS_SECOES = [
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
     'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz',
-    'cadastro-terceirizados',
+    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias'
 ];
 
 let currentUserPermissions = {};
@@ -278,6 +278,15 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'admin-usuarios':
                 if (typeof inicializarAdmin === 'function') await inicializarAdmin();
+                break;
+            case 'admin-config-iso':
+                if (typeof inicializarAdminConfigIso === 'function') await inicializarAdminConfigIso();
+                break;
+            case 'iso-indicadores':
+                if (typeof inicializarIsoIndicadores === 'function') await inicializarIsoIndicadores();
+                break;
+            case 'iso-evidencias':
+                if (typeof inicializarIsoEvidencias === 'function') await inicializarIsoEvidencias();
                 break;
             case 'analise-rescisao':
                 if (typeof inicializarAnaliseRescisao === 'function') await inicializarAnaliseRescisao();
@@ -990,6 +999,11 @@ function inicializarNavegacao() {
 
     navContainer.querySelectorAll('.nav-item').forEach(item => item.style.display = 'none');
 
+    // Renderizar o menu dinâmico da ISO antes de aplicar permissões
+    if (typeof window.renderizarMenuEscopoIso === 'function') {
+        window.renderizarMenuEscopoIso();
+    }
+
     currentUserPermissions.secoesPermitidas?.forEach(secao => {
         const link = navContainer.querySelector(`a[data-target="${secao}"]`);
         if (link) {
@@ -1456,3 +1470,10 @@ window.calcularDiferencaTempo = calcularDiferencaTempo;
 window.sair = sair;
 window.abrirModalGenerico = abrirModalGenerico;
 window.showSection = showSection;
+
+// Inicialização automática após carregamento dinâmico do HTML
+document.addEventListener('viewsLoaded', () => {
+    if (typeof window.renderizarMenuEscopoIso === 'function') {
+        window.renderizarMenuEscopoIso();
+    }
+});

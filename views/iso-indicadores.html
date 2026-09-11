@@ -1,0 +1,37 @@
+<div class="container-fluid mt-4 fade-in">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="page-title mb-0"><i class="fas fa-chart-bar me-2 text-primary"></i>Indicadores - <span id="iso-module-name-indicadores">Módulo</span></h2>
+            <p class="text-muted mb-0 mt-1">Acompanhamento dos indicadores de desempenho (KPIs) para a ISO 9001.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button class="btn btn-primary text-nowrap shadow-sm" onclick="alert('Função de adicionar indicador em desenvolvimento')">
+                <i class="fas fa-plus"></i> <span class="d-none d-md-inline">Novo Indicador</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-body p-4 text-center text-muted">
+                    <i class="fas fa-info-circle fa-2x mb-3 text-info"></i>
+                    <h5>Nenhum indicador configurado</h5>
+                    <p>Você está visualizando o painel de indicadores da ISO 9001 para o setor de <strong id="iso-module-name-indicadores-body"></strong>.</p>
+                    <p>Em breve, você poderá configurar metas, registrar os resultados mensais e gerar gráficos automáticos para apresentar na auditoria.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializa o título com base na variável global definida no menu
+    setTimeout(() => {
+        const nomeModulo = window.currentIsoModuleName || 'Módulo';
+        const tituloSpan = document.getElementById('iso-module-name-indicadores');
+        const bodySpan = document.getElementById('iso-module-name-indicadores-body');
+        if (tituloSpan) tituloSpan.textContent = nomeModulo;
+        if (bodySpan) bodySpan.textContent = nomeModulo;
+    }, 100);
+</script>

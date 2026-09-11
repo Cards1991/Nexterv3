@@ -1,0 +1,37 @@
+<div class="container-fluid mt-4 fade-in">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3 mb-4">
+        <div>
+            <h2 class="page-title mb-0"><i class="fas fa-folder-open me-2 text-primary"></i>Controle de Evidências - <span id="iso-module-name-evidencias">Módulo</span></h2>
+            <p class="text-muted mb-0 mt-1">Gestão de documentos comprobatórios e registros para auditoria da ISO 9001.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <button class="btn btn-primary text-nowrap shadow-sm" onclick="alert('Função de upload de evidência em desenvolvimento')">
+                <i class="fas fa-upload"></i> <span class="d-none d-md-inline">Anexar Evidência</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm rounded-4 overflow-hidden mb-4">
+                <div class="card-body p-4 text-center text-muted">
+                    <i class="fas fa-file-pdf fa-2x mb-3 text-secondary"></i>
+                    <h5>Nenhuma evidência anexada</h5>
+                    <p>O repositório de evidências do setor de <strong id="iso-module-name-evidencias-body"></strong> está vazio.</p>
+                    <p>Aqui você poderá armazenar atas de reuniões, fotos de ocorrências, relatórios assinados e planilhas exigidas pela certificação ISO 9001.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Inicializa o título com base na variável global definida no menu
+    setTimeout(() => {
+        const nomeModulo = window.currentIsoModuleName || 'Módulo';
+        const tituloSpan = document.getElementById('iso-module-name-evidencias');
+        const bodySpan = document.getElementById('iso-module-name-evidencias-body');
+        if (tituloSpan) tituloSpan.textContent = nomeModulo;
+        if (bodySpan) bodySpan.textContent = nomeModulo;
+    }, 100);
+</script>

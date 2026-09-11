@@ -152,9 +152,12 @@ async function abrirModalPermissoes(uid) {
             'financeiro', 'control-horas-autorizacao'
         ],
         'ISO 9001': [
-            'iso-manutencao', 'iso-maquinas', 'iso-mecanicos', 'iso-temperatura-injetoras',
-            'iso-organograma', 'gerenciar-avaliacoes', 'iso-swot', 'iso-avaliacao-colaboradores',
-            'mecanico-mobile'
+            'iso-temperatura-injetoras', 'iso-organograma', 'gerenciar-avaliacoes', 
+            'iso-swot', 'iso-avaliacao-colaboradores'
+        ],
+        'Manutenção': [
+            'iso-manutencao', 'iso-maquinas', 'iso-mecanicos', 'cadastro-mecanicos', 
+            'mecanico-mobile', 'manutencao-mecanico', 'chamados-manutencao'
         ],
         'Logística': [
             'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete'
@@ -164,7 +167,7 @@ async function abrirModalPermissoes(uid) {
             'juridico-documentos', 'compliance-denuncia', 'juridico-analise-cpf'
         ],
         'Geral / Admin': [
-            'agenda', 'empresas', 'relatorios', 'admin-usuarios'
+            'agenda', 'empresas', 'relatorios', 'admin-usuarios', 'admin-config-iso'
         ]
     };
 

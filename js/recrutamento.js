@@ -308,6 +308,11 @@ async function editarCandidato(id) {
     document.getElementById('areaEscavador').style.display = 'none';
     const elAreaProcessos = document.getElementById('areaProcessosInternos');
     if (elAreaProcessos) elAreaProcessos.style.display = 'none';
+    const elAreaBanco = document.getElementById('areaBancoTalentos');
+    if (elAreaBanco) elAreaBanco.style.display = 'none';
+
+    // Limpa resultado anterior em memória
+    window._ultimaConsultaEscavador = null;
 
     // Renderizar Painel de Resumo do Totem
     const painelResumo = document.getElementById('painel-resumo-totem');
@@ -324,7 +329,49 @@ async function editarCandidato(id) {
                 if (sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
                 if (sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
                 if (sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
-                escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Ver Detalhes (Buscando Novamente)</small>`;
+                escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Atualizar Consulta</small>`;
+            }
+        }
+
+        // Restaura e exibe os processos salvos na ficha
+        if (cand.escavador_processos && cand.escavador_processos.length > 0) {
+            const areaEscavador = document.getElementById('areaEscavador');
+            const divResult = document.getElementById('resultadoEscavador');
+            if (areaEscavador && divResult) {
+                areaEscavador.style.display = 'block';
+                const sum = cand.escavador_summary;
+                let html = `<div class="alert alert-info small py-2"><i class="fas fa-info-circle"></i> <strong>Consulta salva em ${cand.escavador_consultadoEm ? new Date(cand.escavador_consultadoEm.seconds * 1000).toLocaleDateString('pt-BR') : 'data não disponível'}.</strong> Consulte novamente para atualizar.</div>`;
+                html += `<div class="process-list mt-2">`;
+                cand.escavador_processos.forEach(proc => {
+                    let badgeClass = 'homonym';
+                    if (proc.classificacao === 'CONFIRMADO') badgeClass = 'confirmed';
+                    else if (proc.classificacao === 'ALTA_PROBABILIDADE') badgeClass = 'high';
+                    else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') badgeClass = 'possible';
+                    const tipo = proc.classe || proc.natureza || proc.especie || proc.assunto || 'N/I';
+                    html += `
+                        <div class="process-card fade-in">
+                            <div class="process-header">
+                                <div>
+                                    <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
+                                    <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
+                                    <div class="process-type"><strong>Tipo de processo:</strong> ${tipo}</div>
+                                </div>
+                                <div class="d-flex flex-column align-items-end">
+                                    <span class="match-badge ${badgeClass}">${proc.badgeText || proc.classificacao || ''}</span>
+                                    <span class="score-text mt-1">Score: ${proc.score || 'N/A'}/100</span>
+                                </div>
+                            </div>
+                            <div class="process-details">
+                                <p><strong>Tribunal/UF:</strong> ${proc.estado_origem || ''} - ${proc.orgao_julgador || 'N/I'}</p>
+                                <p><strong>Classe:</strong> ${proc.classe || 'N/I'}</p>
+                                <p><strong>Status:</strong> ${proc.situacao || 'Desconhecido'}</p>
+                                <p><strong>Distribuição:</strong> ${proc.data_distribuicao ? new Date(proc.data_distribuicao).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                            </div>
+                            ${proc.fonte_url ? `<div class="process-actions"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
+                        </div>`;
+                });
+                html += `</div><div class="mt-3"><button class="btn btn-sm btn-outline-warning" onclick="consultarCandidatoAPI()"><i class="fas fa-sync-alt"></i> Atualizar consulta Escavador</button></div>`;
+                divResult.innerHTML = html;
             }
         }
     } else {
@@ -369,6 +416,31 @@ async function salvarCandidato() {
         atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
     };
 
+    // Persiste o resultado da última consulta Escavador se houver
+    if (window._ultimaConsultaEscavador) {
+        candidatoData.escavador_summary = window._ultimaConsultaEscavador.summary || null;
+        candidatoData.escavador_processos = (window._ultimaConsultaEscavador.processes || []).map(p => ({
+            numero_cnj: p.numero_cnj || null,
+            titulo_polo_ativo: p.titulo_polo_ativo || null,
+            titulo_polo_passivo: p.titulo_polo_passivo || null,
+            classificacao: p.classificacao || null,
+            badgeText: p.badgeText || null,
+            score: p.score || null,
+            match_documento_por: p.match_documento_por || null,
+            estado_origem: p.estado_origem?.sigla || null,
+            classe: p.capa?.classe || null,
+            natureza: p.capa?.natureza || null,
+            especie: p.capa?.especie || null,
+            assunto: p.capa?.assunto_principal_normalizado?.nome || null,
+            area: p.capa?.area || null,
+            situacao: p.capa?.situacao || null,
+            orgao_julgador: p.capa?.orgao_julgador || null,
+            data_distribuicao: p.capa?.data_distribuicao || null,
+            fonte_url: p.fontes?.[0]?.url || null
+        }));
+        candidatoData.escavador_consultadoEm = firebase.firestore.FieldValue.serverTimestamp();
+    }
+
     try {
         if (!id) {
             candidatoData.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
@@ -405,6 +477,9 @@ async function salvarCandidato() {
 
 // Token placeholder (Substitua depois pelo seu token do Hub Desenvolvedor)
 const HUB_DESENVOLVEDOR_TOKEN = '214312030idUEkpCDXn386933872';
+
+// Armazena o último resultado da consulta Escavador para persistência
+window._ultimaConsultaEscavador = null;
 
 async function consultarCandidatoAPI(deepSearchModeParam = null) {
     const cpfRaw = document.getElementById('candidatoCpf').value;
@@ -539,24 +614,205 @@ window.consultarPasso2Juridico = async function () {
             <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="reprovarCandidatoImediato()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                 <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
             </button>
-            <button type="button" class="btn btn-primary px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="prepararPasso3Escavador()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
+            <button type="button" class="btn btn-primary px-4 rounded-pill fw-medium shadow-sm transition-transform" onclick="prepararPasso3BancoTalentos()" onmouseover="this.style.transform='scale(1.02)'" onmouseout="this.style.transform='scale(1)'">
                 Avançar p/ Passo 3 <i class="fas fa-play ms-1"></i>
             </button>
         </div>
     `;
 }
 
-window.prepararPasso3Escavador = function () {
+/* =============================================
+   PASSO 3 – BANCO DE TALENTOS
+   Verifica se esse CPF já foi consultado antes
+   ============================================= */
+window.prepararPasso3BancoTalentos = async function () {
+    const cpfRaw = document.getElementById('candidatoCpf').value;
+    const cpf = cpfRaw.replace(/\D/g, '');
+    const candidatoIdAtual = document.getElementById('candidatoId').value;
+
+    const areaBanco = document.getElementById('areaBancoTalentos');
+    const divBanco = document.getElementById('resultadoBancoTalentos');
+
+    // Cria a área se não existir no DOM (compat.
+    if (!areaBanco || !divBanco) {
+        // Se os elementos não existem, pula direto para o Escavador
+        prepararPasso4Escavador();
+        return;
+    }
+
+    areaBanco.style.display = 'block';
+    divBanco.innerHTML = `<div class="text-center py-3 text-muted"><i class="fas fa-spinner fa-spin me-2"></i>Verificando banco de talentos...</div>`;
+
+    try {
+        const snap = await db.collection('candidatos')
+            .where('cpf', '==', cpfRaw)
+            .get();
+
+        // Filtra candidatos diferentes do atual que já tenham dados do Escavador
+        const comDados = snap.docs.filter(d => d.id !== candidatoIdAtual && d.data().escavador_summary);
+
+        if (comDados.length > 0) {
+            const melhor = comDados.sort((a, b) => {
+                const ta = a.data().escavador_consultadoEm?.seconds || 0;
+                const tb = b.data().escavador_consultadoEm?.seconds || 0;
+                return tb - ta; // mais recente primeiro
+            })[0].data();
+
+            const dataConsulta = melhor.escavador_consultadoEm
+                ? new Date(melhor.escavador_consultadoEm.seconds * 1000).toLocaleDateString('pt-BR')
+                : 'data desconhecida';
+            const sum = melhor.escavador_summary;
+
+            let badgesSalvos = `<span class="badge bg-secondary me-1">Total: ${sum.total}</span>`;
+            if (sum.confirmed > 0) badgesSalvos += `<span class="badge bg-danger me-1">Confirmados: ${sum.confirmed}</span>`;
+            if (sum.homonyms > 0) badgesSalvos += `<span class="badge bg-warning text-dark me-1">Homônimos: ${sum.homonyms}</span>`;
+            if (sum.possible > 0) badgesSalvos += `<span class="badge bg-info text-dark me-1">Possíveis: ${sum.possible}</span>`;
+
+            divBanco.innerHTML = `
+                <div class="card border-success shadow-sm rounded-3">
+                    <div class="card-body">
+                        <h6 class="text-success mb-2"><i class="fas fa-database me-2"></i>CPF já consultado no banco de talentos!</h6>
+                        <p class="small text-muted mb-2">Consulta Escavador realizada em <strong>${dataConsulta}</strong>. Reutilizar esses dados economiza créditos.</p>
+                        <div class="mb-3">${badgesSalvos}</div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button class="btn btn-success btn-sm rounded-pill px-3" onclick="reutilizarDadosBancoTalentos()"
+                                data-dados='${JSON.stringify({summary: melhor.escavador_summary, processos: melhor.escavador_processos || []})}' id="btn-reutilizar-banco">
+                                <i class="fas fa-recycle me-1"></i> Reutilizar dados salvos
+                            </button>
+                            <button class="btn btn-outline-warning btn-sm rounded-pill px-3" onclick="prepararPasso4Escavador()">
+                                <i class="fas fa-sync-alt me-1"></i> Realizar nova consulta (gera custo)
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm" onclick="reprovarCandidatoImediato()">
+                        <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
+                    </button>
+                </div>`;
+        } else {
+            // Nenhum registro anterior com dados – avança direto para o Escavador
+            divBanco.innerHTML = `
+                <div class="card border-0 bg-light shadow-sm rounded-3">
+                    <div class="card-body py-3">
+                        <span class="text-muted small"><i class="fas fa-info-circle me-2"></i>Nenhuma consulta anterior encontrada para este CPF. Prossiga para consulta externa.</span>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-3 pt-3 border-top">
+                    <button type="button" class="btn btn-outline-danger px-4 rounded-pill fw-medium shadow-sm" onclick="reprovarCandidatoImediato()">
+                        <i class="fas fa-times-circle me-1"></i> Reprovar Candidato
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 rounded-pill fw-medium shadow-sm" onclick="prepararPasso4Escavador()">
+                        Avançar p/ Passo 4 <i class="fas fa-play ms-1"></i>
+                    </button>
+                </div>`;
+        }
+    } catch (e) {
+        console.error('Erro banco talentos:', e);
+        divBanco.innerHTML = `
+            <div class="alert alert-warning small">Não foi possível verificar o banco de talentos. Prossiga para consulta externa.</div>
+            <div class="d-flex justify-content-end mt-2">
+                <button class="btn btn-primary btn-sm rounded-pill" onclick="prepararPasso4Escavador()">Avançar p/ Passo 4 <i class="fas fa-play ms-1"></i></button>
+            </div>`;
+    }
+}
+
+window.reutilizarDadosBancoTalentos = function () {
+    const btn = document.getElementById('btn-reutilizar-banco');
+    if (!btn) return;
+    let dadosBanco;
+    try { dadosBanco = JSON.parse(btn.getAttribute('data-dados')); } catch (e) { return; }
+
+    // Popula o resultado em memória como se tivesse consultado agora
+    window._ultimaConsultaEscavador = {
+        status: dadosBanco.processos && dadosBanco.processos.length > 0 ? 'SUCCESS_WITH_RESULTS' : 'SUCCESS_NO_RESULTS',
+        summary: dadosBanco.summary,
+        processes: dadosBanco.processos || []
+    };
+
+    // Renderiza os processos na tela
+    const areaEscavador = document.getElementById('areaEscavador');
+    const divResult = document.getElementById('resultadoEscavador');
+    if (areaEscavador && divResult) {
+        areaEscavador.style.display = 'block';
+        const sum = dadosBanco.summary;
+        let html = `<div class="alert alert-success small py-2"><i class="fas fa-recycle me-1"></i> <strong>Dados reutilizados do banco de talentos.</strong> Salve o candidato para vincular à ficha.</div>`;
+
+        if (dadosBanco.processos && dadosBanco.processos.length > 0) {
+            html += `<div class="process-list mt-2">`;
+            dadosBanco.processos.forEach(proc => {
+                let badgeClass = 'homonym';
+                if (proc.classificacao === 'CONFIRMADO') badgeClass = 'confirmed';
+                else if (proc.classificacao === 'ALTA_PROBABILIDADE') badgeClass = 'high';
+                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') badgeClass = 'possible';
+                const tipo = proc.classe || proc.natureza || proc.especie || proc.assunto || 'N/I';
+                html += `
+                    <div class="process-card fade-in">
+                        <div class="process-header">
+                            <div>
+                                <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
+                                <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
+                                <div class="process-type"><strong>Tipo de processo:</strong> ${tipo}</div>
+                            </div>
+                            <div class="d-flex flex-column align-items-end">
+                                <span class="match-badge ${badgeClass}">${proc.badgeText || proc.classificacao || ''}</span>
+                                <span class="score-text mt-1">Score: ${proc.score || 'N/A'}/100</span>
+                            </div>
+                        </div>
+                        <div class="process-details">
+                            <p><strong>Tribunal/UF:</strong> ${proc.estado_origem || ''} - ${proc.orgao_julgador || 'N/I'}</p>
+                            <p><strong>Classe:</strong> ${proc.classe || 'N/I'}</p>
+                            <p><strong>Status:</strong> ${proc.situacao || 'Desconhecido'}</p>
+                            <p><strong>Distribuição:</strong> ${proc.data_distribuicao ? new Date(proc.data_distribuicao).toLocaleDateString('pt-BR') : 'N/A'}</p>
+                        </div>
+                    </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<div class="alert alert-success"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF.</div>`;
+        }
+        divResult.innerHTML = html;
+    }
+    mostrarMensagem('Dados do banco de talentos carregados! Salve o candidato para vincular.', 'success');
+}
+
+window.prepararPasso4Escavador = function () {
     const area = document.getElementById('areaEscavador');
     const divResult = document.getElementById('resultadoEscavador');
     const exactCheck = document.getElementById('buscaExataCpf');
     const modeToUse = (exactCheck && exactCheck.checked) ? 'AUTO' : 'HOMONIMOS_ONLY';
+    const candidatoIdAtual = document.getElementById('candidatoId').value;
 
     area.style.display = 'block';
+
+    // Se o candidato já tem dados salvos, mostra aviso e desabilita nova consulta
+    const candidatoSalvo = candidatoIdAtual && candidatosAtuais && candidatosAtuais.find(c => c.id === candidatoIdAtual);
+    if (candidatoSalvo && candidatoSalvo.escavador_summary) {
+        const dataConsulta = candidatoSalvo.escavador_consultadoEm
+            ? new Date(candidatoSalvo.escavador_consultadoEm.seconds * 1000).toLocaleDateString('pt-BR')
+            : 'data desconhecida';
+        divResult.innerHTML = `
+            <div class="card shadow-sm border-success rounded-3 border-top border-success border-3">
+                <div class="card-body">
+                    <h6 class="card-title text-success"><i class="fas fa-check-circle me-2"></i>Antecedentes já consultados e salvos</h6>
+                    <p class="small text-muted mb-3">Consulta realizada em <strong>${dataConsulta}</strong>. Os dados já estão vinculados a esta ficha. Uma nova consulta gera custo adicional.</p>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button type="button" class="btn btn-outline-secondary btn-sm rounded-pill" disabled>
+                            <i class="fas fa-lock me-1"></i> Consulta já realizada
+                        </button>
+                        <button type="button" class="btn btn-outline-warning btn-sm rounded-pill" onclick="consultarEscavadorAPI('${modeToUse}')">
+                            <i class="fas fa-sync-alt me-1"></i> Forcar nova consulta (gera custo)
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        return;
+    }
+
     divResult.innerHTML = `
         <div class="card shadow-sm border-warning rounded-3 border-top border-warning border-3">
             <div class="card-body">
-                <h6 class="card-title text-warning-emphasis"><i class="fas fa-search-dollar me-2"></i>Consulta de Antecedentes Externa (Escavador)</h6>
+                <h6 class="card-title text-warning-emphasis"><i class="fas fa-search-dollar me-2"></i>Passo 4 – Consulta de Antecedentes Externa (Escavador)</h6>
                 <p class="small text-muted mb-4">A consulta processual em tribunais gera custos adicionais para a empresa por CPF. Verifique as informações internas nos passos anteriores. Se for necessário confirmar antecedentes na justiça, execute a busca externa abaixo.</p>
                 
                 <div class="d-flex justify-content-between align-items-center mt-2 pt-3 border-top">
@@ -682,6 +938,7 @@ window.consultarEscavadorAPI = async function (modeToUse) {
 
                 const assuntoBadge = proc.capa?.assunto_principal_normalizado?.nome || (proc.capa?.assuntos && proc.capa.assuntos.length > 0 ? proc.capa.assuntos[0].nome : '');
                 const areaBadge = proc.capa?.area || '';
+                const tipoProcesso = proc.capa?.classe || proc.capa?.natureza || proc.capa?.especie || assuntoBadge || 'N/I';
 
                 htmlResultados += `
                     <div class="process-card fade-in">
@@ -690,7 +947,7 @@ window.consultarEscavadorAPI = async function (modeToUse) {
                                 <div class="process-number">${proc.numero_cnj || 'S/N'}</div>
                                 <div class="process-title">${proc.titulo_polo_ativo || 'N/I'} <span class="text-muted mx-1">x</span> ${proc.titulo_polo_passivo || 'N/I'}</div>
                                 ${assuntoBadge ? `<div class="mt-1"><span class="badge bg-light text-dark border border-secondary shadow-sm"><i class="fas fa-tag text-muted me-1"></i>${assuntoBadge}</span> ${areaBadge ? `<span class="badge bg-light text-dark border shadow-sm ms-1">${areaBadge}</span>` : ''}</div>` : ''}
-                                <div class="process-type"><strong>Tipo:</strong> ${proc.capa?.classe || 'N/I'}</div>
+                                <div class="process-type"><strong>Tipo de processo:</strong> ${tipoProcesso}</div>
                             </div>
                             <div class="d-flex flex-column align-items-end">
                                 <span class="match-badge ${badgeClass}" title="${proc.match_documento_por}">
@@ -738,6 +995,11 @@ window.consultarEscavadorAPI = async function (modeToUse) {
         }
 
         divResult.innerHTML = htmlResultados;
+
+        // Persiste em memória para ser salvo junto ao candidato
+        if (data.status === 'SUCCESS_WITH_RESULTS' || data.status === 'SUCCESS_NO_RESULTS') {
+            window._ultimaConsultaEscavador = data;
+        }
 
     } catch (error) {
         console.error('Erro consulta processos (Network):', error);
@@ -981,7 +1243,7 @@ window.abrirDocumentosEscavador = async function (numeroCnj) {
     bsModal.show();
 
     try {
-        const response = await fetch(`https://api.escavador.com/api/v1/processos/numero_cnj/${numeroCnj}/documentos-publicos`, {
+        const response = await fetch(`https://api.escavador.com/api/v2/processos/numero_cnj/${numeroCnj}/documentos-publicos`, {
             headers: { 'Authorization': `Bearer ${escavadorToken}`, 'X-Requested-With': 'XMLHttpRequest' }
         });
 
