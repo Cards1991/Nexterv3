@@ -55,6 +55,9 @@ async function inicializarExamesOcupacionais() {
                         <button class="btn btn-sm btn-outline-info" onclick="window.visualizarEvento('${ex.id}', 'agenda_atividades')" title="Ver Detalhes">
                             <i class="fas fa-eye"></i>
                         </button>
+                        <button class="btn btn-sm btn-outline-danger ms-1" onclick="excluirExameOcupacional('${ex.id}')" title="Excluir">
+                            <i class="fas fa-trash"></i>
+                        </button>
                     </td>
                 </tr>
             `;
@@ -69,3 +72,23 @@ async function inicializarExamesOcupacionais() {
 }
 
 // A função visualizarDetalhesExame não é mais necessária, pois chamamos diretamente window.visualizarEvento no onClick
+
+window.excluirExameOcupacional = async function(id) {
+    if (!confirm('Tem certeza que deseja excluir este exame?')) return;
+    try {
+        await db.collection('agenda_atividades').doc(id).delete();
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Sucesso!', 'Exame excluído com sucesso.', 'success');
+        } else {
+            alert('Exame excluído com sucesso.');
+        }
+        inicializarExamesOcupacionais();
+    } catch (e) {
+        console.error('Erro ao excluir exame:', e);
+        if (typeof Swal !== 'undefined') {
+            Swal.fire('Erro!', 'Ocorreu um erro ao excluir o exame.', 'error');
+        } else {
+            alert('Ocorreu um erro ao excluir o exame.');
+        }
+    }
+};
