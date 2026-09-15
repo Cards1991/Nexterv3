@@ -3193,18 +3193,18 @@ class LeitorControlID {
                 this.ws = new WebSocket(`wss://${this.ip}:8181/plugin`);
 
                 this.ws.onopen = () => {
-                    console.log('✅ Leitor ControlID conectado via WSS');
+
                     this.conectado = true;
                     resolve();
                 };
 
                 this.ws.onerror = (error) => {
-                    console.log('❌ WSS falhou, tentando WS...');
+
                     // Se falhar, tenta sem SSL
                     this.ws = new WebSocket(`ws://${this.ip}:8181/plugin`);
 
                     this.ws.onopen = () => {
-                        console.log('✅ Leitor ControlID conectado via WS');
+
                         this.conectado = true;
                         resolve();
                     };
@@ -3228,7 +3228,7 @@ class LeitorControlID {
     processarMensagem(data) {
         try {
             const msg = JSON.parse(data);
-            console.log('📥 Resposta do leitor:', msg);
+
 
             if (msg.id && this.callbacks.has(msg.id)) {
                 const callback = this.callbacks.get(msg.id);
@@ -3236,7 +3236,7 @@ class LeitorControlID {
                 this.callbacks.delete(msg.id);
             }
         } catch (e) {
-            console.log('📥 Mensagem bruta:', data);
+
         }
     }
 

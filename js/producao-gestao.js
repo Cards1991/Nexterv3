@@ -12,7 +12,7 @@ let __PRODUCAO_CONFIG = {
 // 1. Inicializador Principal (Controlador de Rotas Internas)
 async function inicializarProducaoMetas(secaoNome) {
     const secao = secaoNome || window.secaoAtual || 'producao-gestao';
-    console.log("🚀 Inicializando Módulo de Produção e Metas (" + secao + ")...");
+
     
     // 1. Carregar Setores (Comum a todas as subseções)
     await carregarSectoresProducao();
@@ -1108,7 +1108,7 @@ async function mostrarConfirmacaoLeitura(codigo) {
         }
         
         const p = docProd.data();
-        console.log("Produto Identificado:", p);
+
         
         document.getElementById('sc-produto-nome').innerText = p.descricao;
         document.getElementById('sc-produto-tamanho').innerText = `Tamanho: ${p.tamanho}`;
@@ -1136,7 +1136,7 @@ async function mostrarConfirmacaoLeitura(codigo) {
                 }
             });
             
-            console.log(`Encontrados ${encontrados} colaboradores para o setor ${p.setorNome}`);
+
             
             if (encontrados === 0) {
                 select.innerHTML = `<option value="">Nenhum colaborador no setor ${p.setorNome || 'Desconhecido'}</option>`;
@@ -1299,7 +1299,7 @@ window.abrirModalGerarFicha = async () => {
     document.getElementById('gf-lista-produtos-selecionados').innerHTML = '<li class="list-group-item text-center text-muted py-3 small bg-transparent border-0">Nenhum selecionado</li>';
     
     // Forçar carregamento das máquinas e produtos (cache)
-    console.log("Abrindo modal: Carregando máquinas e produtos...");
+
     await carregarMaquinasFicha();
     await carregarCacheProdutosFicha();
     atualizarContagemFicha();
@@ -1314,7 +1314,7 @@ async function carregarCacheProdutosFicha() {
     try {
         const snap = await db.collection('producao_produtos').get();
         __CACHE_PRODUTOS_FICHA = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        console.log(`Cache de produtos carregado: ${__CACHE_PRODUTOS_FICHA.length} itens`);
+
     } catch (e) { 
         console.error("Erro ao carregar cache de produtos:", e);
     }

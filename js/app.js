@@ -849,7 +849,7 @@ document.addEventListener('viewsLoaded', function () {
                 currentUserPermissions.nome = userDoc.data().nome;
                 currentUserPermissions.funcionarioId = userDoc.data().funcionarioId;
                 window.currentUserPermissions = currentUserPermissions;
-                console.log('User permissions:', currentUserPermissions);
+
                 
                 // Garante que o mecânico tenha permissão para o próprio painel
                 if (currentUserPermissions.isMecanico && !currentUserPermissions.secoesPermitidas.includes('manutencao-mecanico')) {
