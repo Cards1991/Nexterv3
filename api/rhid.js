@@ -109,7 +109,12 @@ module.exports = async function handler(req, res) {
                         const personsBatch = personData.persons || personData.data || personData || [];
                         
                         if (!Array.isArray(personsBatch)) {
-                             throw new Error('A resposta da API do RHiD não está no formato de array esperado.');
+                            // Em vez de throw, vamos retornar o dado bruto para podermos inspecionar no frontend!
+                            return res.status(500).json({ 
+                                success: false, 
+                                message: 'O RHiD retornou um formato inesperado.', 
+                                details: 'Estrutura: ' + JSON.stringify(personData).substring(0, 300)
+                            });
                         }
 
                         if (personsBatch.length > 0) {

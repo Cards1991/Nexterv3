@@ -111,7 +111,8 @@ async function sincronizarFuncionariosRhid() {
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-            throw new Error(data.message || data.error || 'Falha ao buscar funcionários.');
+            const detalhe = data.details ? ` (${data.details})` : '';
+            throw new Error((data.message || data.error || 'Falha ao buscar funcionários.') + detalhe);
         }
 
         const employees = data.data; // Array vindo do RHiD
