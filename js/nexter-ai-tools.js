@@ -676,11 +676,8 @@ const nexterAITools = {
                     return JSON.stringify({ erro: "Biblioteca html2pdf não encontrada na página." });
                 }
 
-                // Cria o container base isolado
+                // Cria o container base limpo
                 const container = document.createElement('div');
-                container.style.position = 'absolute';
-                container.style.left = '-10000px'; 
-                container.style.top = '0';
                 container.style.width = '180mm';
                 container.style.maxWidth = '180mm';
                 container.style.fontFamily = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -795,8 +792,8 @@ const nexterAITools = {
                     blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; margin: 10px 0; padding: 10px 12px; border-radius: 0 8px 8px 0; color: #1e3a8a; font-weight: 500; font-style: italic; }
                 `;
                 container.appendChild(style);
-                
-                document.body.appendChild(container);
+                // NÃO anexar ao document.body para evitar offset e tela branca.
+                // O html2pdf processa elementos soltos (detached) nativamente num iframe invisível perfeito.
                 
                 const opt = {
                     margin:       15, // 15mm reais
@@ -835,9 +832,6 @@ const nexterAITools = {
                         document.body.removeChild(a);
                     }
                     
-                    if (document.body.contains(container)) {
-                        document.body.removeChild(container);
-                    }
                 });
 
                 return JSON.stringify({ status: "sucesso", mensagem: "O PDF corporativo foi gerado com paginação inteligente e aberto na tela do usuário." });
