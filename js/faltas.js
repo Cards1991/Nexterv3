@@ -1175,3 +1175,20 @@ async function renderizarGraficoEvolucaoFaltas() {
 
 // Exportar para uso global
 window.renderizarGraficoEvolucaoFaltas = renderizarGraficoEvolucaoFaltas;
+
+// Função auxiliar para abrir janela de impressão
+function openPrintWindow(content, options = {}) {
+    const { autoPrint = false, name = '_blank', specs = 'width=800,height=600' } = options;
+
+    const printWindow = window.open('', name, specs);
+    printWindow.document.open();
+    printWindow.document.write(content);
+    printWindow.document.close();
+
+    if (autoPrint) {
+        printWindow.focus();
+        printWindow.print();
+        // printWindow.close(); // Descomente se quiser fechar automaticamente após imprimir
+    }
+}
+window.openPrintWindow = openPrintWindow;

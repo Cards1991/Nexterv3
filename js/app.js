@@ -1005,8 +1005,8 @@ function inicializarNavegacao() {
     }
 
     currentUserPermissions.secoesPermitidas?.forEach(secao => {
-        const link = navContainer.querySelector(`a[data-target="${secao}"]`);
-        if (link) {
+        const links = navContainer.querySelectorAll(`a[data-target="${secao}"]`);
+        links.forEach(link => {
             const navItemDoLink = link.closest('.nav-item');
             if (navItemDoLink) navItemDoLink.style.display = 'block';
 
@@ -1021,7 +1021,7 @@ function inicializarNavegacao() {
                     break;
                 }
             }
-        }
+        });
     });
 
     navContainer.querySelectorAll('a[data-target]').forEach(link => {
