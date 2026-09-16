@@ -76,6 +76,69 @@ module.exports = async function handler(req, res) {
                         details: connError.message 
                     });
                 }
+
+            case 'syncEmployees':
+                try {
+                    const token = await loginToRhid();
+                    
+                    // Inicializa array para armazenar todos os funcionários
+                    let allEmployees = [];
+                    let skip = 0;
+                    const limit = 100; // Máximo permitido costuma ser 100 por requisição
+                    let hasMore = true;
+
+                    while (hasMore) {
+                        const personRes = await fetch(`${RHID_API_BASE}/person?skip=${skip}&limit=${limit}`, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        if (!personRes.ok) {
+                            const errText = await personRes.text();
+                            throw new Error(`Falha ao buscar funcionários (HTTP ${personRes.status}): ${errText}`);
+                        }
+
+                        // O RHiD costuma retornar um array de objetos ou objeto com array dependendo da versão.
+                        // Tratar como texto JSON bruto.
+                        const personData = await personRes.json();
+                        
+                        // Assumindo que RHiD retorna { persons: [...] } ou diretamente o array
+                        const personsBatch = personData.persons || personData.data || personData || [];
+                        
+                        if (!Array.isArray(personsBatch)) {
+                             throw new Error('A resposta da API do RHiD não está no formato de array esperado.');
+                        }
+
+                        if (personsBatch.length > 0) {
+                            allEmployees = allEmployees.concat(personsBatch);
+                            skip += limit;
+                        } else {
+                            hasMore = false;
+                        }
+                        
+                        // Se a quantidade retornada for menor que o limite, não há mais páginas
+                        if (personsBatch.length < limit) {
+                            hasMore = false;
+                        }
+                    }
+
+                    return res.status(200).json({ 
+                        success: true, 
+                        message: `Sincronização concluída. ${allEmployees.length} funcionários encontrados.`,
+                        data: allEmployees
+                    });
+
+                } catch (syncError) {
+                    console.error('[RHID API] Erro ao sincronizar:', syncError);
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: 'Erro ao buscar funcionários no RHiD.', 
+                        details: syncError.message 
+                    });
+                }
                 
             default:
                 return res.status(404).json({ success: false, message: 'Ação desconhecida.' });

@@ -4,12 +4,13 @@
     </div>
 
     <div class="row">
+        <!-- Card 1: Status da Conexão -->
         <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-4">
+            <div class="card shadow-sm border-0 mb-4 h-100">
                 <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
                     <h5 class="mb-0"><i class="fas fa-link text-secondary me-2"></i> Status da Conexão</h5>
                 </div>
-                <div class="card-body">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex align-items-center mb-4">
                         <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-light" style="width: 60px; height: 60px;">
                             <i class="fas fa-building text-secondary fs-4" id="rhid-status-icon"></i>
@@ -20,25 +21,66 @@
                         </div>
                     </div>
                     
-                    <p class="text-muted small mb-4">
+                    <p class="text-muted small mb-4 flex-grow-1">
                         A integração com o RHiD (Control iD) permite sincronizar funcionários e buscar a apuração de ponto processada pelo sistema.
                     </p>
 
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-primary" id="btn-test-rhid-connection" onclick="testarConexaoRhid()">
+                    <div class="d-flex gap-2 mt-auto">
+                        <button class="btn btn-outline-primary" id="btn-test-rhid-connection" onclick="testarConexaoRhid()">
                             <i class="fas fa-wifi me-2"></i> TESTAR CONEXÃO
                         </button>
                     </div>
 
-                    <div id="rhid-connection-alert" class="alert mt-3 d-none" role="alert"></div>
+                    <div id="rhid-connection-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
                 </div>
             </div>
         </div>
 
+        <!-- Card 2: Sincronização de Pessoal -->
         <div class="col-md-6">
+            <div class="card shadow-sm border-0 mb-4 h-100">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="mb-0"><i class="fas fa-users-sync text-primary me-2"></i> Sincronizar Funcionários</h5>
+                </div>
+                <div class="card-body d-flex flex-column">
+                    <p class="text-muted small mb-4">
+                        Baixa a lista atualizada de colaboradores do painel RHiD e sincroniza com o banco de dados do Nexter.
+                        O vínculo (matching) é realizado através do CPF.
+                    </p>
+
+                    <div class="alert alert-info border-0 bg-info bg-opacity-10 py-2 mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <small>Os 34 Setores oficiais serão respeitados. Caso haja divergência, o funcionário ficará sem setor temporariamente.</small>
+                    </div>
+
+                    <div class="d-flex gap-2 mt-auto">
+                        <button class="btn btn-primary" id="btn-sync-rhid-employees" onclick="sincronizarFuncionariosRhid()">
+                            <i class="fas fa-cloud-download-alt me-2"></i> SINCRONIZAR AGORA
+                        </button>
+                    </div>
+
+                    <div id="rhid-sync-progress-container" class="mt-3 d-none">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span id="rhid-sync-status-text">Buscando dados no RHiD...</span>
+                            <span id="rhid-sync-percentage">0%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div id="rhid-sync-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="rhid-sync-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Informações do Ambiente -->
+    <div class="row mt-2">
+        <div class="col-12">
             <div class="card shadow-sm border-0 bg-light">
                 <div class="card-body">
-                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i> Configurações de Ambiente (Servidor)</h6>
+                    <h6 class="text-muted mb-3"><i class="fas fa-server me-2"></i> Configurações de Ambiente (Servidor)</h6>
                     <p class="small text-muted mb-2">Para que a conexão funcione, as seguintes variáveis de ambiente devem estar configuradas na Vercel (ou no arquivo .env local):</p>
                     <ul class="small text-muted mb-0" style="font-family: monospace;">
                         <li>RHID_EMAIL</li>

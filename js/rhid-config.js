@@ -70,3 +70,163 @@ async function testarConexaoRhid() {
         btnTestar.innerHTML = '<i class="fas fa-wifi me-2"></i> TESTAR CONEXÃO';
     }
 }
+
+// ==========================================
+// FASE 2: Sincronização de Funcionários (Person)
+// ==========================================
+
+async function sincronizarFuncionariosRhid() {
+    const btnSync = document.getElementById('btn-sync-rhid-employees');
+    const alertBox = document.getElementById('rhid-sync-alert');
+    const progressContainer = document.getElementById('rhid-sync-progress-container');
+    const progressBar = document.getElementById('rhid-sync-progress-bar');
+    const statusText = document.getElementById('rhid-sync-status-text');
+    const pctText = document.getElementById('rhid-sync-percentage');
+
+    if (!confirm('Deseja puxar a lista atualizada de colaboradores do RHiD? Esta operação atualizará os cadastros no banco do Nexter.')) {
+        return;
+    }
+
+    // UI Inicial
+    btnSync.disabled = true;
+    btnSync.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Sincronizando...';
+    alertBox.classList.add('d-none');
+    progressContainer.classList.remove('d-none');
+    
+    progressBar.style.width = '10%';
+    statusText.textContent = 'Baixando dados da nuvem RHiD...';
+    pctText.textContent = '10%';
+
+    try {
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const response = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'syncEmployees' })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            throw new Error(data.message || data.error || 'Falha ao buscar funcionários.');
+        }
+
+        const employees = data.data; // Array vindo do RHiD
+        
+        if (!employees || employees.length === 0) {
+            throw new Error('A lista retornada pelo RHiD está vazia.');
+        }
+
+        progressBar.style.width = '40%';
+        statusText.textContent = `Processando ${employees.length} funcionários...`;
+        pctText.textContent = '40%';
+
+        let sucessos = 0;
+        let erros = 0;
+
+        // Verifica a constante global de setores oficiais
+        const setoresOficiais = (typeof SETORES_OFICIAIS !== 'undefined') ? SETORES_OFICIAIS : [];
+
+        for (let i = 0; i < employees.length; i++) {
+            const emp = employees[i];
+            
+            // Extrair CPF
+            let cpf = emp.cpf ? emp.cpf.replace(/\D/g, '') : null;
+            if (!cpf) {
+                erros++;
+                continue;
+            }
+            
+            // Extrair Setor e tentar match automático com a lista dos 34 setores
+            let setorNormalizado = "";
+            let setorRaw = (emp.department || emp.departmentName || "").toUpperCase().trim();
+            
+            if (setorRaw) {
+                // Tenta match exato primeiro
+                if (setoresOficiais.includes(setorRaw)) {
+                    setorNormalizado = setorRaw;
+                } else {
+                    // Match parcial simplificado (ex: se o RHiD manda "ADMINISTRATIVO - GERAL", tenta encaixar "ADMINISTRATIVO")
+                    const matchParcial = setoresOficiais.find(s => setorRaw.includes(s) || s.includes(setorRaw));
+                    if (matchParcial) {
+                        setorNormalizado = matchParcial;
+                    }
+                }
+            }
+
+            try {
+                // Busca no Firebase pelo CPF
+                const funcRef = window.db.collection('funcionarios').where('cpf', '==', cpf);
+                const funcSnap = await funcRef.get();
+
+                const dadosUpsert = {
+                    rhidPersonId: String(emp.id || ''),
+                    rhidRaw: JSON.stringify(emp), // Salva o bruto para uso futuro (exigência da OD)
+                    ultimaAtualizacaoRhid: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                // Se houver nome ou PIS, pode atualizar preventivamente
+                if (emp.name) dadosUpsert.nome = emp.name;
+                if (emp.pis) dadosUpsert.pis = emp.pis;
+                if (setorNormalizado) dadosUpsert.setor = setorNormalizado; // Só sobescreve setor se achar correspondência
+                
+                if (funcSnap.empty) {
+                    // CREATE: Funcionário novo
+                    dadosUpsert.cpf = cpf;
+                    dadosUpsert.dataCriacao = firebase.firestore.FieldValue.serverTimestamp();
+                    dadosUpsert.status = 'ATIVO'; 
+                    await window.db.collection('funcionarios').add(dadosUpsert);
+                } else {
+                    // UPDATE: Atualiza todos que tiverem o CPF (teoricamente 1)
+                    for (const doc of funcSnap.docs) {
+                        await window.db.collection('funcionarios').doc(doc.id).update(dadosUpsert);
+                    }
+                }
+                
+                sucessos++;
+            } catch (fbErr) {
+                console.error(`Erro ao salvar funcionário CPF ${cpf}:`, fbErr);
+                erros++;
+            }
+
+            // Atualiza barra de progresso
+            const progressoAtual = 40 + Math.floor((i / employees.length) * 60);
+            progressBar.style.width = `${progressoAtual}%`;
+            pctText.textContent = `${progressoAtual}%`;
+        }
+
+        // Finalizou
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
+        statusText.textContent = 'Sincronização Finalizada!';
+        pctText.textContent = '100%';
+
+        alertBox.classList.remove('d-none', 'alert-danger');
+        alertBox.classList.add('alert-success');
+        alertBox.innerHTML = `<strong>Sucesso!</strong> Foram sincronizados ${sucessos} funcionários (Erros/Ignorados: ${erros}).`;
+        
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Sincronização RHiD concluída com sucesso.', 'success');
+        }
+
+    } catch (error) {
+        progressBar.classList.remove('progress-bar-animated', 'bg-primary');
+        progressBar.classList.add('bg-danger');
+        statusText.textContent = 'Erro na sincronização.';
+
+        alertBox.classList.remove('d-none', 'alert-success');
+        alertBox.classList.add('alert-danger');
+        alertBox.innerHTML = `<strong>Erro:</strong> ${error.message}`;
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Erro na sincronização.', 'error');
+        }
+    } finally {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i> SINCRONIZAR AGORA';
+    }
+}
