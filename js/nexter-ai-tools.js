@@ -665,7 +665,12 @@ const nexterAITools = {
                     lista: emExperiencia
                 });
             } catch (error) {
-                console.error("Erro no consul        gerarRelatorioPDF: async (args) => {
+                console.error("Erro no consultarExperiencia:", error);
+                return JSON.stringify({ erro: "Falha técnica ao consultar contratos de experiência." });
+            }
+        },
+
+        gerarRelatorioPDF: async (args) => {
             try {
                 if (typeof html2pdf === 'undefined') {
                     return JSON.stringify({ erro: "Biblioteca html2pdf não encontrada na página." });
@@ -723,7 +728,7 @@ const nexterAITools = {
                 
                 // CSS Estrito para PDF sem margens absolutas soltas
                 const style = document.createElement('style');
-                style.innerHTML = \`
+                style.innerHTML = `
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
                     * { font-family: 'Inter', sans-serif !important; box-sizing: border-box; }
                     
@@ -789,7 +794,7 @@ const nexterAITools = {
                     li { margin-bottom: 4px; color: #475569; }
                     
                     blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; margin: 10px 0; padding: 10px 12px; border-radius: 0 8px 8px 0; color: #1e3a8a; font-weight: 500; font-style: italic; }
-                \`;
+                `;
                 container.appendChild(style);
                 
                 document.body.appendChild(container);
