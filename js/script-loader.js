@@ -58,6 +58,7 @@ const ScriptLoader = {
         'estoque-epi': ['js/epi-controle.js'],
         'consumo-epi': ['js/epi-controle.js'],
         'epi-compras': ['js/epi-controle.js'],
+        'rhid-config': ['js/rhid-config.js'],
         'cadastro-epis': ['js/epi-controle.js'],
         'entrega-epis': ['js/epi-controle.js'],
         'analise-epi': ['js/epi-controle.js'],
