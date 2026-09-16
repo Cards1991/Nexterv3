@@ -676,12 +676,11 @@ const nexterAITools = {
                     return JSON.stringify({ erro: "Biblioteca html2pdf não encontrada na página." });
                 }
 
-                // Cria o container base isolado para não sofrer offset do chat atual (Causa da Página 1 vazia)
+                // Cria o container base isolado
                 const container = document.createElement('div');
                 container.style.position = 'absolute';
+                container.style.left = '-10000px'; 
                 container.style.top = '0';
-                container.style.left = '0';
-                container.style.zIndex = '-9999'; 
                 container.style.width = '180mm';
                 container.style.maxWidth = '180mm';
                 container.style.fontFamily = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -803,9 +802,9 @@ const nexterAITools = {
                     margin:       15, // 15mm reais
                     filename:     `${(args.titulo || 'relatorio').replace(/ /g, '_')}_${dataHoje.replace(/\//g, '-')}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
+                    html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+                    pagebreak:    { mode: ['css', 'legacy'] }
                 };
                 
                 const worker = html2pdf().set(opt).from(container).toPdf();
