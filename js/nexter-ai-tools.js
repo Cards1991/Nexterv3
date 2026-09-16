@@ -665,19 +665,18 @@ const nexterAITools = {
                     lista: emExperiencia
                 });
             } catch (error) {
-                console.error("Erro no consultarExperiencia:", error);
-                return JSON.stringify({ erro: "Falha técnica ao consultar contratos de experiência." });
-            }
-        },
-
-        gerarRelatorioPDF: async (args) => {
+                console.error("Erro no consul        gerarRelatorioPDF: async (args) => {
             try {
                 if (typeof html2pdf === 'undefined') {
                     return JSON.stringify({ erro: "Biblioteca html2pdf não encontrada na página." });
                 }
 
-                // Cria o container base - Exatamente 180mm de largura (A4 - 30mm de margens)
+                // Cria o container base isolado para não sofrer offset do chat atual (Causa da Página 1 vazia)
                 const container = document.createElement('div');
+                container.style.position = 'absolute';
+                container.style.top = '0';
+                container.style.left = '0';
+                container.style.zIndex = '-9999'; 
                 container.style.width = '180mm';
                 container.style.maxWidth = '180mm';
                 container.style.fontFamily = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
@@ -686,35 +685,35 @@ const nexterAITools = {
                 
                 const dataHoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 
-                // Monta o cabeçalho padrão com UI/UX corporativo
+                // Monta a estrutura com margens verticais menores para não confundir o fatiador de páginas
                 let htmlContent = `
-                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 25px; page-break-inside: avoid;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px; margin-bottom: 15px; page-break-inside: avoid;">
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <img src="assets/LOGO.png" alt="Logo" style="max-height: 40px; object-fit: contain;">
                             <div style="border-left: 2px solid #e2e8f0; padding-left: 15px;">
-                                <h1 style="color: #111827; margin: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">Nexter <span style="color: #2563eb;">AI</span></h1>
-                                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 11px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestão Inteligente</p>
+                                <h1 style="color: #111827; margin: 0; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">Nexter <span style="color: #2563eb;">AI</span></h1>
+                                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 10px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestão Inteligente</p>
                             </div>
                         </div>
-                        <div style="text-align: right; background-color: #f8fafc; padding: 10px 15px; border-radius: 8px; border: 1px solid #e2e8f0;">
-                            <p style="font-size: 10px; color: #64748b; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Documento Gerado Em</p>
-                            <p style="font-size: 14px; color: #0f172a; margin: 4px 0 0 0; font-weight: 700;">${dataHoje}</p>
+                        <div style="text-align: right; background-color: #f8fafc; padding: 8px 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+                            <p style="font-size: 9px; color: #64748b; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Documento Gerado Em</p>
+                            <p style="font-size: 13px; color: #0f172a; margin: 2px 0 0 0; font-weight: 700;">${dataHoje}</p>
                         </div>
                     </div>
                     
-                    <div style="margin-bottom: 25px; page-break-inside: avoid;">
-                        <h2 style="color: #1e293b; font-size: 22px; font-weight: 700; border-left: 4px solid #3b82f6; padding-left: 12px; margin: 0 0 15px 0;">${args.titulo || 'Relatório Analítico'}</h2>
+                    <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                        <h2 style="color: #1e293b; font-size: 20px; font-weight: 700; border-left: 4px solid #3b82f6; padding-left: 12px; margin: 0 0 10px 0;">${args.titulo || 'Relatório Analítico'}</h2>
                     </div>
 
-                    <div style="line-height: 1.6; font-size: 13px; color: #334155;">
+                    <div style="line-height: 1.5; font-size: 12px; color: #334155; margin-bottom: 15px;">
                         ${args.conteudoHTML}
                     </div>
 
-                    <div style="margin-top: 40px; padding-top: 20px; border-top: 1px solid #e2e8f0; page-break-inside: avoid;">
-                        <p style="font-size: 11px; color: #94a3b8; margin: 0 0 5px 0; font-weight: 500;">
+                    <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #e2e8f0; page-break-inside: avoid;">
+                        <p style="font-size: 10px; color: #94a3b8; margin: 0 0 4px 0; font-weight: 500;">
                             <strong style="color: #64748b;">Confidencial:</strong> Este documento é de uso exclusivo interno.
                         </p>
-                        <p style="font-size: 11px; color: #94a3b8; margin: 0; font-weight: 500;">
+                        <p style="font-size: 10px; color: #94a3b8; margin: 0; font-weight: 500;">
                             Gerado via <strong style="color: #64748b;">Inteligência Artificial Nexter</strong>
                         </p>
                     </div>
@@ -722,59 +721,57 @@ const nexterAITools = {
                 
                 container.innerHTML = htmlContent;
                 
-                // CSS Estrito para PDF e Impressão
+                // CSS Estrito para PDF sem margens absolutas soltas
                 const style = document.createElement('style');
-                style.innerHTML = `
+                style.innerHTML = \`
                     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
                     * { font-family: 'Inter', sans-serif !important; box-sizing: border-box; }
                     
-                    /* Prevenção de quebras no meio de elementos */
+                    /* Prevenção rigorosa de cortes */
                     tr, td, th, .card, h1, h2, h3, h4, p, blockquote, ul, li { page-break-inside: avoid !important; }
                     
-                    /* Tabelas Responsivas para PDF */
                     table { 
                         width: 100% !important; 
                         max-width: 100% !important; 
-                        table-layout: fixed !important; /* Força respeitar o 100% */
+                        table-layout: fixed !important; 
                         border-collapse: separate; 
                         border-spacing: 0; 
-                        margin: 20px 0; 
-                        border-radius: 8px; 
+                        margin: 15px 0; 
+                        border-radius: 6px; 
                         overflow: hidden; 
                         border: 1px solid #e2e8f0; 
                     }
-                    thead { display: table-header-group; background-color: #f8fafc; } /* Repete no topo de cada página */
+                    thead { display: table-header-group; background-color: #f8fafc; }
                     tfoot { display: table-footer-group; }
                     th { 
                         color: #475569; font-weight: 700; text-align: left; 
-                        padding: 10px 12px; font-size: 12px; text-transform: uppercase; 
+                        padding: 8px 10px; font-size: 11px; text-transform: uppercase; 
                         letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; 
                         word-wrap: break-word; overflow-wrap: break-word;
                     }
                     td { 
-                        padding: 10px 12px; border-bottom: 1px solid #f1f5f9; color: #334155; 
-                        font-size: 12px; font-weight: 500; 
+                        padding: 8px 10px; border-bottom: 1px solid #f1f5f9; color: #334155; 
+                        font-size: 11px; font-weight: 500; 
                         word-wrap: break-word; overflow-wrap: break-word;
                     }
                     tr:last-child td { border-bottom: none; }
                     tr:nth-child(even) td { background-color: #fcfcfd; }
                     
-                    /* Dashboard Cards (Flexbox) - Evitando vazamentos */
                     .dashboard-grid { 
-                        display: flex; flex-wrap: wrap; gap: 15px; 
-                        margin-bottom: 30px; margin-top: 15px; width: 100%;
+                        display: flex; flex-wrap: wrap; gap: 10px; 
+                        margin-bottom: 15px; margin-top: 10px; width: 100%;
+                        page-break-inside: avoid;
                     }
                     .card { 
-                        flex: 1; min-width: 120px; 
+                        flex: 1; min-width: 110px; 
                         background: linear-gradient(145deg, #ffffff, #f8fafc); 
-                        border: 1px solid #e2e8f0; border-radius: 12px; 
-                        padding: 15px; position: relative; overflow: hidden; 
+                        border: 1px solid #e2e8f0; border-radius: 8px; 
+                        padding: 12px; position: relative; overflow: hidden; 
                     }
                     .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: #cbd5e1; }
-                    .card-title { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; display: block; }
-                    .card-value { font-size: 24px; color: #0f172a; font-weight: 800; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
+                    .card-title { font-size: 9px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; display: block; }
+                    .card-value { font-size: 20px; color: #0f172a; font-weight: 800; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
                     
-                    /* Cores específicas dos cards */
                     .card.blue::before { background: linear-gradient(90deg, #3b82f6, #2563eb); }
                     .card.blue .card-value { color: #1d4ed8; }
                     .card.red::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
@@ -784,34 +781,30 @@ const nexterAITools = {
                     .card.green::before { background: linear-gradient(90deg, #10b981, #059669); }
                     .card.green .card-value { color: #047857; }
                     
-                    /* Textos e Elementos Gerais */
-                    h1, h2, h3, h4 { color: #0f172a; margin-top: 25px; margin-bottom: 12px; font-weight: 700; letter-spacing: -0.5px; }
-                    h3 { font-size: 16px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; }
-                    p { margin-bottom: 12px; color: #475569; word-wrap: break-word; }
+                    h1, h2, h3, h4 { color: #0f172a; margin-top: 15px; margin-bottom: 8px; font-weight: 700; letter-spacing: -0.5px; }
+                    h3 { font-size: 14px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 4px; }
+                    p { margin-bottom: 8px; color: #475569; word-wrap: break-word; }
                     strong { color: #0f172a; font-weight: 700; }
-                    ul, ol { margin-bottom: 15px; padding-left: 20px; }
-                    li { margin-bottom: 6px; color: #475569; }
+                    ul, ol { margin-bottom: 10px; padding-left: 20px; }
+                    li { margin-bottom: 4px; color: #475569; }
                     
-                    /* Blockquotes para insights */
-                    blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; margin: 15px 0; padding: 12px 15px; border-radius: 0 8px 8px 0; color: #1e3a8a; font-weight: 500; font-style: italic; }
-                `;
+                    blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; margin: 10px 0; padding: 10px 12px; border-radius: 0 8px 8px 0; color: #1e3a8a; font-weight: 500; font-style: italic; }
+                \`;
                 container.appendChild(style);
                 
                 document.body.appendChild(container);
                 
                 const opt = {
-                    margin:       15, // 15mm de margem real em todos os lados
+                    margin:       15, // 15mm reais
                     filename:     `${(args.titulo || 'relatorio').replace(/ /g, '_')}_${dataHoje.replace(/\//g, '-')}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2, useCORS: true, letterRendering: true },
+                    html2canvas:  { scale: 2, useCORS: true, letterRendering: true, scrollY: 0 },
                     jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                    pagebreak:    { mode: ['css', 'legacy'] }
+                    pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
                 };
                 
-                // Processa o PDF com paginação inteligente
                 const worker = html2pdf().set(opt).from(container).toPdf();
                 
-                // Injeta cabeçalho/rodapé customizado usando o objeto jsPDF subjacente
                 worker.get('pdf').then((pdf) => {
                     const totalPages = pdf.internal.getNumberOfPages();
                     for (let i = 1; i <= totalPages; i++) {
@@ -819,20 +812,17 @@ const nexterAITools = {
                         pdf.setFontSize(8);
                         pdf.setTextColor(150);
                         
-                        // Rodapé Esquerdo
                         pdf.text('NEXTER — Gestão de Recursos Humanos', 15, pdf.internal.pageSize.getHeight() - 8);
                         
-                        // Rodapé Direito
                         const numPageText = 'Página ' + i + ' de ' + totalPages;
                         pdf.text(numPageText, pdf.internal.pageSize.getWidth() - 15 - pdf.getStringUnitWidth(numPageText) * 8 / pdf.internal.scaleFactor, pdf.internal.pageSize.getHeight() - 8);
                     }
                 });
                 
-                // Conclui e exibe
                 worker.outputPdf('bloburl').then((pdfUrl) => {
                     const newWindow = window.open(pdfUrl, '_blank');
                     
-                    if (!newWindow) { // Fallback se popups estiverem bloqueados
+                    if (!newWindow) {
                         const a = document.createElement('a');
                         a.href = pdfUrl;
                         a.download = opt.filename;
