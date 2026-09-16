@@ -86,8 +86,11 @@ module.exports = async function handler(req, res) {
                     let skip = 0;
                     const limit = 100; // Máximo permitido costuma ser 100 por requisição
                     let hasMore = true;
+                    let pageCount = 0;
+                    const seenIds = new Set();
 
-                    while (hasMore) {
+                    while (hasMore && pageCount < 50) {
+                        pageCount++;
                         const personRes = await fetch(`${RHID_API_BASE}/person?skip=${skip}&limit=${limit}`, {
                             method: 'GET',
                             headers: {
@@ -101,7 +104,6 @@ module.exports = async function handler(req, res) {
                             throw new Error(`Falha ao buscar funcionários (HTTP ${personRes.status}): ${errText}`);
                         }
 
-                        // O RHiD costuma retornar um array de objetos ou objeto com array dependendo da versão.
                         // Tratar como texto JSON bruto.
                         const personData = await personRes.json();
                         
@@ -112,12 +114,22 @@ module.exports = async function handler(req, res) {
                              throw new Error('A resposta da API do RHiD não está no formato de array esperado.');
                         }
 
-                        if (personsBatch.length > 0) {
-                            allEmployees = allEmployees.concat(personsBatch);
-                            skip += limit;
-                        } else {
-                            hasMore = false;
+                        let fetchedNew = false;
+                        for (const p of personsBatch) {
+                            if (!seenIds.has(p.id)) {
+                                seenIds.add(p.id);
+                                allEmployees.push(p);
+                                fetchedNew = true;
+                            }
                         }
+
+                        // Se não retornou nenhum registro novo nesta página, significa que a paginação travou ou acabou
+                        if (!fetchedNew) {
+                            hasMore = false;
+                            break;
+                        }
+
+                        skip += limit;
                         
                         // Se a quantidade retornada for menor que o limite, não há mais páginas
                         if (personsBatch.length < limit) {
