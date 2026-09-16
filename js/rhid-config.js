@@ -179,7 +179,8 @@ async function sincronizarFuncionariosRhid() {
                     // CREATE: Funcionário novo
                     dadosUpsert.cpf = cpf;
                     dadosUpsert.dataCriacao = firebase.firestore.FieldValue.serverTimestamp();
-                    dadosUpsert.status = 'ATIVO'; 
+                    // Novos colaboradores vindos do RHiD não devem poluir a lista ativa automaticamente
+                    dadosUpsert.status = 'INATIVO'; 
                     await window.db.collection('funcionarios').add(dadosUpsert);
                 } else {
                     // UPDATE: Atualiza todos que tiverem o CPF (teoricamente 1)
@@ -272,10 +273,10 @@ async function importarApuracaoRhid() {
             ? 'http://localhost:3000/api'
             : '/api';
 
-        // 1. Busca todos os funcionários sincronizados que possuem rhidPersonId
-        const funcSnap = await window.db.collection('funcionarios').where('rhidPersonId', '!=', null).get();
+        // 1. Busca todos os funcionários ATIVOS no Firebase
+        const funcSnap = await window.db.collection('funcionarios').where('status', '==', 'ATIVO').get();
         if (funcSnap.empty) {
-            throw new Error("Nenhum funcionário com ID do RHiD encontrado. Execute a sincronização de funcionários primeiro.");
+            throw new Error("Nenhum funcionário ativo encontrado no sistema.");
         }
 
         const employees = [];
