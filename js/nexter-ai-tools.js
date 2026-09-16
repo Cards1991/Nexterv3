@@ -678,23 +678,22 @@ const nexterAITools = {
 
                 // Cria um container invisível temporário para o relatório com design premium (Estilo Tailwind/Moderno)
                 const container = document.createElement('div');
-                container.style.padding = '40px 50px';
+                container.style.padding = '20px 40px';
                 container.style.fontFamily = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
                 container.style.color = '#1f2937'; // gray-800
                 container.style.backgroundColor = '#ffffff';
+                container.style.width = '100%';
                 
                 const dataHoje = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' });
                 
-                // Monta o cabeçalho padrão com UI/UX moderno
+                // Monta o cabeçalho padrão com UI/UX moderno e a Logo da empresa
                 let htmlContent = `
                     <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 35px;">
                         <div style="display: flex; align-items: center; gap: 15px;">
-                            <div style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border-radius: 12px; padding: 12px 16px; font-weight: 900; font-size: 24px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
-                                NX
-                            </div>
-                            <div>
-                                <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1;">Nexter <span style="color: #2563eb;">AI</span></h1>
-                                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 14px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestão Inteligente</p>
+                            <img src="assets/LOGO.png" alt="Logo" style="max-height: 45px; object-fit: contain;">
+                            <div style="border-left: 2px solid #e2e8f0; padding-left: 15px;">
+                                <h1 style="color: #111827; margin: 0; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; line-height: 1;">Nexter <span style="color: #2563eb;">AI</span></h1>
+                                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 12px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">Relatório Analítico</p>
                             </div>
                         </div>
                         <div style="text-align: right; background-color: #f8fafc; padding: 12px 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
