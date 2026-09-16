@@ -165,7 +165,10 @@ async function carregarFuncionarios() {
 
         // Se "Mostrar Inativos" NÃO estiver marcado, filtramos removendo os inativos
         if (!filtroInativos) {
-            funcionariosFiltrados = funcionariosFiltrados.filter(f => f.status !== 'Inativo');
+            funcionariosFiltrados = funcionariosFiltrados.filter(f => {
+                const s = String(f.status || '').toUpperCase();
+                return s !== 'INATIVO';
+            });
         }
 
         if (filtroEmpresaId) {
@@ -186,8 +189,14 @@ async function carregarFuncionarios() {
         const dashTotal = document.getElementById('dash-total-funcionarios');
         if (dashTotal) dashTotal.innerText = totalFuncs.toLocaleString();
 
-        const totalAtivos = funcionariosFiltrados.filter(f => f.status === 'Ativo' || !f.status).length;
-        const totalInativos = funcionariosFiltrados.filter(f => f.status === 'Inativo').length;
+        const totalAtivos = funcionariosFiltrados.filter(f => {
+            const s = String(f.status || '').toUpperCase();
+            return s === 'ATIVO' || s === '';
+        }).length;
+        const totalInativos = funcionariosFiltrados.filter(f => {
+            const s = String(f.status || '').toUpperCase();
+            return s === 'INATIVO';
+        }).length;
         const dashAtivos = document.getElementById('dash-ativos-funcionarios');
         if (dashAtivos) dashAtivos.innerText = `${totalAtivos} Ativos`;
         const dashInativos = document.getElementById('dash-inativos-funcionarios');
@@ -242,7 +251,8 @@ async function carregarFuncionarios() {
         for (const funcionario of funcionariosFiltrados) {
             const docId = funcionario.id;
             const status = funcionario.status || 'Ativo';
-            const statusClass = status === 'Inativo' ? 'bg-danger' : 'bg-success';
+            const statusUpper = String(status).toUpperCase();
+            const statusClass = statusUpper === 'INATIVO' ? 'bg-danger' : 'bg-success';
 
             const nomeEmpresa = empresasMap[funcionario.empresaId] || 'Empresa não encontrada';
             const tempoDeEmpresa = funcionario.dataAdmissao ? (typeof funcionario.dataAdmissao.toDate === 'function' ? calcularTempoDeEmpresa(funcionario.dataAdmissao.toDate()) : calcularTempoDeEmpresa(new Date(funcionario.dataAdmissao))) : 'N/A';

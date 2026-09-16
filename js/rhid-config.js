@@ -273,8 +273,8 @@ async function importarApuracaoRhid() {
             ? 'http://localhost:3000/api'
             : '/api';
 
-        // 1. Busca todos os funcionários ATIVOS no Firebase
-        const funcSnap = await window.db.collection('funcionarios').where('status', '==', 'ATIVO').get();
+        // 1. Busca todos os funcionários ATIVOS no Firebase (case-insensitive para suportar dados antigos e novos)
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
         if (funcSnap.empty) {
             throw new Error("Nenhum funcionário ativo encontrado no sistema.");
         }
