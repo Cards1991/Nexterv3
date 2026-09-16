@@ -283,6 +283,9 @@ class NexterAIController {
 
             if (response.ok) {
                 return await response.json();
+            } else {
+                console.error("Vercel falhou com status:", response.status);
+                try { console.error("Detalhe Vercel:", await response.text()); } catch(e){}
             }
         } catch (e) {
             console.warn("Falha ao comunicar com a rota Vercel. Tentando fallback local...");
