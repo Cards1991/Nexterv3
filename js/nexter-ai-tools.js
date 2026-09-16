@@ -769,11 +769,12 @@ const nexterAITools = {
                 document.body.appendChild(container);
                 
                 const opt = {
-                    margin:       1,
+                    margin:       [0.4, 0.4, 0.4, 0.4],
                     filename:     `${(args.titulo || 'relatorio').replace(/ /g, '_')}_${dataHoje.replace(/\//g, '-')}.pdf`,
                     image:        { type: 'jpeg', quality: 0.98 },
-                    html2canvas:  { scale: 2 },
-                    jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+                    html2canvas:  { scale: 2, useCORS: true, windowWidth: 1024 },
+                    jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' },
+                    pagebreak:    { mode: ['css', 'legacy'] }
                 };
                 
                 // Gera o PDF (assíncrono) - Tenta abrir na tela ("explodir") e usa download como fallback
