@@ -678,7 +678,7 @@ const nexterAITools = {
 
                 // Cria um container invisível temporário para o relatório com design premium (Estilo Tailwind/Moderno)
                 const container = document.createElement('div');
-                container.style.padding = '40px';
+                container.style.padding = '40px 50px';
                 container.style.fontFamily = "'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
                 container.style.color = '#1f2937'; // gray-800
                 container.style.backgroundColor = '#ffffff';
@@ -687,21 +687,37 @@ const nexterAITools = {
                 
                 // Monta o cabeçalho padrão com UI/UX moderno
                 let htmlContent = `
-                    <div style="border-bottom: 3px solid #3b82f6; margin-bottom: 30px; padding-bottom: 20px; display: flex; justify-content: space-between; align-items: flex-end;">
-                        <div>
-                            <h1 style="color: #111827; margin: 0; font-size: 28px; font-weight: 800; letter-spacing: -0.5px;">Nexter <span style="color: #3b82f6;">AI</span></h1>
-                            <h2 style="color: #4b5563; margin: 8px 0 0 0; font-size: 18px; font-weight: 500;">${args.titulo || 'Relatório Analítico'}</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 20px; margin-bottom: 35px;">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div style="background: linear-gradient(135deg, #2563eb, #3b82f6); color: white; border-radius: 12px; padding: 12px 16px; font-weight: 900; font-size: 24px; box-shadow: 0 4px 10px rgba(37, 99, 235, 0.2);">
+                                NX
+                            </div>
+                            <div>
+                                <h1 style="color: #111827; margin: 0; font-size: 32px; font-weight: 800; letter-spacing: -1px; line-height: 1;">Nexter <span style="color: #2563eb;">AI</span></h1>
+                                <p style="color: #6b7280; margin: 4px 0 0 0; font-size: 14px; font-weight: 500; letter-spacing: 1px; text-transform: uppercase;">Sistema de Gestão Inteligente</p>
+                            </div>
                         </div>
-                        <div style="text-align: right;">
-                            <p style="font-size: 13px; color: #6b7280; margin: 0; font-weight: 500;">DATA DO RELATÓRIO</p>
-                            <p style="font-size: 14px; color: #1f2937; margin: 2px 0 0 0; font-weight: 600;">${dataHoje}</p>
+                        <div style="text-align: right; background-color: #f8fafc; padding: 12px 20px; border-radius: 10px; border: 1px solid #e2e8f0;">
+                            <p style="font-size: 11px; color: #64748b; margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Documento Gerado Em</p>
+                            <p style="font-size: 16px; color: #0f172a; margin: 4px 0 0 0; font-weight: 700;">${dataHoje}</p>
                         </div>
                     </div>
-                    <div style="line-height: 1.6; font-size: 15px; color: #374151;">
+                    
+                    <div style="margin-bottom: 35px;">
+                        <h2 style="color: #1e293b; font-size: 24px; font-weight: 700; border-left: 4px solid #3b82f6; padding-left: 12px; margin: 0 0 20px 0;">${args.titulo || 'Relatório Analítico'}</h2>
+                    </div>
+
+                    <div style="line-height: 1.7; font-size: 15px; color: #334155; max-width: 100%;">
                         ${args.conteudoHTML}
                     </div>
-                    <div style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #e5e7eb; text-align: center;">
-                        <p style="font-size: 12px; color: #9ca3af; margin: 0;">Documento gerado automaticamente pela Inteligência Artificial do Nexter.</p>
+
+                    <div style="margin-top: 60px; padding-top: 25px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                        <p style="font-size: 12px; color: #94a3b8; margin: 0; font-weight: 500;">
+                            <strong style="color: #64748b;">Confidencial:</strong> Este documento é de uso exclusivo interno.
+                        </p>
+                        <p style="font-size: 12px; color: #94a3b8; margin: 0; font-weight: 500;">
+                            Gerado via <strong style="color: #64748b;">Inteligência Artificial Nexter</strong>
+                        </p>
                     </div>
                 `;
                 
@@ -710,27 +726,44 @@ const nexterAITools = {
                 // Adiciona injeção de CSS para formatar as tabelas e o Dashboard que a IA gerar
                 const style = document.createElement('style');
                 style.innerHTML = `
-                    /* Dashboard Cards (Flexbox) */
-                    .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 30px; }
-                    .card { flex: 1; min-width: 150px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); text-align: center; }
-                    .card-title { font-size: 13px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
-                    .card-value { font-size: 28px; color: #0f172a; font-weight: 800; margin: 0; }
-                    .card-icon { font-size: 24px; margin-bottom: 15px; opacity: 0.8; }
-                    .card.blue { border-top: 4px solid #3b82f6; }
-                    .card.red { border-top: 4px solid #ef4444; }
-                    .card.yellow { border-top: 4px solid #f59e0b; }
-                    .card.green { border-top: 4px solid #10b981; }
-
-                    /* Tabelas */
-                    table { width: 100%; border-collapse: collapse; margin: 20px 0; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-                    th { background-color: #f3f4f6; color: #374151; font-weight: 600; text-align: left; padding: 12px 16px; border-bottom: 2px solid #e5e7eb; font-size: 14px; }
-                    td { padding: 12px 16px; border-bottom: 1px solid #f3f4f6; color: #4b5563; font-size: 14px; }
-                    tr:nth-child(even) td { background-color: #f9fafb; }
+                    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+                    * { font-family: 'Inter', sans-serif !important; }
                     
-                    /* Textos Gerais */
-                    h1, h2, h3, h4 { color: #111827; margin-top: 24px; margin-bottom: 12px; }
-                    p { margin-bottom: 16px; }
-                    strong { color: #111827; }
+                    /* Dashboard Cards (Flexbox) */
+                    .dashboard-grid { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 40px; margin-top: 20px; }
+                    .card { flex: 1; min-width: 180px; background: linear-gradient(145deg, #ffffff, #f8fafc); border: 1px solid #e2e8f0; border-radius: 16px; padding: 24px; box-shadow: 0 4px 15px -3px rgba(0, 0, 0, 0.05), 0 2px 6px -2px rgba(0, 0, 0, 0.025); position: relative; overflow: hidden; }
+                    .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: #cbd5e1; }
+                    .card-title { font-size: 12px; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; display: block; }
+                    .card-value { font-size: 32px; color: #0f172a; font-weight: 800; margin: 0; line-height: 1.2; letter-spacing: -0.5px; }
+                    
+                    /* Cores específicas dos cards */
+                    .card.blue::before { background: linear-gradient(90deg, #3b82f6, #2563eb); }
+                    .card.blue .card-value { color: #1d4ed8; }
+                    .card.red::before { background: linear-gradient(90deg, #ef4444, #dc2626); }
+                    .card.red .card-value { color: #b91c1c; }
+                    .card.yellow::before { background: linear-gradient(90deg, #f59e0b, #d97706); }
+                    .card.yellow .card-value { color: #b45309; }
+                    .card.green::before { background: linear-gradient(90deg, #10b981, #059669); }
+                    .card.green .card-value { color: #047857; }
+
+                    /* Tabelas Premium */
+                    table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 25px 0; border-radius: 12px; overflow: hidden; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02); }
+                    thead { background-color: #f8fafc; }
+                    th { color: #475569; font-weight: 700; text-align: left; padding: 14px 20px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; }
+                    td { padding: 14px 20px; border-bottom: 1px solid #f1f5f9; color: #334155; font-size: 14px; font-weight: 500; }
+                    tr:last-child td { border-bottom: none; }
+                    tr:nth-child(even) td { background-color: #fcfcfd; }
+                    
+                    /* Textos e Elementos Gerais */
+                    h1, h2, h3, h4 { color: #0f172a; margin-top: 30px; margin-bottom: 15px; font-weight: 700; letter-spacing: -0.5px; }
+                    h3 { font-size: 18px; color: #1e293b; border-bottom: 1px solid #e2e8f0; padding-bottom: 8px; }
+                    p { margin-bottom: 16px; color: #475569; }
+                    strong { color: #0f172a; font-weight: 700; }
+                    ul, ol { margin-bottom: 20px; padding-left: 20px; }
+                    li { margin-bottom: 8px; color: #475569; }
+                    
+                    /* Blockquotes para insights */
+                    blockquote { border-left: 4px solid #3b82f6; background-color: #eff6ff; margin: 20px 0; padding: 15px 20px; border-radius: 0 8px 8px 0; color: #1e3a8a; font-weight: 500; font-style: italic; }
                 `;
                 container.appendChild(style);
                 
