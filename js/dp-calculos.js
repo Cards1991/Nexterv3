@@ -246,3 +246,86 @@ function imprimirDemonstrativo() {
     const html = `<html><head><title>Demonstrativo de Pagamento</title><link rel="stylesheet" href="css/style.css"><style>body{background:white;}.holerite{border:none;}</style></head><body>${conteudo}</body></html>`;
     openPrintWindow(html, { autoPrint: true, name: '_blank' });
 }
+
+// ==========================================
+// INTEGRAÇÃO RHID (FASE 4)
+// ==========================================
+async function buscarApuracaoRhidParaCalculo() {
+    const btn = document.getElementById('btn-pull-rhid');
+    const funcSelect = document.getElementById('calc-funcionario');
+    const dtInicio = document.getElementById('calc-rhid-inicio').value;
+    const dtFim = document.getElementById('calc-rhid-fim').value;
+
+    if (!funcSelect.value) {
+        mostrarMensagem('Selecione um funcionário primeiro.', 'warning');
+        return;
+    }
+    if (!dtInicio || !dtFim) {
+        mostrarMensagem('Selecione o período (Data Inicial e Final).', 'warning');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+
+        // 1. Pegar o CPF do funcionário selecionado
+        const funcDoc = await db.collection('funcionarios').doc(funcSelect.value).get();
+        const funcData = funcDoc.data();
+        
+        if (!funcData || !funcData.cpf) {
+            mostrarMensagem('Funcionário sem CPF cadastrado no sistema.', 'error');
+            return;
+        }
+
+        // 2. Buscar espelhos de ponto no Firebase para este CPF
+        // Filtramos a data no frontend para evitar erros de índice composto no Firestore
+        const espelhosSnap = await db.collection('espelhos_ponto')
+            .where('cpf', '==', funcData.cpf)
+            .get();
+
+        if (espelhosSnap.empty) {
+            mostrarMensagem('Nenhum dado do RHiD encontrado para este funcionário.', 'warning');
+            return;
+        }
+
+        let totalMinutosExtra = 0;
+        let totalMinutosFalta = 0;
+        let diasEncontrados = 0;
+
+        espelhosSnap.forEach(doc => {
+            const data = doc.data();
+            const dataRef = data.dataReferencia; // Formato YYYY-MM-DD
+            
+            // Verifica se a data do espelho está dentro do período selecionado
+            if (dataRef >= dtInicio && dataRef <= dtFim) {
+                totalMinutosExtra += Number(data.horasExtras || 0);
+                totalMinutosFalta += Number(data.horasFaltaAtraso || 0);
+                diasEncontrados++;
+            }
+        });
+
+        if (diasEncontrados === 0) {
+            mostrarMensagem('Nenhum espelho de ponto encontrado no período selecionado.', 'warning');
+            return;
+        }
+
+        // 3. Converter minutos para horas decimais (DP Padrão)
+        // Ex: 90 minutos = 1.5 horas
+        const horasExtrasDecimais = (totalMinutosExtra / 60).toFixed(2);
+        const horasFaltaDecimais = (totalMinutosFalta / 60).toFixed(2);
+
+        // 4. Preencher os inputs na tela
+        document.getElementById('calc-horas-extras').value = horasExtrasDecimais;
+        document.getElementById('calc-faltas-horas').value = horasFaltaDecimais;
+
+        mostrarMensagem(`Sucesso! ${diasEncontrados} dias importados do RHiD.`, 'success');
+
+    } catch (e) {
+        console.error('Erro ao buscar apuração RHiD:', e);
+        mostrarMensagem('Erro ao consultar espelhos de ponto.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+    }
+}
