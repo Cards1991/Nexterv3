@@ -43,6 +43,16 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // Regras restritas para 'setores' (Conforme O.D. de Padronização)
+    match /setores/{setorId} {
+      allow read: if isAuthenticated();
+      allow create, delete: if false; // NUNCA permitir criar ou deletar setores via app
+      // Permite update apenas se o nome (descricao) e o status global não forem alterados
+      allow update: if isAdmin() && 
+                    request.resource.data.descricao == resource.data.descricao &&
+                    request.resource.data.global == resource.data.global;
+    }
+
     // Regras para a coleção 'maquinas'
     match /maquinas/{maquinaId} {
       allow read: if hasAccessToSection('iso-maquinas') || hasAccessToSection('iso-manutencao') || hasAccessToSection('manutencao');

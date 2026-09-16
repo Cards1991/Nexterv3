@@ -180,7 +180,7 @@ class MovimentacoesManager {
                     if (!setorDesc || !empresaId || !liderSelect) return;
 
                     try {
-                        const setorSnap = await db.collection('setores').where('empresaId', '==', empresaId).where('descricao', '==', setorDesc).limit(1).get();
+                        const setorSnap = await db.collection('setores').where('descricao', '==', setorDesc).limit(1).get();
                         if (!setorSnap.empty) {
                             liderSelect.value = setorSnap.docs[0].data().gerenteId || '';
                         }

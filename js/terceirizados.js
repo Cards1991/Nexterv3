@@ -459,9 +459,12 @@ async function carregarSetoresPorEmpresa(empId, elId) {
     if (!el) return;
     el.innerHTML = '<option value="">-- Carregando... --</option>';
     try {
-        const snap = await db.collection('setores').where('empresaId', '==', empId).orderBy('nome').get();
+        const snap = await db.collection('setores').orderBy('descricao').get();
         el.innerHTML = '<option value="">-- Selecione --</option>';
-        snap.forEach(d => { el.innerHTML += `<option value="${d.data().nome}">${d.data().nome}</option>`; });
+        snap.forEach(d => { 
+            const desc = d.data().descricao || d.data().nome;
+            el.innerHTML += `<option value="${desc}">${desc}</option>`; 
+        });
     } catch(e) { el.innerHTML = '<option value="">-- Selecione --</option>'; }
 }
 

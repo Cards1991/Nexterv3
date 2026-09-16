@@ -17,7 +17,7 @@ const TODAS_SECOES = [
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
     'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz',
-    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias'
+    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias', 'rhid-config'
 ];
 
 let currentUserPermissions = {};

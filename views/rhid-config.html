@@ -1,0 +1,55 @@
+<div class="container-fluid pt-4">
+    <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-4 border-bottom">
+        <h1 class="h2"><i class="fas fa-plug text-primary me-2"></i> Integração RHiD</h1>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="mb-0"><i class="fas fa-link text-secondary me-2"></i> Status da Conexão</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex align-items-center mb-4">
+                        <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-light" style="width: 60px; height: 60px;">
+                            <i class="fas fa-building text-secondary fs-4" id="rhid-status-icon"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1 text-muted">Status Atual</h6>
+                            <h5 class="mb-0 fw-bold" id="rhid-status-text">Não verificado</h5>
+                        </div>
+                    </div>
+                    
+                    <p class="text-muted small mb-4">
+                        A integração com o RHiD (Control iD) permite sincronizar funcionários e buscar a apuração de ponto processada pelo sistema.
+                    </p>
+
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary" id="btn-test-rhid-connection">
+                            <i class="fas fa-wifi me-2"></i> TESTAR CONEXÃO
+                        </button>
+                    </div>
+
+                    <div id="rhid-connection-alert" class="alert mt-3 d-none" role="alert"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card shadow-sm border-0 bg-light">
+                <div class="card-body">
+                    <h6 class="text-muted mb-3"><i class="fas fa-info-circle me-2"></i> Configurações de Ambiente (Servidor)</h6>
+                    <p class="small text-muted mb-2">Para que a conexão funcione, as seguintes variáveis de ambiente devem estar configuradas na Vercel (ou no arquivo .env local):</p>
+                    <ul class="small text-muted mb-0" style="font-family: monospace;">
+                        <li>RHID_EMAIL</li>
+                        <li>RHID_PASSWORD</li>
+                        <li>RHID_DOMAIN (Opcional, default: crival)</li>
+                        <li>RHID_SYSTEM (Opcional, default: rhid)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/rhid-config.js"></script>

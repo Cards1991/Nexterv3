@@ -40,7 +40,7 @@ async function carregarSetores() {
             const row = `
                 <tr>
                     <td>${setor.descricao}</td>
-                    <td>${empresaNome}</td>
+                    <!-- Removida coluna Empresa: <td>${empresaNome}</td> -->
                     <td>${gerenteNome}</td>
                     <td class="text-center">${badgeProducao}</td>
                     <td class="text-center">${setor.qtdIdeal || 0}</td>
@@ -60,11 +60,16 @@ async function carregarSetores() {
 }
 
 async function abrirModalSetor(setorId = null) {
+    if (!setorId) {
+        mostrarMensagem("A O.D. bloqueia a criação de novos setores. Apenas edição dos oficiais é permitida.", "warning");
+        return;
+    }
+
     const modalEl = document.getElementById('setorModal');
     const form = document.getElementById('form-setor');
     form.reset();
-    document.getElementById('setor-id').value = setorId || '';
-    document.querySelector('#setorModal .modal-title').textContent = setorId ? 'Editar Setor' : 'Novo Setor';
+    document.getElementById('setor-id').value = setorId;
+    document.querySelector('#setorModal .modal-title').textContent = 'Editar Setor Oficial';
 
     // Reset do checkbox para garantir estado inicial correto
     const controlaProducaoCheckbox = document.getElementById('setor-controla-producao');
@@ -74,9 +79,14 @@ async function abrirModalSetor(setorId = null) {
 
     // Popular selects
     const empresaSelect = document.getElementById('setor-empresa');
-    const gerenteSelect = document.getElementById('setor-gerente');
+    if(empresaSelect) empresaSelect.closest('.mb-3').style.display = 'none'; // Esconde o campo Empresa
 
-    empresaSelect.innerHTML = '<option value="">Carregando...</option>';
+    const gerenteSelect = document.getElementById('setor-gerente');
+    
+    // Trava o campo de nome para readonly
+    const descInput = document.getElementById('setor-descricao');
+    if(descInput) descInput.readOnly = true;
+
     gerenteSelect.innerHTML = '<option value="">Carregando...</option>';
 
     const [empresasSnap, funcionariosSnap] = await Promise.all([
@@ -132,22 +142,13 @@ async function salvarSetor() {
     // VALIDAÇÃO EXPLÍCITA DO CHECKBOX
     const valorControlaProducao = controlaProducaoCheckbox ? controlaProducaoCheckbox.checked : false;
 
-    console.log("🔍 DEBUG - Salvando Setor:", {
-        setorId: setorId || "NOVO",
-        descricao: descricao,
-        controlaProducao: valorControlaProducao,
-        checkboxExists: !!controlaProducaoCheckbox,
-        checkboxValue: controlaProducaoCheckbox?.checked
-    });
-
-    if (!empresaId || !descricao) {
-        mostrarMensagem("Empresa e Descrição são obrigatórios.", "warning");
+    if (!setorId) {
+        mostrarMensagem("Criação de novos setores bloqueada pela O.D.", "error");
         return;
     }
 
     const dados = {
-        empresaId: empresaId,
-        descricao: descricao,
+        // empresaId e descricao NÃO SÃO MODIFICADOS
         gerenteId: document.getElementById('setor-gerente').value || null,
         qtdIdeal: parseInt(document.getElementById('setor-qtd-ideal').value) || 0,
         horarioEntrada: document.getElementById('setor-horario-entrada').value || '',
@@ -167,13 +168,7 @@ async function salvarSetor() {
             await db.collection('setores').doc(setorId).update(dados);
             console.log("✅ Setor atualizado com sucesso!", dados);
             mostrarMensagem("Setor atualizado com sucesso!", "success");
-        } else {
-            // CRIAÇÃO
-            dados.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-            const docRef = await db.collection('setores').add(dados);
-            console.log("✅ Setor criado com sucesso! ID:", docRef.id, dados);
-            mostrarMensagem("Setor cadastrado com sucesso!", "success");
-        }
+        } 
 
         // Tenta fechar o modal com segurança
         const modalEl = document.getElementById('setorModal');
@@ -200,17 +195,7 @@ async function salvarSetor() {
 }
 
 async function excluirSetor(setorId) {
-    if (!confirm("Tem certeza que deseja excluir este setor? Funcionários neste setor não serão excluídos, mas precisarão ser realocados.")) return;
-
-    try {
-        await db.collection('setores').doc(setorId).delete();
-        mostrarMensagem("Setor excluído com sucesso.", "info");
-        await carregarSetores();
-        if (typeof carregarDashboardSetores === 'function') await carregarDashboardSetores();
-    } catch (error) {
-        console.error("Erro ao excluir setor:", error);
-        mostrarMensagem("Erro ao excluir o setor.", "error");
-    }
+    mostrarMensagem("A O.D. bloqueia a exclusão de setores oficiais. O sistema depende dos 34 setores base.", "warning");
 }
 
 async function carregarDashboardSetores() {
@@ -677,7 +662,7 @@ async function abrirModalCorrecaoSetor(funcId, empresaId, nomeFunc, setorAtual) 
     select.disabled = true;
 
     try {
-        const setoresSnap = await db.collection('setores').where('empresaId', '==', empresaId).get();
+        const setoresSnap = await db.collection('setores').orderBy('descricao').get();
 
         if (setoresSnap.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado para esta empresa</option>';

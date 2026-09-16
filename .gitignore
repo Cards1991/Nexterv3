@@ -15,3 +15,5 @@ bkp/
 
 # Dependências de pacotes (caso use no futuro)
 node_modules/
+.vercel
+.env*.local
