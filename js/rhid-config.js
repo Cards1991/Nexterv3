@@ -232,3 +232,86 @@ async function sincronizarFuncionariosRhid() {
         btnSync.innerHTML = '<i class="fas fa-cloud-download-alt me-2"></i> SINCRONIZAR AGORA';
     }
 }
+
+// ==========================================
+// FASE 3: Importação de Apuração de Ponto
+// ==========================================
+
+async function importarApuracaoRhid() {
+    const btnSync = document.getElementById('btn-sync-rhid-apuracao');
+    const alertBox = document.getElementById('rhid-apuracao-alert');
+    const progressContainer = document.getElementById('rhid-apuracao-progress-container');
+    const progressBar = document.getElementById('rhid-apuracao-progress-bar');
+    const statusText = document.getElementById('rhid-apuracao-status-text');
+    const pctText = document.getElementById('rhid-apuracao-percentage');
+
+    const dtInicio = document.getElementById('rhid-apuracao-inicio').value;
+    const dtFim = document.getElementById('rhid-apuracao-fim').value;
+
+    if (!dtInicio || !dtFim) {
+        alert('Por favor, selecione a Data Inicial e a Data Final.');
+        return;
+    }
+
+    if (!confirm(`Deseja buscar a apuração de ponto do período ${dtInicio} a ${dtFim}?`)) {
+        return;
+    }
+
+    // UI Inicial
+    btnSync.disabled = true;
+    btnSync.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Importando...';
+    alertBox.classList.add('d-none');
+    progressContainer.classList.remove('d-none');
+    
+    progressBar.style.width = '10%';
+    statusText.textContent = 'Solicitando cálculos à Control iD...';
+    pctText.textContent = '10%';
+
+    try {
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const response = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                action: 'syncApuration',
+                startDate: dtInicio,
+                endDate: dtFim
+            })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+            const detalhe = data.details ? ` (${data.details.substring(0,200)})` : '';
+            throw new Error((data.message || 'Falha ao buscar apuração.') + detalhe);
+        }
+
+        // Caso a API retorne com sucesso (Endpoint correto)
+        progressBar.style.width = '100%';
+        progressBar.classList.remove('progress-bar-animated', 'bg-warning');
+        progressBar.classList.add('bg-success');
+        statusText.textContent = 'Apuração Finalizada!';
+        pctText.textContent = '100%';
+
+        alertBox.classList.remove('d-none', 'alert-danger');
+        alertBox.classList.add('alert-success');
+        
+        // Exibir o retorno bruto para análise (já que não sabemos a estrutura exata do Control iD ainda)
+        alertBox.innerHTML = `<strong>Sucesso!</strong> Resposta obtida. <br><small style="word-break: break-all;">Estrutura: ${JSON.stringify(data.rawData).substring(0, 300)}...</small>`;
+        
+    } catch (error) {
+        progressBar.classList.remove('progress-bar-animated', 'bg-warning');
+        progressBar.classList.add('bg-danger');
+        statusText.textContent = 'Erro na importação.';
+
+        alertBox.classList.remove('d-none', 'alert-success');
+        alertBox.classList.add('alert-danger');
+        alertBox.innerHTML = `<strong>Erro:</strong> ${error.message}`;
+    } finally {
+        btnSync.disabled = false;
+        btnSync.innerHTML = '<i class="fas fa-file-import me-2"></i> IMPORTAR ESPELHOS';
+    }
+}

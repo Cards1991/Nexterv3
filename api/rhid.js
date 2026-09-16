@@ -151,6 +151,54 @@ module.exports = async function handler(req, res) {
                         details: syncError.message 
                     });
                 }
+
+            case 'syncApuration':
+                try {
+                    const { startDate, endDate } = req.body;
+                    if (!startDate || !endDate) {
+                        return res.status(400).json({ success: false, message: 'Data de início e fim são obrigatórias.' });
+                    }
+
+                    const token = await loginToRhid();
+                    
+                    // Endpoint hipotético de apuração. Caso retorne 404, o catch pegará a mensagem exata para debugar.
+                    // O Control iD (RHiD) geralmente usa endpoints como /calculated_hours, /apuration ou /timesheet
+                    const endpoint = `${RHID_API_BASE}/calculated_hours?startDate=${startDate}&endDate=${endDate}&limit=50`;
+
+                    const apurRes = await fetch(endpoint, {
+                        method: 'GET',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+
+                    if (!apurRes.ok) {
+                        const errText = await apurRes.text();
+                        return res.status(apurRes.status).json({
+                            success: false,
+                            message: `Endpoint não encontrado ou erro de API (${apurRes.status})`,
+                            details: errText
+                        });
+                    }
+
+                    const apurData = await apurRes.json();
+
+                    return res.status(200).json({ 
+                        success: true, 
+                        message: `Apuração recebida com sucesso.`,
+                        data: apurData,
+                        rawData: apurData // para debug
+                    });
+
+                } catch (apurError) {
+                    console.error('[RHID API] Erro na apuração:', apurError);
+                    return res.status(500).json({ 
+                        success: false, 
+                        message: 'Erro interno ao buscar apuração.', 
+                        details: apurError.message 
+                    });
+                }
                 
             default:
                 return res.status(404).json({ success: false, message: 'Ação desconhecida.' });

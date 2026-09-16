@@ -75,6 +75,51 @@
         </div>
     </div>
 
+    <!-- Linha 2 -->
+    <div class="row">
+        <!-- Card 3: Apuração de Ponto -->
+        <div class="col-md-12">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                    <h5 class="mb-0"><i class="fas fa-clock text-warning me-2"></i> Importar Apuração de Ponto</h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted small mb-4">
+                        Busca as horas processadas (Trabalhadas, Faltas, Extras, Atrasos) do sistema RHiD e atrela aos funcionários cadastrados.
+                    </p>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Data Inicial</label>
+                            <input type="date" id="rhid-apuracao-inicio" class="form-control">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small text-muted">Data Final</label>
+                            <input type="date" id="rhid-apuracao-fim" class="form-control">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-warning w-100" id="btn-sync-rhid-apuracao" onclick="importarApuracaoRhid()">
+                                <i class="fas fa-file-import me-2"></i> IMPORTAR ESPELHOS
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="rhid-apuracao-progress-container" class="mt-3 d-none">
+                        <div class="d-flex justify-content-between small mb-1">
+                            <span id="rhid-apuracao-status-text">Iniciando importação...</span>
+                            <span id="rhid-apuracao-percentage">0%</span>
+                        </div>
+                        <div class="progress" style="height: 6px;">
+                            <div id="rhid-apuracao-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%"></div>
+                        </div>
+                    </div>
+
+                    <div id="rhid-apuracao-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Informações do Ambiente -->
     <div class="row mt-2">
         <div class="col-12">
