@@ -154,41 +154,52 @@ module.exports = async function handler(req, res) {
 
             case 'syncApuration':
                 try {
-                    const { startDate, endDate } = req.body;
+                    // Agora recebe um array de idPersons para processamento em lote (Batching)
+                    const { startDate, endDate, idPersons } = req.body;
                     if (!startDate || !endDate) {
                         return res.status(400).json({ success: false, message: 'Data de início e fim são obrigatórias.' });
                     }
 
                     const token = await loginToRhid();
+                    let apurDataComb = [];
                     
-                    // Endpoint hipotético de apuração. Caso retorne 404, o catch pegará a mensagem exata para debugar.
-                    // O Control iD (RHiD) geralmente usa endpoints como /calculated_hours, /apuration ou /timesheet
-                    const endpoint = `${RHID_API_BASE}/calculated_hours?startDate=${startDate}&endDate=${endDate}&limit=50`;
+                    // Se não passou array ou o array está vazio, retorna erro (evitar payload de 15MB sem filtro)
+                    if (!idPersons || !Array.isArray(idPersons) || idPersons.length === 0) {
+                        return res.status(400).json({ success: false, message: 'Lista de idPersons é obrigatória para evitar limite de payload.' });
+                    }
 
-                    const apurRes = await fetch(endpoint, {
-                        method: 'GET',
-                        headers: {
-                            'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${token}`
+                    // Faz chamadas concorrentes para o RHiD usando Promise.all
+                    const fetchPromises = idPersons.map(async (idPerson) => {
+                        const endpoint = `${RHID_API_BASE}/apuracao_ponto?dataIni=${startDate}&dataFinal=${endDate}&idPerson=${idPerson}`;
+                        const apurRes = await fetch(endpoint, {
+                            method: 'GET',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (apurRes.ok) {
+                            const data = await apurRes.json();
+                            // Se vier string jsonificada (como o Control iD costuma mandar em apuracao_ponto)
+                            const parsedData = typeof data === 'string' ? JSON.parse(data) : data;
+                            return parsedData;
+                        } else {
+                            console.warn(`[RHID] Erro ao buscar pessoa ${idPerson}: ${apurRes.status}`);
+                            return []; // Retorna vazio se der erro pra essa pessoa
                         }
                     });
 
-                    if (!apurRes.ok) {
-                        const errText = await apurRes.text();
-                        return res.status(apurRes.status).json({
-                            success: false,
-                            message: `Endpoint não encontrado ou erro de API (${apurRes.status})`,
-                            details: errText
-                        });
-                    }
-
-                    const apurData = await apurRes.json();
+                    const results = await Promise.all(fetchPromises);
+                    
+                    // results é um array de arrays (um array para cada pessoa). Vamos juntar tudo (flat)
+                    apurDataComb = results.flat();
 
                     return res.status(200).json({ 
                         success: true, 
                         message: `Apuração recebida com sucesso.`,
-                        data: apurData,
-                        rawData: apurData // para debug
+                        data: apurDataComb,
+                        rawData: apurDataComb // Mantendo para compatibilidade
                     });
 
                 } catch (apurError) {

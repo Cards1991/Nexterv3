@@ -272,21 +272,103 @@ async function importarApuracaoRhid() {
             ? 'http://localhost:3000/api'
             : '/api';
 
-        const response = await fetch(`${apiBaseUrl}/rhid`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-                action: 'syncApuration',
-                startDate: dtInicio,
-                endDate: dtFim
-            })
+        // 1. Busca todos os funcionários sincronizados que possuem rhidPersonId
+        const funcSnap = await window.db.collection('funcionarios').where('rhidPersonId', '!=', null).get();
+        if (funcSnap.empty) {
+            throw new Error("Nenhum funcionário com ID do RHiD encontrado. Execute a sincronização de funcionários primeiro.");
+        }
+
+        const employees = [];
+        funcSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.rhidPersonId && data.cpf) {
+                employees.push({ idPerson: data.rhidPersonId, cpf: data.cpf, nome: data.nome });
+            }
         });
 
-        const data = await response.json();
+        const totalFuncs = employees.length;
+        statusText.textContent = `Processando ${totalFuncs} funcionários em lotes...`;
 
-        if (!response.ok || !data.success) {
-            const detalhe = data.details ? ` (${data.details.substring(0,200)})` : '';
-            throw new Error((data.message || 'Falha ao buscar apuração.') + detalhe);
+        // 2. Quebrar em chunks (lotes) de 20 para não estourar o timeout ou rate-limit
+        const CHUNK_SIZE = 20;
+        let processados = 0;
+        let espelhosSalvos = 0;
+
+        for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
+            const chunk = employees.slice(i, i + CHUNK_SIZE);
+            const idPersonsChunk = chunk.map(e => e.idPerson);
+
+            // Traz as apurações desse lote da API Vercel
+            const response = await fetch(`${apiBaseUrl}/rhid`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'syncApuration',
+                    startDate: dtInicio,
+                    endDate: dtFim,
+                    idPersons: idPersonsChunk
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                console.error(`Erro no lote ${i}:`, data);
+                continue; // Continua pros próximos lotes mesmo se um falhar
+            }
+
+            const apuracoes = data.data || [];
+
+            // 3. Salvar as apurações no Firebase
+            // Para otimizar, faremos writes no Firestore (batched writes)
+            const batch = window.db.batch();
+            let opsCount = 0;
+
+            for (const apur of apuracoes) {
+                // Acha o CPF correspondente
+                const emp = chunk.find(e => String(e.idPerson) === String(apur.idPerson));
+                if (!emp || !apur.date) continue;
+
+                // Formatar data: "2026-09-01T00:00:00" -> "2026-09-01"
+                const dateStr = apur.date.split('T')[0];
+                const docId = `${emp.cpf}_${dateStr}`;
+                const ref = window.db.collection('espelhos_ponto').doc(docId);
+
+                batch.set(ref, {
+                    cpf: emp.cpf,
+                    rhidPersonId: apur.idPerson,
+                    nome: emp.nome,
+                    dataReferencia: dateStr,
+                    totalHorasTrabalhadas: apur.totalHorasTrabalhadas || 0,
+                    horasDiurnas: apur.horasDiurnasNaoExtra || 0,
+                    horasExtras: apur.horasExtrasCalculadas || 0,
+                    horasFaltaAtraso: apur.horasFaltaAtraso || 0,
+                    horasAusentes: apur.horasAusentes || 0,
+                    diasTrabalhados: apur.diasTrabalhados || 0,
+                    apuracaoRaw: JSON.stringify(apur),
+                    ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+
+                opsCount++;
+                espelhosSalvos++;
+
+                // O Firestore Batch suporta até 500 operações por vez. 
+                // Se chegar em 400, comitamos e abrimos um novo batch
+                if (opsCount >= 400) {
+                    await batch.commit();
+                    opsCount = 0;
+                }
+            }
+
+            // Commita o resto do batch
+            if (opsCount > 0) {
+                await batch.commit();
+            }
+
+            processados += chunk.length;
+            const pct = Math.floor((processados / totalFuncs) * 100);
+            progressBar.style.width = `${pct}%`;
+            pctText.textContent = `${pct}%`;
         }
 
         // Caso a API retorne com sucesso (Endpoint correto)
@@ -298,9 +380,7 @@ async function importarApuracaoRhid() {
 
         alertBox.classList.remove('d-none', 'alert-danger');
         alertBox.classList.add('alert-success');
-        
-        // Exibir o retorno bruto para análise (já que não sabemos a estrutura exata do Control iD ainda)
-        alertBox.innerHTML = `<strong>Sucesso!</strong> Resposta obtida. <br><small style="word-break: break-all;">Estrutura: ${JSON.stringify(data.rawData).substring(0, 300)}...</small>`;
+        alertBox.innerHTML = `<strong>Sucesso!</strong> Foram importados e atualizados ${espelhosSalvos} dias de espelho de ponto para os funcionários no período.`;
         
     } catch (error) {
         progressBar.classList.remove('progress-bar-animated', 'bg-warning');
