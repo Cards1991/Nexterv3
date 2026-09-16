@@ -128,6 +128,14 @@ const nexterAITools = {
                     }
                 }
             }
+        },
+        {
+            name: "consultarExperiencia",
+            description: "Consulta os colaboradores ativos que estão no período de experiência (até 90 dias de admissão) e calcula as datas de vencimento de 45 e 90 dias.",
+            parameters: {
+                type: "object",
+                properties: {}
+            }
         }
     ],
 
@@ -591,6 +599,74 @@ const nexterAITools = {
             } catch (error) {
                 console.error("Erro no consultarRecrutamento:", error);
                 return JSON.stringify({ erro: "Falha técnica ao consultar recrutamento." });
+            }
+        },
+
+        consultarExperiencia: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                
+                const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+                const hoje = new Date();
+                hoje.setHours(0, 0, 0, 0); // Zera horas para comparação precisa
+                
+                let emExperiencia = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    if (!data.dataAdmissao) return; // Se não tiver data de admissão, pula
+                    
+                    let dataAdmissao;
+                    if (data.dataAdmissao.toDate) {
+                        dataAdmissao = data.dataAdmissao.toDate();
+                    } else {
+                        // Trata data no formato YYYY-MM-DD para evitar fuso horário errado
+                        const parts = data.dataAdmissao.split('-');
+                        if (parts.length === 3) {
+                            dataAdmissao = new Date(parts[0], parts[1]-1, parts[2], 12, 0, 0);
+                        } else {
+                            dataAdmissao = new Date(data.dataAdmissao);
+                        }
+                    }
+                    
+                    dataAdmissao.setHours(0, 0, 0, 0);
+                    
+                    // Calcula dias trabalhados
+                    const diffTime = Math.abs(hoje - dataAdmissao);
+                    const diasTrabalhados = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    if (diasTrabalhados <= 90) {
+                        // Calcula vencimento 45 e 90 dias
+                        const vencimento45 = new Date(dataAdmissao);
+                        vencimento45.setDate(dataAdmissao.getDate() + 44);
+                        
+                        const vencimento90 = new Date(vencimento45);
+                        vencimento90.setDate(vencimento45.getDate() + 45);
+                        
+                        emExperiencia.push({
+                            id: doc.id,
+                            nome: data.nome,
+                            setor: data.setor || 'N/A',
+                            dataAdmissao: dataAdmissao.toLocaleDateString('pt-BR'),
+                            diasTrabalhados: diasTrabalhados,
+                            vencimento45: vencimento45.toLocaleDateString('pt-BR'),
+                            vencimento90: vencimento90.toLocaleDateString('pt-BR'),
+                            statusAtual: diasTrabalhados <= 45 ? '1º Período (Até 45 dias)' : '2º Período (Até 90 dias)'
+                        });
+                    }
+                });
+                
+                // Ordenar pelos que estão mais próximos do vencimento
+                emExperiencia.sort((a, b) => b.diasTrabalhados - a.diasTrabalhados);
+                
+                return JSON.stringify({
+                    status: "sucesso",
+                    totalEmExperiencia: emExperiencia.length,
+                    lista: emExperiencia
+                });
+            } catch (error) {
+                console.error("Erro no consultarExperiencia:", error);
+                return JSON.stringify({ erro: "Falha técnica ao consultar contratos de experiência." });
             }
         },
 
