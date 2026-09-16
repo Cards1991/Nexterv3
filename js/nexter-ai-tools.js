@@ -384,6 +384,7 @@ const nexterAITools = {
                                 tipoContrato: data.tipoContrato || 'Não informado',
                                 salarioAtual: data.salario || 'Não informado',
                                 salarioPorFora: data.salarioPorFora || 'Não informado',
+                                sexo: data.sexo || 'Não informado',
                                 isMecanico: data.isMecanico ? true : false
                             });
                         }
