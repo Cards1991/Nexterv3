@@ -134,8 +134,9 @@ async function sincronizarFuncionariosRhid() {
         for (let i = 0; i < employees.length; i++) {
             const emp = employees[i];
             
-            // Extrair CPF
-            let cpf = emp.cpf ? emp.cpf.replace(/\D/g, '') : null;
+            // Extrair CPF (convertendo para string caso venha como número)
+            let cpfStr = emp.cpf ? String(emp.cpf) : '';
+            let cpf = cpfStr.replace(/\D/g, '');
             if (!cpf) {
                 erros++;
                 continue;
@@ -171,7 +172,7 @@ async function sincronizarFuncionariosRhid() {
 
                 // Se houver nome ou PIS, pode atualizar preventivamente
                 if (emp.name) dadosUpsert.nome = emp.name;
-                if (emp.pis) dadosUpsert.pis = emp.pis;
+                if (emp.pis) dadosUpsert.pis = String(emp.pis);
                 if (setorNormalizado) dadosUpsert.setor = setorNormalizado; // Só sobescreve setor se achar correspondência
                 
                 if (funcSnap.empty) {

@@ -105,16 +105,11 @@ module.exports = async function handler(req, res) {
                         // Tratar como texto JSON bruto.
                         const personData = await personRes.json();
                         
-                        // Assumindo que RHiD retorna { persons: [...] } ou diretamente o array
-                        const personsBatch = personData.persons || personData.data || personData || [];
+                        // Assumindo que RHiD retorna { records: [...] }
+                        const personsBatch = personData.records || personData.persons || personData.data || personData || [];
                         
                         if (!Array.isArray(personsBatch)) {
-                            // Em vez de throw, vamos retornar o dado bruto para podermos inspecionar no frontend!
-                            return res.status(500).json({ 
-                                success: false, 
-                                message: 'O RHiD retornou um formato inesperado.', 
-                                details: 'Estrutura: ' + JSON.stringify(personData).substring(0, 300)
-                            });
+                             throw new Error('A resposta da API do RHiD não está no formato de array esperado.');
                         }
 
                         if (personsBatch.length > 0) {
