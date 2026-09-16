@@ -1,0 +1,113 @@
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0">
+        <span class="text-primary fs-3">🤖</span> NEXTER AI
+    </h2>
+</div>
+
+<div class="row g-4 h-100" style="min-height: calc(100vh - 160px);">
+    <div class="col-12 d-flex flex-column h-100">
+        
+        <!-- Área de Conversa -->
+        <div class="card shadow-sm border-0 rounded-4 flex-grow-1 d-flex flex-column mb-3" style="background-color: #f8f9fa;">
+            <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <div class="spinner-grow spinner-grow-sm text-success" role="status" id="ai-status-indicator" style="display: none;"></div>
+                    <h5 class="mb-0 fw-bold text-dark fs-6" id="ai-status-text">Como posso ajudar hoje?</h5>
+                </div>
+                <button class="btn btn-sm btn-outline-secondary rounded-pill" onclick="nexterAI.limparConversa()">
+                    <i class="fas fa-trash-alt me-1"></i> Limpar Histórico
+                </button>
+            </div>
+            
+            <div class="card-body p-4 overflow-auto" id="chat-messages-container" style="max-height: 60vh;">
+                
+                <!-- Mensagem de Boas-Vindas -->
+                <div class="d-flex mb-4">
+                    <div class="me-3">
+                        <div class="bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 40px; height: 40px;">
+                            <i class="fas fa-robot"></i>
+                        </div>
+                    </div>
+                    <div class="bg-white p-3 rounded-3 shadow-sm border border-light w-75" style="border-top-left-radius: 0 !important;">
+                        <p class="mb-0 text-dark">
+                            Olá! Eu sou o <strong>Nexter AI</strong>, seu assistente inteligente de RH.<br><br>
+                            Você pode me pedir análises sobre <strong>faltas, afastamentos, quadro de funcionários, turnover</strong>, e muito mais. Use o microfone ou digite sua pergunta abaixo.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Aqui serão inseridas as mensagens dinamicamente -->
+
+            </div>
+        </div>
+
+        <!-- Área de Input -->
+        <div class="card shadow-sm border-0 rounded-4 mt-auto">
+            <div class="card-body p-3">
+                <div class="d-flex align-items-center gap-3">
+                    
+                    <!-- Botão de Microfone -->
+                    <button class="btn btn-lg rounded-circle shadow-sm d-flex justify-content-center align-items-center" 
+                            id="btn-voice-command" 
+                            style="width: 60px; height: 60px; background: linear-gradient(135deg, #f8f9fa, #e9ecef); border: 2px solid #dee2e6; color: #495057; transition: all 0.3s ease;">
+                        <i class="fas fa-microphone fs-4"></i>
+                    </button>
+                    
+                    <!-- Campo de Texto -->
+                    <div class="flex-grow-1 position-relative">
+                        <input type="text" 
+                               class="form-control form-control-lg border-0 shadow-sm rounded-pill px-4" 
+                               id="ai-text-input" 
+                               placeholder="Digite sua pergunta (ex: Quantas faltas tivemos este mês?)" 
+                               style="background-color: #f8f9fa;"
+                               autocomplete="off">
+                    </div>
+                    
+                    <!-- Botão Enviar -->
+                    <button class="btn btn-primary btn-lg rounded-pill px-4 shadow-sm fw-semibold" id="btn-send-message">
+                        <i class="fas fa-paper-plane me-2"></i> Enviar
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+</div>
+
+<style>
+/* Estilos Específicos para a Interface do Chat AI */
+.chat-message-user {
+    background-color: #e0f2fe;
+    color: #0369a1;
+    border-top-right-radius: 0 !important;
+}
+
+.chat-message-ai {
+    background-color: #ffffff;
+    color: #334155;
+    border-top-left-radius: 0 !important;
+}
+
+.voice-recording {
+    animation: pulse-recording 1.5s infinite;
+    background: #dc3545 !important;
+    color: white !important;
+    border-color: #dc3545 !important;
+}
+
+@keyframes pulse-recording {
+    0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Markdown parsing base styles */
+.ai-response-content h3 { font-size: 1.25rem; font-weight: 700; margin-top: 15px; margin-bottom: 10px; color: #1e293b; }
+.ai-response-content p { margin-bottom: 10px; }
+.ai-response-content ul { padding-left: 20px; margin-bottom: 15px; }
+.ai-response-content li { margin-bottom: 5px; }
+.ai-response-content strong { font-weight: 700; color: #0f172a; }
+.ai-response-content table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 0.9rem; }
+.ai-response-content th, .ai-response-content td { padding: 8px 12px; border: 1px solid #e2e8f0; }
+.ai-response-content th { background-color: #f8fafc; font-weight: 600; text-align: left; }
+</style>

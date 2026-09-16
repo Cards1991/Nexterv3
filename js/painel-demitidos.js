@@ -134,7 +134,11 @@ async function carregarPainelDemitidos() {
                 // Fallback para dados da movimentação se não estiver no funcionário
                 dataDemissao = demissoesMap[doc.id].dataStr;
                 dataDemissaoISO = demissoesMap[doc.id].dataISO;
-                if (tipoDemissao === '-') tipoDemissao = demissoesMap[doc.id].motivo || '-';
+            }
+
+            // O TIPO e MOTIVO DEVEM sempre ser validados contra o histórico se estiverem em branco
+            if ((tipoDemissao === '-' || !tipoDemissao) && demissoesMap[doc.id]) {
+                tipoDemissao = demissoesMap[doc.id].motivo || '-';
             }
 
             let motivoDetalhado = f.motivoDesligamento || '-';

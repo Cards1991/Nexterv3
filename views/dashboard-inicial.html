@@ -2,18 +2,31 @@
     <div class="row mb-4 align-items-center">
         <div class="col-md-8">
             <h1 class="page-title mb-1">Painel Inicial</h1>
-            <!-- Assistente Virtual Jarvis -->
+            <!-- Assistente Virtual Jarvis Integrado ao NEXTER AI -->
             <div id="jarvis-container" class="mt-3">
                 <div class="jarvis-panel">
-                    <div class="jarvis-avatar">
+                    <div class="jarvis-avatar position-relative">
                         <i class="fas fa-robot"></i>
+                        <div class="spinner-grow spinner-grow-sm text-primary position-absolute" role="status" id="jarvis-ai-loader" style="display: none; bottom: 0; right: -5px;"></div>
                     </div>
-                    <div class="jarvis-content">
-                        <div class="jarvis-greeting" id="jarvis-greeting">Iniciando sistemas...</div>
-                        <div class="jarvis-message" id="jarvis-message">
-                            Sincronizando com a sua agenda...
+                    <div class="jarvis-content flex-grow-1">
+                        <div class="jarvis-greeting" id="jarvis-greeting">Olá! Sou o Jarvis (Nexter AI).</div>
+                        <div class="jarvis-message mb-3" id="jarvis-message">
+                            Como posso ajudar com suas análises hoje?
                         </div>
-                        <div class="jarvis-actions" id="jarvis-actions" style="display: none;">
+                        
+                        <!-- Input de IA para Jarvis -->
+                        <div class="d-flex align-items-center gap-2 mt-2">
+                            <button class="btn btn-sm btn-outline-danger rounded-circle d-flex justify-content-center align-items-center" id="jarvis-btn-voice" style="width: 35px; height: 35px;" title="Falar comando">
+                                <i class="fas fa-microphone"></i>
+                            </button>
+                            <input type="text" class="form-control form-control-sm border-primary" id="jarvis-ai-input" placeholder="Pergunte ao Jarvis..." autocomplete="off">
+                            <button class="btn btn-sm btn-primary" id="jarvis-btn-send">
+                                <i class="fas fa-paper-plane"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="jarvis-actions mt-2" id="jarvis-actions" style="display: none;">
                             <a href="#" onclick="showSection('agenda')" class="jarvis-btn">
                                 <i class="fas fa-tasks"></i> Abrir Agenda
                             </a>

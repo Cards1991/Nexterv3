@@ -126,6 +126,8 @@ async function abrirModalPermissoes(uid) {
     if (permIsMecanicoAdminEl) permIsMecanicoAdminEl.checked = permissoes.isMecanicoAdmin || false;
     const permPermitirEscavadorEl = document.getElementById('perm-permitir-escavador');
     if (permPermitirEscavadorEl) permPermitirEscavadorEl.checked = permissoes.permitirEscavador || false;
+    const permAcessoAIEl = document.getElementById('perm-acesso-ai');
+    if (permAcessoAIEl) permAcessoAIEl.checked = !!permissoes.acessoAI;
     const permHasIsoAccessEl = document.getElementById('perm-has-iso-access');
     if (permHasIsoAccessEl) permHasIsoAccessEl.checked = permissoes.hasIsoAccess !== false;
 
@@ -265,6 +267,9 @@ async function salvarPermissoes() {
     const restricaoSetor = document.getElementById('perm-user-setor').value;
     const funcionarioId = document.getElementById('perm-user-funcionario')?.value || null;
 
+    const permAcessoAIEl = document.getElementById('perm-acesso-ai');
+    const acessoAI = permAcessoAIEl ? permAcessoAIEl.checked : false;
+
     const secoesPermitidas = [];
     document.querySelectorAll('#perm-secoes-container input[type="checkbox"]:checked').forEach(checkbox => {
         secoesPermitidas.push(checkbox.value);
@@ -280,6 +285,7 @@ async function salvarPermissoes() {
                 isMecanico: isMecanico,
                 isMecanicoAdmin: isMecanicoAdmin,
                 permitirEscavador: permitirEscavador,
+                acessoAI: acessoAI,
                 hasIsoAccess: hasIsoAccess,
                 secoesPermitidas: secoesPermitidas,
                 restricaoSetor: restricaoSetor || null

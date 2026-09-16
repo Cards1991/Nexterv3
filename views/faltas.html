@@ -1,89 +1,91 @@
-<h2 class="page-title">Faltas Diárias</h2>
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="page-title mb-0"><i class="fas fa-calendar-times text-danger me-2"></i>Controle de Faltas</h2>
+    <button class="btn btn-primary shadow-sm rounded-pill px-4" id="btn-nova-falta">
+        <i class="fas fa-plus-circle me-1"></i> Lançar Falta
+    </button>
+</div>
 
-<!-- Card de Alerta de Faltas Recorrentes -->
-<div class="card border-danger mb-4" id="alerta-faltas-recorrentes" style="display: none;">
-    <div class="card-header bg-danger text-white d-flex justify-content-between align-items-center">
-        <div><i class="fas fa-exclamation-triangle"></i> <strong>Alerta: Faltas Recorrentes</strong></div>
-        <button class="btn btn-sm btn-light fw-bold text-success" onclick="exportarFaltasRecorrentesExcel()">
-            <i class="fas fa-file-excel"></i> Exportar
-        </button>
-    </div>
-    <div id="faltas-recorrentes-container" class="card-body" style="max-height: 250px; overflow-y: auto;">
-        <p class="text-muted">Nenhum funcionário com mais de 2 faltas no período.</p>
+<!-- Elementos invisíveis para não quebrar o JS do alerta de faltas recorrentes -->
+<div id="alerta-faltas-recorrentes" style="display: none !important;"></div>
+<div id="faltas-recorrentes-container" style="display: none !important;"></div>
+
+<div class="card shadow-sm border-0 mb-4 rounded-4" style="background: linear-gradient(145deg, #f8f9fa, #ffffff);">
+    <div class="card-body p-4">
+        <h5 class="card-title text-muted mb-4 fw-bold"><i class="fas fa-filter me-2"></i>Filtros de Relatório</h5>
+        <div class="row g-3 align-items-end">
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Tipo Relatório</label>
+                <select class="form-select border-0 shadow-sm bg-white" id="falta-tipo-relatorio">
+                    <option value="diario">Diário</option>
+                    <option value="mensal">Mensal</option>
+                    <option value="geral">Geral</option>
+                    <option value="setor">Por Setor</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Data Inicial</label>
+                <input type="date" class="form-control border-0 shadow-sm bg-white" id="falta-filtro-data-inicio">
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Data Final</label>
+                <input type="date" class="form-control border-0 shadow-sm bg-white" id="falta-filtro-data-fim">
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Empresa</label>
+                <select class="form-select border-0 shadow-sm bg-white" id="falta-filtro-empresa">
+                    <option value="">Todas</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Período</label>
+                <select class="form-select border-0 shadow-sm bg-white" id="falta-filtro-periodo">
+                    <option value="">Todos</option>
+                    <option value="manha">Manhã</option>
+                    <option value="tarde">Tarde</option>
+                    <option value="noite">Noite</option>
+                </select>
+            </div>
+            <div class="col-md-2 col-sm-6">
+                <label class="form-label fw-semibold text-secondary small mb-1">Setor</label>
+                <select class="form-select border-0 shadow-sm bg-white" id="falta-filtro-setor">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            <div class="col-12 mt-4 d-flex justify-content-end gap-2">
+                <button class="btn btn-dark shadow-sm px-4 rounded-pill fw-semibold" id="btn-falta-filtrar">
+                    <i class="fas fa-search me-2"></i>Filtrar
+                </button>
+                <button class="btn btn-danger shadow-sm px-4 rounded-pill fw-semibold" onclick="imprimirRelatorioFaltas()">
+                    <i class="fas fa-file-pdf me-2"></i>Gerar Relatório
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
-<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-    <div class="row g-2 align-items-end">
-        <div class="col-auto">
-            <label class="form-label mb-1">Tipo Relatório</label>
-            <select class="form-select form-select-sm" id="falta-tipo-relatorio">
-                <option value="diario">Diário</option>
-                <option value="mensal">Mensal</option>
-                <option value="geral">Geral</option>
-                <option value="setor">Por Setor</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">Data Inicial</label>
-            <input type="date" class="form-control form-control-sm" id="falta-filtro-data-inicio">
-        </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">Data Final</label>
-            <input type="date" class="form-control form-control-sm" id="falta-filtro-data-fim">
-        </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">Empresa</label>
-            <select class="form-select form-select-sm" id="falta-filtro-empresa">
-                <option value="">Todas</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">Período</label>
-            <select class="form-select form-select-sm" id="falta-filtro-periodo">
-                <option value="">Todos</option>
-                <option value="manha">Manhã</option>
-                <option value="tarde">Tarde</option>
-                <option value="noite">Noite</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <label class="form-label mb-1">Setor</label>
-            <select class="form-select form-select-sm" id="falta-filtro-setor">
-                <option value="">Todos</option>
-            </select>
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-outline-secondary btn-sm" id="btn-falta-filtrar"><i
-                    class="fas fa-filter"></i></button>
-        </div>
-        <div class="col-auto">
-            <button class="btn btn-outline-primary btn-sm" onclick="imprimirRelatorioFaltas()">
-                <i class="fas fa-print"></i> Imprimir Relatório
-            </button>
-        </div>
+<div class="card shadow-sm border-0 rounded-4 overflow-hidden">
+    <div class="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list-alt text-primary me-2"></i>Histórico de Faltas</h5>
     </div>
-    <button class="btn btn-primary" id="btn-nova-falta"><i class="fas fa-plus-circle"></i> Nova
-        Falta</button>
-</div>
-<div class="card">
-    <div class="card-header">Registros de Faltas</div>
-    <div class="card-body">
+    <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light text-secondary">
                     <tr>
-                        <th>Data</th>
-                        <th>Colaborador</th>
-                        <th>Empresa/Setor</th>
-                        <th>Período</th>
-                        <th>Justificativa</th>
-                        <th></th>
+                        <th class="ps-4 fw-semibold border-0 py-3">Data</th>
+                        <th class="fw-semibold border-0 py-3">Colaborador</th>
+                        <th class="fw-semibold border-0 py-3">Empresa / Setor</th>
+                        <th class="fw-semibold border-0 py-3">Período</th>
+                        <th class="fw-semibold border-0 py-3">Justificativa</th>
+                        <th class="pe-4 text-end fw-semibold border-0 py-3">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="faltas-container">
                     <tr>
-                        <td colspan="6" class="text-center">Carregando...</td>
+                        <td colspan="6" class="text-center py-5 text-muted">
+                            <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                            Carregando registros de faltas...
+                        </td>
                     </tr>
                 </tbody>
             </table>

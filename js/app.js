@@ -1004,7 +1004,17 @@ function inicializarNavegacao() {
         window.renderizarMenuEscopoIso();
     }
 
+    // Permissão da IA
+    if (currentUserPermissions.isAdmin || currentUserPermissions.acessoAI) {
+        const aiLinks = navContainer.querySelectorAll('a[data-target="nexter-ai"]');
+        aiLinks.forEach(link => {
+            const navItem = link.closest('.nav-item');
+            if (navItem) navItem.style.display = 'block';
+        });
+    }
+
     currentUserPermissions.secoesPermitidas?.forEach(secao => {
+        if (secao === 'nexter-ai') return; // Já tratado acima
         const links = navContainer.querySelectorAll(`a[data-target="${secao}"]`);
         links.forEach(link => {
             const navItemDoLink = link.closest('.nav-item');
@@ -1033,8 +1043,11 @@ function inicializarNavegacao() {
             const isMecanicoAdmin = currentUserPermissions?.isMecanicoAdmin;
             const allowMecanicoAdminISO = isMecanicoAdmin && (targetSection === 'iso-manutencao' || targetSection === 'manutencao-mecanico' || targetSection.startsWith('iso-'));
 
+            // Permissão da IA
+            const allowAI = targetSection === 'nexter-ai' && (currentUserPermissions.isAdmin || currentUserPermissions.acessoAI);
+
             // Verifica permissão
-            if (currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO) {
+            if (currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO || allowAI) {
                 if (isExternal) {
                     // Se for link externo (ex: Portal Mobile), deixa o navegador abrir a aba
                     return;

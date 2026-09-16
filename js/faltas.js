@@ -644,69 +644,92 @@ async function imprimirRelatorioFaltas() {
         
         // Montar HTML
         let html = '<html><head><title>Relatório de Faltas</title>' +
-            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css">' +
-            '<style>@page{size: landscape; margin: 0;}body{font-family:Inter,Segoe UI,sans-serif;padding:20px}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:2px solid #dee2e6;padding-bottom:15px}.table thead th{background:#f8f9fa;font-weight:600}.badge{font-size:.75rem;padding:.35em .65em}.info-box{background:#e7f3ff;border-left:4px solid #0d6efd;padding:12px;margin-bottom:20px} @media print { body { margin: 1cm; } }</style>' +
+            '<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">' +
+            '<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">' +
+            '<style>' +
+            '@page{size: landscape; margin: 1cm;}' +
+            'body{font-family:"Outfit",sans-serif; background-color:#f8f9fa; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding:20px; color:#333;}' +
+            '.report-container { background: #fff; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); padding: 30px; }' +
+            '.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:30px;border-bottom:3px solid #f1f3f5;padding-bottom:20px}' +
+            '.header h4 { font-weight: 700; color: #1a1d20; letter-spacing: -0.5px; margin-bottom: 5px; }' +
+            '.header .filter-text { font-size: 0.9rem; color: #6c757d; font-weight: 400; }' +
+            '.table-wrapper { border-radius: 8px; overflow: hidden; border: 1px solid #e9ecef; margin-bottom: 25px; }' +
+            '.table { margin-bottom: 0; }' +
+            '.table thead th{background:#f1f3f5; font-weight:600; color: #495057; border-bottom: 2px solid #dee2e6; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 0.5px; padding: 12px 15px;}' +
+            '.table tbody td { padding: 12px 15px; vertical-align: middle; border-bottom: 1px solid #f1f3f5; font-size: 0.9rem; }' +
+            '.table tbody tr:last-child td { border-bottom: none; }' +
+            '.badge{font-size:0.75rem; font-weight: 600; padding:0.4em 0.8em; border-radius: 6px;}' +
+            '.bg-manha { background-color: #e0f2fe; color: #0284c7; }' +
+            '.bg-tarde { background-color: #fef08a; color: #854d0e; }' +
+            '.bg-noite { background-color: #e2e8f0; color: #334155; }' +
+            '.info-box{background:#f8f9fa; border-left:4px solid #dc3545; border-radius: 6px; padding:15px 20px; font-weight: 600; color: #495057; display: inline-block; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}' +
+            '.group-title { font-weight: 700; color: #212529; font-size: 1.1rem; margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }' +
+            '.group-title::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #dc3545; display: inline-block; }' +
+            '@media print { body { background-color: #fff; padding: 0; } .report-container { box-shadow: none; padding: 0; } }' +
+            '</style>' +
             '</head><body>';
         
+        html += '<div class="report-container">';
         html += '<div class="header">' +
-            '<div><h4 class="m-0">Relatório de Faltas - ' + tipoRelatorio + '</h4>' +
-            '<small class="text-muted">' + periodoTexto;
+            '<div><h4 class="m-0">Relatório de Faltas <span style="color:#dc3545">•</span> ' + (tipoRelatorio.charAt(0).toUpperCase() + tipoRelatorio.slice(1)) + '</h4>' +
+            '<div class="filter-text mt-1">' + periodoTexto;
             
-        if (empId) html += ' | Empresa: ' + (empMap[empId] || '—');
-        if (setor) html += ' | Setor: ' + setor;
-        if (periodo) html += ' | Período: ' + (periodo === 'manha' ? 'Manhã' : (periodo === 'tarde' ? 'Tarde' : 'Noite'));
+        if (empId) html += ' &nbsp;|&nbsp; <b>Empresa:</b> ' + (empMap[empId] || '—');
+        if (setor) html += ' &nbsp;|&nbsp; <b>Setor:</b> ' + setor;
+        if (periodo) html += ' &nbsp;|&nbsp; <b>Período:</b> ' + (periodo === 'manha' ? 'Manhã' : (periodo === 'tarde' ? 'Tarde' : 'Noite'));
         
-        html += '</small></div>' +  // FECHA A STRING CORRETAMENTE
-            '<small class="text-muted">Gerado em: ' + new Date().toLocaleString('pt-BR') + '</small>' +
+        html += '</div></div>' +
+            '<div class="text-end"><small class="text-muted fw-bold d-block">Data de Emissão</small>' +
+            '<span style="font-size: 0.9rem; font-weight: 600; color: #495057;">' + new Date().toLocaleString('pt-BR') + '</span></div>' +
             '</div>';
         
         if (agruparPorSetor && Object.keys(dadosAgrupados).length > 0) {
-            // Relatório agrupado por setor
             Object.keys(dadosAgrupados).forEach(chave => {
                 const grupo = dadosAgrupados[chave];
                 html += '<div class="mb-4">' +
-                    '<h5>' + grupo.empresa + ' - Setor: ' + grupo.setor + '</h5>' +
-                    '<table class="table table-sm table-bordered">' +
+                    '<div class="group-title">' + grupo.empresa + ' <span class="text-muted fw-normal mx-1">/</span> Setor: ' + grupo.setor + '</div>' +
+                    '<div class="table-wrapper"><table class="table">' +
                     '<thead><tr><th>Data</th><th>Colaborador</th><th>Período</th><th>Justificativa</th></tr></thead><tbody>';
                     
                 grupo.faltas.forEach(f => {
                     const dataObj = f.data?.toDate ? f.data.toDate() : f.data;
+                    const badgeClass = f.periodo === 'manha' ? 'bg-manha' : (f.periodo === 'tarde' ? 'bg-tarde' : 'bg-noite');
+                    const periodoNome = f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite');
+                    
                     html += '<tr>' +
-                        '<td>' + formatarData(dataObj) + '</td>' +
-                        '<td>' + (f.funcionarioNome || '—') + '</td>' +
-                        '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : (f.periodo === 'tarde' ? 'bg-primary' : 'bg-dark')) + '">' + 
-                        (f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite')) + 
-                        '</span></td>' +
-                        '<td>' + (f.justificativa || '—') + '</td>' +
+                        '<td class="fw-medium text-secondary">' + formatarData(dataObj) + '</td>' +
+                        '<td class="fw-semibold">' + (f.funcionarioNome || '—') + '</td>' +
+                        '<td><span class="badge ' + badgeClass + '">' + periodoNome + '</span></td>' +
+                        '<td class="text-muted">' + (f.justificativa || '—') + '</td>' +
                         '</tr>';
                 });
                 
-                html += '</tbody></table><p class="text-muted"><strong>Total:</strong> ' + grupo.faltas.length + ' falta(s)</p></div>';
+                html += '</tbody></table></div><div class="text-end text-muted mt-2 small">Total do setor: <b class="text-dark">' + grupo.faltas.length + ' falta(s)</b></div></div>';
             });
         } else {
-            // Relatório simples
-            html += '<table class="table table-sm table-bordered">' +
+            html += '<div class="table-wrapper"><table class="table">' +
                 '<thead><tr><th>Data</th><th>Colaborador</th><th>Empresa</th><th>Setor</th><th>Período</th><th>Justificativa</th></tr></thead><tbody>';
                 
             registros.forEach(f => {
                 const dataObj = f.data?.toDate ? f.data.toDate() : f.data;
+                const badgeClass = f.periodo === 'manha' ? 'bg-manha' : (f.periodo === 'tarde' ? 'bg-tarde' : 'bg-noite');
+                const periodoNome = f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite');
+                
                 html += '<tr>' +
-                    '<td>' + formatarData(dataObj) + '</td>' +
-                    '<td>' + (f.funcionarioNome || '—') + '</td>' +
+                    '<td class="fw-medium text-secondary">' + formatarData(dataObj) + '</td>' +
+                    '<td class="fw-semibold">' + (f.funcionarioNome || '—') + '</td>' +
                     '<td>' + (empMap[f.empresaId] || '—') + '</td>' +
                     '<td>' + (f.setor || '—') + '</td>' +
-                    '<td><span class="badge ' + (f.periodo === 'manha' ? 'bg-info' : (f.periodo === 'tarde' ? 'bg-primary' : 'bg-dark')) + '">' + 
-                    (f.periodo === 'manha' ? 'Manhã' : (f.periodo === 'tarde' ? 'Tarde' : 'Noite')) + 
-                    '</span></td>' +
-                    '<td>' + (f.justificativa || '—') + '</td>' +
+                    '<td><span class="badge ' + badgeClass + '">' + periodoNome + '</span></td>' +
+                    '<td class="text-muted">' + (f.justificativa || '—') + '</td>' +
                     '</tr>';
             });
             
-            html += '</tbody></table>';
-            html += '<div class="info-box mt-3"><strong>Total de faltas:</strong> ' + registros.length + '</div>';
+            html += '</tbody></table></div>';
         }
         
-        html += '</body></html>';
+        html += '<div class="mt-4"><div class="info-box">Total de Faltas Registradas: <span class="text-danger ms-2" style="font-size:1.2rem;">' + registros.length + '</span></div></div>';
+        html += '</div></body></html>';
         
         // Abrir janela de impressão via utilitário
         openPrintWindow(html, { autoPrint: true, name: '_blank' });
