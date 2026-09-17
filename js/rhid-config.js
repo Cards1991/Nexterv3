@@ -428,6 +428,15 @@ async function apurarHorasExtrasPeriodo() {
         const cpfsAtivos = new Set();
         funcSnap.forEach(doc => {
             const data = doc.data();
+            
+            // DEBUG ANACILIA
+            if (data.cpf === '04489937911') {
+                console.log('ENCONTREI ANACILIA NO FIREBASE!', data);
+                if (!data.rhidPersonId) {
+                    alert('ANACILIA ESTÁ SEM RHID PERSON ID NO CADASTRO!');
+                }
+            }
+
             if (data.cpf) cpfsAtivos.add(data.cpf);
         });
 
@@ -522,19 +531,33 @@ async function verificarFaltasHoje() {
         const idPersons = [];
         const funcMap = new Map();
         
+        let countAnacilia = 0;
         funcSnap.forEach(doc => {
             const data = doc.data();
+
+            if (data.cpf === '04489937911') {
+                countAnacilia++;
+                console.log('ANACILIA ENCONTRADA NA LEITURA PARA O RHID:', data);
+                if (!data.rhidPersonId) {
+                    alert('Alerta: A colaboradora Anacilia (CPF 04489937911) não tem Código RHiD no cadastro (rhidPersonId vazio). Por isso o sistema não consegue puxar as faltas dela!');
+                }
+            }
+
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
                 funcMap.set(String(data.rhidPersonId), { 
                     id: doc.id,
-                    nome: data.nome, 
-                    cpf: data.cpf, 
+                    nome: data.nome,
                     setor: data.setor,
-                    condicao: data.condicao // Importante para barrar férias/afastados!
+                    cpf: data.cpf,
+                    condicao: data.condicao_atual || 'Normal'
                 });
             }
         });
+
+        if (countAnacilia === 0) {
+            alert('Alerta: A colaboradora Anacilia (CPF 04489937911) não foi retornada pelo Firebase! O Status dela pode estar diferente de Ativo/Afastado/Férias (ex: em branco).');
+        }
 
         // Hoje, compensando fuso (Y-m-d) local
         const hojeObj = new Date();
