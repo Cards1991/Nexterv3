@@ -574,14 +574,18 @@ async function verificarFaltasHoje() {
                     window.__debugRhidData = apur; // Salva global para mostrar na tela
                 }
 
-                // Verifica se há alguma propriedade no objeto que indique batidas (marcacoes, batidas, etc)
+                // Verifica se há alguma propriedade no objeto que indique batidas REAIS (marcacoes, batidas, listAfdtManutencao, etc)
                 // Se ele tiver array de marcações com > 0 elementos, não é falta.
-                const temBatida = (apur.marcacoes && apur.marcacoes.length > 0) || 
-                                  (apur.batidas && apur.batidas.length > 0) || 
-                                  (apur.horarios && apur.horarios.length > 0) ||
-                                  (apur.entradasSaidas && apur.entradasSaidas.length > 0) ||
-                                  (apur.strMarcacoes && apur.strMarcacoes.trim() !== '') ||
-                                  (apur.totalHorasTrabalhadas > 0);
+                let temBatida = false;
+                
+                if (apur.totalHorasTrabalhadas > 0) temBatida = true;
+                
+                // O Control iD envia as batidas dentro de "listAfdtManutencao" ou "listAfdtExcluidos"
+                // As geradas pelo sistema por falta possuem idAfd = null. As reais possuem idAfd preenchido.
+                if (!temBatida && apur.listAfdtManutencao && Array.isArray(apur.listAfdtManutencao)) {
+                    const batidasReais = apur.listAfdtManutencao.filter(b => b.idAfd !== null || b.idAfdChange !== null);
+                    if (batidasReais.length > 0) temBatida = true;
+                }
 
                 if (!temBatida) {
                     if (func) {
