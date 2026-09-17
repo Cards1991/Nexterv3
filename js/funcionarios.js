@@ -405,6 +405,7 @@ async function salvarFuncionario() {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-funcionario').value;
         const matricula = document.getElementById('matricula-funcionario').value;
+        const rhidPersonId = document.getElementById('rhid-funcionario')?.value || '';
         const cpf = document.getElementById('cpf-funcionario').value;
         const rg = document.getElementById('rg-funcionario').value;
         const email = document.getElementById('email-funcionario').value;
@@ -509,6 +510,7 @@ async function salvarFuncionario() {
         const funcionarioData = {
             nome: nome,
             matricula: matricula,
+            rhidPersonId: rhidPersonId,
             cpf: cpf,
             rg: rg,
             email: email,
@@ -657,6 +659,8 @@ async function editarFuncionario(funcionarioId) {
         document.querySelector('#funcionarioModal .modal-title').textContent = 'Editar Funcionário';
         document.getElementById('nome-funcionario').value = funcionario.nome;
         document.getElementById('matricula-funcionario').value = funcionario.matricula || '';
+        const rhidInput = document.getElementById('rhid-funcionario');
+        if (rhidInput) rhidInput.value = funcionario.rhidPersonId || '';
         document.getElementById('cpf-funcionario').value = funcionario.cpf;
         document.getElementById('rg-funcionario').value = funcionario.rg || '';
         document.getElementById('email-funcionario').value = funcionario.email;
@@ -837,6 +841,7 @@ async function atualizarFuncionario(funcionarioId) {
         const timestamp = firebase.firestore.FieldValue.serverTimestamp;
         const nome = document.getElementById('nome-funcionario').value;
         const matricula = document.getElementById('matricula-funcionario').value;
+        const rhidPersonId = document.getElementById('rhid-funcionario')?.value || '';
         const cpf = document.getElementById('cpf-funcionario').value;
         const rg = document.getElementById('rg-funcionario').value;
         const email = document.getElementById('email-funcionario').value;
@@ -932,6 +937,7 @@ async function atualizarFuncionario(funcionarioId) {
         const updateData = {
             nome: nome,
             matricula: matricula,
+            rhidPersonId: rhidPersonId,
             cpf: cpf,
             rg: rg,
             email: email,

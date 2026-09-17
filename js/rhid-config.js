@@ -429,14 +429,6 @@ async function apurarHorasExtrasPeriodo() {
         funcSnap.forEach(doc => {
             const data = doc.data();
             
-            // DEBUG ANACILIA
-            if (data.cpf === '04489937911') {
-                console.log('ENCONTREI ANACILIA NO FIREBASE!', data);
-                if (!data.rhidPersonId) {
-                    alert('ANACILIA ESTÁ SEM RHID PERSON ID NO CADASTRO!');
-                }
-            }
-
             if (data.cpf) cpfsAtivos.add(data.cpf);
         });
 
@@ -531,17 +523,8 @@ async function verificarFaltasHoje() {
         const idPersons = [];
         const funcMap = new Map();
         
-        let countAnacilia = 0;
         funcSnap.forEach(doc => {
             const data = doc.data();
-
-            if (data.cpf === '04489937911') {
-                countAnacilia++;
-                console.log('ANACILIA ENCONTRADA NA LEITURA PARA O RHID:', data);
-                if (!data.rhidPersonId) {
-                    alert('Alerta: A colaboradora Anacilia (CPF 04489937911) não tem Código RHiD no cadastro (rhidPersonId vazio). Por isso o sistema não consegue puxar as faltas dela!');
-                }
-            }
 
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
@@ -554,10 +537,6 @@ async function verificarFaltasHoje() {
                 });
             }
         });
-
-        if (countAnacilia === 0) {
-            alert('Alerta: A colaboradora Anacilia (CPF 04489937911) não foi retornada pelo Firebase! O Status dela pode estar diferente de Ativo/Afastado/Férias (ex: em branco).');
-        }
 
         // Hoje, compensando fuso (Y-m-d) local
         const hojeObj = new Date();
@@ -584,21 +563,6 @@ async function verificarFaltasHoje() {
             
             if (today >= start && today <= end) {
                 mapAtestadosValidos.set(a.funcionarioId, a);
-            }
-
-            // DEBUG temporário
-            if (a.funcionarioId === 'ID_DESCONHECIDO' || a.colaborador_nome?.includes('04489937911') || a.cpf === '04489937911' || true) {
-                // Vou armazenar todos os atestados numa variavel global para inspecionar
-                if (!window.__debug_atestados_math) window.__debug_atestados_math = [];
-                window.__debug_atestados_math.push({
-                    nome: a.colaborador_nome,
-                    id: a.funcionarioId,
-                    startOriginal: a.data_atestado.toDate ? a.data_atestado.toDate() : a.data_atestado,
-                    startMath: start,
-                    endMath: end,
-                    hojeMath: today,
-                    validoHoje: (today >= start && today <= end)
-                });
             }
         });
 
@@ -680,11 +644,6 @@ async function verificarFaltasHoje() {
                     extra = `<br><span class="text-muted small extra-info">${f.condicao}</span>`;
                 }
 
-                let debugBtn = '';
-                if (f.cpf === '04489937911') {
-                    debugBtn = `<button class="btn btn-sm btn-info mt-1" onclick="console.log(window.__debug_atestados_math.filter(x => x.id === '${f.id}'))">Debug Atestado Math</button>`;
-                }
-
                 return `
                 <div class="list-group-item py-2 px-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -692,7 +651,6 @@ async function verificarFaltasHoje() {
                             <div class="fw-bold text-dark small">${f.nome}</div>
                             <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
                             ${extra}
-                            ${debugBtn}
                         </div>
                         <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
                     </div>
