@@ -512,8 +512,8 @@ async function verificarFaltasHoje() {
         container.innerHTML = '<div class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm text-danger me-2"></span> Buscando batidas de hoje no RHiD...</div>';
         container.classList.remove('d-none');
 
-        // Pega todos ativos
-        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
+        // Pega todos ativos, afastados ou em férias para montar o relatório completo
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO', 'Afastado', 'Férias']).get();
         if (funcSnap.empty) {
             container.innerHTML = '<div class="alert alert-warning mb-0">Nenhum funcionário ativo.</div>';
             return;
