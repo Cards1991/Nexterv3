@@ -837,6 +837,16 @@ window.confirmarEfetivacao = async function() {
     }
 
     try {
+        const afastDoc = await db.collection('afastamentos').doc(id).get();
+        if (afastDoc.exists) {
+            const funcId = afastDoc.data().funcionarioId;
+            if (funcId) {
+                await db.collection('funcionarios').doc(funcId).update({
+                    condicao: 'Afastado'
+                });
+            }
+        }
+
         await db.collection('afastamentos').doc(id).update({
             status: 'Ativo',
             data_termino_prevista: dataRetorno,
@@ -866,5 +876,36 @@ window.declinarAfastamento = async function(id) {
     } catch (e) {
         console.error("Erro ao declinar:", e);
         mostrarMensagem('Erro ao declinar afastamento.', 'error');
+    }
+}
+
+window.sincronizarAfastamentosLegados = async function() {
+    try {
+        mostrarMensagem('Sincronizando afastamentos existentes...', 'info');
+        const snap = await db.collection('afastamentos').where('status', '==', 'Ativo').get();
+        let contagem = 0;
+        const batch = db.batch();
+
+        for (const doc of snap.docs) {
+            const data = doc.data();
+            if (data.funcionarioId) {
+                const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
+                const funcDoc = await funcRef.get();
+                if (funcDoc.exists && funcDoc.data().condicao !== 'Afastado') {
+                    batch.update(funcRef, { condicao: 'Afastado' });
+                    contagem++;
+                }
+            }
+        }
+
+        if (contagem > 0) {
+            await batch.commit();
+            mostrarMensagem(`Sincronização concluída! ${contagem} colaboradores atualizados para "Afastado".`, 'success');
+        } else {
+            mostrarMensagem('Nenhum colaborador precisava de atualização.', 'info');
+        }
+    } catch (e) {
+        console.error("Erro ao sincronizar legados:", e);
+        mostrarMensagem('Erro ao sincronizar afastamentos legados.', 'error');
     }
 }

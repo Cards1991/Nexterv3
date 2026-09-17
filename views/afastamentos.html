@@ -1,8 +1,13 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2 class="page-title mb-0">Gestão de Afastamentos</h2>
-    <button class="btn btn-primary shadow-sm" id="btn-novo-afastamento">
-        <i class="fas fa-plus-circle me-2"></i> Novo Afastamento
-    </button>
+    <div>
+        <button class="btn btn-warning shadow-sm me-2" onclick="sincronizarAfastamentosLegados()">
+            <i class="fas fa-magic me-2"></i> Forçar Sincronização
+        </button>
+        <button class="btn btn-primary shadow-sm" id="btn-novo-afastamento">
+            <i class="fas fa-plus-circle me-2"></i> Novo Afastamento
+        </button>
+    </div>
 </div>
 
 <!-- Dashboard de Alertas e Métricas -->
