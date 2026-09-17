@@ -106,30 +106,33 @@ window.verificarFeriasAtivas = async function() {
     try {
         const hoje = new Date().toISOString().split('T')[0];
         const snapshot = await db.collection('ferias')
-            .where('status', '==', 'Ativa')
             .where('tipo', '==', 'Férias em Casa')
             .get();
 
-        if (snapshot.empty) return;
+        if (snapshot.empty) {
+            if (window.isManualSync) window.mostrarMensagem('Nenhuma Férias em Casa encontrada.', 'info');
+            return;
+        }
 
         const batch = db.batch();
         let contagem = 0;
+        let logs = [];
 
         for (const doc of snapshot.docs) {
             const data = doc.data();
+            if (data.status === 'Cancelada' || data.status === 'Concluída') continue;
             
+            logs.push(`Avaliando Férias de ${data.funcionarioId}: Início ${data.dataInicio}, Fim ${data.dataFim}`);
+
             if (data.dataFim < hoje) {
-                // Férias no passado: Voltar funcionário para 'Normal' se estiver em 'Férias'
                 const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
                 const funcDoc = await funcRef.get();
                 if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
                     batch.update(funcRef, { condicao: 'Normal' });
                     contagem++;
                 }
-
                 batch.update(doc.ref, { status: 'Concluída' });
             } else if (data.dataInicio <= hoje && data.dataFim >= hoje) {
-                // Férias em andamento agora: Garantir que ele está de 'Férias'
                 const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
                 const funcDoc = await funcRef.get();
                 if (funcDoc.exists && funcDoc.data().condicao !== 'Férias') {
@@ -141,7 +144,13 @@ window.verificarFeriasAtivas = async function() {
 
         if (contagem > 0) {
             await batch.commit();
+            if (window.isManualSync) window.mostrarMensagem(`Verificador de Férias: ${contagem} status de colaboradores atualizados.`, 'success');
             console.log(`Verificador de Férias: ${contagem} status de colaboradores atualizados.`);
+        } else {
+            if (window.isManualSync) {
+                window.mostrarMensagem('Nenhuma atualização necessária.', 'info');
+                console.log('Logs do Verificador:', logs);
+            }
         }
     } catch (error) {
         console.error("Erro ao verificar férias ativas:", error);

@@ -285,8 +285,9 @@ window.sincronizarFeriasManual = async function() {
     try {
         mostrarMensagem('Sincronizando status de férias em lote...', 'info');
         if (typeof window.verificarFeriasAtivas === 'function') {
+            window.isManualSync = true;
             await window.verificarFeriasAtivas();
-            mostrarMensagem('Sincronização concluída com sucesso! Os colaboradores já foram atualizados no banco de dados.', 'success');
+            window.isManualSync = false;
         } else {
             mostrarMensagem('Erro: Função de sincronização não encontrada no escopo global.', 'error');
         }
