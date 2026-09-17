@@ -86,25 +86,25 @@ async function salvarFerias() {
 
         await feriasRef.set(feriasDoc, { merge: true });
 
-        // Atualiza a condição baseada nas datas, se for férias em casa
+        // Atualiza a condição baseada nas datas
         const hoje = new Date().toISOString().split('T')[0];
-        if (tipo === 'Férias em Casa') {
-            if (dataInicio <= hoje && dataFim >= hoje) {
-                console.log(`Atualizando condicao para Férias: ${funcionarioId}`);
+        
+        if (dataInicio <= hoje && dataFim >= hoje) {
+            console.log(`Atualizando condicao para Férias: ${funcionarioId}`);
+            await db.collection('funcionarios').doc(funcionarioId).update({
+                condicao: 'Férias'
+            });
+        } else if (feriasIdField && dataInicio > hoje) {
+            // Se foi edição e jogou pra frente, devolvemos pra normal (pode estar de férias no momento)
+            const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+            if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
+                console.log(`Voltando condicao para Normal: ${funcionarioId}`);
                 await db.collection('funcionarios').doc(funcionarioId).update({
-                    condicao: 'Férias'
+                    condicao: 'Normal'
                 });
-            } else if (feriasIdField && dataInicio > hoje) {
-                // Se foi edição e jogou pra frente, devolvemos pra normal (pode estar de férias no momento)
-                const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
-                if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
-                    console.log(`Voltando condicao para Normal: ${funcionarioId}`);
-                    await db.collection('funcionarios').doc(funcionarioId).update({
-                        condicao: 'Normal'
-                    });
-                }
             }
         }
+
 
         mostrarMensagem('Férias salvas com sucesso!', 'success');
         document.getElementById('form-calculo-ferias').reset();
@@ -212,21 +212,11 @@ window.salvarEdicaoFerias = async function() {
 
         const hoje = new Date().toISOString().split('T')[0];
         
-        if (tipo === 'Férias em Casa') {
-            if (dataInicio <= hoje && dataFim >= hoje) {
-                await db.collection('funcionarios').doc(funcionarioId).update({
-                    condicao: 'Férias'
-                });
-            } else if (dataInicio > hoje) {
-                const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
-                if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
-                    await db.collection('funcionarios').doc(funcionarioId).update({
-                        condicao: 'Normal'
-                    });
-                }
-            }
-        } else {
-            // Se mudou para Férias Trabalhando, volta para Normal
+        if (dataInicio <= hoje && dataFim >= hoje) {
+            await db.collection('funcionarios').doc(funcionarioId).update({
+                condicao: 'Férias'
+            });
+        } else if (dataInicio > hoje) {
             const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
             if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
                 await db.collection('funcionarios').doc(funcionarioId).update({

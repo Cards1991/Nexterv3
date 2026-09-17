@@ -26,7 +26,7 @@ const ScriptLoader = {
         'dp-calculos': ['js/dp-calculos.js'],
         'controle-cestas': ['js/controle-cestas.js'],
         'dp-horas-extras': ['js/horas-extras.js'],
-        'calculo-ferias': ['js/calculo-ferias.js?v=6'],
+        'calculo-ferias': ['js/calculo-ferias.js?v=7'],
         'dp-horas-extras-lancamento': ['js/horas-extras-lancamento.js'],
         'dp-horas-solicitacao': ['js/solicitacao-horas-extras.js'],
         'control-horas-autorizacao': ['js/autorizacao-horas.js'],

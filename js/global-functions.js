@@ -105,12 +105,10 @@ window.renderizarMenuEscopoIso = async function() {
 window.verificarFeriasAtivas = async function() {
     try {
         const hoje = new Date().toISOString().split('T')[0];
-        const snapshot = await db.collection('ferias')
-            .where('tipo', '==', 'Férias em Casa')
-            .get();
+        const snapshot = await db.collection('ferias').get();
 
         if (snapshot.empty) {
-            if (window.isManualSync) window.mostrarMensagem('Nenhuma Férias em Casa encontrada.', 'info');
+            if (window.isManualSync) window.mostrarMensagem('Nenhuma Férias encontrada.', 'info');
             return;
         }
 
