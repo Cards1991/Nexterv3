@@ -521,11 +521,15 @@ async function verificarFaltasHoje() {
 
         const idPersons = [];
         const funcMap = new Map();
+        const faltantesMap = new Map(); // Vamos assumir inicialmente que todos faltaram
+        
         funcSnap.forEach(doc => {
             const data = doc.data();
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
-                funcMap.set(String(data.rhidPersonId), { nome: data.nome, cpf: data.cpf, setor: data.setor });
+                const funcObj = { nome: data.nome, cpf: data.cpf, setor: data.setor };
+                funcMap.set(String(data.rhidPersonId), funcObj);
+                faltantesMap.set(String(data.rhidPersonId), funcObj); // Adiciona na lista de possíveis faltas
             }
         });
 
@@ -542,7 +546,6 @@ async function verificarFaltasHoje() {
 
         // Lotes para evitar Payload Too Large e timeout
         const CHUNK_SIZE = 20;
-        const faltantes = [];
 
         for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
             const chunk = idPersons.slice(i, i + CHUNK_SIZE);
@@ -565,15 +568,14 @@ async function verificarFaltasHoje() {
 
             const apuracoes = data.data || [];
             apuracoes.forEach(apur => {
-                // Verifica se tem zero horas trabalhadas
-                if (!apur.totalHorasTrabalhadas || apur.totalHorasTrabalhadas === 0) {
-                    const func = funcMap.get(String(apur.idPerson));
-                    if (func) {
-                        faltantes.push(func);
-                    }
+                // Se a pessoa teve horas trabalhadas maiores que 0 no dia, ela não faltou, então removemos da lista
+                if (apur.totalHorasTrabalhadas > 0) {
+                    faltantesMap.delete(String(apur.idPerson));
                 }
             });
         }
+        
+        const faltantes = Array.from(faltantesMap.values());
 
         if (faltantes.length === 0) {
             container.innerHTML = `
