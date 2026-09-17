@@ -12,11 +12,22 @@
 
 <!-- Dashboard de Alertas e Métricas -->
 <div class="row g-3 mb-4">
+    <!-- Colaboradores Afastados Atualmente -->
+    <div class="col-md-4">
+        <div class="card border-0 shadow-sm h-100" style="background-color: #fce4ec;">
+            <div class="card-header bg-transparent border-danger text-dark fw-bold pb-0 pt-3">
+                <i class="fas fa-user-injured me-2 text-danger"></i> Colaboradores Afastados
+            </div>
+            <div id="afastados-ativos-container" class="card-body" style="max-height: 200px; overflow-y: auto;">
+                <p class="text-muted small">Carregando...</p>
+            </div>
+        </div>
+    </div>
     <!-- Alertas de Perícia -->
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100" style="background-color: #fff3cd;">
             <div class="card-header bg-transparent border-warning text-dark fw-bold pb-0 pt-3">
-                <i class="fas fa-bell me-2 text-warning"></i> Perícias do INSS Próximas
+                <i class="fas fa-bell me-2 text-warning"></i> Perícias do INSS
             </div>
             <div id="pericias-proximas-container" class="card-body" style="max-height: 200px; overflow-y: auto;">
                 <p class="text-muted small">Nenhum alerta de perícia nos próximos 5 dias úteis.</p>
@@ -24,10 +35,10 @@
         </div>
     </div>
     <!-- Alertas de Retorno -->
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm h-100" style="background-color: #e0f7fa;">
             <div class="card-header bg-transparent border-info text-dark fw-bold pb-0 pt-3">
-                <i class="fas fa-walking me-2 text-info"></i> Retorno de Afastamento
+                <i class="fas fa-walking me-2 text-info"></i> Retornos Previstos
             </div>
             <div id="retornos-proximos-container" class="card-body" style="max-height: 200px; overflow-y: auto;">
                 <p class="text-muted small">Nenhum retorno de afastamento nos próximos 5 dias.</p>

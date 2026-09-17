@@ -20,7 +20,7 @@ const ScriptLoader = {
         'transferencia': ['js/transferencia.js'],
         'alteracao-funcao': ['js/alteracao-funcao.js'],
         'faltas': ['js/faltas.js?v=2'],
-        'afastamentos': ['js/afastamentos.js?v=2'],
+        'afastamentos': ['js/afastamentos.js?v=3'],
         'atestados': ['js/atestados.js'],
         'controle-disciplinar': ['js/controle-disciplinar.js'],
         'dp-calculos': ['js/dp-calculos.js'],

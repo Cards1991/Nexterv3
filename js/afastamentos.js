@@ -14,6 +14,7 @@ async function carregarAfastamentos() {
         const gridContainer = document.getElementById('afastamentos-grid-container');
         await carregarAlertasPericia(); // Carrega o dashboard de alertas de perícia
         await carregarAlertasRetorno(); // Carrega o dashboard de alertas de retorno
+        await carregarDashboardAfastados(); // Carrega a lista de colaboradores afastados
 
         if (!gridContainer) return;
 
@@ -249,6 +250,42 @@ async function carregarAlertasRetorno() {
     } catch (error) {
         console.error("Erro ao carregar alertas de retorno:", error);
         container.innerHTML = '<p class="text-danger m-2">Erro ao carregar alertas de retorno.</p>';
+    }
+}
+
+async function carregarDashboardAfastados() {
+    const container = document.getElementById('afastados-ativos-container');
+    if (!container) return;
+
+    try {
+        const snap = await db.collection('funcionarios').where('condicao', '==', 'Afastado').get();
+        
+        if (snap.empty) {
+            container.innerHTML = '<p class="text-muted small">Nenhum colaborador com status de afastado no momento.</p>';
+            return;
+        }
+
+        const afastados = snap.docs.map(doc => doc.data());
+        // Ordena por nome
+        afastados.sort((a, b) => (a.nome || '').localeCompare(b.nome || ''));
+
+        container.innerHTML = afastados.map(f => `
+            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom border-light">
+                <div>
+                    <strong>${f.nome}</strong><br>
+                    <small class="text-muted"><i class="fas fa-id-card me-1"></i>${f.cpf || 'Sem CPF'}</small>
+                </div>
+            </div>
+        `).join('');
+
+        // Insere a contagem no topo do card se desejar
+        const cardHeader = container.previousElementSibling;
+        if (cardHeader && !cardHeader.innerHTML.includes('badge')) {
+            cardHeader.innerHTML += ` <span class="badge bg-danger rounded-pill ms-2">${afastados.length}</span>`;
+        }
+    } catch (error) {
+        console.error("Erro ao carregar dashboard de afastados:", error);
+        container.innerHTML = '<p class="text-danger small">Erro ao carregar colaboradores.</p>';
     }
 }
 
