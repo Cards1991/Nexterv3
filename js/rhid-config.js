@@ -521,15 +521,12 @@ async function verificarFaltasHoje() {
 
         const idPersons = [];
         const funcMap = new Map();
-        const faltantesMap = new Map(); // Vamos assumir inicialmente que todos faltaram
         
         funcSnap.forEach(doc => {
             const data = doc.data();
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
-                const funcObj = { nome: data.nome, cpf: data.cpf, setor: data.setor };
-                funcMap.set(String(data.rhidPersonId), funcObj);
-                faltantesMap.set(String(data.rhidPersonId), funcObj); // Adiciona na lista de possíveis faltas
+                funcMap.set(String(data.rhidPersonId), { nome: data.nome, cpf: data.cpf, setor: data.setor });
             }
         });
 
@@ -546,6 +543,7 @@ async function verificarFaltasHoje() {
 
         // Lotes para evitar Payload Too Large e timeout
         const CHUNK_SIZE = 20;
+        const faltantes = [];
 
         for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
             const chunk = idPersons.slice(i, i + CHUNK_SIZE);
@@ -568,14 +566,15 @@ async function verificarFaltasHoje() {
 
             const apuracoes = data.data || [];
             apuracoes.forEach(apur => {
-                // Se a pessoa teve horas trabalhadas maiores que 0 no dia, ela não faltou, então removemos da lista
-                if (apur.totalHorasTrabalhadas > 0) {
-                    faltantesMap.delete(String(apur.idPerson));
+                // RHiD retorna a apuração. Se as horas trabalhadas forem 0 ou ausente, é falta.
+                if (!apur.totalHorasTrabalhadas || apur.totalHorasTrabalhadas === 0) {
+                    const func = funcMap.get(String(apur.idPerson));
+                    if (func) {
+                        faltantes.push(func);
+                    }
                 }
             });
         }
-        
-        const faltantes = Array.from(faltantesMap.values());
 
         if (faltantes.length === 0) {
             container.innerHTML = `
@@ -589,8 +588,11 @@ async function verificarFaltasHoje() {
         // Renderiza lista
         let html = `
             <div class="card shadow-sm border-0 border-danger border-opacity-25" style="border-radius: 12px;">
-                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3" style="border-radius: 12px 12px 0 0;">
-                    <i class="fas fa-exclamation-triangle me-2"></i> ${faltantes.length} Pessoas sem batidas
+                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                    <div><i class="fas fa-exclamation-triangle me-2"></i> ${faltantes.length} Pessoas sem batidas</div>
+                    <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="exportarFaltasCSV()">
+                        <i class="fas fa-file-excel me-1"></i> Exportar
+                    </button>
                 </div>
                 <div class="card-body p-0">
                     <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
@@ -623,6 +625,39 @@ async function verificarFaltasHoje() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search me-2"></i> VERIFICAR FALTAS HOJE';
     }
+}
+
+function exportarFaltasCSV() {
+    const container = document.getElementById('rhid-faltas-hoje-container');
+    const items = container.querySelectorAll('.list-group-item');
+
+    if (items.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Não há dados para exportar.', 'warning');
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Adiciona BOM para acentuação no Excel
+    csvContent += "Nome;Setor;Status\n";
+
+    items.forEach(item => {
+        const nome = item.querySelector('.fw-bold')?.innerText.trim() || '';
+        const setorRaw = item.querySelector('.text-muted')?.innerText.trim() || '';
+        const status = item.querySelector('.badge')?.innerText.trim() || '';
+        
+        // Remove icon text if present
+        const setor = setorRaw.replace('🏢', '').trim(); // Fallback se tiver icone
+
+        csvContent += `${nome};${setor};${status}\n`;
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    const date = new Date().toISOString().split('T')[0];
+    link.setAttribute("download", `Faltas_Hoje_${date}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
 }
 
 function exportarHorasExtrasCSV() {
