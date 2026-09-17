@@ -152,8 +152,8 @@ async function carregarListaFerias() {
             tr.innerHTML = `
                 <td class="text-start ps-4 fw-semibold">${data.nomeFuncionario}</td>
                 <td><span class="badge bg-primary bg-opacity-10 text-primary border border-primary-subtle">${data.tipo}</span></td>
-                <td>${formatarData(data.dataInicio)}</td>
-                <td>${formatarData(data.dataFim)}</td>
+                <td class="align-middle">${formatarDataFerias(data.dataInicio)}</td>
+                <td class="align-middle">${formatarDataFerias(data.dataFim)}</td>
                 <td>${statusBadge}</td>
                 <td>
                     <button class="btn btn-sm btn-outline-primary me-1" onclick="prepararEdicaoFerias('${doc.id}', '${data.funcionarioId}', '${data.tipo}', '${data.dataInicio}', '${data.dataFim}')" title="Editar Férias" ${data.status === 'Cancelada' ? 'disabled' : ''}>
@@ -264,7 +264,7 @@ window.cancelarFerias = async function(feriasId, funcionarioId, tipo) {
         mostrarMensagem('Erro ao cancelar férias.', 'error');
     }
 }
-function formatarData(dataStr) {
+function formatarDataFerias(dataStr) {
     if (!dataStr) return '-';
     const partes = dataStr.split('-');
     if (partes.length !== 3) return dataStr;
