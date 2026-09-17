@@ -423,7 +423,15 @@ async function apurarHorasExtrasPeriodo() {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><span class="spinner-border spinner-border-sm text-success me-2"></span> Buscando horas extras no banco...</td></tr>';
         container.classList.remove('d-none');
 
-        // Busca espelhos no Firebase
+        // 1. Buscar todos os funcionários ATIVOS no Firebase para filtrar a lista
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
+        const cpfsAtivos = new Set();
+        funcSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.cpf) cpfsAtivos.add(data.cpf);
+        });
+
+        // 2. Busca espelhos no Firebase
         const espelhosSnap = await window.db.collection('espelhos_ponto')
             .where('dataReferencia', '>=', dtInicio)
             .where('dataReferencia', '<=', dtFim)
@@ -438,6 +446,10 @@ async function apurarHorasExtrasPeriodo() {
 
         espelhosSnap.forEach(doc => {
             const data = doc.data();
+            
+            // FILTRO: Ignora se o CPF não for de um funcionário ativo
+            if (!data.cpf || !cpfsAtivos.has(data.cpf)) return;
+
             const heMinutos = Number(data.horasExtras || 0);
             if (heMinutos > 0) {
                 if (!heMap.has(data.cpf)) {
@@ -609,4 +621,42 @@ async function verificarFaltasHoje() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-search me-2"></i> VERIFICAR FALTAS HOJE';
     }
+}
+
+function exportarHorasExtrasCSV() {
+    const tbody = document.getElementById('rhid-he-tbody');
+    const rows = tbody.querySelectorAll('tr');
+
+    if (rows.length === 0 || tbody.innerHTML.includes('Nenhum') || tbody.innerHTML.includes('Buscando')) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Não há dados para exportar.', 'warning');
+        return;
+    }
+
+    let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Adiciona BOM para acentuação no Excel
+    csvContent += "Rank;Nome;CPF;Total Horas Extras\n";
+
+    rows.forEach(row => {
+        const cols = row.querySelectorAll('td');
+        if (cols.length === 4) {
+            // Extrai texto limpo
+            const rank = cols[0].innerText.replace(/[^0-9]/g, '').trim();
+            const nome = cols[1].innerText.trim();
+            const cpf = cols[2].innerText.trim();
+            const horasStr = cols[3].innerText.replace('h', '').trim(); // Remove o "h"
+            
+            // Troca ponto por vírgula no número para Excel em PT-BR entender como decimal
+            const horasFormatado = horasStr.replace('.', ',');
+
+            csvContent += `${rank};${nome};${cpf};${horasFormatado}\n`;
+        }
+    });
+
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Ranking_Horas_Extras_Ativos.csv`);
+    document.body.appendChild(link); // Requisito no Firefox
+    
+    link.click();
+    link.remove();
 }
