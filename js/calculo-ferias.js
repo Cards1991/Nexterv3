@@ -283,13 +283,24 @@ function formatarData(dataStr) {
 
 window.sincronizarFeriasManual = async function() {
     try {
-        mostrarMensagem('Sincronizando status de férias em lote...', 'info');
+        mostrarMensagem('Analisando os dados...', 'info');
+        const hoje = new Date().toISOString().split('T')[0];
+        
+        const snapshot = await db.collection('ferias').get();
+        let logs = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            logs.push(`Férias do func: ${data.funcionarioId} | Tipo: ${data.tipo} | Inicio: ${data.dataInicio} | Fim: ${data.dataFim} | Status: ${data.status}`);
+        });
+        
+        alert("DEBUG - Leia o que encontrei no banco de dados:\n\n" + logs.join("\n"));
+
         if (typeof window.verificarFeriasAtivas === 'function') {
             window.isManualSync = true;
             await window.verificarFeriasAtivas();
             window.isManualSync = false;
         } else {
-            mostrarMensagem('Erro: Função de sincronização não encontrada no escopo global.', 'error');
+            mostrarMensagem('Erro: Função de sincronização não encontrada.', 'error');
         }
     } catch (e) {
         console.error(e);
