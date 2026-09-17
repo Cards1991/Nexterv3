@@ -527,6 +527,7 @@ async function verificarFaltasHoje() {
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
                 funcMap.set(String(data.rhidPersonId), { 
+                    id: doc.id,
                     nome: data.nome, 
                     cpf: data.cpf, 
                     setor: data.setor,
@@ -542,6 +543,27 @@ async function verificarFaltasHoje() {
         const d = String(hojeObj.getDate()).padStart(2, '0');
         const hoje = `${y}-${m}-${d}`;
 
+        // Busca atestados ativos
+        const atestadosSnap = await window.db.collection('atestados').get();
+        const mapAtestadosValidos = new Map();
+        
+        atestadosSnap.forEach(adoc => {
+            const a = adoc.data();
+            if (!a.data_atestado || !a.dias) return;
+            let start = a.data_atestado.toDate ? a.data_atestado.toDate() : new Date(a.data_atestado);
+            // Corrige fuso (considerando que foi salvo em local time ou ajusta)
+            start = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            
+            let end = new Date(start);
+            end.setDate(start.getDate() + (parseInt(a.dias, 10) - 1));
+            
+            let today = new Date(hojeObj.getFullYear(), hojeObj.getMonth(), hojeObj.getDate());
+            
+            if (today >= start && today <= end) {
+                mapAtestadosValidos.set(a.funcionarioId, a);
+            }
+        });
+
         const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? 'http://localhost:3000/api'
             : '/api';
@@ -549,6 +571,10 @@ async function verificarFaltasHoje() {
         // Lotes para evitar Payload Too Large e timeout
         const CHUNK_SIZE = 20;
         const faltantes = [];
+        const catAtestado = [];
+        const catAfastado = [];
+        const catFerias = [];
+        const catExterno = [];
 
         for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
             const chunk = idPersons.slice(i, i + CHUNK_SIZE);
@@ -572,85 +598,93 @@ async function verificarFaltasHoje() {
             const apuracoes = data.data || [];
             apuracoes.forEach(apur => {
                 const func = funcMap.get(String(apur.idPerson));
-                
-                // Debug específico para o usuário ver os campos que a API da Control iD retorna para quem tem 1 batida
-                if (func && func.cpf === '10106266985') {
-                    console.log("RHiD Data for 10106266985:", apur);
-                    window.__debugRhidData = apur; // Salva global para mostrar na tela
-                }
+                if (!func) return;
 
-                // Verifica se há alguma propriedade no objeto que indique batidas REAIS (marcacoes, batidas, listAfdtManutencao, etc)
-                // Se ele tiver array de marcações com > 0 elementos, não é falta.
                 let temBatida = false;
-                
                 if (apur.totalHorasTrabalhadas > 0) temBatida = true;
                 
-                // O Control iD envia as batidas dentro de "listAfdtManutencao" ou "listAfdtExcluidos"
-                // As geradas pelo sistema por falta possuem idAfd = null. As reais possuem idAfd preenchido.
                 if (!temBatida && apur.listAfdtManutencao && Array.isArray(apur.listAfdtManutencao)) {
                     const batidasReais = apur.listAfdtManutencao.filter(b => b.idAfd !== null || b.idAfdChange !== null);
                     if (batidasReais.length > 0) temBatida = true;
                 }
 
                 if (!temBatida) {
-                    if (func) {
-                        const condicao = func.condicao || 'Normal';
-                        // Ignora Férias e qualquer tipo de Afastamento (ex: "Afastado (INSS, etc)")
-                        if (condicao !== 'Férias' && !condicao.startsWith('Afastado')) {
-                            faltantes.push(func);
-                        }
+                    const condicao = func.condicao || 'Normal';
+                    
+                    if (condicao === 'Férias') {
+                        catFerias.push(func);
+                    } else if (condicao === 'Trabalho Externo') {
+                        catExterno.push(func);
+                    } else if (condicao.startsWith('Afastado')) {
+                        catAfastado.push(func);
+                    } else if (mapAtestadosValidos.has(func.id)) {
+                        func.atestadoInfo = mapAtestadosValidos.get(func.id);
+                        catAtestado.push(func);
+                    } else {
+                        faltantes.push({ ...func, apur: apur });
                     }
                 }
             });
         }
 
-        let debugHtml = '';
-        if (window.__debugRhidData) {
-            debugHtml = `<div class="alert alert-info small mt-2"><strong>DEBUG 10106266985:</strong> ${JSON.stringify(window.__debugRhidData)}</div>`;
-        }
+        // Helper para gerar html de categoria
+        const renderCategory = (title, icon, colorClass, list, badgeText) => {
+            if (list.length === 0) return '';
+            
+            let listHtml = list.map(f => {
+                let extra = '';
+                if (f.atestadoInfo) {
+                    extra = `<br><span class="text-success small fw-bold"><i class="fas fa-notes-medical"></i> Atestado de ${f.atestadoInfo.dias} dias (${f.atestadoInfo.tipo || 'Motivo N/I'})</span>`;
+                } else if (f.condicao && f.condicao !== 'Normal') {
+                    extra = `<br><span class="text-muted small">${f.condicao}</span>`;
+                }
 
-        if (faltantes.length === 0) {
+                return `
+                <div class="list-group-item py-2 px-3">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="fw-bold text-dark small">${f.nome}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
+                            ${extra}
+                        </div>
+                        <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
+                    </div>
+                </div>`;
+            }).join('');
+
+            return `
+                <div class="card shadow-sm border-0 border-${colorClass} border-opacity-25 mb-3" style="border-radius: 12px;">
+                    <div class="card-header bg-${colorClass} bg-opacity-10 text-${colorClass} border-0 fw-bold py-2 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                        <div><i class="${icon} me-2"></i> ${list.length} ${title}</div>
+                        ${title === 'Faltas Injustificadas' ? `<button class="btn btn-sm btn-outline-danger rounded-pill fw-bold py-0" onclick="exportarFaltasCSV()"><i class="fas fa-file-excel"></i> Exportar</button>` : ''}
+                    </div>
+                    <div class="card-body p-0">
+                        <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                            ${listHtml}
+                        </div>
+                    </div>
+                </div>
+            `;
+        };
+
+        let html = '';
+        html += renderCategory('Faltas Injustificadas', 'fas fa-exclamation-triangle', 'danger', faltantes, 'Ausente');
+        html += renderCategory('Em Atestado Médico', 'fas fa-briefcase-medical', 'success', catAtestado, 'Atestado');
+        html += renderCategory('Afastamentos Ativos', 'fas fa-user-injured', 'warning text-dark', catAfastado, 'Afastado');
+        html += renderCategory('Em Férias', 'fas fa-umbrella-beach', 'info text-dark', catFerias, 'Férias');
+        html += renderCategory('Trabalho Externo', 'fas fa-car', 'secondary', catExterno, 'Externo');
+
+        if (faltantes.length === 0 && catAtestado.length === 0 && catAfastado.length === 0 && catFerias.length === 0 && catExterno.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-success border-0 shadow-sm mb-0 rounded-4">
                     <i class="fas fa-check-circle me-2"></i> Todos registraram batidas hoje!
                 </div>
-                ${debugHtml}
             `;
             return;
         }
 
-        // Renderiza lista
-        let html = `
-            <div class="card shadow-sm border-0 border-danger border-opacity-25" style="border-radius: 12px;">
-                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3 d-flex flex-wrap justify-content-between align-items-center gap-2" style="border-radius: 12px 12px 0 0;">
-                    <div><i class="fas fa-exclamation-triangle me-2"></i> ${faltantes.length} Pessoas sem batidas</div>
-                    <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="exportarFaltasCSV()">
-                        <i class="fas fa-file-excel me-1"></i> Exportar
-                    </button>
-                </div>
-                <div class="card-body p-0">
-                    <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
-        `;
-        
-        faltantes.forEach(f => {
-            html += `
-                <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
-                    <div>
-                        <div class="fw-bold text-dark small">${f.nome}</div>
-                        <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
-                    </div>
-                    <span class="badge bg-danger rounded-pill shadow-sm" style="font-size: 0.7rem;">Ausente</span>
-                </div>
-            `;
-        });
-
-        html += `
-                    </div>
-                </div>
-            </div>
-        `;
-
         container.innerHTML = html;
+        window.__faltas_atuais = faltantes;
 
     } catch (e) {
         console.error("Erro verificar faltas:", e);

@@ -19,7 +19,7 @@ const ScriptLoader = {
         'painel-demitidos': ['js/painel-demitidos.js'],
         'transferencia': ['js/transferencia.js'],
         'alteracao-funcao': ['js/alteracao-funcao.js'],
-        'faltas': ['js/faltas.js?v=3'],
+        'faltas': ['js/faltas.js?v=4'],
         'afastamentos': ['js/afastamentos.js?v=4'],
         'atestados': ['js/atestados.js'],
         'controle-disciplinar': ['js/controle-disciplinar.js'],
