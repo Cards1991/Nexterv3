@@ -405,6 +405,15 @@ async function atualizarTabelaAtestados(filtrados) {
         const duracaoText = a.duracaoTipo === 'horas' 
             ? `${a.duracaoValor} horas` 
             : `${a.dias} dia${a.dias > 1 ? 's' : ''}`;
+            
+        let dataRetornoHtml = '';
+        if (a.data_atestado && a.dias && a.duracaoTipo !== 'horas') {
+            let start = new Date(a.data_atestado);
+            // Corrige possível problema de fuso forçando meia-noite
+            start.setHours(0,0,0,0);
+            start.setDate(start.getDate() + parseInt(a.dias, 10));
+            dataRetornoHtml = `<div class="small text-primary fw-bold mt-1"><i class="fas fa-calendar-check"></i> Retorno: ${formatarData(start)}</div>`;
+        }
         
         // Ícone baseado no tipo de atestado
         let tipoIcon = 'fa-file-medical';
@@ -462,7 +471,8 @@ async function atualizarTabelaAtestados(filtrados) {
             <td data-label="Data / Duração">
                 <div class="small fw-bold">${dataFormatada}</div>
                 <div class="small text-muted">${duracaoText}</div>
-                ${a.medico ? `<small class="text-truncate d-block" title="${a.medico}">Médico: ${a.medico}</small>` : ''}
+                ${dataRetornoHtml}
+                ${a.medico ? `<small class="text-truncate d-block mt-1" title="${a.medico}">Médico: ${a.medico}</small>` : ''}
             </td>
             <td data-label="Tipo / Status">
                 <span class="badge ${classeTipo(a.tipo)} mb-1 d-inline-block">${a.tipo}</span>

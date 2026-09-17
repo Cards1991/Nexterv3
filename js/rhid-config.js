@@ -634,9 +634,9 @@ async function verificarFaltasHoje() {
             let listHtml = list.map(f => {
                 let extra = '';
                 if (f.atestadoInfo) {
-                    extra = `<br><span class="text-success small fw-bold"><i class="fas fa-notes-medical"></i> Atestado de ${f.atestadoInfo.dias} dias (${f.atestadoInfo.tipo || 'Motivo N/I'})</span>`;
+                    extra = `<br><span class="text-success small fw-bold extra-info"><i class="fas fa-notes-medical"></i> Atestado de ${f.atestadoInfo.dias} dias (${f.atestadoInfo.tipo || 'Motivo N/I'})</span>`;
                 } else if (f.condicao && f.condicao !== 'Normal') {
-                    extra = `<br><span class="text-muted small">${f.condicao}</span>`;
+                    extra = `<br><span class="text-muted small extra-info">${f.condicao}</span>`;
                 }
 
                 return `
@@ -656,7 +656,6 @@ async function verificarFaltasHoje() {
                 <div class="card shadow-sm border-0 border-${colorClass} border-opacity-25 mb-3" style="border-radius: 12px;">
                     <div class="card-header bg-${colorClass} bg-opacity-10 text-${colorClass} border-0 fw-bold py-2 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
                         <div><i class="${icon} me-2"></i> ${list.length} ${title}</div>
-                        ${title === 'Faltas Injustificadas' ? `<button class="btn btn-sm btn-outline-danger rounded-pill fw-bold py-0" onclick="exportarFaltasCSV()"><i class="fas fa-file-excel"></i> Exportar</button>` : ''}
                     </div>
                     <div class="card-body p-0">
                         <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
@@ -667,7 +666,14 @@ async function verificarFaltasHoje() {
             `;
         };
 
-        let html = '';
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-chart-pie me-2"></i> Relatório de Absenteísmo de Hoje</h6>
+                <button class="btn btn-sm btn-success rounded-pill fw-bold shadow-sm" onclick="exportarFaltasCSV()">
+                    <i class="fas fa-file-excel me-1"></i> Exportar Relatório Completo
+                </button>
+            </div>
+        `;
         html += renderCategory('Faltas Injustificadas', 'fas fa-exclamation-triangle', 'danger', faltantes, 'Ausente');
         html += renderCategory('Em Atestado Médico', 'fas fa-briefcase-medical', 'success', catAtestado, 'Atestado');
         html += renderCategory('Afastamentos Ativos', 'fas fa-user-injured', 'warning text-dark', catAfastado, 'Afastado');
@@ -705,27 +711,28 @@ function exportarFaltasCSV() {
     }
 
     let csvContent = "data:text/csv;charset=utf-8,\uFEFF"; // Adiciona BOM para acentuação no Excel
-    csvContent += "Nome;Setor;Status\n";
+    csvContent += "Nome;Setor;Status;Detalhes\n";
 
     items.forEach(item => {
         const nome = item.querySelector('.fw-bold')?.innerText.trim() || '';
         const setorRaw = item.querySelector('.text-muted')?.innerText.trim() || '';
         const status = item.querySelector('.badge')?.innerText.trim() || '';
+        const extraInfo = item.querySelector('.extra-info')?.innerText.trim() || '';
         
         // Remove icon text if present
         const setor = setorRaw.replace('🏢', '').trim(); // Fallback se tiver icone
 
-        csvContent += `${nome};${setor};${status}\n`;
+        csvContent += `${nome};${setor};${status};${extraInfo}\n`;
     });
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
     const date = new Date().toISOString().split('T')[0];
-    link.setAttribute("download", `Faltas_Hoje_${date}.csv`);
-    document.body.appendChild(link);
+    link.setAttribute("download", `Relatorio_Absenteismo_${date}.csv`);
+    document.body.appendChild(link); // Requerido no FF
     link.click();
-    link.remove();
+    document.body.removeChild(link);
 }
 
 function exportarHorasExtrasCSV() {
