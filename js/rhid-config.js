@@ -589,7 +589,10 @@ async function verificarFaltasHoje() {
 
                 if (!temBatida) {
                     if (func) {
-                        faltantes.push(func);
+                        const condicao = func.condicao || 'Normal';
+                        if (condicao === 'Normal') {
+                            faltantes.push(func);
+                        }
                     }
                 }
             });

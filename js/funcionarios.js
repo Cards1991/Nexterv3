@@ -425,6 +425,7 @@ async function salvarFuncionario() {
         const jornada = document.getElementById('jornada-funcionario').value;
         const tipoContrato = document.getElementById('contrato-funcionario').value;
         const regimeTrabalho = document.getElementById('regime-funcionario').value;
+        const condicao = document.getElementById('condicao-funcionario').value || 'Normal';
 
         const escolaridade = document.getElementById('escolaridade-funcionario').value;
         const idiomas = document.getElementById('idiomas-funcionario').value;
@@ -523,6 +524,7 @@ async function salvarFuncionario() {
             jornada: jornada,
             tipoContrato: tipoContrato,
             regimeTrabalho: regimeTrabalho,
+            condicao: condicao,
 
             escolaridade: escolaridade,
             idiomas: idiomas,
@@ -702,6 +704,7 @@ async function editarFuncionario(funcionarioId) {
         document.getElementById('jornada-funcionario').value = funcionario.jornada || '';
         document.getElementById('contrato-funcionario').value = funcionario.tipoContrato || 'CLT';
         document.getElementById('regime-funcionario').value = funcionario.regimeTrabalho || 'Presencial';
+        document.getElementById('condicao-funcionario').value = funcionario.condicao || 'Normal';
 
         document.getElementById('escolaridade-funcionario').value = funcionario.escolaridade || '';
         document.getElementById('idiomas-funcionario').value = funcionario.idiomas || '';
@@ -849,6 +852,7 @@ async function atualizarFuncionario(funcionarioId) {
         const jornada = document.getElementById('jornada-funcionario').value;
         const tipoContrato = document.getElementById('contrato-funcionario').value;
         const regimeTrabalho = document.getElementById('regime-funcionario').value;
+        const condicao = document.getElementById('condicao-funcionario').value || 'Normal';
 
         const escolaridade = document.getElementById('escolaridade-funcionario').value;
         const idiomas = document.getElementById('idiomas-funcionario').value;
@@ -934,6 +938,7 @@ async function atualizarFuncionario(funcionarioId) {
             jornada: jornada,
             tipoContrato: tipoContrato,
             regimeTrabalho: regimeTrabalho,
+            condicao: condicao,
 
             escolaridade: escolaridade,
             idiomas: idiomas,
