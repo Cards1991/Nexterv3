@@ -562,6 +562,21 @@ async function verificarFaltasHoje() {
             if (today >= start && today <= end) {
                 mapAtestadosValidos.set(a.funcionarioId, a);
             }
+
+            // DEBUG temporário
+            if (a.funcionarioId === 'ID_DESCONHECIDO' || a.colaborador_nome?.includes('04489937911') || a.cpf === '04489937911' || true) {
+                // Vou armazenar todos os atestados numa variavel global para inspecionar
+                if (!window.__debug_atestados_math) window.__debug_atestados_math = [];
+                window.__debug_atestados_math.push({
+                    nome: a.colaborador_nome,
+                    id: a.funcionarioId,
+                    startOriginal: a.data_atestado.toDate ? a.data_atestado.toDate() : a.data_atestado,
+                    startMath: start,
+                    endMath: end,
+                    hojeMath: today,
+                    validoHoje: (today >= start && today <= end)
+                });
+            }
         });
 
         const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
@@ -600,27 +615,30 @@ async function verificarFaltasHoje() {
                 const func = funcMap.get(String(apur.idPerson));
                 if (!func) return;
 
-                let temBatida = false;
-                if (apur.totalHorasTrabalhadas > 0) temBatida = true;
+                const condicao = func.condicao || 'Normal';
                 
-                if (!temBatida && apur.listAfdtManutencao && Array.isArray(apur.listAfdtManutencao)) {
-                    const batidasReais = apur.listAfdtManutencao.filter(b => b.idAfd !== null || b.idAfdChange !== null);
-                    if (batidasReais.length > 0) temBatida = true;
-                }
-
-                if (!temBatida) {
-                    const condicao = func.condicao || 'Normal';
+                // Primeiro, verifica as condições e atestados do funcionário (independente se o RHiD abonou ou não)
+                if (condicao === 'Férias') {
+                    catFerias.push(func);
+                } else if (condicao === 'Trabalho Externo') {
+                    catExterno.push(func);
+                } else if (condicao.startsWith('Afastado')) {
+                    catAfastado.push(func);
+                } else if (mapAtestadosValidos.has(func.id)) {
+                    func.atestadoInfo = mapAtestadosValidos.get(func.id);
+                    catAtestado.push(func);
+                } else {
+                    // Se não tem justificativa no nosso sistema, verifica as batidas
+                    let temBatida = false;
+                    if (apur.totalHorasTrabalhadas > 0) temBatida = true;
                     
-                    if (condicao === 'Férias') {
-                        catFerias.push(func);
-                    } else if (condicao === 'Trabalho Externo') {
-                        catExterno.push(func);
-                    } else if (condicao.startsWith('Afastado')) {
-                        catAfastado.push(func);
-                    } else if (mapAtestadosValidos.has(func.id)) {
-                        func.atestadoInfo = mapAtestadosValidos.get(func.id);
-                        catAtestado.push(func);
-                    } else {
+                    if (!temBatida && apur.listAfdtManutencao && Array.isArray(apur.listAfdtManutencao)) {
+                        const batidasReais = apur.listAfdtManutencao.filter(b => b.idAfd !== null || b.idAfdChange !== null);
+                        if (batidasReais.length > 0) temBatida = true;
+                    }
+
+                    // Se não tiver batidas, é falta injustificada
+                    if (!temBatida) {
                         faltantes.push({ ...func, apur: apur });
                     }
                 }
@@ -639,6 +657,11 @@ async function verificarFaltasHoje() {
                     extra = `<br><span class="text-muted small extra-info">${f.condicao}</span>`;
                 }
 
+                let debugBtn = '';
+                if (f.cpf === '04489937911') {
+                    debugBtn = `<button class="btn btn-sm btn-info mt-1" onclick="console.log(window.__debug_atestados_math.filter(x => x.id === '${f.id}'))">Debug Atestado Math</button>`;
+                }
+
                 return `
                 <div class="list-group-item py-2 px-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -646,6 +669,7 @@ async function verificarFaltasHoje() {
                             <div class="fw-bold text-dark small">${f.nome}</div>
                             <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
                             ${extra}
+                            ${debugBtn}
                         </div>
                         <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
                     </div>
