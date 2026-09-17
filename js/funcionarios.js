@@ -427,6 +427,11 @@ async function salvarFuncionario() {
         const regimeTrabalho = document.getElementById('regime-funcionario').value;
         const condicao = document.getElementById('condicao-funcionario').value || 'Normal';
 
+        if (condicao === 'Férias') {
+            mostrarMensagem('O status "Férias" só pode ser gerenciado automaticamente através do módulo Cálculo de Férias.', 'warning');
+            return;
+        }
+
         const escolaridade = document.getElementById('escolaridade-funcionario').value;
         const idiomas = document.getElementById('idiomas-funcionario').value;
         const certificacoes = document.getElementById('certificacoes-funcionario').value;
@@ -853,6 +858,15 @@ async function atualizarFuncionario(funcionarioId) {
         const tipoContrato = document.getElementById('contrato-funcionario').value;
         const regimeTrabalho = document.getElementById('regime-funcionario').value;
         const condicao = document.getElementById('condicao-funcionario').value || 'Normal';
+
+        const funcionarioDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+        if (funcionarioDoc.exists) {
+            const condicaoOriginal = funcionarioDoc.data().condicao || 'Normal';
+            if (condicao === 'Férias' && condicaoOriginal !== 'Férias') {
+                mostrarMensagem('O status "Férias" não pode ser selecionado manualmente. Use o módulo Cálculo de Férias.', 'warning');
+                return;
+            }
+        }
 
         const escolaridade = document.getElementById('escolaridade-funcionario').value;
         const idiomas = document.getElementById('idiomas-funcionario').value;

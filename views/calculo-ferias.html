@@ -1,0 +1,120 @@
+<h2 class="page-title"><i class="fas fa-umbrella-beach me-2"></i>Cálculo de Férias</h2>
+
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h5 class="mb-0 fw-bold"><i class="fas fa-plus-circle me-2"></i>Novo Registro de Férias</h5>
+            </div>
+            <div class="card-body bg-light">
+                <form id="form-calculo-ferias">
+                    <input type="hidden" id="ferias-id" value="">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold text-secondary">Colaborador</label>
+                            <select class="form-select border-primary" id="ferias-colaborador" required>
+                                <option value="">Selecione...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-semibold text-secondary">Tipo de Férias</label>
+                            <select class="form-select border-primary" id="ferias-tipo" required>
+                                <option value="Férias em Casa">Férias em Casa (Afastado)</option>
+                                <option value="Férias Trabalhando">Férias Trabalhando (Abono)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold text-secondary">Data Início</label>
+                            <input type="date" class="form-control border-primary" id="ferias-data-inicio" required>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label fw-semibold text-secondary">Data Fim</label>
+                            <input type="date" class="form-control border-primary" id="ferias-data-fim" required>
+                        </div>
+                        <div class="col-md-1">
+                            <button type="submit" class="btn btn-primary w-100 fw-bold" title="Salvar Férias">
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow-sm border-0">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-list me-2 text-primary"></i>Histórico e Férias Programadas</h5>
+                <button class="btn btn-sm btn-outline-primary fw-bold" onclick="carregarListaFerias()">
+                    <i class="fas fa-sync-alt"></i> Atualizar
+                </button>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-center">
+                        <thead class="table-light text-secondary">
+                            <tr>
+                                <th class="text-start ps-4">Colaborador</th>
+                                <th>Tipo</th>
+                                <th>Início</th>
+                                <th>Fim</th>
+                                <th>Status Atual</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="lista-ferias-tbody">
+                            <tr>
+                                <td colspan="6" class="text-muted py-4">Carregando férias...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</div>
+
+<!-- Modal de Edição de Férias -->
+<div class="modal fade" id="modalEditarFerias" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-edit me-2"></i>Editar Férias</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body bg-light">
+                <form id="form-editar-ferias">
+                    <input type="hidden" id="edit-ferias-id">
+                    <input type="hidden" id="edit-funcionario-id">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">Tipo de Férias</label>
+                            <select class="form-select border-primary" id="edit-ferias-tipo" required>
+                                <option value="Férias em Casa">Férias em Casa (Afastado)</option>
+                                <option value="Férias Trabalhando">Férias Trabalhando (Abono)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">Data Início</label>
+                            <input type="date" class="form-control border-primary" id="edit-ferias-data-inicio" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold text-secondary">Data Fim</label>
+                            <input type="date" class="form-control border-primary" id="edit-ferias-data-fim" required>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-0 bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="salvarEdicaoFerias()">Salvar Alterações</button>
+            </div>
+        </div>
+    </div>
+</div>

@@ -17,7 +17,7 @@ const TODAS_SECOES = [
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
     'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz',
-    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias', 'rhid-config'
+    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias', 'rhid-config', 'calculo-ferias'
 ];
 
 let currentUserPermissions = {};
@@ -228,6 +228,10 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'atestados':
                 if (typeof inicializarAtestados === 'function') await inicializarAtestados();
+                break;
+            case 'calculo-ferias':
+                if (typeof initCalculoFerias === 'function') await initCalculoFerias();
+                break;
                 break;
             case 'ocorrencias':
                 if (typeof inicializarOcorrencias === 'function') await inicializarOcorrencias();
@@ -848,6 +852,11 @@ document.addEventListener('viewsLoaded', function () {
                 currentUserPermissions = userDoc.data().permissoes || {};
                 currentUserPermissions.nome = userDoc.data().nome;
                 currentUserPermissions.funcionarioId = userDoc.data().funcionarioId;
+                
+                if (typeof window.verificarFeriasAtivas === 'function') {
+                    window.verificarFeriasAtivas();
+                }
+
                 window.currentUserPermissions = currentUserPermissions;
 
                 

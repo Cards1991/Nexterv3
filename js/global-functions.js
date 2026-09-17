@@ -97,3 +97,53 @@ window.renderizarMenuEscopoIso = async function() {
         }
     }
 };
+
+// ============================
+// 🏖️ VERIFICADOR DE FÉRIAS
+// ============================
+// Expõe globalmente para que o app.js possa chamá-la ao iniciar
+window.verificarFeriasAtivas = async function() {
+    try {
+        const hoje = new Date().toISOString().split('T')[0];
+        const snapshot = await db.collection('ferias')
+            .where('status', '==', 'Ativa')
+            .where('tipo', '==', 'Férias em Casa')
+            .get();
+
+        if (snapshot.empty) return;
+
+        const batch = db.batch();
+        let contagem = 0;
+
+        for (const doc of snapshot.docs) {
+            const data = doc.data();
+            
+            if (data.dataFim < hoje) {
+                // Férias no passado: Voltar funcionário para 'Normal' se estiver em 'Férias'
+                const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
+                const funcDoc = await funcRef.get();
+                if (funcDoc.exists && funcDoc.data().condicao === 'Férias') {
+                    batch.update(funcRef, { condicao: 'Normal' });
+                    contagem++;
+                }
+
+                batch.update(doc.ref, { status: 'Concluída' });
+            } else if (data.dataInicio <= hoje && data.dataFim >= hoje) {
+                // Férias em andamento agora: Garantir que ele está de 'Férias'
+                const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
+                const funcDoc = await funcRef.get();
+                if (funcDoc.exists && funcDoc.data().condicao !== 'Férias') {
+                    batch.update(funcRef, { condicao: 'Férias' });
+                    contagem++;
+                }
+            }
+        }
+
+        if (contagem > 0) {
+            await batch.commit();
+            console.log(`Verificador de Férias: ${contagem} status de colaboradores atualizados.`);
+        }
+    } catch (error) {
+        console.error("Erro ao verificar férias ativas:", error);
+    }
+};
