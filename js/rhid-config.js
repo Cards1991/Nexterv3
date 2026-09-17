@@ -566,9 +566,24 @@ async function verificarFaltasHoje() {
 
             const apuracoes = data.data || [];
             apuracoes.forEach(apur => {
-                // RHiD retorna a apuração. Se as horas trabalhadas forem 0 ou ausente, é falta.
-                if (!apur.totalHorasTrabalhadas || apur.totalHorasTrabalhadas === 0) {
-                    const func = funcMap.get(String(apur.idPerson));
+                const func = funcMap.get(String(apur.idPerson));
+                
+                // Debug específico para o usuário ver os campos que a API da Control iD retorna para quem tem 1 batida
+                if (func && func.cpf === '10106266985') {
+                    console.log("RHiD Data for 10106266985:", apur);
+                    window.__debugRhidData = apur; // Salva global para mostrar na tela
+                }
+
+                // Verifica se há alguma propriedade no objeto que indique batidas (marcacoes, batidas, etc)
+                // Se ele tiver array de marcações com > 0 elementos, não é falta.
+                const temBatida = (apur.marcacoes && apur.marcacoes.length > 0) || 
+                                  (apur.batidas && apur.batidas.length > 0) || 
+                                  (apur.horarios && apur.horarios.length > 0) ||
+                                  (apur.entradasSaidas && apur.entradasSaidas.length > 0) ||
+                                  (apur.strMarcacoes && apur.strMarcacoes.trim() !== '') ||
+                                  (apur.totalHorasTrabalhadas > 0);
+
+                if (!temBatida) {
                     if (func) {
                         faltantes.push(func);
                     }
@@ -576,11 +591,17 @@ async function verificarFaltasHoje() {
             });
         }
 
+        let debugHtml = '';
+        if (window.__debugRhidData) {
+            debugHtml = `<div class="alert alert-info small mt-2"><strong>DEBUG 10106266985:</strong> ${JSON.stringify(window.__debugRhidData)}</div>`;
+        }
+
         if (faltantes.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-success border-0 shadow-sm mb-0 rounded-4">
                     <i class="fas fa-check-circle me-2"></i> Todos registraram batidas hoje!
                 </div>
+                ${debugHtml}
             `;
             return;
         }
@@ -588,7 +609,7 @@ async function verificarFaltasHoje() {
         // Renderiza lista
         let html = `
             <div class="card shadow-sm border-0 border-danger border-opacity-25" style="border-radius: 12px;">
-                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3 d-flex flex-wrap justify-content-between align-items-center gap-2" style="border-radius: 12px 12px 0 0;">
                     <div><i class="fas fa-exclamation-triangle me-2"></i> ${faltantes.length} Pessoas sem batidas</div>
                     <button class="btn btn-sm btn-outline-danger rounded-pill fw-bold" onclick="exportarFaltasCSV()">
                         <i class="fas fa-file-excel me-1"></i> Exportar
