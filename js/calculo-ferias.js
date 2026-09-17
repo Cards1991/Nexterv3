@@ -280,3 +280,18 @@ function formatarData(dataStr) {
     if (partes.length !== 3) return dataStr;
     return `${partes[2]}/${partes[1]}/${partes[0]}`;
 }
+
+window.sincronizarFeriasManual = async function() {
+    try {
+        mostrarMensagem('Sincronizando status de férias em lote...', 'info');
+        if (typeof window.verificarFeriasAtivas === 'function') {
+            await window.verificarFeriasAtivas();
+            mostrarMensagem('Sincronização concluída com sucesso! Os colaboradores já foram atualizados no banco de dados.', 'success');
+        } else {
+            mostrarMensagem('Erro: Função de sincronização não encontrada no escopo global.', 'error');
+        }
+    } catch (e) {
+        console.error(e);
+        mostrarMensagem('Erro ao forçar sincronização.', 'error');
+    }
+};
