@@ -396,3 +396,217 @@ async function importarApuracaoRhid() {
         btnSync.innerHTML = '<i class="fas fa-file-import me-2"></i> IMPORTAR ESPELHOS';
     }
 }
+
+// ==========================================
+// FASE 4: Processamento e Relatórios (Horas Extras & Faltas Hoje)
+// ==========================================
+
+async function apurarHorasExtrasPeriodo() {
+    const btn = document.getElementById('btn-apurar-he');
+    const dtInicio = document.getElementById('rhid-he-inicio').value;
+    const dtFim = document.getElementById('rhid-he-fim').value;
+    const container = document.getElementById('rhid-he-container');
+    const tbody = document.getElementById('rhid-he-tbody');
+
+    if (!dtInicio || !dtFim) {
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Selecione o período de início e fim (Filtro Local).', 'warning');
+        } else {
+            alert('Selecione o período de início e fim.');
+        }
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Apurando...';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><span class="spinner-border spinner-border-sm text-success me-2"></span> Buscando horas extras no banco...</td></tr>';
+        container.classList.remove('d-none');
+
+        // Busca espelhos no Firebase
+        const espelhosSnap = await window.db.collection('espelhos_ponto')
+            .where('dataReferencia', '>=', dtInicio)
+            .where('dataReferencia', '<=', dtFim)
+            .get();
+
+        if (espelhosSnap.empty) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhum dado encontrado no período. Importe os espelhos primeiro.</td></tr>';
+            return;
+        }
+
+        const heMap = new Map();
+
+        espelhosSnap.forEach(doc => {
+            const data = doc.data();
+            const heMinutos = Number(data.horasExtras || 0);
+            if (heMinutos > 0) {
+                if (!heMap.has(data.cpf)) {
+                    heMap.set(data.cpf, {
+                        cpf: data.cpf,
+                        nome: data.nome || 'Desconhecido',
+                        totalHeMinutos: 0
+                    });
+                }
+                heMap.get(data.cpf).totalHeMinutos += heMinutos;
+            }
+        });
+
+        // Converte para array e ordena (maior para menor)
+        const rankingList = Array.from(heMap.values()).sort((a, b) => b.totalHeMinutos - a.totalHeMinutos);
+
+        if (rankingList.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted">Nenhuma hora extra processada para o período.</td></tr>';
+            return;
+        }
+
+        // Renderiza as linhas
+        let html = '';
+        rankingList.forEach((r, i) => {
+            const horas = (r.totalHeMinutos / 60).toFixed(2);
+            let rankBadge = `<span class="badge bg-secondary rounded-circle px-2">${i+1}</span>`;
+            if (i === 0) rankBadge = `<span class="badge bg-danger rounded-circle px-2 shadow-sm"><i class="fas fa-crown text-warning"></i> 1</span>`;
+            else if (i === 1) rankBadge = `<span class="badge bg-warning text-dark rounded-circle px-2">2</span>`;
+            else if (i === 2) rankBadge = `<span class="badge bg-info text-dark rounded-circle px-2">3</span>`;
+
+            html += `
+                <tr>
+                    <td class="align-middle">${rankBadge}</td>
+                    <td class="align-middle fw-semibold text-dark">${r.nome}</td>
+                    <td class="align-middle font-monospace text-muted small">${r.cpf}</td>
+                    <td class="align-middle text-center fw-bold text-success">${horas} h</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = html;
+
+    } catch (e) {
+        console.error("Erro ao apurar HE:", e);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao apurar horas extras.', 'error');
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-danger">Falha na consulta.</td></tr>';
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-calculator me-2"></i> APURAR HORAS EXTRAS';
+    }
+}
+
+async function verificarFaltasHoje() {
+    const btn = document.getElementById('btn-verificar-faltas-hoje');
+    const container = document.getElementById('rhid-faltas-hoje-container');
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Consultando Nuvem...';
+        container.innerHTML = '<div class="text-center py-3 text-muted"><span class="spinner-border spinner-border-sm text-danger me-2"></span> Buscando batidas de hoje no RHiD...</div>';
+        container.classList.remove('d-none');
+
+        // Pega todos ativos
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
+        if (funcSnap.empty) {
+            container.innerHTML = '<div class="alert alert-warning mb-0">Nenhum funcionário ativo.</div>';
+            return;
+        }
+
+        const idPersons = [];
+        const funcMap = new Map();
+        funcSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.rhidPersonId) {
+                idPersons.push(data.rhidPersonId);
+                funcMap.set(String(data.rhidPersonId), { nome: data.nome, cpf: data.cpf, setor: data.setor });
+            }
+        });
+
+        // Hoje, compensando fuso (Y-m-d) local
+        const hojeObj = new Date();
+        const y = hojeObj.getFullYear();
+        const m = String(hojeObj.getMonth() + 1).padStart(2, '0');
+        const d = String(hojeObj.getDate()).padStart(2, '0');
+        const hoje = `${y}-${m}-${d}`;
+
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        // Lotes para evitar Payload Too Large e timeout
+        const CHUNK_SIZE = 20;
+        const faltantes = [];
+
+        for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
+            const chunk = idPersons.slice(i, i + CHUNK_SIZE);
+            const response = await fetch(`${apiBaseUrl}/rhid`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    action: 'syncApuration',
+                    startDate: hoje,
+                    endDate: hoje,
+                    idPersons: chunk
+                })
+            });
+
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                console.error("Lote ignorado devido a erro:", data);
+                continue;
+            }
+
+            const apuracoes = data.data || [];
+            apuracoes.forEach(apur => {
+                // Verifica se tem zero horas trabalhadas
+                if (!apur.totalHorasTrabalhadas || apur.totalHorasTrabalhadas === 0) {
+                    const func = funcMap.get(String(apur.idPerson));
+                    if (func) {
+                        faltantes.push(func);
+                    }
+                }
+            });
+        }
+
+        if (faltantes.length === 0) {
+            container.innerHTML = `
+                <div class="alert alert-success border-0 shadow-sm mb-0 rounded-4">
+                    <i class="fas fa-check-circle me-2"></i> Todos registraram batidas hoje!
+                </div>
+            `;
+            return;
+        }
+
+        // Renderiza lista
+        let html = `
+            <div class="card shadow-sm border-0 border-danger border-opacity-25" style="border-radius: 12px;">
+                <div class="card-header bg-danger bg-opacity-10 text-danger border-0 fw-bold py-3" style="border-radius: 12px 12px 0 0;">
+                    <i class="fas fa-exclamation-triangle me-2"></i> ${faltantes.length} Pessoas sem batidas
+                </div>
+                <div class="card-body p-0">
+                    <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+        `;
+        
+        faltantes.forEach(f => {
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3">
+                    <div>
+                        <div class="fw-bold text-dark small">${f.nome}</div>
+                        <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
+                    </div>
+                    <span class="badge bg-danger rounded-pill shadow-sm" style="font-size: 0.7rem;">Ausente</span>
+                </div>
+            `;
+        });
+
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+
+        container.innerHTML = html;
+
+    } catch (e) {
+        console.error("Erro verificar faltas:", e);
+        container.innerHTML = `<div class="alert alert-danger mb-0"><i class="fas fa-times-circle me-2"></i> Erro ao verificar faltas: ${e.message}</div>`;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search me-2"></i> VERIFICAR FALTAS HOJE';
+    }
+}

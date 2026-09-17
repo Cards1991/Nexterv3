@@ -120,6 +120,87 @@
         </div>
     </div>
 
+    <!-- Seção de Processamento e Relatórios -->
+    <div class="row mt-4 mb-4">
+        <div class="col-12">
+            <h4 class="mb-3 text-secondary border-bottom pb-2"><i class="fas fa-chart-bar me-2"></i> Processamento de Horas & Relatórios</h4>
+        </div>
+
+        <!-- Verificação Rápida de Faltas (Hoje) -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h5 class="fw-bold text-danger"><i class="fas fa-user-times me-2"></i> Faltas de Hoje</h5>
+                        <p class="text-muted small">
+                            Faz uma consulta instantânea na nuvem RHiD e retorna quem ainda não teve batidas ou tem horas zeradas no dia de hoje.
+                        </p>
+                    </div>
+                    <button class="btn btn-outline-danger w-100 mt-3 rounded-pill fw-semibold shadow-sm" id="btn-verificar-faltas-hoje" onclick="verificarFaltasHoje()">
+                        <i class="fas fa-search me-2"></i> VERIFICAR FALTAS HOJE
+                    </button>
+                    <div id="rhid-faltas-hoje-container" class="mt-4 d-none">
+                        <!-- Tabela de Faltas Hoje injetada aqui -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Apuração de Horas Extras -->
+        <div class="col-md-6 mb-3">
+            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
+                <div class="card-body p-4 d-flex flex-column justify-content-between">
+                    <div>
+                        <h5 class="fw-bold text-success"><i class="fas fa-business-time me-2"></i> Relatório de Horas Extras</h5>
+                        <p class="text-muted small">
+                            Gera um ranking e a soma das horas extras de todos os funcionários baseando-se no período de apuração importado.
+                        </p>
+                        
+                        <div class="row g-2 mb-3 mt-3">
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">Início (Filtro Local)</label>
+                                <input type="date" id="rhid-he-inicio" class="form-control form-control-sm">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label small text-muted mb-1">Fim (Filtro Local)</label>
+                                <input type="date" id="rhid-he-fim" class="form-control form-control-sm">
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn btn-success w-100 rounded-pill fw-semibold shadow-sm" id="btn-apurar-he" onclick="apurarHorasExtrasPeriodo()">
+                        <i class="fas fa-calculator me-2"></i> APURAR HORAS EXTRAS
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Container para renderizar tabela de horas extras -->
+        <div class="col-12 mt-3 d-none" id="rhid-he-container">
+            <div class="card shadow border-0" style="border-radius: 12px;">
+                <div class="card-header bg-success text-white py-3 border-0" style="border-radius: 12px 12px 0 0;">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i> Resultados: Horas Extras</h5>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                        <table class="table table-hover table-striped mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Nome</th>
+                                    <th>CPF</th>
+                                    <th class="text-center">Total (Horas)</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rhid-he-tbody">
+                                <!-- Conteúdo gerado -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Informações do Ambiente -->
     <div class="row mt-2">
         <div class="col-12">
