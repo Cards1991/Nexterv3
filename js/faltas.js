@@ -443,7 +443,7 @@ async function popularSelectFuncionariosFalta() {
     
     fsnap.forEach(d => { 
         const f = d.data(); 
-        if (f.condicao === 'Férias' || f.condicao === 'Afastado') return; // Ignora férias e afastados
+        if (f.condicao === 'Férias' || (f.condicao && f.condicao.startsWith('Afastado'))) return; // Ignora férias e afastados
         const o = document.createElement('option'); 
         o.value = d.id; 
         o.textContent = f.nome; 

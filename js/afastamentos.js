@@ -258,7 +258,11 @@ async function carregarDashboardAfastados() {
     if (!container) return;
 
     try {
-        const snap = await db.collection('funcionarios').where('condicao', '==', 'Afastado').get();
+        // Usa >= e <= para emular um startsWith('Afastado')
+        const snap = await db.collection('funcionarios')
+            .where('condicao', '>=', 'Afastado')
+            .where('condicao', '<=', 'Afastado\uf8ff')
+            .get();
         
         if (snap.empty) {
             container.innerHTML = '<p class="text-muted small">Nenhum colaborador com status de afastado no momento.</p>';
@@ -928,7 +932,7 @@ window.sincronizarAfastamentosLegados = async function() {
             if (data.funcionarioId) {
                 const funcRef = db.collection('funcionarios').doc(data.funcionarioId);
                 const funcDoc = await funcRef.get();
-                if (funcDoc.exists && funcDoc.data().condicao !== 'Afastado') {
+                if (funcDoc.exists && (!funcDoc.data().condicao || !funcDoc.data().condicao.startsWith('Afastado'))) {
                     batch.update(funcRef, { condicao: 'Afastado' });
                     contagem++;
                 }
