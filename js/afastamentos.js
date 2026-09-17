@@ -73,9 +73,24 @@ function renderizarGridAfastamentos(lista, empMap) {
         const inicio = a.data_inicio?.toDate ? a.data_inicio.toDate() : a.data_inicio;
         const fim = a.data_termino_prevista?.toDate ? a.data_termino_prevista.toDate() : a.data_termino_prevista;
         
-        let statusColor = a.status === 'Ativo' ? 'danger' : 'success';
-        let statusIcon = a.status === 'Ativo' ? 'fa-procedures' : 'fa-check-circle';
+        let statusColor = 'secondary';
+        let statusIcon = 'fa-info-circle';
         
+        if (a.status === 'Ativo' || a.status === 'Efetivado') {
+            statusColor = 'danger';
+            statusIcon = 'fa-procedures';
+            a.status = 'Ativo'; // normaliza para display
+        } else if (a.status === 'Retornou' || a.status === 'Concluído') {
+            statusColor = 'success';
+            statusIcon = 'fa-check-circle';
+        } else if (a.status === 'Pendente') {
+            statusColor = 'warning text-dark';
+            statusIcon = 'fa-clock';
+        } else if (a.status === 'Declinado') {
+            statusColor = 'secondary';
+            statusIcon = 'fa-times-circle';
+        }
+
         const dias = calcularDiferencaDias(a.data_inicio, a.data_termino_prevista);
 
         let acoesHTML = `
@@ -123,11 +138,19 @@ function renderizarGridAfastamentos(lista, empMap) {
                             <span class="text-truncate text-end" style="max-width: 150px;" title="${a.tipo_afastamento || '-'}">${a.tipo_afastamento || '-'}</span>
                         </div>
                     </div>
-                    <div class="card-footer bg-white border-top-0 d-flex justify-content-between pb-3">
-                        <button class="btn btn-sm btn-outline-info flex-grow-1 me-2" onclick="verDetalhesAfastamento('${a.id}')"><i class="fas fa-eye me-1"></i> Detalhes</button>
-                        ${a.status === 'Ativo' && !a.requerINSS ? `<button class="btn btn-sm btn-outline-success me-2" onclick="darBaixaAfastamento('${a.id}')" title="Dar Baixa"><i class="fas fa-check"></i></button>` : ''}
-                        <div class="btn-group">
-                            ${acoesHTML}
+                    <div class="card-footer bg-white border-top-0 d-flex flex-column gap-2 pb-3">
+                        ${a.status === 'Pendente' ? `
+                            <div class="d-flex gap-2 w-100">
+                                <button class="btn btn-sm btn-success flex-grow-1" onclick="abrirModalEfetivarAfastamento('${a.id}')"><i class="fas fa-check me-1"></i> Efetivar</button>
+                                <button class="btn btn-sm btn-secondary flex-grow-1" onclick="declinarAfastamento('${a.id}')"><i class="fas fa-times me-1"></i> Declinar</button>
+                            </div>
+                        ` : ''}
+                        <div class="d-flex justify-content-between w-100">
+                            <button class="btn btn-sm btn-outline-info flex-grow-1 me-2" onclick="verDetalhesAfastamento('${a.id}')"><i class="fas fa-eye me-1"></i> Detalhes</button>
+                            ${a.status === 'Ativo' && !a.requerINSS ? `<button class="btn btn-sm btn-outline-success me-2" onclick="darBaixaAfastamento('${a.id}')" title="Dar Baixa"><i class="fas fa-check"></i></button>` : ''}
+                            <div class="btn-group">
+                                ${acoesHTML}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -747,7 +770,8 @@ async function salvarNovoAfastamento() {
             data_termino_prevista: fimDate,
             tipo_afastamento: tipo,
             motivo: motivo || null,
-            status: 'Ativo',
+            status: 'Pendente',
+            requerINSS: false,
             criado_em: firebase.firestore.FieldValue.serverTimestamp(),
             createdByUid: user ? user.uid : null
         });
@@ -794,4 +818,53 @@ function abrirModalGenerico(titulo, corpo) {
     document.getElementById('modalGenericoTitulo').textContent = titulo;
     document.getElementById('modalGenericoCorpo').innerHTML = corpo;
     new bootstrap.Modal(modalEl).show();
+}
+
+window.abrirModalEfetivarAfastamento = function(id) {
+    document.getElementById('efetivar-afastamento-id').value = id;
+    document.getElementById('form-efetivar-afastamento').reset();
+    const modal = new bootstrap.Modal(document.getElementById('modalEfetivarAfastamento'));
+    modal.show();
+}
+
+window.confirmarEfetivacao = async function() {
+    const id = document.getElementById('efetivar-afastamento-id').value;
+    const dataRetorno = document.getElementById('efetivar-data-retorno').value;
+
+    if (!dataRetorno) {
+        mostrarMensagem('Informe a previsão de retorno.', 'warning');
+        return;
+    }
+
+    try {
+        await db.collection('afastamentos').doc(id).update({
+            status: 'Ativo',
+            data_termino_prevista: dataRetorno,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        mostrarMensagem('Afastamento efetivado com sucesso!', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('modalEfetivarAfastamento')).hide();
+        await carregarAfastamentos();
+    } catch (e) {
+        console.error("Erro ao efetivar:", e);
+        mostrarMensagem('Erro ao efetivar afastamento.', 'error');
+    }
+}
+
+window.declinarAfastamento = async function(id) {
+    if (!confirm('Tem certeza que deseja declinar este afastamento?')) return;
+
+    try {
+        await db.collection('afastamentos').doc(id).update({
+            status: 'Declinado',
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        mostrarMensagem('Afastamento declinado.', 'info');
+        await carregarAfastamentos();
+    } catch (e) {
+        console.error("Erro ao declinar:", e);
+        mostrarMensagem('Erro ao declinar afastamento.', 'error');
+    }
 }

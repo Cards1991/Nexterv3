@@ -39,8 +39,10 @@
     <div class="d-flex gap-2">
         <select id="filtro-status-afastamento" class="form-select shadow-sm" style="max-width: 200px;" onchange="filtrarAfastamentosGrid()">
             <option value="Todos">Todos os Status</option>
-            <option value="Ativo" selected>Ativos</option>
+            <option value="Pendente">Pendentes</option>
+            <option value="Ativo" selected>Ativos/Efetivados</option>
             <option value="Retornou">Retornaram</option>
+            <option value="Declinado">Declinados</option>
         </select>
     </div>
 </div>
@@ -50,5 +52,31 @@
     <div class="col-12 text-center py-5">
         <i class="fas fa-spinner fa-spin fa-2x text-primary mb-3"></i>
         <p class="text-muted">Carregando afastamentos...</p>
+    </div>
+</div>
+
+<!-- Modal Efetivar Afastamento -->
+<div class="modal fade" id="modalEfetivarAfastamento" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-check-circle me-2"></i>Efetivar Afastamento</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Por favor, informe a <strong>Previsão de Retorno</strong> para efetivar este afastamento.</p>
+                <form id="form-efetivar-afastamento">
+                    <input type="hidden" id="efetivar-afastamento-id">
+                    <div class="mb-3">
+                        <label for="efetivar-data-retorno" class="form-label text-dark fw-bold">Data de Retorno Prevista</label>
+                        <input type="date" class="form-control border-success" id="efetivar-data-retorno" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="confirmarEfetivacao()"><i class="fas fa-check me-2"></i>Efetivar</button>
+            </div>
+        </div>
     </div>
 </div>
