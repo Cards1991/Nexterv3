@@ -526,7 +526,12 @@ async function verificarFaltasHoje() {
             const data = doc.data();
             if (data.rhidPersonId) {
                 idPersons.push(data.rhidPersonId);
-                funcMap.set(String(data.rhidPersonId), { nome: data.nome, cpf: data.cpf, setor: data.setor });
+                funcMap.set(String(data.rhidPersonId), { 
+                    nome: data.nome, 
+                    cpf: data.cpf, 
+                    setor: data.setor,
+                    condicao: data.condicao // Importante para barrar férias/afastados!
+                });
             }
         });
 
@@ -590,7 +595,8 @@ async function verificarFaltasHoje() {
                 if (!temBatida) {
                     if (func) {
                         const condicao = func.condicao || 'Normal';
-                        if (condicao === 'Normal') {
+                        // Ignora Férias e qualquer tipo de Afastamento (ex: "Afastado (INSS, etc)")
+                        if (condicao !== 'Férias' && !condicao.startsWith('Afastado')) {
                             faltantes.push(func);
                         }
                     }
