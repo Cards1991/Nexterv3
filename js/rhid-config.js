@@ -641,7 +641,8 @@ async function verificarFaltasHoje() {
                             const batidasPrevistas = apur.listAfdtManutencao.filter(b => b.horaPrevista !== null && b.horaPrevista !== undefined && b.horaPrevista > 0);
                             let primeiroHorarioInt = null;
                             if (batidasPrevistas.length > 0) {
-                                primeiroHorarioInt = Math.min(...batidasPrevistas.map(b => b.horaPrevista));
+                                // Usa a primeira hora prevista da lista (cronológica), não Math.min pois turno da noite passa da meia-noite (ex: 59 < 1800)
+                                primeiroHorarioInt = batidasPrevistas[0].horaPrevista;
                             } else if (apur.strHorarioContratualSimples) {
                                 const match = apur.strHorarioContratualSimples.match(/^(\d{2}):(\d{2})/);
                                 if (match) {
@@ -662,6 +663,7 @@ async function verificarFaltasHoje() {
                     // Se não tiver batidas, é falta injustificada, a não ser que o turno seja mais tarde
                     if (!temBatida) {
                         if (turnoAindaNaoComecou) {
+                            // Aguardando turno - não vai pra lista de faltantes!
                             catAguardandoTurno.push({ ...func, apur: apur });
                         } else {
                             faltantes.push({ ...func, apur: apur });
