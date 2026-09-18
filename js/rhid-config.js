@@ -581,6 +581,7 @@ async function verificarFaltasHoje() {
         const catExterno = [];
         const catSemControle = [];
         const catSumidos = [];
+        const catAguardandoTurno = [];
 
         for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
             const chunk = idPersons.slice(i, i + CHUNK_SIZE);
@@ -627,16 +628,44 @@ async function verificarFaltasHoje() {
                 } else {
                     // Se não tem justificativa no nosso sistema, verifica as batidas
                     let temBatida = false;
+                    let turnoAindaNaoComecou = false;
+                    
                     if (apur.totalHorasTrabalhadas > 0) temBatida = true;
                     
                     if (!temBatida && apur.listAfdtManutencao && Array.isArray(apur.listAfdtManutencao)) {
                         const batidasReais = apur.listAfdtManutencao.filter(b => b.idAfd !== null || b.idAfdChange !== null);
-                        if (batidasReais.length > 0) temBatida = true;
+                        if (batidasReais.length > 0) {
+                            temBatida = true;
+                        } else {
+                            // Checa se o turno começa no futuro comparado à hora atual
+                            const batidasPrevistas = apur.listAfdtManutencao.filter(b => b.horaPrevista !== null && b.horaPrevista !== undefined && b.horaPrevista > 0);
+                            let primeiroHorarioInt = null;
+                            if (batidasPrevistas.length > 0) {
+                                primeiroHorarioInt = Math.min(...batidasPrevistas.map(b => b.horaPrevista));
+                            } else if (apur.strHorarioContratualSimples) {
+                                const match = apur.strHorarioContratualSimples.match(/^(\d{2}):(\d{2})/);
+                                if (match) {
+                                    primeiroHorarioInt = parseInt(match[1], 10) * 100 + parseInt(match[2], 10);
+                                }
+                            }
+                            
+                            if (primeiroHorarioInt !== null) {
+                                const agora = new Date();
+                                const horaAtualInt = agora.getHours() * 100 + agora.getMinutes();
+                                if (horaAtualInt < primeiroHorarioInt) {
+                                    turnoAindaNaoComecou = true;
+                                }
+                            }
+                        }
                     }
 
-                    // Se não tiver batidas, é falta injustificada
+                    // Se não tiver batidas, é falta injustificada, a não ser que o turno seja mais tarde
                     if (!temBatida) {
-                        faltantes.push({ ...func, apur: apur });
+                        if (turnoAindaNaoComecou) {
+                            catAguardandoTurno.push({ ...func, apur: apur });
+                        } else {
+                            faltantes.push({ ...func, apur: apur });
+                        }
                     }
                 }
             });
@@ -696,8 +725,9 @@ async function verificarFaltasHoje() {
         html += renderCategory('Trabalho Externo', 'fas fa-car', 'secondary', catExterno, 'Externo');
         html += renderCategory('Sem Controle de Jornada', 'fas fa-user-clock', 'secondary', catSemControle, 'Sem Controle');
         html += renderCategory('Colaboradores Sumidos', 'fas fa-ghost', 'dark', catSumidos, 'Sumido');
+        html += renderCategory('Aguardando Início do Turno', 'fas fa-clock', 'info', catAguardandoTurno, 'Aguardando Turno');
 
-        if (faltantes.length === 0 && catAtestado.length === 0 && catAfastado.length === 0 && catFerias.length === 0 && catExterno.length === 0 && catSemControle.length === 0 && catSumidos.length === 0) {
+        if (faltantes.length === 0 && catAtestado.length === 0 && catAfastado.length === 0 && catFerias.length === 0 && catExterno.length === 0 && catSemControle.length === 0 && catSumidos.length === 0 && catAguardandoTurno.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-success border-0 shadow-sm mb-0 rounded-4">
                     <i class="fas fa-check-circle me-2"></i> Todos registraram batidas hoje!
