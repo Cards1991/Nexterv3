@@ -580,6 +580,7 @@ async function verificarFaltasHoje() {
         const catFerias = [];
         const catExterno = [];
         const catSemControle = [];
+        const catSumidos = [];
 
         for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
             const chunk = idPersons.slice(i, i + CHUNK_SIZE);
@@ -616,6 +617,8 @@ async function verificarFaltasHoje() {
                     catExterno.push(func);
                 } else if (condLower.includes('sem controle')) {
                     catSemControle.push(func);
+                } else if (condLower.includes('sumido')) {
+                    catSumidos.push(func);
                 } else if (condLower.includes('afastado') || condLower.includes('inss')) {
                     catAfastado.push(func);
                 } else if (mapAtestadosValidos.has(func.id)) {
@@ -692,8 +695,9 @@ async function verificarFaltasHoje() {
         html += renderCategory('Em Férias', 'fas fa-umbrella-beach', 'info text-dark', catFerias, 'Férias');
         html += renderCategory('Trabalho Externo', 'fas fa-car', 'secondary', catExterno, 'Externo');
         html += renderCategory('Sem Controle de Jornada', 'fas fa-user-clock', 'secondary', catSemControle, 'Sem Controle');
+        html += renderCategory('Colaboradores Sumidos', 'fas fa-ghost', 'dark', catSumidos, 'Sumido');
 
-        if (faltantes.length === 0 && catAtestado.length === 0 && catAfastado.length === 0 && catFerias.length === 0 && catExterno.length === 0 && catSemControle.length === 0) {
+        if (faltantes.length === 0 && catAtestado.length === 0 && catAfastado.length === 0 && catFerias.length === 0 && catExterno.length === 0 && catSemControle.length === 0 && catSumidos.length === 0) {
             container.innerHTML = `
                 <div class="alert alert-success border-0 shadow-sm mb-0 rounded-4">
                     <i class="fas fa-check-circle me-2"></i> Todos registraram batidas hoje!
