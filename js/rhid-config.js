@@ -535,7 +535,7 @@ async function verificarFaltasHoje() {
                     nome: data.nome,
                     setor: data.setor,
                     cpf: data.cpf,
-                    condicao: data.condicao_atual || 'Normal'
+                    condicao: data.condicao || data.condicao_atual || 'Normal'
                 });
             }
         });
