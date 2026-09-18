@@ -25,7 +25,7 @@ const ScriptLoader = {
         'controle-disciplinar': ['js/controle-disciplinar.js'],
         'dp-calculos': ['js/dp-calculos.js'],
         'controle-cestas': ['js/controle-cestas.js'],
-        'rhid-config': ['js/rhid-config.js?v=12'],
+        'rhid-config': ['js/rhid-config.js?v=13'],
         'dp-horas-extras': ['js/horas-extras.js'],
         'calculo-ferias': ['js/calculo-ferias.js?v=8'],
         'dp-horas-extras-lancamento': ['js/horas-extras-lancamento.js'],

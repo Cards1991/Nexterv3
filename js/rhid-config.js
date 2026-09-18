@@ -607,11 +607,13 @@ async function verificarFaltasHoje() {
                 const condicao = func.condicao || 'Normal';
                 
                 // Primeiro, verifica as condições e atestados do funcionário (independente se o RHiD abonou ou não)
-                if (condicao === 'Férias') {
+                const condLower = condicao.toLowerCase();
+                
+                if (condLower === 'férias' || condLower === 'ferias') {
                     catFerias.push(func);
-                } else if (condicao === 'Trabalho Externo') {
+                } else if (condLower.includes('externo')) {
                     catExterno.push(func);
-                } else if (condicao.startsWith('Afastado')) {
+                } else if (condLower.includes('afastado') || condLower.includes('inss')) {
                     catAfastado.push(func);
                 } else if (mapAtestadosValidos.has(func.id)) {
                     func.atestadoInfo = mapAtestadosValidos.get(func.id);
