@@ -141,6 +141,8 @@ async function sincronizarFuncionariosRhid() {
                 erros++;
                 continue;
             }
+            // Garantir que o CPF tenha 11 dígitos (adiciona zeros à esquerda)
+            cpf = cpf.padStart(11, '0');
             
             // Extrair Setor e tentar match automático com a lista dos 34 setores
             let setorNormalizado = "";
