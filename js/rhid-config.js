@@ -250,13 +250,12 @@ async function importarApuracaoRhid() {
 
     const dtInicio = document.getElementById('rhid-apuracao-inicio').value;
     const dtFim = document.getElementById('rhid-apuracao-fim').value;
+    const funcOpcionalId = document.getElementById('rhid-apuracao-funcionario').value;
 
     if (!dtInicio || !dtFim) {
-        alert('Por favor, selecione a Data Inicial e a Data Final.');
-        return;
-    }
-
-    if (!confirm(`Deseja buscar a apuração de ponto do período ${dtInicio} a ${dtFim}?`)) {
+        alertBox.className = 'alert mt-3 alert-warning mb-0';
+        alertBox.innerHTML = '<i class="fas fa-exclamation-triangle me-2"></i> Selecione a Data Inicial e Final.';
+        alertBox.classList.remove('d-none');
         return;
     }
 
@@ -267,41 +266,55 @@ async function importarApuracaoRhid() {
     progressContainer.classList.remove('d-none');
     
     progressBar.style.width = '10%';
-    statusText.textContent = 'Solicitando cálculos à Control iD...';
+    statusText.textContent = 'Mapeando funcionários locais...';
     pctText.textContent = '10%';
 
     try {
+        let queryFunc = window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']);
+        const funcSnap = await queryFunc.get();
+        
+        let idPersons = [];
+        const funcMap = new Map();
+        
+        funcSnap.forEach(doc => {
+            const data = doc.data();
+
+            if (data.rhidPersonId) {
+                // Se foi selecionado um funcionário específico, ignora os demais
+                if (funcOpcionalId && doc.id !== funcOpcionalId) return;
+
+                idPersons.push(data.rhidPersonId);
+                funcMap.set(String(data.rhidPersonId), { 
+                    id: doc.id,
+                    nome: data.nome,
+                    setor: data.setor,
+                    cpf: data.cpf
+                });
+            }
+        });
+
+        if (idPersons.length === 0) {
+            throw new Error(funcOpcionalId ? 'Funcionário selecionado não possui ID do RHiD vinculado.' : 'Nenhum funcionário ativo com vínculo ao RHiD encontrado.');
+        }
+
+        progressBar.style.width = '30%';
+        statusText.textContent = `Comunicando com RHiD API para ${idPersons.length} colaborador(es)...`;
+        pctText.textContent = '30%';
+
         const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
             ? 'http://localhost:3000/api'
             : '/api';
 
-        // 1. Busca todos os funcionários ATIVOS no Firebase (case-insensitive para suportar dados antigos e novos)
-        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
-        if (funcSnap.empty) {
-            throw new Error("Nenhum funcionário ativo encontrado no sistema.");
-        }
-
-        const employees = [];
-        funcSnap.forEach(doc => {
-            const data = doc.data();
-            if (data.rhidPersonId && data.cpf) {
-                employees.push({ idPerson: data.rhidPersonId, cpf: data.cpf, nome: data.nome });
-            }
-        });
-
-        const totalFuncs = employees.length;
-        statusText.textContent = `Processando ${totalFuncs} funcionários em lotes...`;
-
-        // 2. Quebrar em chunks (lotes) de 20 para não estourar o timeout ou rate-limit
+        // Lotes de 20 funcionários para não sobrecarregar
         const CHUNK_SIZE = 20;
-        let processados = 0;
-        let espelhosSalvos = 0;
+        let totaisLotesProcessados = 0;
+        let totalEspelhosSalvos = 0;
 
-        for (let i = 0; i < employees.length; i += CHUNK_SIZE) {
-            const chunk = employees.slice(i, i + CHUNK_SIZE);
-            const idPersonsChunk = chunk.map(e => e.idPerson);
+        for (let i = 0; i < idPersons.length; i += CHUNK_SIZE) {
+            const chunk = idPersons.slice(i, i + CHUNK_SIZE);
+            
+            statusText.textContent = `Buscando lote ${Math.floor(i/CHUNK_SIZE)+1} de ${Math.ceil(idPersons.length/CHUNK_SIZE)}...`;
 
-            // Traz as apurações desse lote da API Vercel
             const response = await fetch(`${apiBaseUrl}/rhid`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -309,67 +322,68 @@ async function importarApuracaoRhid() {
                     action: 'syncApuration',
                     startDate: dtInicio,
                     endDate: dtFim,
-                    idPersons: idPersonsChunk
+                    idPersons: chunk
                 })
             });
 
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                console.error(`Erro no lote ${i}:`, data);
-                continue; // Continua pros próximos lotes mesmo se um falhar
+                const detalhe = data.details ? ` (${data.details})` : '';
+                throw new Error((data.message || data.error || 'Falha ao buscar apuração.') + detalhe);
             }
 
-            const apuracoes = data.data || [];
+            if (data.data && data.data.length > 0) {
+                // Prepara batch write para o Firestore
+                let batch = window.db.batch();
+                let operations = 0;
 
-            // 3. Salvar as apurações no Firebase
-            // Para otimizar, faremos writes no Firestore (batched writes)
-            const batch = window.db.batch();
-            let opsCount = 0;
+                for (const doc of data.data) {
+                    const func = funcMap.get(String(doc.personId));
+                    if (!func) continue;
 
-            for (const apur of apuracoes) {
-                // Acha o CPF correspondente
-                const emp = chunk.find(e => String(e.idPerson) === String(apur.idPerson));
-                if (!emp || !apur.date) continue;
+                    // Salva ou atualiza no Firestore: espelhos_ponto
+                    const docId = `${func.cpf}_${doc.date}`;
+                    const ref = window.db.collection('espelhos_ponto').doc(docId);
+                    
+                    batch.set(ref, {
+                        cpf: func.cpf,
+                        nome: func.nome,
+                        setor: func.setor,
+                        rhidPersonId: doc.personId,
+                        dataReferencia: doc.date,
+                        
+                        horasTrabalhadas: doc.workedHours || 0,
+                        horasExtras: doc.extraHours || 0,
+                        horasFaltaAtraso: doc.missingHours || 0,
+                        horasAdicionalNoturno: doc.nightlyAditionalHours || 0,
+                        horasEspera: doc.waitingHours || 0,
+                        
+                        primeiraBatida: doc.firstPunch || null,
+                        ultimaBatida: doc.lastPunch || null,
+                        marcacoes: doc.punches || [],
+                        
+                        importadoEm: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true }); // Merge true para não sobrescrever justificativas já feitas na auditoria
 
-                // Formatar data: "2026-09-01T00:00:00" -> "2026-09-01"
-                const dateStr = apur.date.split('T')[0];
-                const docId = `${emp.cpf}_${dateStr}`;
-                const ref = window.db.collection('espelhos_ponto').doc(docId);
+                    operations++;
+                    totalEspelhosSalvos++;
 
-                batch.set(ref, {
-                    cpf: emp.cpf,
-                    rhidPersonId: apur.idPerson,
-                    nome: emp.nome,
-                    dataReferencia: dateStr,
-                    totalHorasTrabalhadas: apur.totalHorasTrabalhadas || 0,
-                    horasDiurnas: apur.horasDiurnasNaoExtra || 0,
-                    horasExtras: apur.horasExtrasCalculadas || 0,
-                    horasFaltaAtraso: apur.horasFaltaAtraso || 0,
-                    horasAusentes: apur.horasAusentes || 0,
-                    diasTrabalhados: apur.diasTrabalhados || 0,
-                    apuracaoRaw: JSON.stringify(apur),
-                    ultimaAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
-                }, { merge: true });
+                    // Limite do batch do firestore é 500
+                    if (operations >= 400) {
+                        await batch.commit();
+                        batch = window.db.batch();
+                        operations = 0;
+                    }
+                }
 
-                opsCount++;
-                espelhosSalvos++;
-
-                // O Firestore Batch suporta até 500 operações por vez. 
-                // Se chegar em 400, comitamos e abrimos um novo batch
-                if (opsCount >= 400) {
+                if (operations > 0) {
                     await batch.commit();
-                    opsCount = 0;
                 }
             }
 
-            // Commita o resto do batch
-            if (opsCount > 0) {
-                await batch.commit();
-            }
-
-            processados += chunk.length;
-            const pct = Math.floor((processados / totalFuncs) * 100);
+            totaisLotesProcessados++;
+            const pct = 30 + Math.floor((totaisLotesProcessados / Math.ceil(idPersons.length/CHUNK_SIZE)) * 70);
             progressBar.style.width = `${pct}%`;
             pctText.textContent = `${pct}%`;
         }
@@ -760,20 +774,31 @@ setTimeout(() => {
 }, 200);
 
 async function carregarFuncionariosAuditoria() {
-    const select = document.getElementById('rhid-auditoria-funcionario');
-    if (!select) return;
+    const selectAuditoria = document.getElementById('rhid-auditoria-funcionario');
+    const selectApuracao = document.getElementById('rhid-apuracao-funcionario');
+    
+    if (!selectAuditoria && !selectApuracao) return;
 
     try {
         const snap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).orderBy('nome').get();
-        let options = '<option value="">Selecione um funcionário...</option>';
+        
+        let optionsAuditoria = '<option value="">Selecione um funcionário...</option>';
+        let optionsApuracao = '<option value="">Todos os Funcionários (Importação em Lote)</option>';
+        
         snap.forEach(doc => {
             const f = doc.data();
-            options += `<option value="${f.cpf}" data-id="${doc.id}">${f.nome}</option>`;
+            optionsAuditoria += `<option value="${f.cpf}" data-id="${doc.id}">${f.nome}</option>`;
+            // Na importação de apuração, o value pode ser o ID do documento para bater com funcOpcionalId
+            optionsApuracao += `<option value="${doc.id}">${f.nome}</option>`;
         });
-        select.innerHTML = options;
+
+        if (selectAuditoria) selectAuditoria.innerHTML = optionsAuditoria;
+        if (selectApuracao) selectApuracao.innerHTML = optionsApuracao;
+
     } catch (e) {
-        console.error('Erro ao carregar funcionários para auditoria', e);
-        select.innerHTML = '<option value="">Erro ao carregar</option>';
+        console.error('Erro ao carregar funcionários', e);
+        if (selectAuditoria) selectAuditoria.innerHTML = '<option value="">Erro ao carregar</option>';
+        if (selectApuracao) selectApuracao.innerHTML = '<option value="">Erro ao carregar</option>';
     }
 }
 

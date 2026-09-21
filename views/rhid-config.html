@@ -88,18 +88,24 @@
                         Busca as horas processadas (Trabalhadas, Faltas, Extras, Atrasos) do sistema RHiD e atrela aos funcionários cadastrados.
                     </p>
 
-                    <div class="row mb-3">
+                    <div class="row g-2 mb-3 align-items-end">
                         <div class="col-md-4">
+                            <label class="form-label small text-muted">Funcionário (Opcional)</label>
+                            <select id="rhid-apuracao-funcionario" class="form-select">
+                                <option value="">Todos os Funcionários</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
                             <label class="form-label small text-muted">Data Inicial</label>
                             <input type="date" id="rhid-apuracao-inicio" class="form-control">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-3">
                             <label class="form-label small text-muted">Data Final</label>
                             <input type="date" id="rhid-apuracao-fim" class="form-control">
                         </div>
-                        <div class="col-md-4 d-flex align-items-end">
+                        <div class="col-md-2">
                             <button class="btn btn-warning w-100" id="btn-sync-rhid-apuracao" onclick="importarApuracaoRhid()">
-                                <i class="fas fa-file-import me-2"></i> IMPORTAR ESPELHOS
+                                <i class="fas fa-file-import me-1"></i> IMPORTAR
                             </button>
                         </div>
                     </div>
