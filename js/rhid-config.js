@@ -339,7 +339,7 @@ async function importarApuracaoRhid() {
                 let operations = 0;
 
                 for (const doc of data.data) {
-                    const func = funcMap.get(String(doc.personId));
+                    const func = funcMap.get(String(doc.idPerson));
                     if (!func) continue;
 
                     // Formatar data para YYYY-MM-DD (remove o horário caso venha T00:00:00 da API)
@@ -351,7 +351,7 @@ async function importarApuracaoRhid() {
                         cpf: func.cpf,
                         nome: func.nome,
                         setor: func.setor,
-                        rhidPersonId: doc.personId,
+                        rhidPersonId: doc.idPerson,
                         dataReferencia: dateStr,
                         
                         horasTrabalhadas: doc.totalHorasTrabalhadas || 0,
