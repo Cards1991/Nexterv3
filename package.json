@@ -13,6 +13,8 @@
     "dotenv": "^17.4.2",
     "express": "^4.19.2",
     "firebase-admin": "^14.3.0",
-    "koffi": "^2.6.2"
+    "koffi": "^2.6.2",
+    "node-firebird": "^2.16.2",
+    "odbc": "^2.5.0"
   }
 }

@@ -750,6 +750,177 @@ async function verificarFaltasHoje() {
     }
 }
 
+// ==========================================
+// FASE 5: Auditoria Individual e Processamento (Justificativas e Horas Extras)
+// ==========================================
+
+// Executa o carregamento assim que o script for injetado (com pequeno delay para garantir que o DOM renderizou)
+setTimeout(() => {
+    carregarFuncionariosAuditoria();
+}, 200);
+
+async function carregarFuncionariosAuditoria() {
+    const select = document.getElementById('rhid-auditoria-funcionario');
+    if (!select) return;
+
+    try {
+        const snap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).orderBy('nome').get();
+        let options = '<option value="">Selecione um funcionário...</option>';
+        snap.forEach(doc => {
+            const f = doc.data();
+            options += `<option value="${f.cpf}" data-id="${doc.id}">${f.nome}</option>`;
+        });
+        select.innerHTML = options;
+    } catch (e) {
+        console.error('Erro ao carregar funcionários para auditoria', e);
+        select.innerHTML = '<option value="">Erro ao carregar</option>';
+    }
+}
+
+async function buscarAuditoriaPonto() {
+    const selectFunc = document.getElementById('rhid-auditoria-funcionario');
+    const cpf = selectFunc.value;
+    const dtInicio = document.getElementById('rhid-auditoria-inicio').value;
+    const dtFim = document.getElementById('rhid-auditoria-fim').value;
+    const container = document.getElementById('rhid-auditoria-container');
+    const tbody = document.getElementById('rhid-auditoria-tbody');
+    const btn = document.getElementById('btn-buscar-auditoria');
+
+    if (!cpf || !dtInicio || !dtFim) {
+        mostrarMensagem('Selecione o funcionário e o período.', 'warning');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        container.classList.remove('d-none');
+        tbody.innerHTML = '<tr><td colspan="6" class="py-5 text-center"><i class="fas fa-spinner fa-spin fa-2x mb-2 text-primary"></i><br>Buscando batidas...</td></tr>';
+
+        const espelhosSnap = await window.db.collection('espelhos_ponto')
+            .where('cpf', '==', cpf)
+            .get();
+
+        if (espelhosSnap.empty) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-muted">Nenhum registro encontrado neste período. Sincronize o RHiD primeiro.</td></tr>';
+            return;
+        }
+
+        let docsFiltrados = [];
+        espelhosSnap.forEach(doc => {
+            const data = doc.data();
+            if (data.dataReferencia >= dtInicio && data.dataReferencia <= dtFim) {
+                docsFiltrados.push({ id: doc.id, ...data });
+            }
+        });
+
+        if (docsFiltrados.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-muted">Nenhum registro encontrado neste período específico.</td></tr>';
+            return;
+        }
+
+        // Ordenar por dataReferencia
+        docsFiltrados.sort((a, b) => a.dataReferencia.localeCompare(b.dataReferencia));
+
+        let trs = '';
+        docsFiltrados.forEach(m => {
+            const id = m.id;
+            
+            const heOriginal = Number(m.horasExtras || 0);
+            const faltaOriginal = Number(m.horasFaltaAtraso || 0);
+            const heFormatado = heOriginal > 0 ? (heOriginal / 60).toFixed(2) : '-';
+            const faltaFormatado = faltaOriginal > 0 ? (faltaOriginal / 60).toFixed(2) : '-';
+            
+            // Faltas Action
+            let acaoFalta = '<span class="text-muted">-</span>';
+            if (faltaOriginal > 0) {
+                if (m.statusFalta === 'Justificada') {
+                    acaoFalta = `<span class="badge bg-success"><i class="fas fa-check-circle me-1"></i>Justificada</span> <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="desfazerFalta('${id}')" title="Desfazer"><i class="fas fa-undo"></i></button>`;
+                } else {
+                    acaoFalta = `<button class="btn btn-sm btn-outline-warning" onclick="justificarFalta('${id}')"><i class="fas fa-file-medical me-1"></i>Justificar</button>`;
+                }
+            }
+
+            // Horas Extras Action
+            let acaoHe = '<span class="text-muted">-</span>';
+            if (heOriginal > 0) {
+                if (m.statusAprovacaoHe === 'Aprovada') {
+                    acaoHe = `<span class="badge bg-success"><i class="fas fa-check"></i> Aprovada</span> <button class="btn btn-sm btn-link text-danger p-0 ms-2" onclick="desfazerHe('${id}')"><i class="fas fa-undo"></i></button>`;
+                } else if (m.statusAprovacaoHe === 'Descartada') {
+                    acaoHe = `<span class="badge bg-danger"><i class="fas fa-times"></i> Descartada</span> <button class="btn btn-sm btn-link text-secondary p-0 ms-2" onclick="desfazerHe('${id}')"><i class="fas fa-undo"></i></button>`;
+                } else {
+                    acaoHe = `
+                        <button class="btn btn-sm btn-success me-1" title="Aprovar Hora Extra" onclick="aprovarHoraExtra('${id}')"><i class="fas fa-check"></i></button>
+                        <button class="btn btn-sm btn-danger" title="Descartar Hora Extra" onclick="descartarHoraExtra('${id}')"><i class="fas fa-times"></i></button>
+                    `;
+                }
+            }
+
+            trs += `
+                <tr>
+                    <td class="fw-bold">${m.dataReferencia.split('-').reverse().join('/')}</td>
+                    <td>${Number(m.horasTrabalhadas || 0) > 0 ? (Number(m.horasTrabalhadas) / 60).toFixed(2) + 'h' : '-'}</td>
+                    <td class="${faltaOriginal > 0 && m.statusFalta !== 'Justificada' ? 'text-danger fw-bold' : (m.statusFalta === 'Justificada' ? 'text-success text-decoration-line-through' : '')}">${faltaFormatado}</td>
+                    <td>${acaoFalta}</td>
+                    <td class="${heOriginal > 0 && m.statusAprovacaoHe !== 'Descartada' ? 'text-success fw-bold' : (m.statusAprovacaoHe === 'Descartada' ? 'text-muted text-decoration-line-through' : '')}">${heFormatado}</td>
+                    <td>${acaoHe}</td>
+                </tr>
+            `;
+        });
+
+        tbody.innerHTML = trs;
+
+    } catch (e) {
+        console.error(e);
+        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-danger">Erro ao buscar auditoria.</td></tr>';
+        mostrarMensagem('Erro interno.', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-search me-2"></i> Buscar';
+    }
+}
+
+async function justificarFalta(docId) {
+    if (!confirm('Tem certeza que deseja justificar esta falta? Ela NÃO será descontada na folha.')) return;
+    try {
+        await window.db.collection('espelhos_ponto').doc(docId).update({ statusFalta: 'Justificada' });
+        buscarAuditoriaPonto(); // recarrega a tabela
+        mostrarMensagem('Falta justificada com sucesso!', 'success');
+    } catch(e) {
+        console.error(e);
+        mostrarMensagem('Erro ao justificar.', 'error');
+    }
+}
+
+async function desfazerFalta(docId) {
+    try {
+        await window.db.collection('espelhos_ponto').doc(docId).update({ statusFalta: firebase.firestore.FieldValue.delete() });
+        buscarAuditoriaPonto();
+    } catch(e) { console.error(e); }
+}
+
+async function aprovarHoraExtra(docId) {
+    try {
+        await window.db.collection('espelhos_ponto').doc(docId).update({ statusAprovacaoHe: 'Aprovada' });
+        buscarAuditoriaPonto();
+    } catch(e) { console.error(e); }
+}
+
+async function descartarHoraExtra(docId) {
+    if (!confirm('Descartar essa hora extra? Ela não será paga na folha.')) return;
+    try {
+        await window.db.collection('espelhos_ponto').doc(docId).update({ statusAprovacaoHe: 'Descartada' });
+        buscarAuditoriaPonto();
+    } catch(e) { console.error(e); }
+}
+
+async function desfazerHe(docId) {
+    try {
+        await window.db.collection('espelhos_ponto').doc(docId).update({ statusAprovacaoHe: firebase.firestore.FieldValue.delete() });
+        buscarAuditoriaPonto();
+    } catch(e) { console.error(e); }
+}
+
 function exportarFaltasCSV() {
     const container = document.getElementById('rhid-faltas-hoje-container');
     const items = container.querySelectorAll('.list-group-item');

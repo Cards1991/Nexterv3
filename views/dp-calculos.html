@@ -1,93 +1,135 @@
-<h2 class="page-title">Cálculo de Folha de Pagamento</h2>
-<div class="row">
-    <!-- Coluna de Entrada de Dados -->
-    <div class="col-lg-5">
-        <div class="card">
-            <div class="card-header"><i class="fas fa-file-invoice-dollar"></i> Entrada de Dados do
-                Mês</div>
-            <div class="card-body">
-                <form id="form-calculo-folha">
-                    <div class="mb-3">
-                        <label for="calc-funcionario" class="form-label">Funcionário</label>
-                        <select class="form-select" id="calc-funcionario" required></select>
-                    </div>
+<h2 class="page-title mb-4">Processamento de Folha de Pagamento</h2>
 
-                    <!-- INÍCIO INTEGRAÇÃO RHID -->
-                    <div class="card bg-light mb-3 border-info">
-                        <div class="card-body py-2 px-3">
-                            <label class="form-label text-info fw-bold mb-1"><i class="fas fa-cloud-download-alt"></i> Sincronizar com RHiD</label>
-                            <div class="row g-2 align-items-center">
-                                <div class="col-md-5">
-                                    <input type="date" class="form-control form-control-sm" id="calc-rhid-inicio" title="Data Inicial">
+<ul class="nav nav-tabs mb-4" id="calculosTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="individual-tab" data-bs-toggle="tab" data-bs-target="#tab-individual" type="button" role="tab"><i class="fas fa-user-edit me-2"></i>Cálculo Individual</button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="coletivo-tab" data-bs-toggle="tab" data-bs-target="#tab-coletivo" type="button" role="tab" onclick="preencherCompetenciaFechamento()"><i class="fas fa-users me-2"></i>Resumo da Folha (Fechamento)</button>
+    </li>
+</ul>
+
+<div class="tab-content" id="calculosTabsContent">
+    <!-- ABA 1: CÁLCULO INDIVIDUAL -->
+    <div class="tab-pane fade show active" id="tab-individual" role="tabpanel" tabindex="0">
+        <div class="row">
+            <!-- Coluna de Entrada de Dados -->
+            <div class="col-lg-5">
+                <div class="card shadow-sm border-0 mb-4">
+                    <div class="card-header bg-white border-bottom py-3">
+                        <h6 class="mb-0 fw-bold"><i class="fas fa-sliders-h text-primary me-2"></i> Parâmetros do Processamento</h6>
+                    </div>
+                    <div class="card-body">
+                        <form id="form-calculo-folha">
+                            <div class="mb-3">
+                                <label for="calc-funcionario" class="form-label">Funcionário</label>
+                                <select class="form-select" id="calc-funcionario" required></select>
+                            </div>
+
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <label for="calc-competencia" class="form-label">Competência</label>
+                                    <input type="text" class="form-control" id="calc-competencia" placeholder="MM/YYYY" required>
                                 </div>
-                                <div class="col-md-5">
-                                    <input type="date" class="form-control form-control-sm" id="calc-rhid-fim" title="Data Final">
-                                </div>
-                                <div class="col-md-2 text-end">
-                                    <button type="button" class="btn btn-sm btn-info text-white w-100" id="btn-pull-rhid" onclick="buscarApuracaoRhidParaCalculo()" title="Puxar Horas">
-                                        <i class="fas fa-sync-alt"></i>
-                                    </button>
+                                <div class="col-md-6">
+                                    <label for="calc-tipo" class="form-label">Tipo de Cálculo</label>
+                                    <select class="form-select" id="calc-tipo" required onchange="toggleCamposPorTipoCalculo()">
+                                        <option value="2">Adiantamento (Vale)</option>
+                                        <option value="1">Folha Mensal</option>
+                                    </select>
                                 </div>
                             </div>
-                            <small class="text-muted" style="font-size: 0.75rem;">Selecione o período para preencher faltas e extras automaticamente.</small>
-                        </div>
-                    </div>
-                    <!-- FIM INTEGRAÇÃO RHID -->
 
-                    <div class="row g-3">
-                        <div class="col-md-6 mb-3"><label for="calc-horas-extras" class="form-label">Horas Extras
-                                (50%)</label><input type="number" class="form-control" id="calc-horas-extras" value="0"
-                                min="0"></div>
-                        <div class="col-md-6 mb-3"><label for="calc-adicional-noturno" class="form-label">Horas
-                                Adicional Noturno</label><input type="number" class="form-control"
-                                id="calc-adicional-noturno" value="0" min="0"></div>
-                        <div class="col-md-6 mb-3"><label for="calc-faltas-horas" class="form-label">Faltas (em
-                                horas)</label><input type="number" class="form-control" id="calc-faltas-horas" value="0"
-                                min="0"></div>
-                        <div class="col-md-6 mb-3"><label for="calc-dependentes-irrf" class="form-label">Nº Dependentes
-                                (IRRF)</label><input type="number" class="form-control" id="calc-dependentes-irrf"
-                                value="0" min="0">
-                        </div>
-                        <div class="col-md-6 mb-3"><label for="calc-comissoes" class="form-label">Comissões/Prêmios
-                                (R$)</label><input type="number" step="0.01" class="form-control" id="calc-comissoes"
-                                value="0" min="0"></div>
-                        <div class="col-md-6 mb-3"><label for="calc-outros-descontos" class="form-label">Outros
-                                Descontos (R$)</label><input type="number" step="0.01" class="form-control"
-                                id="calc-outros-descontos" value="0" min="0"></div>
-                        <div class="col-12">
-                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox"
-                                    id="calc-desconto-vt"><label class="form-check-label"
-                                    for="calc-desconto-vt">Descontar
-                                    Vale-Transporte (6%)</label></div>
+                            <!-- Bloco de Dados Variáveis (Aparece apenas na Folha Mensal) -->
+                            <div id="bloco-variaveis-folha" style="display: none;">
+                                <!-- INÍCIO INTEGRAÇÃO RHID -->
+                                <div class="card bg-light mb-3 border-info">
+                                    <div class="card-body py-2 px-3">
+                                        <label class="form-label text-info fw-bold mb-1"><i class="fas fa-cloud-download-alt"></i> Sincronizar com RHiD</label>
+                                        <div class="row g-2 align-items-center">
+                                            <div class="col-md-5">
+                                                <input type="date" class="form-control form-control-sm" id="calc-rhid-inicio" title="Data Inicial">
+                                            </div>
+                                            <div class="col-md-5">
+                                                <input type="date" class="form-control form-control-sm" id="calc-rhid-fim" title="Data Final">
+                                            </div>
+                                            <div class="col-md-2 text-end">
+                                                <button type="button" class="btn btn-sm btn-info text-white w-100" id="btn-pull-rhid" onclick="buscarApuracaoRhidParaCalculo()" title="Puxar Horas">
+                                                    <i class="fas fa-sync-alt"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <small class="text-muted" style="font-size: 0.75rem;">Selecione o período para preencher faltas e extras automaticamente.</small>
+                                    </div>
+                                </div>
+                                <!-- FIM INTEGRAÇÃO RHID -->
+
+                                <div class="row g-3">
+                                    <div class="col-md-6 mb-3"><label for="calc-horas-extras" class="form-label">Horas Extras (50%)</label><input type="number" class="form-control" id="calc-horas-extras" value="0" min="0"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-adicional-noturno" class="form-label">Hrs Adicional Noturno</label><input type="number" class="form-control" id="calc-adicional-noturno" value="0" min="0"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-faltas-horas" class="form-label">Faltas (horas)</label><input type="number" class="form-control" id="calc-faltas-horas" value="0" min="0"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-dependentes-irrf" class="form-label">Nº Dependentes (IRRF)</label><input type="number" class="form-control" id="calc-dependentes-irrf" value="0" min="0"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-comissoes" class="form-label">Comissões/Prêmios (R$)</label><input type="number" step="0.01" class="form-control" id="calc-comissoes" value="0" min="0"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-outros-descontos" class="form-label">Outros Descontos (R$)</label><input type="number" step="0.01" class="form-control" id="calc-outros-descontos" value="0" min="0"></div>
+                                    <div class="col-12">
+                                        <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="calc-desconto-vt"><label class="form-check-label" for="calc-desconto-vt">Descontar Vale-Transporte (6%)</label></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="button" class="btn btn-primary w-100 mt-4" onclick="calcularFolhaPagamento()"><i class="fas fa-calculator me-2"></i> Simular Cálculo</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Coluna de Resultados (Resumo do Processamento) -->
+            <div class="col-lg-7">
+                <div class="card shadow-sm border-0 h-100">
+                    <div class="card-header bg-white border-bottom py-3 d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0 fw-bold"><i class="fas fa-list-check text-success me-2"></i> Resumo do Processamento</h6>
+                        <button class="btn btn-success btn-sm px-3" id="btn-salvar-processamento" style="display: none;" onclick="salvarProcessamento()"><i class="fas fa-save me-1"></i> Gravar no Histórico</button>
+                    </div>
+                    <div class="card-body" id="holerite-resultado">
+                        <div class="text-center text-muted p-5 mt-5">
+                            <i class="fas fa-laptop-code fa-3x mb-3 text-light"></i>
+                            <p>Preencha os dados e clique em "Simular Cálculo" para visualizar as verbas que serão geradas.</p>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-primary w-100 mt-4" onclick="calcularFolhaPagamento()"><i
-                            class="fas fa-calculator"></i>
-                        Calcular Folha</button>
-                </form>
+                </div>
             </div>
         </div>
     </div>
-    <!-- Coluna de Resultados (Holerite) -->
-    <div class="col-lg-7">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <span><i class="fas fa-receipt"></i> Demonstrativo de Pagamento</span>
-                <button class="btn btn-outline-secondary btn-sm" onclick="imprimirDemonstrativo()"
-                    id="btn-imprimir-holerite" style="display: none;"><i class="fas fa-print"></i>
-                    Imprimir</button>
-            </div>
-            <div class="card-body" id="holerite-resultado">
-                <p class="text-center text-muted mt-5">Selecione um funcionário e clique em
-                    "Calcular Folha" para gerar o demonstrativo.</p>
+
+    <!-- ABA 2: FECHAMENTO COLETIVO -->
+    <div class="tab-pane fade" id="tab-coletivo" role="tabpanel" tabindex="0">
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+                <div class="row align-items-end g-3">
+                    <div class="col-md-4">
+                        <label for="filtro-fechamento-competencia" class="form-label">Competência</label>
+                        <input type="text" class="form-control" id="filtro-fechamento-competencia" placeholder="MM/YYYY">
+                    </div>
+                    <div class="col-md-4">
+                        <label for="filtro-fechamento-tipo" class="form-label">Tipo de Cálculo</label>
+                        <select class="form-select" id="filtro-fechamento-tipo">
+                            <option value="2">Adiantamento (Vale)</option>
+                            <option value="1">Folha Mensal</option>
+                        </select>
+                    </div>
+                    <div class="col-md-4">
+                        <button type="button" class="btn btn-primary w-100" onclick="buscarFechamentoColetivo()"><i class="fas fa-search me-2"></i>Buscar Processamentos</button>
+                    </div>
+                </div>
             </div>
         </div>
-        <!-- Card de Análise com IA -->
-        <div class="card mt-4" id="card-analise-ia-holerite" style="display: none;">
-            <div class="card-header bg-primary text-white">
-                <h5><i class="fas fa-robot"></i> Análise Inteligente do Holerite</h5>
-            </div>
-            <div class="card-body" id="holerite-analise-ia-texto">
+
+        <div class="card shadow-sm border-0">
+            <div class="card-body" id="fechamento-resultado-container">
+                <div class="text-center text-muted p-5">
+                    <i class="fas fa-search-dollar fa-3x mb-3 text-light"></i>
+                    <p>Filtre a competência e o tipo para visualizar o resumo da folha de pagamento.</p>
+                </div>
             </div>
         </div>
     </div>

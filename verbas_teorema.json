@@ -1,0 +1,2193 @@
+[
+  {
+    "codigo": "0001",
+    "descricao": "SALARIO BASE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0002",
+    "descricao": "HORAS NORMAIS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0003",
+    "descricao": "ADIANTAMENTO DE SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0004",
+    "descricao": "SALARIO FAMILIA",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0005",
+    "descricao": "I.N.S.S. S/ SALARIOS",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0006",
+    "descricao": "I.R.R.F.",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0007",
+    "descricao": "ARREDONDAMENTO MES ANTERIOR",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0008",
+    "descricao": "ARREDONDAMENTO MES ATUAL",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0009",
+    "descricao": "ARREDONDAMENTO 13 SALARIO",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0010",
+    "descricao": "SALDO DE SALARIOS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0011",
+    "descricao": "F.G.T.S.",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0012",
+    "descricao": "ABONO PECUNIARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0013",
+    "descricao": "ADICIONAL DE FERIAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0014",
+    "descricao": "HORAS EXTRAS DOBRADA",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0015",
+    "descricao": "QUINQUENIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0016",
+    "descricao": "AUXILIO ENFERMIDADE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0017",
+    "descricao": "I.R. RETIDO EM F�RIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0018",
+    "descricao": "DESCANSO SEMANAL REMUNERADO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0019",
+    "descricao": "HORAS EXTRAS 50%",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0020",
+    "descricao": "HORAS EXTRAS NOTURNA ACRESC. ADIC NOT.",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0021",
+    "descricao": "CONTRIBUICAO CONFEDERATIVA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0022",
+    "descricao": "DIFERENCA DE SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0023",
+    "descricao": "LICENCA PATERNIDADE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0024",
+    "descricao": "TRABALHO FERIADO DIURNO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0025",
+    "descricao": "PREMIO PRODUCAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0026",
+    "descricao": "HORAS NORMAIS NOTURNAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0027",
+    "descricao": "HONORARIOS DIRETORIA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0028",
+    "descricao": "VERBA DE REPRESENTACAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0029",
+    "descricao": "MEDIA DE AD.NOTURNO P/D.S.R.",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0030",
+    "descricao": "TRABALHO FERIADO NOTURNO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0031",
+    "descricao": "LICENCA MATERNIDADE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0032",
+    "descricao": "MED HORAS VARIAVEIS AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0033",
+    "descricao": "HORAS EXTRAS NOTURNAS C/50%",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0034",
+    "descricao": "HORAS EXTRAS NOTURNAS C/70%",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0035",
+    "descricao": "HORAS/AULAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0036",
+    "descricao": "ABONO SALARIAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0037",
+    "descricao": "F.G.T.S. MES ANTERIOR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0038",
+    "descricao": "F.G.T.S. DO MES RESCISAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0039",
+    "descricao": "I.R.R.F. SOBRE 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0040",
+    "descricao": "I.R.R.F. SOBRE FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0041",
+    "descricao": "CONV. MED. CONTEZA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0042",
+    "descricao": "AUXILIO MORADIA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0043",
+    "descricao": "VALE TRANSPORTE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0044",
+    "descricao": "GRATIFICACAO EVENTUAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0045",
+    "descricao": "REFLEXO 13O AVISO IND",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0046",
+    "descricao": "MEDIA REND. VARIAVEL AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0047",
+    "descricao": "ANUENIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0048",
+    "descricao": "TRIENIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0049",
+    "descricao": "REFLEXO S/DESC. SEMANAL REMUN.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0050",
+    "descricao": "I.N.S.S. s/13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0051",
+    "descricao": "REVERSAO SALARIAL",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0052",
+    "descricao": "CONTRIBUICAO SINDICAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0053",
+    "descricao": "ADIC. DE ABONO PECUNIARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0054",
+    "descricao": "ADIC. DE ABONO PEC. PAGO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0055",
+    "descricao": "MENSALIDADE ASSOCIACAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0056",
+    "descricao": "ADIANTAMENTO DE FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0057",
+    "descricao": "ABONO PECUNIARIO PAGO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0058",
+    "descricao": "F.G.T.S. 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0059",
+    "descricao": "ENFERMIDADE - PR�-AUX. PREVIDENCIARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0060",
+    "descricao": "ADIANTAMENTO DE SALARIO",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0061",
+    "descricao": "TELEFONEMA PARTICULAR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0062",
+    "descricao": "ALUGUEL/ALOJAMENTO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0063",
+    "descricao": "ALIMENTA��O(P.A.T. Custeio Empregado)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0064",
+    "descricao": "SEGURO DE VIDA GRUPO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0065",
+    "descricao": "MATERIAL ESCOLAR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0066",
+    "descricao": "INSALUBRIDADE",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0067",
+    "descricao": "ADIANTAMENTO EXTRA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0068",
+    "descricao": "F.G.T.S. 1a. PARCELA 13o.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0069",
+    "descricao": "ADIC. DE PERICULOSIDADE",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0070",
+    "descricao": "1a. PARCELA 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0071",
+    "descricao": "2a. PARCELA 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0072",
+    "descricao": "M�DIA S/ 13 SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0073",
+    "descricao": "1a. PARCELA 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0261",
+    "descricao": "ADICIONAL NOTURNO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0074",
+    "descricao": "ADICIONAL DE FERIAS PAGO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0075",
+    "descricao": "DIFERENCA SALARIAL MES ATUAL",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0076",
+    "descricao": "DIFERENCA SALARIAL MES ANTER.",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0077",
+    "descricao": "I.N.S.S. PROVISIONADO EM FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0078",
+    "descricao": "FALTAS NAO JUSTIFICADA-dias",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0079",
+    "descricao": "MATERIAS DIVERSOS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0080",
+    "descricao": "SEGURO PARTICULAR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0081",
+    "descricao": "MEDIA HORAS EXTRAS FERIAS VENC",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0082",
+    "descricao": "MEDIA HR EXTRAS FERIAS PROPORC",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0083",
+    "descricao": "13o. SALARIO PROPORCIONAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0084",
+    "descricao": "PROVISAO DESCONTO FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0085",
+    "descricao": "I.S.S.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0086",
+    "descricao": "DESC ANTEC 13o. SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0087",
+    "descricao": "FERIAS PAGAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0088",
+    "descricao": "FERIAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0089",
+    "descricao": "SERVI�OS AUTONOMOS",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0090",
+    "descricao": "AVISO PREVIO INDENIZADO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0091",
+    "descricao": "RESSARCIMENTO DE AVISO PREVIO(INDENIZADO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0092",
+    "descricao": "FERIAS VENCIDAS TRCT",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0093",
+    "descricao": "MEDIA REND. VARIAVEL  FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0094",
+    "descricao": "FERIAS PROPORCIONAL RESCISAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0095",
+    "descricao": "MEDIA REND. VARIAVEL FERIAS PROPOR.TRCT",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0096",
+    "descricao": "ADICIONAL DE FERIAS PROP.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0097",
+    "descricao": "F.G.T.S. 4O%",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0098",
+    "descricao": "ABATIMENTO I.R.R.F.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0099",
+    "descricao": "PRO-LABORE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0100",
+    "descricao": "COMPLEMENTO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0218",
+    "descricao": "ORDENADO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0108",
+    "descricao": "I.R FERIAS RETIDO MES ANTERIOR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0219",
+    "descricao": "ATRASO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0109",
+    "descricao": "REFLEXO HORAS EXTRAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0110",
+    "descricao": "FERIAS EM DOBRO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0111",
+    "descricao": "13o SALARIO LIC. MATERNIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0112",
+    "descricao": "MEDIA REND. VARIAVEL S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0113",
+    "descricao": "MEDIAS DE COMISSOES",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0114",
+    "descricao": "INTEGRACAO ADIC NOTURNO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0115",
+    "descricao": "MEDIA ADIC. NOTURNO 13 SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0201",
+    "descricao": "FALTAS INJUSTIFICADA(horas)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0202",
+    "descricao": "INSALUBRIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0203",
+    "descricao": "VALE FARMACIA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0204",
+    "descricao": "ABONO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0205",
+    "descricao": "ADICIONAL NOTURNO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0206",
+    "descricao": "VALES",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0207",
+    "descricao": "CONTRIBUICAO CONFEDERATIVA",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0208",
+    "descricao": "MENSALIDADE SINDICAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0209",
+    "descricao": "ADICIONAL DE PERICULOSIDADE S/ F�RIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0210",
+    "descricao": "PENSAO JUDICIAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0211",
+    "descricao": "ADIANTAMENTO DE SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0212",
+    "descricao": "DESCONTO INSS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0213",
+    "descricao": "CESTA BASICA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0214",
+    "descricao": "VALE HOSPITAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0215",
+    "descricao": "LOJA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0216",
+    "descricao": "VALE LABORATORIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0217",
+    "descricao": "PLANO ODONTOLOGICO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0101",
+    "descricao": "LIQUIDO DA RESCIS�O",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0102",
+    "descricao": "ADICIONAL DE INSALUBRIDADE",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0103",
+    "descricao": "1020",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0104",
+    "descricao": "MEDIA DE REND. VARI�VEL S/ FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0105",
+    "descricao": "LICENCA MATERNIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0158",
+    "descricao": "DIF.BASE FGTS 1a PARCELA (+)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0116",
+    "descricao": "MEDIA ADIC. NOTURNO AVISO PREVIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0117",
+    "descricao": "MEDIA ADIC. NOTURNO FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0118",
+    "descricao": "MEDIA ADIC. NOTURNO FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0119",
+    "descricao": "MEDIA HORAS EXTRAS AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0120",
+    "descricao": "MEDIA HORAS EXTRAS 13 SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0121",
+    "descricao": "MEDIA HORAS EXTRAS FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0122",
+    "descricao": "MEDIA HORAS EXTRAS FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0123",
+    "descricao": "MEDIA HORAS EXTRAS FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0124",
+    "descricao": "MEDIA HORAS EXTRAS FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0125",
+    "descricao": "MEDIA HORAS EXTRAS S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0126",
+    "descricao": "MEDIA ADIC. NOTURNO FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0127",
+    "descricao": "MEDIA ADIC. NOTURNO FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0128",
+    "descricao": "MEDIA ADIC. NOTURNO S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0129",
+    "descricao": "MEDIA PERICULOSIDADE AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0130",
+    "descricao": "ADIC. DE  PERICULOSIDADE S/ 13� SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0297",
+    "descricao": "INDENIZA��O ESTABILIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0294",
+    "descricao": "PENSAO ALIMENTICIA 30% BRUTO(-IMPOSTO)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0131",
+    "descricao": "MEDIA PERICULOSIDADE FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0132",
+    "descricao": "MEDIA PERICULOSIDADE FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0235",
+    "descricao": "VALE A DESC.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0133",
+    "descricao": "MEDIA PERICULOSIDADE FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0134",
+    "descricao": "MEDIA PERICULOSIDADE FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0135",
+    "descricao": "MEDIA PERICULOSIDADE S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0136",
+    "descricao": "MEDIA INSALUBRIDADE AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0137",
+    "descricao": "MEDIA INSALUBRIDADE 13 SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0220",
+    "descricao": "TERMINO ANTEC. DE CONT. DE EXP.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0138",
+    "descricao": "MEDIA INSALUBRIDADE FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0139",
+    "descricao": "MEDIA INSALUBRIDADE FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0140",
+    "descricao": "MEDIA INSALUBRIDADE FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0141",
+    "descricao": "MEDIA INSALUBRIDADE FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0142",
+    "descricao": "MEDIA INSALUBRIDADE S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0143",
+    "descricao": "MEDIA COMISSAO AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0144",
+    "descricao": "MEDIA COMISSAO 13 SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0145",
+    "descricao": "MEDIA COMISSAO FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0146",
+    "descricao": "MEDIA COMISSAO FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0147",
+    "descricao": "MEDIA COMISSAO FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0148",
+    "descricao": "MEDIA COMISSAO FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0149",
+    "descricao": "MEDIA COMISSAO S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0150",
+    "descricao": "MEDIA ADIC. FUNCAO AVISO PREVIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0151",
+    "descricao": "MEDIA ADIC. FUNCAO 13 SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0295",
+    "descricao": "LICENCA REMUNERADA GESTANTE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0152",
+    "descricao": "MEDIA ADIC. FUNCAO FERIAS VENCIDAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0153",
+    "descricao": "MEDIA ADIC. FUNCAO FERIAS PROPORCIONAL",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0154",
+    "descricao": "MEDIA ADIC. FUNCAO FERIAS PAGAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0155",
+    "descricao": "MEDIA ADIC. FUNCAO FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0156",
+    "descricao": "MEDIA ADIC. FUNCAO S/ 13� SAL. IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0157",
+    "descricao": "DSR PERDIDO(horas)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0159",
+    "descricao": "DIF.BASE FGTS 1a PARCELA (-)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0160",
+    "descricao": "REFLEXO FERIAS S/ AVISO PREVIO IND",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0161",
+    "descricao": "MEDIAS HORAS LICENCA MATERNIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0162",
+    "descricao": "PENSAO ALIMENTICIA (S.M.)",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0221",
+    "descricao": "DIFEREN�A DE DSR COMP. 08/2010",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0163",
+    "descricao": "INDENIZACAO ART. 479 CLT",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0164",
+    "descricao": "MULTA ART. 479 CLT",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0222",
+    "descricao": "VALOR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0223",
+    "descricao": "REFLEXO DSR MES RESCISAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0224",
+    "descricao": "MEDIA REND. VAR. DSR 13�",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0227",
+    "descricao": "FALTA RESCISAO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0225",
+    "descricao": "REFLEXO REND. VAR.DSR 13�",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0226",
+    "descricao": "REFLEXO REND. VAR.DSR FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0228",
+    "descricao": "REFLEXO DSR HORAS VARIAVEIS 13� S.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0229",
+    "descricao": "PENS�O ALIMENTICIA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0231",
+    "descricao": "PENSAO ALIMENTICIA 20% S/ OS REND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0230",
+    "descricao": "PENSAO ALIMENT�CIA 49% sm",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0233",
+    "descricao": "REVERSAO SALARIAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0234",
+    "descricao": "PERDA REFLEXO DSR -",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0236",
+    "descricao": "SALARIO PRODU��O DOMICILIO (por par)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0165",
+    "descricao": "CESTA BASICA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0238",
+    "descricao": "CONTRIBUI�AO P/ HOSPITAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0239",
+    "descricao": "DESC. HOSPITAL DIF. SET/11",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0240",
+    "descricao": "HAVER HORAS TRAB.MES ANTERIOR",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0241",
+    "descricao": "DSR INDENIZADA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0242",
+    "descricao": "MEDIA AD.NOT-13�SAL.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0166",
+    "descricao": "MEDIA HORAS LICENCA REMUNERADA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0243",
+    "descricao": "REF. ADIC. NOT-13�",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0251",
+    "descricao": "AUX. ENFERMIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0244",
+    "descricao": "MEDIA HE 50%-13� SAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0245",
+    "descricao": "MEDIA REFL DSR HE 50%-13� SAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0246",
+    "descricao": "MEDIA HE NOTURNA -13� SAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0247",
+    "descricao": "MEDIA REFL. DSR HE NOT - 13�",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0248",
+    "descricao": "MEDIA HE 100%-13� SAL.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0249",
+    "descricao": "MEDIA REFL DSR HE 100%-13� SAL.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0250",
+    "descricao": "REFLEXO INSALUBRIDADE 13� SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0253",
+    "descricao": "HORAS EXTRAS DOBRADA ACRESC. DE AD. NOT.",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0252",
+    "descricao": "REEMBOLSO INSS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0254",
+    "descricao": "ADIANTAMENTO DE PENSAO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0255",
+    "descricao": "ADICIONAL DE AC�MULO DE FUN�AO",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0167",
+    "descricao": "ARREDONDAMENTO FERIAS",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0168",
+    "descricao": "MEDIA ABONO PECUNIARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0169",
+    "descricao": "MEDIA ABONO PECUNIARIO PAGO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0256",
+    "descricao": "AUXILIO FUNERAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0257",
+    "descricao": "Plus Salarial",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0170",
+    "descricao": "I.N.S.S. S/ PRO LABORE",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0258",
+    "descricao": "PENSAO ALIMENTICIA 34,86% (sal. min.)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0259",
+    "descricao": "REF. DE PERICULISADE S/ 13� PROP.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0260",
+    "descricao": "REF. DE PERICULOSIDADE S/ FERIAS PROP.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0171",
+    "descricao": "I.R.R.F. S/ PRO LABORE",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0172",
+    "descricao": "I.N.S.S. S/ RPA",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0262",
+    "descricao": "COMP. SALARIAL DE 04 A 06 DE 2016",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0263",
+    "descricao": "HORAS EXTRA COMP. DE 01 A 04 DE 2014",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0265",
+    "descricao": "FERIAS COMP. DE JAN. A ABRIL/2014",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0173",
+    "descricao": "TAXA ASSISTENCIAL",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0266",
+    "descricao": "ACERTO CRIVAL 122014",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0174",
+    "descricao": "I.R.P.L.",
+    "tipo": "A",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0267",
+    "descricao": "MEDIA RENDIMENTO VARI�VEL S/ FERIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0268",
+    "descricao": "PENS�O ALIMENT�CIA 38,08% (S.M)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0269",
+    "descricao": "PENS�O ALIMENT�CIA 30%(rend. liquidos)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0270",
+    "descricao": "PENSAO ALIMENTICIA 54% (sal.min)",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0271",
+    "descricao": "COMISS�O DE VENDAS EVENTUAIS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0272",
+    "descricao": "ADIANTAMENTO(LICEN�A MATERNIDADE)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0273",
+    "descricao": "LICEN�A MATERNIDADE(COMP.07/2015)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0274",
+    "descricao": "LICEN�A MATERNIDADE(COMP.08/2015)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0275",
+    "descricao": "LICEN�A MATERNIDADE(COMP.09/2015)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0277",
+    "descricao": "ADIANTAMENTO DE 13� SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0276",
+    "descricao": "LICEN�A MATERNIDADE(COMP.10/2015)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0278",
+    "descricao": "Adiantamento de verbas rescis�rias",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0175",
+    "descricao": "MEDIA REND. VARI�VEL S/ FERIAS",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0176",
+    "descricao": "MEDIA REND. VARIAVEL  FERIAS PAGAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0279",
+    "descricao": "CONSULTA MEDICA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0177",
+    "descricao": "MEDIA REND. VARIAVEL S/ FERIAS PROP IND.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0280",
+    "descricao": "ADICIONAL DE PERICULOSIDADE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0281",
+    "descricao": "PENS�O ALIMENTICIA 38,10% S.M.",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0178",
+    "descricao": "FERIAS EM DOBRO - MULTA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0282",
+    "descricao": "DIF. SAL REFERENTE MES JANEIRO 2018",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0283",
+    "descricao": "PENSAO ALIMENT�CIA 26,21% S/ S.M.",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0284",
+    "descricao": "PENSAO ALIMENTICIA 20% (sal. minimo)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0179",
+    "descricao": "ADICIONAL DE F�RIAS VENCIDAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0180",
+    "descricao": "MEDIA REND. VAR. 13o (ADIANTAMENTO)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0181",
+    "descricao": "AJUSTE MEDIA REND.VARIAVEL 13 SALARIO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0182",
+    "descricao": "FRETE REMUNERA��O",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0183",
+    "descricao": "FRETE REMUNERA��O BASE INSS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0184",
+    "descricao": "FRETE REMUNERA��O BASE IRFF",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0185",
+    "descricao": "DESC SEST",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0186",
+    "descricao": "DESC SENAT",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0187",
+    "descricao": "DESC I.N.S.S. S/ RPA",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0285",
+    "descricao": "PENSAO ALIMENTICIA 35% S.M.",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0190",
+    "descricao": "MEDIA ADIC. NOTURNO 13 SALARIO (ADTO)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0191",
+    "descricao": "MEDIA HORAS EXTRAS 13 SALARIO (ADTO)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0192",
+    "descricao": "MEDIA PERICULOSIDADE 13 SALARIO (ADTO)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0290",
+    "descricao": "Indeniza��o Rescisoria MP936-2020",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0193",
+    "descricao": "MEDIA INSALUBRIDADE 13 SALARIO (ADTO)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0291",
+    "descricao": "PENSAO ALIMENTICIA 30%  (Sal. minimo)",
+    "tipo": "P",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0194",
+    "descricao": "MEDIA COMISSAO 13 SALARIO (ADTO)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0195",
+    "descricao": "MEDIA ADIC.FUNCAO 13 SALARIO (ADTO)",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0196",
+    "descricao": "PRO-LABORE (BASE FGTS)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0292",
+    "descricao": "Desc. Pgto Indevido BEM - MP 936",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0287",
+    "descricao": "AJUDA COMPENSATORIA MENSAL - MP 936/2020",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0293",
+    "descricao": "PENS�O ALIMENT�CIA 28,41% DO S L�QUIDO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0288",
+    "descricao": "SALARIO PROP. REFERENTE  A  MP 936",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0289",
+    "descricao": "AUXILIO DOEN�A",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0188",
+    "descricao": "SALARIO - BASE FGTS ACIDENTE DE TRABALHO",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0189",
+    "descricao": "SALARIO - BASE FGTS SERVI�O MILITAR",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0286",
+    "descricao": "AVISO PREVIO (acresc. Lei 12506/11)",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0296",
+    "descricao": "Saldo liberado no VR",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0298",
+    "descricao": "DISSIDIO RETROATIVO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0300",
+    "descricao": "DESC.ANTECIPACAO VALE",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0299",
+    "descricao": "teste",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0301",
+    "descricao": "DESCONTO DE FALTAS S/ F�RIAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0197",
+    "descricao": "13 SALARIO - LIC.MATERNIDADE - ADTO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0302",
+    "descricao": "ACERTO LIQUIDO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0303",
+    "descricao": "INSS retroativo 11/2023",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0304",
+    "descricao": "Desconto ordem judicial - 10%",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0198",
+    "descricao": "I.R.R.F S/ ADIANTAMENTO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0305",
+    "descricao": "DESCONTO AVISO PR�VIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0306",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 1� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0307",
+    "descricao": "Desconto Ordem Judicial-10% Sobre Ferias",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0308",
+    "descricao": "DESC. PARCIAL eCONSIGNADO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0312",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 5� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0309",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 2� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0310",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 3� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0313",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 6� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0311",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 4� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0316",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 8� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0315",
+    "descricao": "SALDO DE SALARIO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0314",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 7� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0317",
+    "descricao": "DESCONTO EMPR. eCONSIGNADO - 9� CONTRATO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0318",
+    "descricao": "DESC. FERIAS ANTECIPADAS",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0319",
+    "descricao": "DESC. FERIAS FRUIDAS ANTECIPADAMENTE",
+    "tipo": "Q",
+    "ativo": true,
+    "origem": "Teorema"
+  },
+  {
+    "codigo": "0199",
+    "descricao": "EMPRESTIMO eCONSIGNADO - NAO DESCONTADO",
+    "tipo": "V",
+    "ativo": true,
+    "origem": "Teorema"
+  }
+]

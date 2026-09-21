@@ -1,4 +1,5 @@
-// Gerenciamento da Seção de Cálculos do Departamento Pessoal
+// Variável global para armazenar temporariamente o processamento simulado
+let processamentoAtual = null;
 
 async function inicializarCalculos() {
     try {
@@ -17,158 +18,383 @@ async function inicializarCalculos() {
             option.dataset.salarioBase = func.salario || 0;
             funcSelect.appendChild(option);
         });
+
+        // Sugerir competência atual
+        const hoje = new Date();
+        const mes = String(hoje.getMonth() + 1).padStart(2, '0');
+        document.getElementById('calc-competencia').value = `${mes}/${hoje.getFullYear()}`;
+        toggleCamposPorTipoCalculo();
     } catch (e) {
         console.error("Erro ao inicializar Cálculos:", e);
         mostrarMensagem("Erro ao carregar a seção de Cálculos.", "error");
     }
 }
 
+function toggleCamposPorTipoCalculo() {
+    const tipo = document.getElementById('calc-tipo').value;
+    const blocoVariaveis = document.getElementById('bloco-variaveis-folha');
+    if (tipo === '2') { // Adiantamento
+        blocoVariaveis.style.display = 'none';
+    } else { // Folha Mensal
+        blocoVariaveis.style.display = 'block';
+    }
+    verificarCalculoExistente();
+}
+
+async function verificarCalculoExistente() {
+    const funcionarioId = document.getElementById('calc-funcionario').value;
+    const competencia = document.getElementById('calc-competencia').value;
+    const tipoCalculo = document.getElementById('calc-tipo').value;
+    
+    if (!funcionarioId || !competencia || competencia.length < 7) return;
+
+    const idUnico = `${funcionarioId}_${competencia.replace('/', '')}_${tipoCalculo}`;
+    const docRef = db.collection('historico_folha').doc(idUnico);
+    const doc = await docRef.get();
+
+    if (doc.exists) {
+        mostrarMensagem(`Atenção: Já existe um cálculo salvo para esta competência (${tipoCalculo === '1' ? 'Folha' : 'Adto'}).`, 'info');
+        const data = doc.data();
+        
+        // Restaurar parâmetros de entrada se existirem
+        if (data.parametros) {
+            if (document.getElementById('calc-horas-extras')) document.getElementById('calc-horas-extras').value = data.parametros.horasExtras || 0;
+            if (document.getElementById('calc-adicional-noturno')) document.getElementById('calc-adicional-noturno').value = data.parametros.horasAdicionalNoturno || 0;
+            if (document.getElementById('calc-faltas-horas')) document.getElementById('calc-faltas-horas').value = data.parametros.horasFalta || 0;
+            if (document.getElementById('calc-dependentes-irrf')) document.getElementById('calc-dependentes-irrf').value = data.parametros.numDependentes || 0;
+            if (document.getElementById('calc-comissoes')) document.getElementById('calc-comissoes').value = data.parametros.comissoes || 0;
+            if (document.getElementById('calc-outros-descontos')) document.getElementById('calc-outros-descontos').value = data.parametros.outrosDescontos || 0;
+            if (document.getElementById('calc-desconto-vt')) document.getElementById('calc-desconto-vt').checked = data.parametros.descontaVT || false;
+        }
+
+        // Renderizar a tabela com os movimentos salvos
+        const funcSelect = document.getElementById('calc-funcionario');
+        const funcionarioNome = funcSelect.options[funcSelect.selectedIndex].textContent.split('(')[0].trim();
+        
+        const totais = renderizarPreviewCalculo(data.movimentos, funcionarioNome, tipoCalculo, competencia, true);
+        
+        // Configurar processamentoAtual para que o botão Sobrescrever funcione
+        processamentoAtual = {
+            funcionarioId,
+            funcionarioNome,
+            competencia,
+            tipoCalculo,
+            movimentos: data.movimentos,
+            totalProventos: totais.totalProventos,
+            totalDescontos: totais.totalDescontos,
+            liquido: totais.liquido,
+            parametros: data.parametros || {},
+            jaExiste: true
+        };
+    } else {
+        // Se não existir, limpa o preview para evitar confusão
+        document.getElementById('holerite-resultado').innerHTML = `
+            <div class="text-center text-muted p-5 mt-5">
+                <i class="fas fa-laptop-code fa-3x mb-3 text-light"></i>
+                <p>Preencha os dados e clique em "Simular Cálculo" para visualizar as verbas que serão geradas.</p>
+            </div>
+        `;
+        document.getElementById('btn-salvar-processamento').style.display = 'none';
+        processamentoAtual = null;
+    }
+}
+
+// Escutar mudanças para verificar
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+        const funcSelect = document.getElementById('calc-funcionario');
+        const compInput = document.getElementById('calc-competencia');
+        if (funcSelect) funcSelect.addEventListener('change', verificarCalculoExistente);
+        if (compInput) compInput.addEventListener('blur', verificarCalculoExistente);
+    }, 1000);
+});
+
+function renderizarPreviewCalculo(movimentos, funcionarioNome, tipoCalculo, competencia, jaExiste) {
+    const resultadoDiv = document.getElementById('holerite-resultado');
+    const btnSalvar = document.getElementById('btn-salvar-processamento');
+    
+    let totalProventos = 0;
+    let totalDescontos = 0;
+
+    let trs = '';
+    movimentos.forEach(m => {
+        const desc = window.verbasMap && window.verbasMap[m.verbaCodigo] ? window.verbasMap[m.verbaCodigo].descricao : 'Verba ' + m.verbaCodigo;
+        if (m.natureza === 'V') totalProventos += Number(m.valor);
+        if (m.natureza === 'D') totalDescontos += Number(m.valor);
+        
+        trs += `
+            <tr>
+                <td class="text-center">${m.verbaCodigo}</td>
+                <td>${desc}</td>
+                <td class="text-center">${m.referencia || ''}</td>
+                <td class="text-end text-success">${m.natureza === 'V' ? 'R$ ' + Number(m.valor).toFixed(2) : ''}</td>
+                <td class="text-end text-danger">${m.natureza === 'D' ? 'R$ ' + Number(m.valor).toFixed(2) : ''}</td>
+            </tr>
+        `;
+    });
+
+    const salarioLiquido = totalProventos - totalDescontos;
+
+    let alertaHtml = `
+        <div class="alert alert-info py-2 mb-3">
+            <i class="fas fa-info-circle me-2"></i> Cálculo para <strong>${funcionarioNome}</strong> (${tipoCalculo === '1' ? 'Folha' : 'Adto'} - ${competencia}). Clique em "Gravar no Histórico" para salvar.
+        </div>
+    `;
+    
+    if (jaExiste) {
+        alertaHtml = `
+            <div class="alert alert-warning py-2 mb-3">
+                <i class="fas fa-exclamation-triangle me-2"></i> <strong>Atenção!</strong> Já existe um cálculo salvo para este mês. Se você prosseguir, o cálculo anterior será <strong>sobrescrito</strong>.
+            </div>
+        `;
+        btnSalvar.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Sobrescrever Histórico';
+        btnSalvar.classList.replace('btn-success', 'btn-warning');
+    } else {
+        btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Gravar no Histórico';
+        btnSalvar.classList.replace('btn-warning', 'btn-success');
+    }
+
+    resultadoDiv.innerHTML = `
+        ${alertaHtml}
+        <table class="table table-sm table-bordered">
+            <thead class="table-light">
+                <tr><th class="text-center">Cód.</th><th>Descrição</th><th class="text-center">Ref.</th><th class="text-end">Vencimentos</th><th class="text-end">Descontos</th></tr>
+            </thead>
+            <tbody>${trs}</tbody>
+            <tfoot>
+                <tr><td colspan="3" class="text-end fw-bold">Totais</td><td class="text-end fw-bold text-success">R$ ${totalProventos.toFixed(2)}</td><td class="text-end fw-bold text-danger">R$ ${totalDescontos.toFixed(2)}</td></tr>
+                <tr><td colspan="3" class="text-end fw-bold fs-5">Valor Líquido</td><td colspan="2" class="text-end fw-bold fs-5 text-primary">R$ ${salarioLiquido.toFixed(2)}</td></tr>
+            </tfoot>
+        </table>
+    `;
+    
+    btnSalvar.style.display = 'block';
+    
+    // Devolver os totais calculados para caso quem chamou precise
+    return { totalProventos, totalDescontos, liquido: salarioLiquido };
+}
+
 async function calcularFolhaPagamento() {
     const resultadoDiv = document.getElementById('holerite-resultado');
-    resultadoDiv.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x"></i><p class="mt-3">Calculando...</p></div>';
+    const btnSalvar = document.getElementById('btn-salvar-processamento');
+    resultadoDiv.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x"></i><p class="mt-3">Simulando Cálculos...</p></div>';
+    btnSalvar.style.display = 'none';
+    processamentoAtual = null;
 
     try {
         // 1. ENTRADA DE DADOS
         const funcionarioId = document.getElementById('calc-funcionario').value;
-        if (!funcionarioId) {
-            mostrarMensagem("Selecione um funcionário.", "warning");
-            resultadoDiv.innerHTML = '<p class="text-center text-muted mt-5">Selecione um funcionário para começar.</p>';
+        const competencia = document.getElementById('calc-competencia').value;
+        const tipoCalculo = document.getElementById('calc-tipo').value;
+        
+        if (!funcionarioId || !competencia) {
+            mostrarMensagem("Selecione um funcionário e informe a competência.", "warning");
+            resultadoDiv.innerHTML = '<div class="text-center text-muted p-5 mt-5"><i class="fas fa-laptop-code fa-3x mb-3 text-light"></i><p>Preencha os dados e clique em "Simular Cálculo".</p></div>';
             return;
         }
+
+        const idUnico = `${funcionarioId}_${competencia.replace('/', '')}_${tipoCalculo}`;
+        const docRefExistente = await db.collection('historico_folha').doc(idUnico).get();
+        const jaExiste = docRefExistente.exists;
 
         const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
-        if (!funcDoc.exists) {
-            mostrarMensagem("Funcionário não encontrado.", "error");
-            return;
-        }
+        if (!funcDoc.exists) return;
+        
         const funcionario = funcDoc.data();
         const salarioBase = parseFloat(funcionario.salario) || 0;
-        const jornadaMensal = 220; // Padrão CLT
+        const jornadaMensal = 220;
+        let movimentos = [];
+        let totalProventos = 0;
+        let totalDescontos = 0;
+        let parametrosEntrada = {};
 
-        // Variáveis do mês
-        const horasExtras = parseFloat(document.getElementById('calc-horas-extras').value) || 0;
-        const horasAdicionalNoturno = parseFloat(document.getElementById('calc-adicional-noturno').value) || 0;
-        const horasFalta = parseFloat(document.getElementById('calc-faltas-horas').value) || 0;
-        const numDependentes = parseInt(document.getElementById('calc-dependentes-irrf').value) || 0;
-        const comissoes = parseFloat(document.getElementById('calc-comissoes').value) || 0;
-        const outrosDescontos = parseFloat(document.getElementById('calc-outros-descontos').value) || 0;
-        const descontaVT = document.getElementById('calc-desconto-vt').checked;
+        // 2. PROCESSAMENTO: ADIANTAMENTO (VALE)
+        if (tipoCalculo === '2') {
+            const valorAdiantamento = Number((salarioBase * 0.40).toFixed(2));
+            movimentos.push({
+                verbaCodigo: '0060',
+                natureza: 'V',
+                referencia: '40.00',
+                valor: valorAdiantamento
+            });
+            totalProventos += valorAdiantamento;
+        } 
+        // 3. PROCESSAMENTO: FOLHA MENSAL
+        else if (tipoCalculo === '1') {
+            const horasExtras = parseFloat(document.getElementById('calc-horas-extras').value) || 0;
+            const horasAdicionalNoturno = parseFloat(document.getElementById('calc-adicional-noturno').value) || 0;
+            const horasFalta = parseFloat(document.getElementById('calc-faltas-horas').value) || 0;
+            const numDependentes = parseInt(document.getElementById('calc-dependentes-irrf').value) || 0;
+            const comissoes = parseFloat(document.getElementById('calc-comissoes').value) || 0;
+            const outrosDescontos = parseFloat(document.getElementById('calc-outros-descontos').value) || 0;
+            const descontaVT = document.getElementById('calc-desconto-vt').checked;
 
-        // 2. CÁLCULO DOS PROVENTOS
-        const valorHora = salarioBase / jornadaMensal;
-        const horasExtrasReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasExtras) : horasExtras;
-        const horasAdicionalNoturnoReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasAdicionalNoturno) : horasAdicionalNoturno;
-        const horasFaltaReais = window.fakeDecimalToTrueDecimal ? window.fakeDecimalToTrueDecimal(horasFalta) : horasFalta;
+            const valorHora = salarioBase / jornadaMensal;
 
-        const valorSalarioBase = Number(salarioBase.toFixed(2));
-        const valorHorasExtras = Number((horasExtrasReais * (valorHora * 1.5)).toFixed(2));
-        const valorDSR = valorHorasExtras > 0 ? Number((valorHorasExtras / 6).toFixed(2)) : 0;
-        const valorAdicionalNoturno = Number((horasAdicionalNoturnoReais * (valorHora * 0.2)).toFixed(2));
-        const valorComissoes = Number(comissoes.toFixed(2));
+            parametrosEntrada = {
+                horasExtras, horasAdicionalNoturno, horasFalta, numDependentes, comissoes, outrosDescontos, descontaVT
+            };
 
-        // Total Proventos = Soma exata das verbas de proventos
-        const totalProventos = Number((valorSalarioBase + valorHorasExtras + valorDSR + valorAdicionalNoturno + valorComissoes).toFixed(2));
+            // Salário Base (Provento)
+            movimentos.push({ verbaCodigo: '0001', natureza: 'V', referencia: '30.00', valor: salarioBase });
+            totalProventos += salarioBase;
 
-        // 3. CÁLCULO DOS DESCONTOS OBRIGATÓRIOS
-        const descontoINSS = Number(Math.max(0, calcularINSS(totalProventos)).toFixed(2));
-        const baseCalculoIRRF = totalProventos - descontoINSS - (numDependentes * 189.59);
-        const descontoIRRF = Number(Math.max(0, calcularIRRF(baseCalculoIRRF)).toFixed(2));
-
-        // 4. DESCONTOS OPCIONAIS E VARIÁVEIS
-        const descontoVT = descontaVT ? Number((salarioBase * 0.06).toFixed(2)) : 0;
-        const descontoFaltas = Number((horasFaltaReais * valorHora).toFixed(2));
-        const valorOutrosDescontos = Number(outrosDescontos.toFixed(2));
-
-        // Total Descontos = Soma exata de todas as verbas de descontos
-        const totalDescontos = Number((descontoINSS + descontoIRRF + descontoVT + descontoFaltas + valorOutrosDescontos).toFixed(2));
-
-        // 5. CÁLCULO DO SALÁRIO LÍQUIDO
-        const salarioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
-
-        // 6. GERAÇÃO DO DEMONSTRATIVO
-        const holeriteHTML = `
-            <style>
-                .holerite { font-family: 'Courier New', Courier, monospace; border: 1px solid #ccc; padding: 15px; }
-                .holerite-header, .holerite-footer { text-align: center; margin-bottom: 15px; }
-                .holerite-body { display: flex; justify-content: space-between; }
-                .holerite-col { width: 48%; }
-                .holerite-table { width: 100%; font-size: 0.9rem; }
-                .holerite-table th, .holerite-table td { padding: 4px; border-bottom: 1px dashed #eee; }
-                .holerite-table th { text-align: left; }
-                .holerite-table td:last-child { text-align: right; }
-                .total-line { font-weight: bold; border-top: 1px solid #333; }
-            </style>
-            <div class="holerite" id="holerite-imprimivel">
-                <div class="holerite-header">
-                    <h5>DEMONSTRATIVO DE PAGAMENTO</h5>
-                    <p>Competência: ${new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
-                    <p><strong>Funcionário:</strong> ${funcionario.nome}</p>
-                </div>
-                <div class="holerite-body">
-                    <div class="holerite-col">
-                        <table class="holerite-table">
-                            <thead><tr><th>Proventos</th><th>Valor (R$)</th></tr></thead>
-                            <tbody>
-                                <tr><td>Salário Base</td><td>${valorSalarioBase.toFixed(2)}</td></tr>
-                                ${valorHorasExtras > 0 ? `<tr><td>Horas Extras (50%)</td><td>${valorHorasExtras.toFixed(2)}</td></tr>` : ''}
-                                ${valorDSR > 0 ? `<tr><td>DSR s/ Horas Extras</td><td>${valorDSR.toFixed(2)}</td></tr>` : ''}
-                                ${valorAdicionalNoturno > 0 ? `<tr><td>Adicional Noturno (20%)</td><td>${valorAdicionalNoturno.toFixed(2)}</td></tr>` : ''}
-                                ${valorComissoes > 0 ? `<tr><td>Comissões/Prêmios</td><td>${valorComissoes.toFixed(2)}</td></tr>` : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="holerite-col">
-                        <table class="holerite-table">
-                            <thead><tr><th>Descontos</th><th>Valor (R$)</th></tr></thead>
-                            <tbody>
-                                <tr><td>INSS</td><td>${descontoINSS.toFixed(2)}</td></tr>
-                                <tr><td>IRRF</td><td>${descontoIRRF.toFixed(2)}</td></tr>
-                                ${descontoVT > 0 ? `<tr><td>Vale-Transporte</td><td>${descontoVT.toFixed(2)}</td></tr>` : ''}
-                                ${descontoFaltas > 0 ? `<tr><td>Faltas/Atrasos</td><td>${descontoFaltas.toFixed(2)}</td></tr>` : ''}
-                                ${valorOutrosDescontos > 0 ? `<tr><td>Outros Descontos</td><td>${valorOutrosDescontos.toFixed(2)}</td></tr>` : ''}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="holerite-footer">
-                    <table class="holerite-table">
-                        <tr class="total-line"><td>Total Proventos</td><td>R$ ${totalProventos.toFixed(2)}</td></tr>
-                        <tr class="total-line"><td>Total Descontos</td><td>R$ ${totalDescontos.toFixed(2)}</td></tr>
-                        <tr class="total-line"><td><strong>Salário Líquido</strong></td><td><strong>R$ ${salarioLiquido.toFixed(2)}</strong></td></tr>
-                    </table>
-                </div>
-            </div>
-        `;
-        resultadoDiv.innerHTML = holeriteHTML;
-        document.getElementById('btn-imprimir-holerite').style.display = 'block';
-
-        // 7. GERAR ANÁLISE COM IA
-        const dadosParaIA = {
-            salarioBruto: totalProventos,
-            salarioLiquido,
-            totalProventos,
-            totalDescontos,
-            descontos: {
-                inss: descontoINSS,
-                irrf: descontoIRRF,
-                vt: descontoVT,
-                faltas: descontoFaltas,
-                outros: valorOutrosDescontos
-            },
-            proventos: {
-                base: valorSalarioBase,
-                horasExtras: valorHorasExtras,
-                dsr: valorDSR,
-                adicionalNoturno: valorAdicionalNoturno,
-                comissoes: valorComissoes
+            // Faltas (Desconto)
+            if (horasFalta > 0) {
+                const valorFaltas = Number((horasFalta * valorHora).toFixed(2));
+                movimentos.push({ verbaCodigo: '0201', natureza: 'D', referencia: horasFalta.toFixed(2), valor: valorFaltas });
+                totalDescontos += valorFaltas;
             }
+
+            // Horas Extras (Provento)
+            let valorHorasExtras = 0;
+            if (horasExtras > 0) {
+                valorHorasExtras = Number((horasExtras * (valorHora * 1.5)).toFixed(2));
+                movimentos.push({ verbaCodigo: '0032', natureza: 'V', referencia: horasExtras.toFixed(2), valor: valorHorasExtras });
+                totalProventos += valorHorasExtras;
+                
+                // DSR sobre Extras
+                const valorDSR = Number((valorHorasExtras / 6).toFixed(2));
+                movimentos.push({ verbaCodigo: '0049', natureza: 'V', referencia: '', valor: valorDSR });
+                totalProventos += valorDSR;
+            }
+
+            // Adicional Noturno
+            if (horasAdicionalNoturno > 0) {
+                const valorAdicionalNoturno = Number((horasAdicionalNoturno * (valorHora * 0.2)).toFixed(2));
+                movimentos.push({ verbaCodigo: '0020', natureza: 'V', referencia: horasAdicionalNoturno.toFixed(2), valor: valorAdicionalNoturno });
+                totalProventos += valorAdicionalNoturno;
+            }
+
+            // Comissões
+            if (comissoes > 0) {
+                movimentos.push({ verbaCodigo: '0015', natureza: 'V', referencia: '', valor: comissoes });
+                totalProventos += comissoes;
+            }
+
+            // Descontos Legais (INSS e IRRF)
+            const descontoINSS = Number(Math.max(0, calcularINSS(totalProventos)).toFixed(2));
+            movimentos.push({ verbaCodigo: '0101', natureza: 'D', referencia: '', valor: descontoINSS });
+            totalDescontos += descontoINSS;
+
+            const baseCalculoIRRF = totalProventos - descontoINSS - (numDependentes * 189.59);
+            const descontoIRRF = Number(Math.max(0, calcularIRRF(baseCalculoIRRF)).toFixed(2));
+            if (descontoIRRF > 0) {
+                movimentos.push({ verbaCodigo: '0102', natureza: 'D', referencia: '', valor: descontoIRRF });
+                totalDescontos += descontoIRRF;
+            }
+
+            // Vale-Transporte
+            if (descontaVT) {
+                const descontoVT = Number((salarioBase * 0.06).toFixed(2));
+                movimentos.push({ verbaCodigo: '0115', natureza: 'D', referencia: '6.00', valor: descontoVT });
+                totalDescontos += descontoVT;
+            }
+
+            // Outros Descontos
+            if (outrosDescontos > 0) {
+                movimentos.push({ verbaCodigo: '0198', natureza: 'D', referencia: '', valor: outrosDescontos });
+                totalDescontos += outrosDescontos;
+            }
+
+            // Verificar se houve adiantamento neste mês para deduzir (Simulação Básica)
+            const adtoPrevio = await db.collection('historico_folha')
+                .where('funcionarioId', '==', funcionarioId)
+                .where('competencia', '==', competencia)
+                .where('tipoCalculo', '==', '2')
+                .get();
+                
+            if (!adtoPrevio.empty) {
+                let valorAdto = 0;
+                adtoPrevio.forEach(d => {
+                    const movs = d.data().movimentos || [];
+                    const adtoMov = movs.find(m => m.verbaCodigo === '0060');
+                    if (adtoMov) valorAdto += parseFloat(adtoMov.valor);
+                });
+                if (valorAdto > 0) {
+                    movimentos.push({ verbaCodigo: '0112', natureza: 'D', referencia: '', valor: valorAdto });
+                    totalDescontos += valorAdto;
+                }
+            }
+        }
+
+        // REGRA DE NEGÓCIO: Arredondamento do Mês (Verba 0008)
+        let provisorioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
+        if (provisorioLiquido > 0 && !Number.isInteger(provisorioLiquido)) {
+            const liquidoArredondado = Math.ceil(provisorioLiquido);
+            const valorArredondamento = Number((liquidoArredondado - provisorioLiquido).toFixed(2));
+            
+            if (valorArredondamento > 0) {
+                movimentos.push({ verbaCodigo: '0008', natureza: 'V', referencia: '', valor: valorArredondamento });
+                totalProventos += valorArredondamento;
+            }
+        }
+
+        // Renderizar Preview em Tabela
+        const totais = renderizarPreviewCalculo(movimentos, funcionario.nome, tipoCalculo, competencia, jaExiste);
+
+        // Salvar estado na memória global para gravação
+        processamentoAtual = {
+            funcionarioId,
+            funcionarioNome: funcionario.nome,
+            competencia,
+            tipoCalculo,
+            movimentos,
+            totalProventos: totais.totalProventos,
+            totalDescontos: totais.totalDescontos,
+            liquido: totais.liquido,
+            parametros: parametrosEntrada,
+            jaExiste
         };
-        gerarAnaliseIAHolerite(dadosParaIA);
 
     } catch (error) {
-        console.error("Erro ao calcular folha:", error);
-        resultadoDiv.innerHTML = '<p class="text-center text-danger">Ocorreu um erro ao processar o cálculo.</p>';
-        mostrarMensagem("Erro ao calcular a folha de pagamento.", "error");
+        console.error("Erro ao simular folha:", error);
+        document.getElementById('holerite-resultado').innerHTML = '<p class="text-center text-danger">Ocorreu um erro ao processar o cálculo.</p>';
+        mostrarMensagem("Erro ao processar simulação.", "error");
+    }
+}
+
+async function salvarProcessamento() {
+    if (!processamentoAtual) return;
+    
+    const btn = document.getElementById('btn-salvar-processamento');
+    const oldText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Gravando...';
+    btn.disabled = true;
+
+    try {
+        const idUnico = `${processamentoAtual.funcionarioId}_${processamentoAtual.competencia.replace('/', '')}_${processamentoAtual.tipoCalculo}`;
+        const docRef = db.collection('historico_folha').doc(idUnico);
+        
+        await docRef.set({
+            funcionarioId: processamentoAtual.funcionarioId,
+            competencia: processamentoAtual.competencia,
+            tipoCalculo: processamentoAtual.tipoCalculo,
+            movimentos: processamentoAtual.movimentos,
+            parametros: processamentoAtual.parametros,
+            origem: 'Cálculo Sistema Nexter',
+            dataProcessamento: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        mostrarMensagem(`Cálculo de ${processamentoAtual.funcionarioNome} ${processamentoAtual.jaExiste ? 'atualizado' : 'gravado'} com sucesso!`, 'success');
+        
+        // Limpar tela
+        document.getElementById('holerite-resultado').innerHTML = `
+            <div class="text-center p-5 mt-5">
+                <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                <h5 class="text-success">Cálculo ${processamentoAtual.jaExiste ? 'Atualizado' : 'Gravado'}!</h5>
+                <p class="text-muted">Você já pode consultar o holerite oficial na aba de Funcionários.</p>
+            </div>
+        `;
+        btn.style.display = 'none';
+        processamentoAtual = null;
+
+    } catch (error) {
+        console.error("Erro ao gravar processamento:", error);
+        mostrarMensagem("Falha ao gravar no histórico.", "error");
+    } finally {
+        btn.innerHTML = oldText;
+        btn.disabled = false;
     }
 }
 
@@ -299,8 +525,16 @@ async function buscarApuracaoRhidParaCalculo() {
             
             // Verifica se a data do espelho está dentro do período selecionado
             if (dataRef >= dtInicio && dataRef <= dtFim) {
-                totalMinutosExtra += Number(data.horasExtras || 0);
-                totalMinutosFalta += Number(data.horasFaltaAtraso || 0);
+                // Integração de Faltas: Ignorar as justificadas pela Auditoria
+                if (data.statusFalta !== 'Justificada') {
+                    totalMinutosFalta += Number(data.horasFaltaAtraso || 0);
+                }
+
+                // Integração de Horas Extras: Ignorar as descartadas pela Auditoria
+                if (data.statusAprovacaoHe !== 'Descartada') {
+                    totalMinutosExtra += Number(data.horasExtras || 0);
+                }
+
                 diasEncontrados++;
             }
         });
@@ -327,5 +561,119 @@ async function buscarApuracaoRhidParaCalculo() {
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
+    }
+}
+
+// ==========================================
+// FUNÇÕES DA ABA DE FECHAMENTO COLETIVO
+// ==========================================
+
+function preencherCompetenciaFechamento() {
+    const calcComp = document.getElementById('calc-competencia').value;
+    const filtroComp = document.getElementById('filtro-fechamento-competencia');
+    if (!filtroComp.value && calcComp) {
+        filtroComp.value = calcComp;
+    }
+}
+
+async function buscarFechamentoColetivo() {
+    const comp = document.getElementById('filtro-fechamento-competencia').value;
+    const tipo = document.getElementById('filtro-fechamento-tipo').value;
+    const container = document.getElementById('fechamento-resultado-container');
+
+    if (!comp || comp.length < 7) {
+        mostrarMensagem('Preencha a competência corretamente (MM/YYYY).', 'warning');
+        return;
+    }
+
+    container.innerHTML = '<div class="text-center p-5"><i class="fas fa-spinner fa-spin fa-3x mb-3"></i><p>Buscando processamentos...</p></div>';
+
+    try {
+        const snapshot = await db.collection('historico_folha')
+            .where('competencia', '==', comp)
+            .where('tipoCalculo', '==', tipo)
+            .get();
+
+        if (snapshot.empty) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-5">
+                    <i class="fas fa-folder-open fa-3x mb-3 text-light"></i>
+                    <p>Nenhum cálculo encontrado para <strong>${comp}</strong> (${tipo === '1' ? 'Folha Mensal' : 'Adiantamento'}).</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Buscar todos os funcionários para pegar os nomes
+        const funcSnap = await db.collection('funcionarios').get();
+        const mapFuncs = {};
+        funcSnap.forEach(f => { mapFuncs[f.id] = f.data().nome || 'Desconhecido'; });
+
+        let somaProventos = 0;
+        let somaDescontos = 0;
+        let somaLiquido = 0;
+        let trs = '';
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            const nome = mapFuncs[data.funcionarioId] || 'Funcionário não encontrado';
+            
+            // Recalcular totais desse holerite
+            let prov = 0;
+            let desc = 0;
+            if (data.movimentos) {
+                data.movimentos.forEach(m => {
+                    if (m.natureza === 'V') prov += parseFloat(m.valor);
+                    if (m.natureza === 'D') desc += parseFloat(m.valor);
+                });
+            }
+            const liq = prov - desc;
+
+            somaProventos += prov;
+            somaDescontos += desc;
+            somaLiquido += liq;
+
+            trs += `
+                <tr>
+                    <td>${nome}</td>
+                    <td class="text-end text-success">R$ ${prov.toFixed(2)}</td>
+                    <td class="text-end text-danger">R$ ${desc.toFixed(2)}</td>
+                    <td class="text-end fw-bold text-primary">R$ ${liq.toFixed(2)}</td>
+                </tr>
+            `;
+        });
+
+        container.innerHTML = `
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-file-invoice-dollar me-2"></i>Resultados de ${comp} (${tipo === '1' ? 'Folha Mensal' : 'Adiantamento'})</h6>
+                <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="fas fa-print me-1"></i> Imprimir</button>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Funcionário</th>
+                            <th class="text-end">Total Vencimentos</th>
+                            <th class="text-end">Total Descontos</th>
+                            <th class="text-end">Líquido a Receber</th>
+                        </tr>
+                    </thead>
+                    <tbody>${trs}</tbody>
+                    <tfoot class="table-light fw-bold">
+                        <tr>
+                            <td class="text-end">TOTAIS GERAIS:</td>
+                            <td class="text-end text-success fs-5">R$ ${somaProventos.toFixed(2)}</td>
+                            <td class="text-end text-danger fs-5">R$ ${somaDescontos.toFixed(2)}</td>
+                            <td class="text-end text-primary fs-5">R$ ${somaLiquido.toFixed(2)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        `;
+
+    } catch (e) {
+        console.error('Erro ao buscar fechamento coletivo:', e);
+        container.innerHTML = '<p class="text-center text-danger p-5">Erro ao buscar dados.</p>';
+        mostrarMensagem('Erro ao consultar fechamento.', 'error');
     }
 }

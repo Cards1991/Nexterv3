@@ -815,6 +815,7 @@ async function editarFuncionario(funcionarioId) {
         funcionarioModal.show();
         
         carregarMBTIFuncionario(funcionarioId);
+        carregarHistoricoTeorema(funcionarioId, funcionario.importadoTeorema);
 
         // Armazena o ID no formulário para uso na biometria
         const form = document.getElementById('form-funcionario');
@@ -3788,3 +3789,758 @@ function iniciarMBTIFuncionario() {
         console.error('Função abrirModalMBTI não encontrada. Verifique se o script mbti.js está carregado.');
     }
 }
+
+// ==========================================
+// FUNÇÕES DE HISTÓRICO (MIGRAÇÃO TEOREMA)
+// ==========================================
+async function carregarHistoricoTeorema(funcionarioId, isImportadoTeorema) {
+    const tabHistorico = document.getElementById('historico-teorema-tab');
+    console.log("carregarHistoricoTeorema chamado para ID:", funcionarioId, "isImportadoTeorema:", isImportadoTeorema);
+    
+    if (!tabHistorico) {
+        console.error("ERRO: Aba historico-teorema-tab não encontrada no HTML!");
+        return;
+    }
+
+    // Para debug, vamos forçar a exibição independentemente do flag
+    const navItem = tabHistorico.closest('.nav-item');
+    if (navItem) {
+        navItem.style.display = isImportadoTeorema ? 'block' : 'none';
+    } else {
+        tabHistorico.style.display = isImportadoTeorema ? 'block' : 'none';
+    }
+    
+    // Se não for importado, nem tenta carregar os dados
+    if (!isImportadoTeorema) return;
+
+    const divSalarial = document.getElementById('historico-salarial-container');
+    const divFerias = document.getElementById('historico-ferias-container');
+    const divFolha = document.getElementById('historico-folha-container');
+
+    divSalarial.innerHTML = '<div class="text-center text-muted small py-2">Carregando...</div>';
+    divFerias.innerHTML = '<div class="text-center text-muted small py-2">Carregando...</div>';
+    divFolha.innerHTML = '<div class="text-center text-muted small py-2">Carregando...</div>';
+
+    try {
+        // 1. Carregar Evolução Salarial
+        const salariosSnap = await db.collection('funcionarios').doc(funcionarioId).collection('historico_salarial').orderBy('data', 'desc').get();
+        if (salariosSnap.empty) {
+            divSalarial.innerHTML = '<div class="text-center text-muted small py-2">Nenhum histórico salarial encontrado.</div>';
+        } else {
+            const motivos = {
+                '01': 'Admissão',
+                '02': 'Transferência',
+                '03': 'Dissídio',
+                '07': 'Acordo Coletivo',
+                '08': 'Reenquadramento / Mérito'
+            };
+            let html = '<ul class="list-group list-group-flush small">';
+            salariosSnap.forEach(doc => {
+                const s = doc.data();
+                let dataFormatada = 'Data não informada';
+                if (s.data) {
+                    // Previne o bug de fuso horário (-3h voltando um dia) forçando meio-dia ou splitando a string
+                    const dataStr = String(s.data).includes('T') ? String(s.data).split('T')[0] : String(s.data);
+                    const [ano, mes, dia] = dataStr.split('-');
+                    dataFormatada = `${dia}/${mes}/${ano}`;
+                }
+                
+                const valorFormatado = s.salario ? parseFloat(s.salario).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : 'R$ 0,00';
+                const descMotivo = s.motivo ? (motivos[s.motivo] || `Cód. ${s.motivo}`) : '';
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                    <div><strong>${dataFormatada}</strong><br><span class="text-muted" style="font-size: 0.8em;">${descMotivo}</span></div>
+                    <span class="badge bg-success rounded-pill">${valorFormatado}</span>
+                </li>`;
+            });
+            html += '</ul>';
+            divSalarial.innerHTML = html;
+        }
+
+        // 2. Carregar Férias
+        const feriasSnap = await db.collection('funcionarios').doc(funcionarioId).collection('historico_ferias').orderBy('dataInicio', 'desc').get();
+        if (feriasSnap.empty) {
+            divFerias.innerHTML = '<div class="text-center text-muted small py-2">Nenhum histórico de férias encontrado.</div>';
+        } else {
+            let html = '<ul class="list-group list-group-flush small">';
+            feriasSnap.forEach(doc => {
+                const f = doc.data();
+                
+                let dataInicio = '-';
+                if (f.dataInicio) {
+                    const dtStr = String(f.dataInicio).includes('T') ? String(f.dataInicio).split('T')[0] : String(f.dataInicio);
+                    const [a, m, d] = dtStr.split('-');
+                    dataInicio = `${d}/${m}/${a}`;
+                }
+                
+                let dataFim = '-';
+                if (f.dataFim) {
+                    const dtStr = String(f.dataFim).includes('T') ? String(f.dataFim).split('T')[0] : String(f.dataFim);
+                    const [a, m, d] = dtStr.split('-');
+                    dataFim = `${d}/${m}/${a}`;
+                }
+
+                html += `<li class="list-group-item d-flex justify-content-between align-items-center p-2">
+                    <div>Início: <strong>${dataInicio}</strong><br>Fim: <strong>${dataFim}</strong></div>
+                    <span class="badge bg-info text-dark rounded-pill">${f.diasGozados} dias</span>
+                </li>`;
+            });
+            html += '</ul>';
+            divFerias.innerHTML = html;
+        }
+
+        // 3. Carregar Movimentações Financeiras (Folha)
+        const folhaSnap = await db.collection('lancamentos_financeiros')
+            .where('funcionarioId', '==', funcionarioId)
+            .where('origem', '==', 'Teorema')
+            .get();
+
+        if (folhaSnap.empty) {
+            divFolha.innerHTML = '<div class="text-center text-muted small py-2">Nenhum lançamento de folha encontrado.</div>';
+        } else {
+            // Extrair e ordenar na memória para evitar necessidade de índice composto
+            let lancamentos = [];
+            folhaSnap.forEach(doc => lancamentos.push(doc.data()));
+            
+            lancamentos.sort((a, b) => {
+                const anoA = a.ano || 0;
+                const anoB = b.ano || 0;
+                const mesA = a.mes || 0;
+                const mesB = b.mes || 0;
+                if (anoA !== anoB) return anoB - anoA;
+                return mesB - mesA;
+            });
+
+            // Agrupar por Ano/Mes
+            const agrupado = {};
+            lancamentos.forEach(m => {
+                const mes = m.mes ? m.mes.toString().padStart(2, '0') : '00';
+                const ano = m.ano || '0000';
+                const chave = `${mes}/${ano}`;
+                if (!agrupado[chave]) agrupado[chave] = [];
+                agrupado[chave].push(m);
+            });
+
+            let html = '<div class="accordion accordion-flush" id="accordionHistoricoFolha">';
+            let i = 0;
+            for (const [competencia, movs] of Object.entries(agrupado)) {
+                const idCollapse = `collapseFolha${i}`;
+                let total = 0;
+                
+                let tbody = '';
+                movs.forEach(m => {
+                    const valorFormatado = parseFloat(m.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                    total += parseFloat(m.valor || 0);
+                    tbody += `<tr>
+                        <td><span class="badge bg-secondary">${m.verbaCodigo || ''}</span></td>
+                        <td>${m.referencia || ''}</td>
+                        <td class="text-end">${valorFormatado}</td>
+                    </tr>`;
+                });
+                
+                html += `
+                <div class="accordion-item border-0 bg-transparent">
+                    <h2 class="accordion-header position-relative" style="z-index: ${999 - i};">
+                        <button class="accordion-button collapsed py-2 px-3 bg-white border rounded mb-1 shadow-sm" type="button" data-bs-toggle="collapse" data-bs-target="#${idCollapse}">
+                            <strong>Competência: ${competencia}</strong>
+                        </button>
+                        <div class="dropdown position-absolute top-50 end-0 translate-middle-y me-5" style="margin-right: 30px !important;">
+                            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" onclick="event.stopPropagation()">
+                                <i class="fas fa-file-invoice-dollar me-1"></i> Holerite
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end shadow">
+                                <li><a class="dropdown-item" href="#" onclick="abrirHolerite('${funcionarioId}', '${competencia}', '2', event)"><i class="fas fa-money-check-alt me-2 text-primary"></i>Adiantamento (Vale)</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="abrirHolerite('${funcionarioId}', '${competencia}', '1', event)"><i class="fas fa-file-invoice-dollar me-2 text-success"></i>Folha Mensal</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="#" onclick="abrirHolerite('${funcionarioId}', '${competencia}', 'todos', event)"><i class="fas fa-layer-group me-2 text-secondary"></i>Visualizar Ambos</a></li>
+                            </ul>
+                        </div>
+                    </h2>
+                    <div id="${idCollapse}" class="accordion-collapse collapse" data-bs-parent="#accordionHistoricoFolha">
+                        <div class="accordion-body p-2 bg-white border rounded mb-2">
+                            <table class="table table-sm table-hover mb-0" style="font-size: 0.85em;">
+                                <thead>
+                                    <tr>
+                                        <th>Verba</th>
+                                        <th>Ref.</th>
+                                        <th class="text-end">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tbody}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+                i++;
+            }
+            html += '</div>';
+            divFolha.innerHTML = html;
+        }
+
+    } catch (error) {
+        console.error('Erro ao carregar histórico do Teorema:', error);
+        divSalarial.innerHTML = '<div class="text-danger small p-2">Erro ao carregar.</div>';
+        divFerias.innerHTML = '<div class="text-danger small p-2">Erro ao carregar.</div>';
+        divFolha.innerHTML = '<div class="text-danger small p-2">Erro ao carregar.</div>';
+    }
+}
+
+window.imprimirHoleriteEspecifico = function(tc) {
+    if (tc === 'todos') {
+        document.querySelectorAll('.holerite-container').forEach(el => {
+            el.style.display = 'block';
+        });
+        window.print();
+        return;
+    }
+    
+    document.querySelectorAll('.holerite-container').forEach(el => {
+        if (el.dataset.tc === String(tc)) {
+            el.style.display = 'block';
+        } else {
+            el.style.display = 'none';
+        }
+    });
+    
+    window.print();
+    
+    // Restaurar a visualização após imprimir
+    setTimeout(() => {
+        document.querySelectorAll('.holerite-container').forEach(el => {
+            el.style.display = 'block';
+        });
+    }, 500);
+};
+
+window.abrirHolerite = async function(funcionarioId, competencia, tcFiltro, event) {
+    if (typeof tcFiltro === 'object') {
+        event = tcFiltro;
+        tcFiltro = 'todos';
+    }
+    
+    if (event) {
+        event.stopPropagation();
+        event.preventDefault();
+    }
+
+    // Modal Dinâmico
+    let modalEl = document.getElementById('modalHolerite');
+    if (!modalEl) {
+        document.body.insertAdjacentHTML('beforeend', `
+            <div class="modal fade" id="modalHolerite" tabindex="-1" aria-hidden="true" style="z-index: 1060;">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-light">
+                            <h5 class="modal-title text-primary"><i class="fas fa-file-invoice-dollar me-2"></i> Recibo de Pagamento - <span id="holeriteCompetencia"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body p-0">
+                            <div id="holeriteConteudo" class="p-3">
+                                <div class="text-center my-3"><div class="spinner-border text-primary" role="status"></div></div>
+                            </div>
+                        </div>
+                        <div class="modal-footer bg-light py-2" id="modalHoleriteFooter">
+                            <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>
+                            <button type="button" class="btn btn-sm btn-primary" onclick="window.print()"><i class="fas fa-print me-1"></i> Imprimir</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `);
+        modalEl = document.getElementById('modalHolerite');
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById('holeriteCompetencia').innerText = competencia;
+    const container = document.getElementById('holeriteConteudo');
+    container.innerHTML = '<div class="text-center my-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Carregando dados da folha...</p></div>';
+    
+    modal.show();
+
+    try {
+        const [mesStr, anoStr] = competencia.split('/');
+        
+        // Buscar nome do colaborador
+        let funcNome = 'Colaborador não identificado';
+        let funcSetor = 'Não informado';
+        let funcCargo = 'Não informado';
+        let funcSalario = 0;
+        let funcCpf = '';
+        let funcMatricula = '';
+        let funcAdmissao = '';
+        
+        const funcSnap = await db.collection('funcionarios').doc(funcionarioId).get();
+        if (funcSnap.exists) {
+            const fd = funcSnap.data();
+            funcNome = fd.nome || funcNome;
+            funcSetor = fd.setor || funcSetor;
+            funcCargo = fd.cargo || funcCargo;
+            funcSalario = parseFloat(fd.salarioBase || fd.salario || 0);
+            funcCpf = fd.cpf || '';
+            funcMatricula = fd.matricula || '';
+            
+            if (fd.dataAdmissao) {
+                 funcAdmissao = fd.dataAdmissao; 
+                 if (typeof funcAdmissao === 'string' && funcAdmissao.includes('-')) {
+                     const [a,m,d] = funcAdmissao.split('-');
+                     funcAdmissao = `${d}/${m}/${a}`;
+                 } else if (typeof funcAdmissao === 'object' && funcAdmissao.toDate) {
+                     const d = funcAdmissao.toDate();
+                     funcAdmissao = d.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                 } else if (typeof funcAdmissao === 'object' && funcAdmissao instanceof Date) {
+                     funcAdmissao = funcAdmissao.toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+                 }
+            }
+        }
+
+        // Buscar lançamentos dessa competência
+        const folhaSnap = await db.collection('lancamentos_financeiros')
+            .where('funcionarioId', '==', funcionarioId)
+            .where('origem', '==', 'Teorema')
+            .get();
+
+        const movsMes = [];
+        folhaSnap.forEach(doc => {
+            const m = doc.data();
+            const mMes = m.mes ? m.mes.toString().padStart(2, '0') : '00';
+            const mAno = m.ano ? m.ano.toString() : '0000';
+            if (mMes === mesStr && mAno === anoStr) {
+                movsMes.push(m);
+            }
+        });
+
+        // Buscar todas as verbas ativas para cruzar descrições e tipos
+        const verbasSnap = await db.collection('verbas').get();
+        const verbasMap = {};
+        verbasSnap.forEach(doc => {
+            const v = doc.data();
+            verbasMap[v.codigo] = v;
+        });
+
+        // Lógica de agrupamento inteligente:
+        // Função auxiliar para identificar qualquer verba de pagamento de Adiantamento
+        const ehVerbaAdiantamento = (cod) => {
+            const vInfo = verbasMap[cod] || {};
+            const desc = (vInfo.descricao || '').toUpperCase();
+            return cod === '0060' || cod === '0211' || cod === '0056' || cod === '0067' || 
+                   (desc.includes('ADIANTAMENTO') && cod !== '0003' && cod !== '0198' && vInfo.tipo !== 'D');
+        };
+
+        const temAdiantamento = movsMes.some(m => ehVerbaAdiantamento(m.verbaCodigo));
+        
+        // Verifica se o lote tem características de Folha Mensal (INSS, Desconto de Vale, Salário Base, etc)
+        const temFolhaMensal = movsMes.some(m => {
+            const cod = m.verbaCodigo;
+            const desc = ((verbasMap[cod] || {}).descricao || '').toUpperCase();
+            return cod === '0001' || cod === '0003' || cod === '0212' || desc.includes('INSS');
+        });
+
+        const grupos = {};
+        movsMes.forEach(m => {
+            let tcRaw = m.tipoCalculo ? String(m.tipoCalculo).toLowerCase() : '1';
+            let tc = '1'; // Default Folha
+
+            if (tcRaw === '11' || tcRaw.includes('folha')) tc = '1';
+            if (tcRaw === '2' || tcRaw === '12' || tcRaw.includes('adiant') || tcRaw.includes('vale')) tc = '2';
+            if (tcRaw === '3' || tcRaw === '13' || tcRaw.includes('férias') || tcRaw.includes('ferias')) tc = '3';
+            if (tcRaw === '4' || tcRaw === '14' || tcRaw.includes('13') || tcRaw.includes('décimo')) tc = '4';
+            
+            if (temAdiantamento && !temFolhaMensal) {
+                tc = '2'; // Força tudo pro Adiantamento se for uma importação isolada de vale
+            } else if (ehVerbaAdiantamento(m.verbaCodigo)) {
+                tc = '2'; // Força apenas as verbas de Adiantamento se estiverem misturadas
+            }
+
+            if (!grupos[tc]) {
+                grupos[tc] = {
+                    movs: [],
+                    bases: { inss: 0, fgts: 0, fgtsMes: 0, irrf: 0 }
+                };
+            }
+            grupos[tc].movs.push(m);
+            grupos[tc].bases.inss = m.baseINSS > 0 ? m.baseINSS : grupos[tc].bases.inss;
+            grupos[tc].bases.fgts = m.baseFGTS > 0 ? m.baseFGTS : grupos[tc].bases.fgts;
+            grupos[tc].bases.fgtsMes = m.fgtsMes > 0 ? m.fgtsMes : grupos[tc].bases.fgtsMes;
+            grupos[tc].bases.irrf = m.baseIRRF > 0 ? m.baseIRRF : grupos[tc].bases.irrf;
+        });
+
+        let htmlFinal = `
+            <style>
+                .holerite-container { 
+                    page-break-after: always; 
+                    margin-bottom: 40px; 
+                    background: #fff;
+                    border-radius: 12px;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+                    overflow: hidden;
+                    border: 1px solid #eaeaea;
+                    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+                }
+                .holerite-container:last-child { page-break-after: auto; margin-bottom: 0; }
+                
+                .holerite-header {
+                    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+                    color: white;
+                    padding: 20px;
+                }
+                .holerite-header strong { color: #cbd5e1; font-weight: 500; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;}
+                .holerite-header .info-text { font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+                
+                .holerite-table th { 
+                    background-color: #f1f5f9; 
+                    color: #475569;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    font-size: 0.75rem;
+                    letter-spacing: 0.5px;
+                    border-bottom: 2px solid #e2e8f0; 
+                    padding: 12px 16px;
+                }
+                .holerite-table td { 
+                    padding: 10px 16px; 
+                    font-size: 0.9rem; 
+                    border-bottom: 1px solid #f1f5f9; 
+                    color: #334155;
+                }
+                .holerite-table tr:hover td { background-color: #f8fafc; }
+                
+                .totais-row td {
+                    background-color: #f8fafc;
+                    border-top: 2px solid #e2e8f0;
+                    padding: 16px;
+                }
+                .liquido-row td {
+                    background-color: #0ea5e9;
+                    color: white;
+                    padding: 16px;
+                    border: none;
+                }
+                .liquido-value {
+                    font-size: 1.25rem;
+                    font-weight: 700;
+                    letter-spacing: 0.5px;
+                }
+                
+                .bases-footer {
+                    background-color: #f8fafc;
+                    border-top: 1px solid #e2e8f0;
+                    padding: 16px 20px;
+                }
+                .base-item {
+                    border-right: 1px solid #e2e8f0;
+                }
+                .base-item:last-child { border-right: none; }
+                .base-label {
+                    font-size: 0.7rem;
+                    text-transform: uppercase;
+                    color: #64748b;
+                    font-weight: 600;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 4px;
+                }
+                .base-value {
+                    font-size: 1rem;
+                    color: #0f172a;
+                    font-weight: 600;
+                }
+
+                @media print {
+                    body * { visibility: hidden; }
+                    #modalHolerite, #modalHolerite * { visibility: visible; }
+                    #modalHolerite { position: absolute; left: 0; top: 0; width: 100%; padding: 0 !important; margin: 0 !important; }
+                    #modalHolerite .modal-dialog { width: 100%; max-width: 100%; margin: 0; padding: 0; }
+                    #modalHolerite .modal-content { border: none; box-shadow: none; }
+                    .modal-header, .modal-footer { display: none !important; }
+                    
+                    .holerite-container { box-shadow: none; border: 1px solid #000; border-radius: 0; page-break-inside: avoid; }
+                    .holerite-header { background: #fff !important; color: #000 !important; border-bottom: 2px solid #000; }
+                    .holerite-header strong, .holerite-header .info-text { color: #000 !important; }
+                    .holerite-header .badge { color: #000 !important; background: transparent !important; border: 1px solid #000; }
+                    
+                    .holerite-table th { background: #fff !important; color: #000 !important; border-bottom: 2px solid #000 !important; }
+                    .holerite-table td { color: #000 !important; border-bottom: 1px solid #000 !important; }
+                    
+                    .totais-row td { background: #fff !important; color: #000 !important; border-top: 2px solid #000 !important; }
+                    .liquido-row td { background: #fff !important; color: #000 !important; border-top: 1px solid #000 !important; border-bottom: none !important;}
+                    
+                    .bases-footer { background: #fff !important; color: #000 !important; border-top: 2px solid #000 !important; }
+                    .base-item { border-right: 1px solid #000 !important; }
+                    .base-label, .base-value { color: #000 !important; }
+                    
+                    /* Força o background print do browser se ativado */
+                    * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+                }
+            </style>
+        `;
+
+        const tiposOrdenados = Object.keys(grupos).sort();
+        let tiposFiltrados = tiposOrdenados;
+        
+        if (tcFiltro && tcFiltro !== 'todos') {
+            tiposFiltrados = tiposOrdenados.filter(tc => String(tc) === String(tcFiltro));
+        }
+
+        if (tiposFiltrados.length === 0) {
+            let verbasEncontradas = movsMes.map(m => {
+                const d = ((verbasMap[m.verbaCodigo] || {}).descricao || '');
+                return `[${m.verbaCodigo}] ${d}`;
+            }).join('<br>');
+            
+            htmlFinal += `
+                <div class="alert alert-warning m-3">
+                    <i class="fas fa-exclamation-triangle me-2"></i> O tipo de holerite selecionado não possui verbas processadas nesta competência.<br><br>
+                    <strong>Verbas encontradas no banco de dados para este mês:</strong><br>
+                    ${verbasEncontradas || 'Nenhuma verba encontrada. (Você já importou este arquivo?)'}
+                </div>`;
+        }
+
+        tiposFiltrados.forEach(tc => {
+            const g = grupos[tc];
+            let listaProventos = '';
+            let listaDescontos = '';
+            let listaBases = '';
+            let totalProventos = 0;
+            let totalDescontos = 0;
+
+            // Cálculo Automático de Bases (caso o ERP não tenha enviado nos campos nativos)
+            if (g.bases.inss === 0 && tc === '1') {
+                let baseIncidente = 0;
+                let descontoINSS = 0;
+                
+                g.movs.forEach(m => {
+                    const cod = m.verbaCodigo;
+                    const v = parseFloat(m.valor || 0);
+                    const desc = ((verbasMap[cod] || {}).descricao || '').toUpperCase();
+                    
+                    if (cod === '0011') g.bases.fgtsMes += v;
+                    if (cod === '0005' || cod === '0212' || (m.natureza === 'D' && desc.includes('INSS'))) descontoINSS += v;
+                    if (m.natureza === 'V' && !['0060', '0211', '0056', '0067', '0296', '0008', '0203'].includes(cod) && !desc.includes('ADIANTAMENTO')) baseIncidente += v;
+                });
+                g.bases.inss = baseIncidente;
+                g.bases.fgts = baseIncidente;
+                g.bases.irrf = baseIncidente - descontoINSS;
+            }
+
+            // Dicionário de apelidos para abreviar descrições muito longas
+            const apelidosVerbas = {
+                '0049': 'REFLEXO DSR S/ HORAS',
+                '0008': 'ARRED. ATUAL',
+                '0007': 'ARRED. ANTERIOR',
+                '0201': 'FALTAS INJUST. (HRS)',
+                '0060': 'ADTO. DE SALÁRIO',
+                '0003': 'ADTO. DE SALÁRIO'
+            };
+
+            // Ordenar por código numérico para garantir a ordem crescente
+            g.movs.sort((a, b) => {
+                const codA = parseInt(a.verbaCodigo) || 0;
+                const codB = parseInt(b.verbaCodigo) || 0;
+                return codA - codB;
+            });
+
+            // Construir as linhas da tabela unificada
+            g.movs.forEach(m => {
+                const cod = m.verbaCodigo;
+                
+                // Ocultar Saldo VR Liberado (0296) da Folha Mensal
+                if ((tc === '1' || String(tc) === '11') && cod === '0296') return;
+
+                const valor = parseFloat(m.valor || 0);
+                const verbaInfo = verbasMap[cod] || {};
+                let desc = verbaInfo.descricao || `Verba ${cod}`;
+                
+                // Aplicar o apelido se existir
+                if (apelidosVerbas[cod]) {
+                    desc = apelidosVerbas[cod];
+                }
+                
+                let tipo = 'Base';
+                if (m.natureza === 'V') tipo = 'Provento';
+                if (m.natureza === 'D') tipo = 'Desconto';
+                if (ehVerbaAdiantamento(cod)) tipo = 'Provento';
+                if (cod === '0003' || cod === '0198' || (verbaInfo.tipo === 'D' && desc.toUpperCase().includes('ADIANTAMENTO'))) tipo = 'Desconto';
+                
+                // Remover o return de ignorar bases com valor 0 se quisermos listar, ou manter. Vamos mostrar bases se tiverem valor.
+                if (tipo === 'Base' && valor === 0) return;
+
+                const tr = `
+                    <tr>
+                        <td class="text-center py-0">${cod}</td>
+                        <td class="py-0 text-truncate" title="${desc}">${desc}</td>
+                        <td class="text-center py-0">${m.referencia || ''}</td>
+                        <td class="text-end py-0">${tipo === 'Provento' ? valor.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : ''}</td>
+                        <td class="text-end py-0">${tipo === 'Desconto' ? valor.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : ''}</td>
+                        <td class="text-end py-0 text-muted">${tipo === 'Base' ? valor.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : ''}</td>
+                    </tr>
+                `;
+
+                if (tipo === 'Desconto') {
+                    listaDescontos += tr; // reaproveitando a variável para ir juntando tudo
+                    totalDescontos += valor;
+                } else if (tipo === 'Provento') {
+                    listaProventos += tr;
+                    totalProventos += valor; 
+                } else {
+                    listaBases += tr;
+                }
+            });
+
+            // Re-injetar bases calculadas se necessário na lista principal para que apareçam na coluna de bases
+            if (tc === '1' || String(tc) === '11') {
+                listaBases += `
+                    <tr><td class="text-center py-0 text-muted">-</td><td class="py-0 text-muted">BASE INSS</td><td class="text-center py-0"></td><td class="text-end py-0"></td><td class="text-end py-0"></td><td class="text-end py-0 text-muted">${g.bases.inss.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                    <tr><td class="text-center py-0 text-muted">-</td><td class="py-0 text-muted">BASE FGTS</td><td class="text-center py-0"></td><td class="text-end py-0"></td><td class="text-end py-0"></td><td class="text-end py-0 text-muted">${g.bases.fgts.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                    <tr><td class="text-center py-0 text-muted">-</td><td class="py-0 text-muted">FGTS DO MÊS</td><td class="text-center py-0"></td><td class="text-end py-0"></td><td class="text-end py-0"></td><td class="text-end py-0 text-muted">${g.bases.fgtsMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                    <tr><td class="text-center py-0 text-muted">-</td><td class="py-0 text-muted">BASE IRRF</td><td class="text-center py-0"></td><td class="text-end py-0"></td><td class="text-end py-0"></td><td class="text-end py-0 text-muted">${g.bases.irrf.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td></tr>
+                `;
+            }
+
+            const liquido = totalProventos - totalDescontos;
+            
+            let descTipoCalculo = 'Folha Mensal';
+            if (String(tc) === '2') descTipoCalculo = 'Adiantamento (Vale)';
+            if (String(tc) === '3') descTipoCalculo = 'Férias';
+            if (String(tc) === '4') descTipoCalculo = '13º Salário';
+
+            const watermark = tc === '2' ? '<div class="watermark-adiantamento" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-45deg); font-size: 6rem; color: rgba(0,0,0,0.03); z-index: 0; pointer-events: none; font-weight: bold; text-transform: uppercase; white-space: nowrap;">ADIANTAMENTO</div>' : '';
+
+            // Tabela unificada juntando proventos, descontos e bases visíveis
+            const linhasTabela = listaProventos + listaDescontos + listaBases;
+
+            htmlFinal += `
+                <div class="holerite-page bg-white position-relative" style="page-break-inside: avoid; border: 1px solid #000; padding: 2px; margin-bottom: 20px;">
+                    ${watermark}
+                    
+                    <!-- Cabeçalho Principal -->
+                    <div class="d-flex border-bottom border-dark">
+                        <div class="p-2 flex-grow-1 border-end border-dark">
+                            <h6 class="mb-0 fw-bold text-uppercase" style="font-size: 0.85rem;">CALÇADOS CRIVAL LTDA</h6>
+                            <div style="font-size: 0.7rem;">CNPJ: -</div>
+                        </div>
+                        <div class="p-2 text-center" style="min-width: 250px;">
+                            <h6 class="mb-0 fw-bold text-uppercase" style="font-size: 0.85rem;">Recibo de Pagamento de Salário</h6>
+                            <div style="font-size: 0.75rem;">Referência: <strong>${competencia}</strong> <span class="ms-1">(${descTipoCalculo})</span></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Info Colaborador -->
+                    <div class="p-1 border-bottom border-dark" style="font-size: 0.75rem;">
+                        <div class="d-flex">
+                            <div class="px-1" style="width: 10%;">Código<br><strong>${funcMatricula || '-'}</strong></div>
+                            <div class="px-1 border-start border-dark" style="width: 50%;">Nome do Funcionário<br><strong>${funcNome}</strong></div>
+                            <div class="px-1 border-start border-dark" style="width: 40%;">Cargo/Função<br><strong>${funcCargo}</strong></div>
+                        </div>
+                    </div>
+                    <div class="p-1 border-bottom border-dark" style="font-size: 0.75rem;">
+                        <div class="d-flex">
+                            <div class="px-1" style="width: 40%;">Setor/Departamento<br><strong>${funcSetor}</strong></div>
+                            <div class="px-1 border-start border-dark" style="width: 20%;">Admissão<br><strong>${funcAdmissao || '-'}</strong></div>
+                            <div class="px-1 border-start border-dark" style="width: 20%;">CPF<br><strong>${funcCpf ? funcCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '-'}</strong></div>
+                            <div class="px-1 border-start border-dark" style="width: 20%;">Salário Base<br><strong>${funcSalario ? funcSalario.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '-'}</strong></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Corpo da Tabela (Verbas) -->
+                    <div style="min-height: 250px; display: flex; flex-direction: column;">
+                        <table class="table table-sm table-borderless mb-0 flex-grow-1" style="font-size: 0.75rem; table-layout: fixed; width: 100%;">
+                            <thead class="border-bottom border-dark">
+                                <tr>
+                                    <th style="width: 8%; padding-bottom: 2px;" class="text-center fw-normal">Cód.</th>
+                                    <th style="width: 39%; padding-bottom: 2px;" class="fw-normal">Descrição</th>
+                                    <th style="width: 8%; padding-bottom: 2px;" class="text-center fw-normal">Ref.</th>
+                                    <th style="width: 15%; padding-bottom: 2px;" class="text-end fw-normal">Vencimentos</th>
+                                    <th style="width: 15%; padding-bottom: 2px;" class="text-end fw-normal">Descontos</th>
+                                    <th style="width: 15%; padding-bottom: 2px;" class="text-end fw-normal">Bases</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${linhasTabela}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Rodapé da Tabela (Totais) -->
+                    <div class="d-flex border-top border-bottom border-dark" style="font-size: 0.75rem;">
+                        <div style="width: 56%;" class="border-end border-dark"></div>
+                        <div style="width: 14%;" class="border-end border-dark text-end p-1">
+                            <div>Total de Vencimentos</div>
+                            <strong>${totalProventos.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div style="width: 14%;" class="border-end border-dark text-end p-1">
+                            <div>Total de Descontos</div>
+                            <strong>${totalDescontos.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div style="width: 16%;" class="text-end p-1">
+                            <div>-</div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex border-bottom border-dark" style="font-size: 0.75rem;">
+                        <div style="width: 70%;" class="border-end border-dark text-end p-1 align-middle">
+                            <span class="fw-bold">Valor Líquido >>></span>
+                        </div>
+                        <div style="width: 14%;" class="border-end border-dark text-end p-1">
+                            <strong style="font-size: 0.9rem;">${liquido.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div style="width: 16%;" class="text-end p-1"></div>
+                    </div>
+                    
+                    <!-- Quadro de Bases e Tributos (Última linha) -->
+                    <div class="d-flex text-center" style="font-size: 0.7rem; background-color: #f8f9fa;">
+                        <div class="flex-fill border-end border-dark p-1">
+                            <div>Salário Base</div>
+                            <strong>${funcSalario ? funcSalario.toLocaleString('pt-BR', {minimumFractionDigits: 2}) : '0,00'}</strong>
+                        </div>
+                        <div class="flex-fill border-end border-dark p-1">
+                            <div>Sal. Contr. INSS</div>
+                            <strong>${g.bases.inss.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div class="flex-fill border-end border-dark p-1">
+                            <div>Base Cálc. FGTS</div>
+                            <strong>${g.bases.fgts.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div class="flex-fill border-end border-dark p-1">
+                            <div>FGTS do Mês</div>
+                            <strong>${g.bases.fgtsMes.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div class="flex-fill border-end border-dark p-1">
+                            <div>Base Cálc. IRRF</div>
+                            <strong>${g.bases.irrf.toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>
+                        </div>
+                        <div class="flex-fill p-1">
+                            <div>Faixa IRRF</div>
+                            <strong>-</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        if (tiposFiltrados.length === 0 && tiposOrdenados.length === 0) {
+            htmlFinal += '<div class="alert alert-warning">Nenhum lançamento encontrado para esta competência.</div>';
+        }
+
+        container.innerHTML = htmlFinal;
+
+        // Atualizar botões de impressão baseados no número de holerites renderizados
+        const modalFooter = document.getElementById('modalHoleriteFooter');
+        if (modalFooter) {
+            let footerHtml = '<button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Fechar</button>';
+            if (tiposFiltrados.length > 1) {
+                tiposFiltrados.forEach(tc => {
+                    const desc = tc === '2' ? 'Imp. Adiantamento' : (tc === '3' ? 'Imp. Férias' : (tc === '4' ? 'Imp. 13º' : 'Imp. Folha'));
+                    footerHtml += `<button type="button" class="btn btn-sm btn-outline-primary" onclick="window.imprimirHoleriteEspecifico('${tc}')"><i class="fas fa-print me-1"></i> ${desc}</button>`;
+                });
+                footerHtml += `<button type="button" class="btn btn-sm btn-primary" onclick="window.imprimirHoleriteEspecifico('todos')"><i class="fas fa-print me-1"></i> Imprimir Todos</button>`;
+            } else {
+                footerHtml += `<button type="button" class="btn btn-sm btn-primary" onclick="window.print()"><i class="fas fa-print me-1"></i> Imprimir</button>`;
+            }
+            modalFooter.innerHTML = footerHtml;
+        }
+
+    } catch (error) {
+        console.error(error);
+        container.innerHTML = '<div class="alert alert-danger">Erro ao carregar holerite.</div>';
+    }
+};

@@ -12,7 +12,7 @@ const ScriptLoader = {
     sectionScripts: {
         'empresas': ['js/empresas.js'],
         'setores': ['js/setores.js'],
-        'funcionarios': ['js/funcionarios.js?v=20'],
+        'funcionarios': ['js/funcionarios.js?v=21'],
         'movimentacoes': ['js/movimentacoes.js'],
         'admissao': ['js/movimentacoes.js'],
         'demissao': ['js/movimentacoes.js'],

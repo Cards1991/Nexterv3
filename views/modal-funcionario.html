@@ -26,6 +26,9 @@
                     <li class="nav-item" role="presentation"><button class="nav-link" id="endereco-tab"
                             data-bs-toggle="tab" data-bs-target="#tab-endereco" type="button"
                             role="tab">Endereço</button></li>
+                    <li class="nav-item" role="presentation"><button class="nav-link text-warning" id="historico-teorema-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-historico-teorema" type="button"
+                            role="tab"><i class="fas fa-history me-1"></i>Histórico</button></li>
                 </ul>
 
                 <form id="form-funcionario">
@@ -245,6 +248,39 @@
                                         class="form-control" id="endereco-estado" maxlength="2"></div>
                                 <input type="hidden" id="endereco-latitude"><input type="hidden"
                                     id="endereco-longitude">
+                            </div>
+                        </div>
+
+                        <!-- Aba Histórico Teorema -->
+                        <div class="tab-pane fade" id="tab-historico-teorema" role="tabpanel">
+                            <div class="row mt-3">
+                                <div class="col-12">
+                                    <div class="alert alert-warning" role="alert">
+                                        <i class="fas fa-info-circle me-2"></i> Estes dados são um retrato histórico (somente leitura) extraído do sistema legado Teorema.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="text-primary"><i class="fas fa-money-bill-wave me-1"></i> Evolução Salarial</h6>
+                                    <div id="historico-salarial-container" style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-light">
+                                        <div class="text-center text-muted small py-2">Carregando...</div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <h6 class="text-primary"><i class="fas fa-plane-departure me-1"></i> Férias Gozadas</h6>
+                                    <div id="historico-ferias-container" style="max-height: 200px; overflow-y: auto;" class="border rounded p-2 bg-light">
+                                        <div class="text-center text-muted small py-2">Carregando...</div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row mt-2">
+                                <div class="col-12">
+                                    <h6 class="text-primary"><i class="fas fa-receipt me-1"></i> Lançamentos Financeiros da Folha</h6>
+                                    <div id="historico-folha-container" style="max-height: 350px; overflow-y: auto;" class="border rounded p-2 bg-light">
+                                        <div class="text-center text-muted small py-2">Carregando...</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

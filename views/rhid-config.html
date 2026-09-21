@@ -126,6 +126,64 @@
             <h4 class="mb-3 text-secondary border-bottom pb-2"><i class="fas fa-chart-bar me-2"></i> Processamento de Horas & Relatórios</h4>
         </div>
 
+        <!-- Nova Sessão de Auditoria -->
+        <div class="col-12 mb-4">
+            <div class="card shadow border-0" style="border-radius: 12px;">
+                <div class="card-header bg-primary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-clipboard-check me-2"></i> Auditoria e Processamento Individual</h5>
+                </div>
+                <div class="card-body bg-light">
+                    <p class="text-muted small mb-3">Selecione um funcionário e o período para verificar as batidas do ponto dia a dia, justificar faltas e aprovar horas extras. Essas ações refletirão diretamente no cálculo da folha de pagamento.</p>
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-4">
+                            <label class="form-label fw-bold">Funcionário</label>
+                            <select id="rhid-auditoria-funcionario" class="form-select">
+                                <option value="">Carregando...</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Data Início</label>
+                            <input type="date" id="rhid-auditoria-inicio" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label fw-bold">Data Fim</label>
+                            <input type="date" id="rhid-auditoria-fim" class="form-control">
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-primary w-100 fw-bold" id="btn-buscar-auditoria" onclick="buscarAuditoriaPonto()">
+                                <i class="fas fa-search me-2"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Container de Resultados da Auditoria -->
+        <div class="col-12 mb-4 d-none" id="rhid-auditoria-container">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0 text-center">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Hrs Trabalhadas</th>
+                                    <th>Falta/Atraso (hrs)</th>
+                                    <th>Ação p/ Falta</th>
+                                    <th>Hrs Extras (hrs)</th>
+                                    <th>Ação p/ Extras</th>
+                                </tr>
+                            </thead>
+                            <tbody id="rhid-auditoria-tbody">
+                                <!-- Resultados da auditoria -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Verificação Rápida de Faltas (Hoje) -->
         <div class="col-md-6 mb-3">
             <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">

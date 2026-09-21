@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Importar Colaborador (Lorena Leal)</title>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Configuração do Firebase -->
+    <script src="js/env-loader.js"></script>
+    <script src="firebase-config.js"></script>
+    
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .btn { padding: 10px 20px; font-size: 16px; background-color: #0d6efd; color: white; border: none; cursor: pointer; border-radius: 5px; }
+        .btn:disabled { background-color: #ccc; cursor: not-allowed; }
+        #log { margin-top: 20px; background: #f4f4f4; padding: 15px; border-radius: 5px; max-height: 400px; overflow-y: auto; white-space: pre-wrap; font-family: monospace; }
+    </style>
+</head>
+<body>
+    <h2>Importação de Colaborador e Histórico (Teorema)</h2>
+    <p>O arquivo JSON contém: Cadastro, 120 Movimentações da Folha, Férias e Evolução Salarial.</p>
+    
+    <div id="loginSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+        <h4>Autenticação Necessária</h4>
+        <p>Por favor, faça login com sua conta do Nexter para autorizar a importação:</p>
+        <input type="email" id="email" placeholder="E-mail" style="padding: 8px; margin-right: 10px;">
+        <input type="password" id="senha" placeholder="Senha" style="padding: 8px; margin-right: 10px;">
+        <button onclick="fazerLogin()" class="btn" style="background-color: #198754;">Login</button>
+    </div>
+
+    <button id="btnImportar" class="btn" onclick="iniciarImportacao()" disabled>Iniciar Importação para o Firestore</button>
+    
+    <div id="log">Aguardando...</div>
+
+    <script>
+        // Inicialização Global do Firebase
+        if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
+            firebase.initializeApp(window.__FIREBASE_CONFIG__);
+        }
+        const db = firebase.firestore();
+
+        // Controla o estado de autenticação
+        let currentUser = null;
+        firebase.auth().onAuthStateChanged((user) => {
+            currentUser = user;
+            const btn = document.getElementById('btnImportar');
+            const loginSec = document.getElementById('loginSection');
+            
+            if (user) {
+                loginSec.style.display = 'none';
+                btn.disabled = false;
+                log(`🔐 Sessão detectada! Logado como: ${user.email}`);
+            } else {
+                loginSec.style.display = 'block';
+                btn.disabled = true;
+                log(`⚠️ Atenção: Nenhuma sessão ativa encontrada. Faça login acima.`);
+            }
+        });
+
+        async function fazerLogin() {
+            const email = document.getElementById('email').value;
+            const senha = document.getElementById('senha').value;
+            if(!email || !senha) return alert("Preencha e-mail e senha!");
+            
+            try {
+                log("Autenticando...");
+                await firebase.auth().signInWithEmailAndPassword(email, senha);
+                log("✅ Login realizado com sucesso!");
+            } catch (error) {
+                log("❌ Erro no login: " + error.message);
+            }
+        }
+
+        function log(message) {
+            const logDiv = document.getElementById('log');
+            logDiv.innerHTML += message + '\n';
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        async function iniciarImportacao() {
+            const btn = document.getElementById('btnImportar');
+            btn.disabled = true;
+
+            if (!currentUser) {
+                log('❌ ERRO: Você não está logado no Firebase.');
+                return;
+            }
+
+            log(`👤 Iniciando com usuário: ${currentUser.email}`);
+            log('Carregando dados do JSON...');
+
+            try {
+                // Carrega o arquivo JSON
+                const response = await fetch('colaborador_teorema.json');
+                const dados = await response.json();
+                
+                log(`Processando Colaborador: ${dados.funcionario.nome}`);
+                const cpfBuscado = dados.funcionario.cpf.replace(/\D/g, ''); // limpa o CPF para busca segura
+
+                // 1. Procurar Funcionário Existente (Ativo) no Nexter
+                log('Buscando funcionário no banco do Nexter...');
+                const querySnap = await db.collection('funcionarios')
+                    .where('status', '==', 'Ativo')
+                    .get();
+
+                let funcionarioId = null;
+                querySnap.forEach(doc => {
+                    const f = doc.data();
+                    if (f.cpf && f.cpf.replace(/\D/g, '') === cpfBuscado) {
+                        funcionarioId = doc.id;
+                    }
+                });
+
+                if (!funcionarioId) {
+                    log('❌ ERRO: O funcionário não foi encontrado na base do Nexter (ou não está Ativo). O histórico não foi importado.');
+                    btn.disabled = false;
+                    return;
+                }
+
+                log(`✅ Funcionário localizado (UID: ${funcionarioId}). Atualizando flag de importação...`);
+                await db.collection('funcionarios').doc(funcionarioId).update({
+                    importadoTeorema: true
+                });
+
+                // 2. Limpar dados anteriores dessa origem (para caso de dupla importação)
+                log('Limpando histórico antigo (se houver)...');
+                
+                // Limpar Folha
+                const prevFolha = await db.collection('lancamentos_financeiros').where('funcionarioId', '==', funcionarioId).where('origem', '==', 'Teorema').get();
+                if (!prevFolha.empty) {
+                    let batchDel = db.batch();
+                    prevFolha.forEach(doc => batchDel.delete(doc.ref));
+                    await batchDel.commit();
+                }
+
+                // Limpar Férias
+                const prevFerias = await db.collection('funcionarios').doc(funcionarioId).collection('historico_ferias').where('origem', '==', 'Teorema').get();
+                if (!prevFerias.empty) {
+                    let batchDel = db.batch();
+                    prevFerias.forEach(doc => batchDel.delete(doc.ref));
+                    await batchDel.commit();
+                }
+
+                // Limpar Salários
+                const prevSalarios = await db.collection('funcionarios').doc(funcionarioId).collection('historico_salarial').where('origem', '==', 'Teorema').get();
+                if (!prevSalarios.empty) {
+                    let batchDel = db.batch();
+                    prevSalarios.forEach(doc => batchDel.delete(doc.ref));
+                    await batchDel.commit();
+                }
+
+                // 3. Inserir Férias e Evolução Salarial no próprio documento do funcionário (Subcoleções)
+                log('Salvando histórico de férias e evolução salarial...');
+                const batchFuncionario = db.batch();
+                
+                dados.ferias.forEach(f => {
+                    const docRef = db.collection('funcionarios').doc(funcionarioId).collection('historico_ferias').doc();
+                    batchFuncionario.set(docRef, f);
+                });
+                
+                dados.salarios.forEach(s => {
+                    const docRef = db.collection('funcionarios').doc(funcionarioId).collection('historico_salarial').doc();
+                    batchFuncionario.set(docRef, s);
+                });
+                await batchFuncionario.commit();
+                log('✅ Férias e Salários salvos.');
+
+                // 4. Inserir Movimentações na coleção lancamentos_financeiros
+                log(`Iniciando envio de ${dados.movimentacoes.length} movimentações da folha em lotes...`);
+                let batchMovs = db.batch();
+                let contagem = 0;
+
+                for (let i = 0; i < dados.movimentacoes.length; i++) {
+                    const m = dados.movimentacoes[i];
+                    const docRef = db.collection('lancamentos_financeiros').doc();
+                    
+                    batchMovs.set(docRef, {
+                        ...m,
+                        funcionarioId: funcionarioId,
+                        funcionarioNome: dados.funcionario.nome,
+                        importado_em: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    contagem++;
+
+                    if (contagem % 450 === 0) {
+                        log(`Enviando lote de 450 movimentações...`);
+                        await batchMovs.commit();
+                        batchMovs = db.batch();
+                    }
+                }
+
+                if (contagem % 450 !== 0) {
+                    await batchMovs.commit();
+                }
+
+                log('✅ SUCESSO! O histórico foi totalmente anexado ao colaborador existente.');
+            } catch (error) {
+                log('❌ ERRO DURANTE A IMPORTAÇÃO: ' + error.message);
+                console.error(error);
+            } finally {
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>

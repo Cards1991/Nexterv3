@@ -66,11 +66,16 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
-    // Regras para a coleção 'funcionarios'
+    // Regras para a coleção 'funcionarios' e suas subcoleções
     match /funcionarios/{funcionarioId} {
       allow read: if hasAccessToSection('funcionarios') && 
                      (isAdmin() || !isRestrictedToSector(resource.data.setor) || isRestrictedToSector(resource.data.setor));
       allow create, update, delete: if isAdmin();
+      
+      // Permitir acesso a subcoleções (ex: historico_ferias, historico_salarial)
+      match /{subcollection}/{docId} {
+        allow read, write: if isAdmin();
+      }
     }
 
     // Regras para a coleção 'movimentacoes'
@@ -137,6 +142,12 @@ service cloud.firestore {
     // Regras para a coleção 'agenda_atividades'
     match /agenda_atividades/{activityId} {
       allow read, write: if hasAccessToSection('agenda') || hasAccessToSection('dashboard-atividades');
+    }
+
+    // Regras para a coleção 'verbas' (Eventos do Teorema)
+    match /verbas/{verbaId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
     }
 
     // Regra padrão para negar acesso a coleções não explicitamente permitidas
