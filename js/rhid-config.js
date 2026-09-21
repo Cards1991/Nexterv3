@@ -397,7 +397,7 @@ async function importarApuracaoRhid() {
 
         alertBox.classList.remove('d-none', 'alert-danger');
         alertBox.classList.add('alert-success');
-        alertBox.innerHTML = `<strong>Sucesso!</strong> Foram importados e atualizados ${espelhosSalvos} dias de espelho de ponto para os funcionários no período.`;
+        alertBox.innerHTML = `<strong>Sucesso!</strong> Foram importados e atualizados ${totalEspelhosSalvos} dias de espelho de ponto para os funcionários no período.`;
         
     } catch (error) {
         progressBar.classList.remove('progress-bar-animated', 'bg-warning');
