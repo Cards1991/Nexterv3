@@ -342,8 +342,9 @@ async function importarApuracaoRhid() {
                     const func = funcMap.get(String(doc.personId));
                     if (!func) continue;
 
-                    // Salva ou atualiza no Firestore: espelhos_ponto
-                    const docId = `${func.cpf}_${doc.date}`;
+                    // Formatar data para YYYY-MM-DD (remove o horário caso venha T00:00:00 da API)
+                    const dateStr = doc.date.split('T')[0];
+                    const docId = `${func.cpf}_${dateStr}`;
                     const ref = window.db.collection('espelhos_ponto').doc(docId);
                     
                     batch.set(ref, {
@@ -351,17 +352,17 @@ async function importarApuracaoRhid() {
                         nome: func.nome,
                         setor: func.setor,
                         rhidPersonId: doc.personId,
-                        dataReferencia: doc.date,
+                        dataReferencia: dateStr,
                         
-                        horasTrabalhadas: doc.workedHours || 0,
-                        horasExtras: doc.extraHours || 0,
-                        horasFaltaAtraso: doc.missingHours || 0,
-                        horasAdicionalNoturno: doc.nightlyAditionalHours || 0,
-                        horasEspera: doc.waitingHours || 0,
+                        horasTrabalhadas: doc.totalHorasTrabalhadas || 0,
+                        horasExtras: doc.horasExtrasCalculadas || 0,
+                        horasFaltaAtraso: doc.horasFaltaAtraso || 0,
+                        horasAdicionalNoturno: doc.horasNoturnasNaoExtra || 0,
+                        horasEspera: doc.horasEspera || 0,
                         
-                        primeiraBatida: doc.firstPunch || null,
-                        ultimaBatida: doc.lastPunch || null,
-                        marcacoes: doc.punches || [],
+                        primeiraBatida: (doc.listAfdtManutencao && doc.listAfdtManutencao.length > 0) ? doc.listAfdtManutencao[0].hora : null,
+                        ultimaBatida: (doc.listAfdtManutencao && doc.listAfdtManutencao.length > 0) ? doc.listAfdtManutencao[doc.listAfdtManutencao.length - 1].hora : null,
+                        marcacoes: doc.listAfdtManutencao || [],
                         
                         importadoEm: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }); // Merge true para não sobrescrever justificativas já feitas na auditoria
