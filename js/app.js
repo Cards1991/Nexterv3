@@ -248,6 +248,9 @@ async function carregarDadosSecao(sectionName) {
             case 'faltas':
                 if (typeof inicializarFaltas === 'function') await inicializarFaltas();
                 break;
+            case 'rhid-config':
+                if (typeof inicializarRhidConfig === 'function') await inicializarRhidConfig();
+                break;
             case 'dashboard-faltas':
                 if (typeof inicializarDashboardFaltas === 'function') await inicializarDashboardFaltas();
                 if (typeof renderizarGraficoEvolucaoFaltas === 'function') await renderizarGraficoEvolucaoFaltas();

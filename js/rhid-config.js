@@ -768,10 +768,10 @@ async function verificarFaltasHoje() {
 // FASE 5: Auditoria Individual e Processamento (Justificativas e Horas Extras)
 // ==========================================
 
-// Executa o carregamento assim que o script for injetado (com pequeno delay para garantir que o DOM renderizou)
-setTimeout(() => {
-    carregarFuncionariosAuditoria();
-}, 200);
+// Executa o carregamento assim que a tela for aberta pelo roteador do Nexter (app.js)
+window.inicializarRhidConfig = async function() {
+    await carregarFuncionariosAuditoria();
+};
 
 async function carregarFuncionariosAuditoria() {
     const selectAuditoria = document.getElementById('rhid-auditoria-funcionario');
