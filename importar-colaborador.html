@@ -21,7 +21,7 @@
 </head>
 <body>
     <h2>Importação de Colaborador e Histórico (Teorema)</h2>
-    <p>O arquivo JSON contém: Cadastro, 120 Movimentações da Folha, Férias e Evolução Salarial.</p>
+    <p>Selecione o arquivo JSON exportado do Teorema para importar o histórico de um colaborador específico.</p>
     
     <div id="loginSection" style="display: none; background: #fff3cd; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
         <h4>Autenticação Necessária</h4>
@@ -31,7 +31,12 @@
         <button onclick="fazerLogin()" class="btn" style="background-color: #198754;">Login</button>
     </div>
 
-    <button id="btnImportar" class="btn" onclick="iniciarImportacao()" disabled>Iniciar Importação para o Firestore</button>
+    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #f8f9fa;">
+        <label for="fileJson" style="font-weight: bold; display: block; margin-bottom: 10px;">Arquivo JSON do Colaborador:</label>
+        <input type="file" id="fileJson" accept=".json" style="margin-bottom: 15px;">
+        <br>
+        <button id="btnImportar" class="btn" onclick="iniciarImportacao()" disabled>Iniciar Importação para o Firestore</button>
+    </div>
     
     <div id="log">Aguardando...</div>
 
@@ -83,6 +88,13 @@
 
         async function iniciarImportacao() {
             const btn = document.getElementById('btnImportar');
+            const fileInput = document.getElementById('fileJson');
+            
+            if (!fileInput.files || fileInput.files.length === 0) {
+                alert("Por favor, selecione um arquivo JSON primeiro.");
+                return;
+            }
+
             btn.disabled = true;
 
             if (!currentUser) {
@@ -91,20 +103,21 @@
             }
 
             log(`👤 Iniciando com usuário: ${currentUser.email}`);
-            log('Carregando dados do JSON...');
+            log(`Carregando arquivo ${fileInput.files[0].name}...`);
 
             try {
-                // Carrega o arquivo JSON
-                const response = await fetch('colaborador_teorema.json');
-                const dados = await response.json();
+                // Ler o arquivo selecionado
+                const file = fileInput.files[0];
+                const textData = await file.text();
+                const dados = JSON.parse(textData);
                 
                 log(`Processando Colaborador: ${dados.funcionario.nome}`);
-                const cpfBuscado = dados.funcionario.cpf.replace(/\D/g, ''); // limpa o CPF para busca segura
+                const cpfBuscado = String(dados.funcionario.cpf).replace(/\D/g, ''); // limpa o CPF para busca segura
 
                 // 1. Procurar Funcionário Existente (Ativo) no Nexter
                 log('Buscando funcionário no banco do Nexter...');
                 const querySnap = await db.collection('funcionarios')
-                    .where('status', '==', 'Ativo')
+                    .where('status', 'in', ['Ativo', 'ATIVO'])
                     .get();
 
                 let funcionarioId = null;
