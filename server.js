@@ -203,6 +203,13 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         if (earliestDate.getFullYear() === 2099) earliestDate = new Date('1900-01-01');
         
         const dataAdmissao = earliestDate;
+        
+        // Sobrescrever os dados do funcionário com a data de admissão original consolidada
+        dadosCompletos.funcionario.dataAdmissao = dataAdmissao.toISOString().split('T')[0];
+        if (funcBase.FUNCIONARIO_DATA_DEMISSAO) {
+            dadosCompletos.funcionario.dataDemissao = funcBase.FUNCIONARIO_DATA_DEMISSAO;
+        }
+
         const admAno = dataAdmissao.getFullYear();
         const admMes = dataAdmissao.getMonth() + 1;
         

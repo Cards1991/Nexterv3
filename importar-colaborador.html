@@ -140,6 +140,11 @@
                 const dados = jsonResp.dados;
                 
                 log(`✅ Dados extraídos com sucesso! Processando Colaborador: ${dados.funcionario.nome}`);
+                
+                const admOriginal = dados.funcionario.dataAdmissao ? new Date(dados.funcionario.dataAdmissao).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'N/A';
+                const dem = dados.funcionario.dataDemissao ? new Date(dados.funcionario.dataDemissao).toLocaleDateString('pt-BR', {timeZone: 'UTC'}) : 'Contrato Ativo';
+                log(`🗓️ <b>Entrada:</b> ${admOriginal} &nbsp;|&nbsp; <b>Saída:</b> ${dem}`);
+                
                 const cpfBuscado = String(dados.funcionario.cpf).replace(/\D/g, ''); // limpa o CPF para busca segura
 
                 // 1. Procurar Funcionário Existente (Ativo) no Nexter
