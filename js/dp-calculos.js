@@ -311,19 +311,20 @@ async function calcularFolhaPagamento() {
                 const mesAtualStr = `${mesParts[1]}-${mesParts[0]}`;
                 const pontoSnap = await db.collection('espelhos_ponto')
                     .where('cpf', '==', cpfNumeros)
-                    .where('dataReferencia', '>=', `${mesAtualStr}-01`)
-                    .where('dataReferencia', '<=', `${mesAtualStr}-31`)
                     .get();
                     
                 if (!pontoSnap.empty) {
                     pontoSnap.forEach(doc => {
                         const d = doc.data();
                         
-                        // Somar os minutos da jornada diária e mapear para as chaves usadas nas verbas
-                        apuracaoPonto.horasExtrasCalculadas += Number(d.horasExtras || 0);
-                        apuracaoPonto.horasTotalNoturno += Number(d.horasAdicionalNoturno || 0);
-                        apuracaoPonto.horasApenasFalta += Number(d.horasFaltaAtraso || 0);
-                        apuracaoPonto.diasTrabalhados += 1;
+                        // Filtro Client-side para o mês atual, evitando a necessidade de um Índice Composto no Firebase
+                        if (d.dataReferencia >= `${mesAtualStr}-01` && d.dataReferencia <= `${mesAtualStr}-31`) {
+                            // Somar os minutos da jornada diária e mapear para as chaves usadas nas verbas
+                            apuracaoPonto.horasExtrasCalculadas += Number(d.horasExtras || 0);
+                            apuracaoPonto.horasTotalNoturno += Number(d.horasAdicionalNoturno || 0);
+                            apuracaoPonto.horasApenasFalta += Number(d.horasFaltaAtraso || 0);
+                            apuracaoPonto.diasTrabalhados += 1;
+                        }
                     });
                 }
             }
