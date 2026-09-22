@@ -828,7 +828,7 @@ async function buscarAuditoriaPonto() {
             .get();
 
         if (espelhosSnap.empty) {
-            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-muted">Nenhum registro encontrado neste período. Sincronize o RHiD primeiro.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-muted">Nenhum registro encontrado neste período. Sincronize o RHiD primeiro.</td></tr>';
             return;
         }
 
@@ -841,7 +841,7 @@ async function buscarAuditoriaPonto() {
         });
 
         if (docsFiltrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-muted">Nenhum registro encontrado neste período específico.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-muted">Nenhum registro encontrado neste período específico.</td></tr>';
             return;
         }
 
@@ -882,9 +882,17 @@ async function buscarAuditoriaPonto() {
                 }
             }
 
+            let batidasStr = '<span class="text-muted small">Sem marcação</span>';
+            if (m.marcacoes && m.marcacoes.length > 0) {
+                // Ordenar batidas por hora (normalmente já vem ordenado da API, mas por segurança)
+                const mb = [...m.marcacoes].sort((a, b) => a.hora.localeCompare(b.hora));
+                batidasStr = mb.map(b => `<span class="badge bg-light text-dark border">${b.hora.substring(0, 5)}</span>`).join(' ');
+            }
+
             trs += `
                 <tr>
                     <td class="fw-bold">${m.dataReferencia.split('-').reverse().join('/')}</td>
+                    <td>${batidasStr}</td>
                     <td>${Number(m.horasTrabalhadas || 0) > 0 ? (Number(m.horasTrabalhadas) / 60).toFixed(2) + 'h' : '-'}</td>
                     <td class="${faltaOriginal > 0 && m.statusFalta !== 'Justificada' ? 'text-danger fw-bold' : (m.statusFalta === 'Justificada' ? 'text-success text-decoration-line-through' : '')}">${faltaFormatado}</td>
                     <td>${acaoFalta}</td>
@@ -898,7 +906,7 @@ async function buscarAuditoriaPonto() {
 
     } catch (e) {
         console.error(e);
-        tbody.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-danger">Erro ao buscar auditoria.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-danger">Erro ao buscar auditoria.</td></tr>';
         mostrarMensagem('Erro interno.', 'error');
     } finally {
         btn.disabled = false;
