@@ -142,7 +142,12 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         }
 
         const funcBase = funcResult.reduce((prev, current) => {
-            return (prev.FUNCIONARIO_CODIGO > current.FUNCIONARIO_CODIGO) ? prev : current;
+            if (!prev.FUNCIONARIO_DATA_DEMISSAO && current.FUNCIONARIO_DATA_DEMISSAO) return prev;
+            if (prev.FUNCIONARIO_DATA_DEMISSAO && !current.FUNCIONARIO_DATA_DEMISSAO) return current;
+            
+            let dPrev = new Date(prev.FUNCIONARIO_DATA_CONTRATO || prev.FUNCIONARIO_DATA_ADMISSAO || '1900-01-01');
+            let dCurr = new Date(current.FUNCIONARIO_DATA_CONTRATO || current.FUNCIONARIO_DATA_ADMISSAO || '1900-01-01');
+            return (dPrev > dCurr) ? prev : current;
         });
 
         const dadosCompletos = {
@@ -162,23 +167,57 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             salarios: []
         };
 
-        const codFuncionario = funcBase.FUNCIONARIO_CODIGO;
+        const activeCode = funcBase.FUNCIONARIO_CODIGO;
+        let chain = [activeCode];
         
+        const transResult = await conn.query(`SELECT TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
+        let transferMap = {};
+        for (let t of transResult) {
+            transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
+        }
+        
+        let currentIter = activeCode;
+        while (transferMap[currentIter]) {
+            let prevCode = transferMap[currentIter];
+            if (!chain.includes(prevCode)) {
+                chain.push(prevCode);
+                currentIter = prevCode;
+            } else {
+                break;
+            }
+        }
+        
+        const inClauseCodes = chain.map(c => `'${c}'`).join(',');
+        console.log(`Cadeia de transferências detectada: ${chain.join(' <- ')}`);
+        
+        let earliestDate = new Date('2099-01-01');
+        funcResult.forEach(f => {
+            if (chain.includes(f.FUNCIONARIO_CODIGO)) {
+                let dStr = f.FUNCIONARIO_DATA_CONTRATO || f.FUNCIONARIO_DATA_ADMISSAO;
+                if (dStr) {
+                    let d = new Date(dStr);
+                    if (d < earliestDate) earliestDate = d;
+                }
+            }
+        });
+        if (earliestDate.getFullYear() === 2099) earliestDate = new Date('1900-01-01');
+        
+        const dataAdmissao = earliestDate;
+        const admAno = dataAdmissao.getFullYear();
+        const admMes = dataAdmissao.getMonth() + 1;
+        
+        console.log(`Data de admissão original considerada: ${dataAdmissao.toISOString().split('T')[0]}`);
+
         // 1. Movimentações Mensais
-        const movResult1 = await conn.query(`SELECT MOVIMENTO_ANO as ANO, MOVIMENTO_MES as MES, EVENTO_CODIGO, MOVIMENTO_VALOR as VALOR, MOVIMENTO_REFERENCIA as REFERENCIA, '0' as TIPO, 'V' as NATUREZA FROM MOVIMENTO_MENSAL WHERE FUNCIONARIO_CODIGO = '${codFuncionario}'`);
+        const movResult1 = await conn.query(`SELECT MOVIMENTO_ANO as ANO, MOVIMENTO_MES as MES, EVENTO_CODIGO, MOVIMENTO_VALOR as VALOR, MOVIMENTO_REFERENCIA as REFERENCIA, '0' as TIPO, 'V' as NATUREZA, FUNCIONARIO_CODIGO as COD_FONTE FROM MOVIMENTO_MENSAL WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
         const movResult2 = await conn.query(`
             SELECT ms.MOVIMENTO_ANO as ANO, ms.MOVIMENTO_MES as MES, dt.EVENTO_CODIGO, dt.MOVIMENTO_VALOR as VALOR, dt.MOVIMENTO_REFERENCIA as REFERENCIA, 
             ms.MOVIMENTO_TIPO as TIPO, ms.MOVIMENTO_BASE_INSS as BASE_INSS, ms.MOVIMENTO_BASE_FGTS as BASE_FGTS, ms.MOVIMENTO_VALOR_FGTS as FGTS_MES, ms.MOVIMENTO_BASE_IRRF as BASE_IRRF,
-            dt.EVENTO_NATUREZA as NATUREZA
+            dt.EVENTO_NATUREZA as NATUREZA, ms.FUNCIONARIO_CODIGO as COD_FONTE
             FROM MOVIMENTO_FUNCIONARIO_MS ms
             JOIN MOVIMENTO_FUNCIONARIO_DT dt ON ms.TRANSACAO = dt.TRANSACAO
-            WHERE ms.FUNCIONARIO_CODIGO = '${codFuncionario}'
+            WHERE ms.FUNCIONARIO_CODIGO IN (${inClauseCodes})
         `);
-        
-        const dataAdmissaoStr = funcBase.FUNCIONARIO_DATA_CONTRATO || funcBase.FUNCIONARIO_DATA_ADMISSAO;
-        const dataAdmissao = dataAdmissaoStr ? new Date(dataAdmissaoStr) : new Date('1900-01-01');
-        const admAno = dataAdmissao.getFullYear();
-        const admMes = dataAdmissao.getMonth() + 1;
 
         const movMapeadas = [...movResult1, ...movResult2].map(m => ({
             ano: String(m.ANO),
@@ -187,7 +226,7 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             valor: m.VALOR || 0,
             referencia: m.REFERENCIA || '',
             origem: 'Teorema',
-            codigoFonte: codFuncionario
+            codigoFonte: m.COD_FONTE || activeCode
         })).filter(m => {
             if (!m.ano || !m.mes) return true;
             return Number(m.ano) > admAno || (Number(m.ano) === admAno && Number(m.mes) >= admMes);
@@ -195,13 +234,13 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.movimentacoes.push(...movMapeadas);
 
         // 2. Férias
-        const feriasResult = await conn.query(`SELECT * FROM FUNCIONARIOS_FERIAS WHERE FUNCIONARIO_CODIGO = '${codFuncionario}'`);
+        const feriasResult = await conn.query(`SELECT * FROM FUNCIONARIOS_FERIAS WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
         const feriasMapeadas = feriasResult.map(f => ({
             dataInicio: f.FERIAS_AQUISITIVO_INI || f.FERIAS_INICIO,
             dataFim: f.FERIAS_AQUISITIVO_FIM || f.FERIAS_FIM,
             diasGozados: f.FERIAS_DIAS_FERIAS || f.DIAS_GOZADOS || 0,
             origem: 'Teorema',
-            codigoFonte: codFuncionario
+            codigoFonte: f.FUNCIONARIO_CODIGO || activeCode
         })).filter(f => {
             if (!f.dataInicio) return true;
             const d = new Date(f.dataInicio);
@@ -210,13 +249,13 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.ferias.push(...feriasMapeadas);
 
         // 3. Salários
-        const salResult = await conn.query(`SELECT * FROM EVOLUCAO_SALARIAL WHERE FUNCIONARIO_CODIGO = '${codFuncionario}'`);
+        const salResult = await conn.query(`SELECT * FROM EVOLUCAO_SALARIAL WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
         const salMapeados = salResult.map(s => ({
             data: s.EVOLUCAO_DATA,
             salario: s.EVOLUCAO_VALOR_ATUAL,
             motivo: s.EVOLUCAO_MOTIVO || '',
             origem: 'Teorema',
-            codigoFonte: codFuncionario
+            codigoFonte: s.FUNCIONARIO_CODIGO || activeCode
         })).filter(s => {
             if (!s.data) return true;
             const d = new Date(s.data);
@@ -224,6 +263,54 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         });
         dadosCompletos.salarios.push(...salMapeados);
 
+        // --- DEDUPLICAÇÃO DE SALÁRIOS ---
+        const salariosUnicosMap = new Map();
+        dadosCompletos.salarios.forEach(s => {
+            if (!s.data) return;
+            const dataStr = s.data instanceof Date ? s.data.toISOString().split('T')[0] : String(s.data).split('T')[0];
+            if (!salariosUnicosMap.has(dataStr)) {
+                salariosUnicosMap.set(dataStr, s);
+            } else {
+                const existente = salariosUnicosMap.get(dataStr);
+                if (Number(s.salario) > Number(existente.salario)) {
+                    salariosUnicosMap.set(dataStr, s);
+                }
+            }
+        });
+        
+        let salariosOrdenados = Array.from(salariosUnicosMap.values()).sort((a, b) => new Date(b.data) - new Date(a.data));
+        
+        let salariosFinais = [];
+        let ultimoSalario = null;
+        for (let i = salariosOrdenados.length - 1; i >= 0; i--) { 
+            const s = salariosOrdenados[i];
+            if (Number(s.salario) !== ultimoSalario) {
+                salariosFinais.push(s);
+                ultimoSalario = Number(s.salario);
+            }
+        }
+        dadosCompletos.salarios = salariosFinais.reverse();
+
+        // --- DEDUPLICAÇÃO DE FÉRIAS ---
+        const feriasUnicas = new Map();
+        dadosCompletos.ferias.forEach(f => {
+            if(!f.dataInicio) return;
+            const dataStr = f.dataInicio instanceof Date ? f.dataInicio.toISOString().split('T')[0] : String(f.dataInicio).split('T')[0];
+            feriasUnicas.set(dataStr, f);
+        });
+        dadosCompletos.ferias = Array.from(feriasUnicas.values());
+
+        // --- DEDUPLICAÇÃO DE MOVIMENTAÇÕES (Folha) ---
+        const movsUnicas = new Map();
+        dadosCompletos.movimentacoes.forEach(m => {
+            if (!m.mes || !m.ano || !m.verbaCodigo) return;
+            const chave = `${m.ano}-${m.mes}-${m.verbaCodigo}`;
+            const existente = movsUnicas.get(chave);
+            if (!existente || Number(m.valor) > Number(existente.valor)) {
+                movsUnicas.set(chave, m);
+            }
+        });
+        dadosCompletos.movimentacoes = Array.from(movsUnicas.values());
         // Retorna sucesso
         res.json({ success: true, dados: dadosCompletos });
         
