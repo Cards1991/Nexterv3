@@ -42,31 +42,14 @@
 
                             <!-- Bloco de Dados Variáveis (Aparece apenas na Folha Mensal) -->
                             <div id="bloco-variaveis-folha" style="display: none;">
-                                <!-- INÍCIO INTEGRAÇÃO RHID -->
-                                <div class="card bg-light mb-3 border-info">
-                                    <div class="card-body py-2 px-3">
-                                        <label class="form-label text-info fw-bold mb-1"><i class="fas fa-cloud-download-alt"></i> Sincronizar com RHiD</label>
-                                        <div class="row g-2 align-items-center">
-                                            <div class="col-md-5">
-                                                <input type="date" class="form-control form-control-sm" id="calc-rhid-inicio" title="Data Inicial">
-                                            </div>
-                                            <div class="col-md-5">
-                                                <input type="date" class="form-control form-control-sm" id="calc-rhid-fim" title="Data Final">
-                                            </div>
-                                            <div class="col-md-2 text-end">
-                                                <button type="button" class="btn btn-sm btn-info text-white w-100" id="btn-pull-rhid" onclick="buscarApuracaoRhidParaCalculo()" title="Puxar Horas">
-                                                    <i class="fas fa-sync-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                        <small class="text-muted" style="font-size: 0.75rem;">Selecione o período para preencher faltas e extras automaticamente.</small>
-                                    </div>
-                                </div>
-                                <!-- FIM INTEGRAÇÃO RHID -->
 
-                                <div class="row g-3">
+                                <div class="row g-3 d-none">
                                     <div class="col-md-6 mb-3"><label for="calc-horas-extras" class="form-label">Horas Extras (50%)</label><input type="number" class="form-control" id="calc-horas-extras" value="0" min="0"></div>
                                     <div class="col-md-6 mb-3"><label for="calc-adicional-noturno" class="form-label">Hrs Adicional Noturno</label><input type="number" class="form-control" id="calc-adicional-noturno" value="0" min="0"></div>
+                                    
+                                    <div class="col-md-6 mb-3"><label for="calc-dias-uteis" class="form-label text-primary">Dias Úteis</label><input type="number" class="form-control border-primary" id="calc-dias-uteis" value="25" min="1"></div>
+                                    <div class="col-md-6 mb-3"><label for="calc-dias-dsr" class="form-label text-primary">Dias de DSR</label><input type="number" class="form-control border-primary" id="calc-dias-dsr" value="5" min="0"></div>
+
                                     <div class="col-md-6 mb-3"><label for="calc-faltas-horas" class="form-label">Faltas (horas)</label><input type="number" class="form-control" id="calc-faltas-horas" value="0" min="0"></div>
                                     <div class="col-md-6 mb-3"><label for="calc-dependentes-irrf" class="form-label">Nº Dependentes (IRRF)</label><input type="number" class="form-control" id="calc-dependentes-irrf" value="0" min="0"></div>
                                     <div class="col-md-6 mb-3"><label for="calc-comissoes" class="form-label">Comissões/Prêmios (R$)</label><input type="number" step="0.01" class="form-control" id="calc-comissoes" value="0" min="0"></div>
@@ -96,6 +79,21 @@
                             <p>Preencha os dados e clique em "Simular Cálculo" para visualizar as verbas que serão geradas.</p>
                         </div>
                     </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Memória de Cálculo -->
+    <div class="modal fade" id="modalMemoriaCalculo" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-info text-white">
+                    <h5 class="modal-title fw-bold"><i class="fas fa-search-dollar me-2"></i>Memória de Cálculo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <pre id="texto-memoria-calculo" class="p-3 bg-light border rounded" style="white-space: pre-wrap; font-size: 0.9rem; color: #333;"></pre>
                 </div>
             </div>
         </div>

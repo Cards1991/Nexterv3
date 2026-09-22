@@ -6,7 +6,16 @@ async function inicializarCalculos() {
         const funcSelect = document.getElementById('calc-funcionario');
         if (!funcSelect) return;
 
-        funcSelect.innerHTML = '<option value="">Carregando funcionários...</option>';
+        funcSelect.innerHTML = '<option value="">Carregando...</option>';
+        
+        // Carregar Verbas para o dicionário global
+        const verbasSnap = await db.collection('verbas').get();
+        window.verbasMap = {};
+        verbasSnap.forEach(doc => {
+            const v = doc.data();
+            window.verbasMap[v.codigo] = v;
+        });
+
         const snapshot = await db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get();
 
         funcSelect.innerHTML = '<option value="">Selecione um funcionário</option>';
@@ -60,6 +69,8 @@ async function verificarCalculoExistente() {
         if (data.parametros) {
             if (document.getElementById('calc-horas-extras')) document.getElementById('calc-horas-extras').value = data.parametros.horasExtras || 0;
             if (document.getElementById('calc-adicional-noturno')) document.getElementById('calc-adicional-noturno').value = data.parametros.horasAdicionalNoturno || 0;
+            if (document.getElementById('calc-dias-uteis')) document.getElementById('calc-dias-uteis').value = data.parametros.diasUteis || 25;
+            if (document.getElementById('calc-dias-dsr')) document.getElementById('calc-dias-dsr').value = data.parametros.diasDsr || 5;
             if (document.getElementById('calc-faltas-horas')) document.getElementById('calc-faltas-horas').value = data.parametros.horasFalta || 0;
             if (document.getElementById('calc-dependentes-irrf')) document.getElementById('calc-dependentes-irrf').value = data.parametros.numDependentes || 0;
             if (document.getElementById('calc-comissoes')) document.getElementById('calc-comissoes').value = data.parametros.comissoes || 0;
@@ -96,6 +107,57 @@ async function verificarCalculoExistente() {
         `;
         document.getElementById('btn-salvar-processamento').style.display = 'none';
         processamentoAtual = null;
+
+        // Limpar inputs de RHiD antes de tentar preencher
+        if (document.getElementById('calc-horas-extras')) document.getElementById('calc-horas-extras').value = 0;
+        if (document.getElementById('calc-faltas-horas')) document.getElementById('calc-faltas-horas').value = 0;
+
+        // Auto Preencher RHiD (Apenas se for Folha Mensal)
+        if (tipoCalculo === '1') {
+            try {
+                const funcDoc = await db.collection('funcionarios').doc(funcionarioId).get();
+                if (funcDoc.exists && funcDoc.data().cpf) {
+                    const cpf = funcDoc.data().cpf;
+                    
+                    // Calcular período (dia 26 do mês anterior ao dia 25 do mês atual)
+                    const [mesStr, anoStr] = competencia.split('/');
+                    let mesAtual = parseInt(mesStr, 10);
+                    let anoAtual = parseInt(anoStr, 10);
+                    
+                    let mesAnterior = mesAtual - 1;
+                    let anoAnterior = anoAtual;
+                    if (mesAnterior === 0) {
+                        mesAnterior = 12;
+                        anoAnterior = anoAtual - 1;
+                    }
+                    
+                    const dtInicio = `${anoAnterior}-${mesAnterior.toString().padStart(2, '0')}-26`;
+                    const dtFim = `${anoAtual}-${mesAtual.toString().padStart(2, '0')}-25`;
+
+                    const espelhosSnap = await db.collection('espelhos_ponto').where('cpf', '==', cpf).get();
+                    
+                    let totalMinutosExtra = 0;
+                    let totalMinutosFalta = 0;
+
+                    espelhosSnap.forEach(docEsp => {
+                        const dataEsp = docEsp.data();
+                        const dataRef = dataEsp.dataReferencia;
+                        if (dataRef >= dtInicio && dataRef <= dtFim) {
+                            if (dataEsp.statusFalta !== 'Justificada') totalMinutosFalta += Number(dataEsp.horasFaltaAtraso || 0);
+                            if (dataEsp.statusAprovacaoHe !== 'Descartada') totalMinutosExtra += Number(dataEsp.horasExtras || 0);
+                        }
+                    });
+
+                    const horasExtrasDecimais = (totalMinutosExtra / 60).toFixed(2);
+                    const horasFaltaDecimais = (totalMinutosFalta / 60).toFixed(2);
+
+                    document.getElementById('calc-horas-extras').value = horasExtrasDecimais;
+                    document.getElementById('calc-faltas-horas').value = horasFaltaDecimais;
+                }
+            } catch (e) {
+                console.error("Erro no auto-preenchimento do RHiD", e);
+            }
+        }
     }
 }
 
@@ -109,6 +171,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }, 1000);
 });
 
+function abrirMemoriaCalculo(verbaCodigo) {
+    if (!processamentoAtual || !processamentoAtual.movimentos) return;
+    const mov = processamentoAtual.movimentos.find(m => m.verbaCodigo === verbaCodigo);
+    if (!mov) return;
+    document.getElementById('texto-memoria-calculo').textContent = mov.memoriaCalculo || "Memória de cálculo não disponível.";
+    new bootstrap.Modal(document.getElementById('modalMemoriaCalculo')).show();
+}
+
 function renderizarPreviewCalculo(movimentos, funcionarioNome, tipoCalculo, competencia, jaExiste) {
     const resultadoDiv = document.getElementById('holerite-resultado');
     const btnSalvar = document.getElementById('btn-salvar-processamento');
@@ -118,14 +188,16 @@ function renderizarPreviewCalculo(movimentos, funcionarioNome, tipoCalculo, comp
 
     let trs = '';
     movimentos.forEach(m => {
-        const desc = window.verbasMap && window.verbasMap[m.verbaCodigo] ? window.verbasMap[m.verbaCodigo].descricao : 'Verba ' + m.verbaCodigo;
+        const desc = m.nome || (window.verbasMap && window.verbasMap[m.verbaCodigo] ? window.verbasMap[m.verbaCodigo].descricao : 'Verba ' + m.verbaCodigo);
         if (m.natureza === 'V') totalProventos += Number(m.valor);
         if (m.natureza === 'D') totalDescontos += Number(m.valor);
         
+        const btnAuditoria = m.memoriaCalculo ? `<button class="btn btn-sm btn-link text-info p-0 ms-2" onclick="abrirMemoriaCalculo('${m.verbaCodigo}')" title="Ver Memória de Cálculo"><i class="fas fa-search"></i></button>` : '';
+
         trs += `
             <tr>
                 <td class="text-center">${m.verbaCodigo}</td>
-                <td>${desc}</td>
+                <td>${desc} ${btnAuditoria}</td>
                 <td class="text-center">${m.referencia || ''}</td>
                 <td class="text-end text-success">${m.natureza === 'V' ? 'R$ ' + Number(m.valor).toFixed(2) : ''}</td>
                 <td class="text-end text-danger">${m.natureza === 'D' ? 'R$ ' + Number(m.valor).toFixed(2) : ''}</td>
@@ -219,115 +291,58 @@ async function calcularFolhaPagamento() {
             });
             totalProventos += valorAdiantamento;
         } 
-        // 3. PROCESSAMENTO: FOLHA MENSAL
+            // 3. PROCESSAMENTO: FOLHA MENSAL (UTILIZANDO NOVO MOTOR PARAMETRIZADO)
         else if (tipoCalculo === '1') {
-            const horasExtras = parseFloat(document.getElementById('calc-horas-extras').value) || 0;
-            const horasAdicionalNoturno = parseFloat(document.getElementById('calc-adicional-noturno').value) || 0;
-            const horasFalta = parseFloat(document.getElementById('calc-faltas-horas').value) || 0;
-            const numDependentes = parseInt(document.getElementById('calc-dependentes-irrf').value) || 0;
-            const comissoes = parseFloat(document.getElementById('calc-comissoes').value) || 0;
-            const outrosDescontos = parseFloat(document.getElementById('calc-outros-descontos').value) || 0;
-            const descontaVT = document.getElementById('calc-desconto-vt').checked;
+            const diasUteis = parseInt(document.getElementById('calc-dias-uteis').value) || 25;
+            const diasDsr = parseInt(document.getElementById('calc-dias-dsr').value) || 5;
+            parametrosEntrada = { diasUteis, diasDsr };
 
-            const valorHora = salarioBase / jornadaMensal;
-
-            parametrosEntrada = {
-                horasExtras, horasAdicionalNoturno, horasFalta, numDependentes, comissoes, outrosDescontos, descontaVT
+            // Buscar Apuração de Ponto RHiD
+            const cpfNumeros = (funcionario.cpf || '').replace(/\D/g, '');
+            const mesParts = competencia.split('/');
+            let apuracaoPonto = {
+                horasExtrasCalculadas: 0,
+                horasTotalNoturno: 0,
+                horasApenasFalta: 0,
+                diasTrabalhados: 0
             };
-
-            // Salário Base (Provento)
-            movimentos.push({ verbaCodigo: '0001', natureza: 'V', referencia: '30.00', valor: salarioBase });
-            totalProventos += salarioBase;
-
-            // Faltas (Desconto)
-            if (horasFalta > 0) {
-                const valorFaltas = Number((horasFalta * valorHora).toFixed(2));
-                movimentos.push({ verbaCodigo: '0201', natureza: 'D', referencia: horasFalta.toFixed(2), valor: valorFaltas });
-                totalDescontos += valorFaltas;
-            }
-
-            // Horas Extras (Provento)
-            let valorHorasExtras = 0;
-            if (horasExtras > 0) {
-                valorHorasExtras = Number((horasExtras * (valorHora * 1.5)).toFixed(2));
-                movimentos.push({ verbaCodigo: '0032', natureza: 'V', referencia: horasExtras.toFixed(2), valor: valorHorasExtras });
-                totalProventos += valorHorasExtras;
-                
-                // DSR sobre Extras
-                const valorDSR = Number((valorHorasExtras / 6).toFixed(2));
-                movimentos.push({ verbaCodigo: '0049', natureza: 'V', referencia: '', valor: valorDSR });
-                totalProventos += valorDSR;
-            }
-
-            // Adicional Noturno
-            if (horasAdicionalNoturno > 0) {
-                const valorAdicionalNoturno = Number((horasAdicionalNoturno * (valorHora * 0.2)).toFixed(2));
-                movimentos.push({ verbaCodigo: '0020', natureza: 'V', referencia: horasAdicionalNoturno.toFixed(2), valor: valorAdicionalNoturno });
-                totalProventos += valorAdicionalNoturno;
-            }
-
-            // Comissões
-            if (comissoes > 0) {
-                movimentos.push({ verbaCodigo: '0015', natureza: 'V', referencia: '', valor: comissoes });
-                totalProventos += comissoes;
-            }
-
-            // Descontos Legais (INSS e IRRF)
-            const descontoINSS = Number(Math.max(0, calcularINSS(totalProventos)).toFixed(2));
-            movimentos.push({ verbaCodigo: '0101', natureza: 'D', referencia: '', valor: descontoINSS });
-            totalDescontos += descontoINSS;
-
-            const baseCalculoIRRF = totalProventos - descontoINSS - (numDependentes * 189.59);
-            const descontoIRRF = Number(Math.max(0, calcularIRRF(baseCalculoIRRF)).toFixed(2));
-            if (descontoIRRF > 0) {
-                movimentos.push({ verbaCodigo: '0102', natureza: 'D', referencia: '', valor: descontoIRRF });
-                totalDescontos += descontoIRRF;
-            }
-
-            // Vale-Transporte
-            if (descontaVT) {
-                const descontoVT = Number((salarioBase * 0.06).toFixed(2));
-                movimentos.push({ verbaCodigo: '0115', natureza: 'D', referencia: '6.00', valor: descontoVT });
-                totalDescontos += descontoVT;
-            }
-
-            // Outros Descontos
-            if (outrosDescontos > 0) {
-                movimentos.push({ verbaCodigo: '0198', natureza: 'D', referencia: '', valor: outrosDescontos });
-                totalDescontos += outrosDescontos;
-            }
-
-            // Verificar se houve adiantamento neste mês para deduzir (Simulação Básica)
-            const adtoPrevio = await db.collection('historico_folha')
-                .where('funcionarioId', '==', funcionarioId)
-                .where('competencia', '==', competencia)
-                .where('tipoCalculo', '==', '2')
-                .get();
-                
-            if (!adtoPrevio.empty) {
-                let valorAdto = 0;
-                adtoPrevio.forEach(d => {
-                    const movs = d.data().movimentos || [];
-                    const adtoMov = movs.find(m => m.verbaCodigo === '0060');
-                    if (adtoMov) valorAdto += parseFloat(adtoMov.valor);
-                });
-                if (valorAdto > 0) {
-                    movimentos.push({ verbaCodigo: '0112', natureza: 'D', referencia: '', valor: valorAdto });
-                    totalDescontos += valorAdto;
+            
+            if (mesParts.length === 2 && cpfNumeros) {
+                const mesAtualStr = `${mesParts[1]}-${mesParts[0]}`;
+                const pontoSnap = await db.collection('espelhos_ponto')
+                    .where('cpf', '==', cpfNumeros)
+                    .where('dataReferencia', '>=', `${mesAtualStr}-01`)
+                    .where('dataReferencia', '<=', `${mesAtualStr}-31`)
+                    .get();
+                    
+                if (!pontoSnap.empty) {
+                    pontoSnap.forEach(doc => {
+                        const d = doc.data();
+                        
+                        // Somar os minutos da jornada diária e mapear para as chaves usadas nas verbas
+                        apuracaoPonto.horasExtrasCalculadas += Number(d.horasExtras || 0);
+                        apuracaoPonto.horasTotalNoturno += Number(d.horasAdicionalNoturno || 0);
+                        apuracaoPonto.horasApenasFalta += Number(d.horasFaltaAtraso || 0);
+                        apuracaoPonto.diasTrabalhados += 1;
+                    });
                 }
             }
-        }
 
-        // REGRA DE NEGÓCIO: Arredondamento do Mês (Verba 0008)
-        let provisorioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
-        if (provisorioLiquido > 0 && !Number.isInteger(provisorioLiquido)) {
-            const liquidoArredondado = Math.ceil(provisorioLiquido);
-            const valorArredondamento = Number((liquidoArredondado - provisorioLiquido).toFixed(2));
-            
-            if (valorArredondamento > 0) {
-                movimentos.push({ verbaCodigo: '0008', natureza: 'V', referencia: '', valor: valorArredondamento });
-                totalProventos += valorArredondamento;
+            // Buscar Verbas Cadastradas
+            const verbasSnap = await db.collection('verbas').get();
+            const verbasCadastradas = [];
+            verbasSnap.forEach(v => verbasCadastradas.push(v.data()));
+
+            if (verbasCadastradas.length === 0) {
+                mostrarMensagem('Nenhuma verba configurada no sistema. Configure no menu Configuração de Verbas.', 'warning');
+                return;
             }
+
+            // Processar no Motor
+            const resultadoMotor = await window.motorFolha.processar(funcionario, apuracaoPonto, verbasCadastradas, parametrosEntrada);
+            movimentos = resultadoMotor.movimentos;
+            totalProventos = resultadoMotor.totalProventos;
+            totalDescontos = resultadoMotor.totalDescontos;
         }
 
         // Renderizar Preview em Tabela
@@ -474,97 +489,6 @@ function imprimirDemonstrativo() {
 }
 
 // ==========================================
-// INTEGRAÇÃO RHID (FASE 4)
-// ==========================================
-async function buscarApuracaoRhidParaCalculo() {
-    const btn = document.getElementById('btn-pull-rhid');
-    const funcSelect = document.getElementById('calc-funcionario');
-    const dtInicio = document.getElementById('calc-rhid-inicio').value;
-    const dtFim = document.getElementById('calc-rhid-fim').value;
-
-    if (!funcSelect.value) {
-        mostrarMensagem('Selecione um funcionário primeiro.', 'warning');
-        return;
-    }
-    if (!dtInicio || !dtFim) {
-        mostrarMensagem('Selecione o período (Data Inicial e Final).', 'warning');
-        return;
-    }
-
-    try {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-
-        // 1. Pegar o CPF do funcionário selecionado
-        const funcDoc = await db.collection('funcionarios').doc(funcSelect.value).get();
-        const funcData = funcDoc.data();
-        
-        if (!funcData || !funcData.cpf) {
-            mostrarMensagem('Funcionário sem CPF cadastrado no sistema.', 'error');
-            return;
-        }
-
-        // 2. Buscar espelhos de ponto no Firebase para este CPF
-        // Filtramos a data no frontend para evitar erros de índice composto no Firestore
-        const espelhosSnap = await db.collection('espelhos_ponto')
-            .where('cpf', '==', funcData.cpf)
-            .get();
-
-        if (espelhosSnap.empty) {
-            mostrarMensagem('Nenhum dado do RHiD encontrado para este funcionário.', 'warning');
-            return;
-        }
-
-        let totalMinutosExtra = 0;
-        let totalMinutosFalta = 0;
-        let diasEncontrados = 0;
-
-        espelhosSnap.forEach(doc => {
-            const data = doc.data();
-            const dataRef = data.dataReferencia; // Formato YYYY-MM-DD
-            
-            // Verifica se a data do espelho está dentro do período selecionado
-            if (dataRef >= dtInicio && dataRef <= dtFim) {
-                // Integração de Faltas: Ignorar as justificadas pela Auditoria
-                if (data.statusFalta !== 'Justificada') {
-                    totalMinutosFalta += Number(data.horasFaltaAtraso || 0);
-                }
-
-                // Integração de Horas Extras: Ignorar as descartadas pela Auditoria
-                if (data.statusAprovacaoHe !== 'Descartada') {
-                    totalMinutosExtra += Number(data.horasExtras || 0);
-                }
-
-                diasEncontrados++;
-            }
-        });
-
-        if (diasEncontrados === 0) {
-            mostrarMensagem('Nenhum espelho de ponto encontrado no período selecionado.', 'warning');
-            return;
-        }
-
-        // 3. Converter minutos para horas decimais (DP Padrão)
-        // Ex: 90 minutos = 1.5 horas
-        const horasExtrasDecimais = (totalMinutosExtra / 60).toFixed(2);
-        const horasFaltaDecimais = (totalMinutosFalta / 60).toFixed(2);
-
-        // 4. Preencher os inputs na tela
-        document.getElementById('calc-horas-extras').value = horasExtrasDecimais;
-        document.getElementById('calc-faltas-horas').value = horasFaltaDecimais;
-
-        mostrarMensagem(`Sucesso! ${diasEncontrados} dias importados do RHiD.`, 'success');
-
-    } catch (e) {
-        console.error('Erro ao buscar apuração RHiD:', e);
-        mostrarMensagem('Erro ao consultar espelhos de ponto.', 'error');
-    } finally {
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sync-alt"></i>';
-    }
-}
-
-// ==========================================
 // FUNÇÕES DA ABA DE FECHAMENTO COLETIVO
 // ==========================================
 
@@ -639,6 +563,10 @@ async function buscarFechamentoColetivo() {
                     <td class="text-end text-success">R$ ${prov.toFixed(2)}</td>
                     <td class="text-end text-danger">R$ ${desc.toFixed(2)}</td>
                     <td class="text-end fw-bold text-primary">R$ ${liq.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editarCalculoFolha('${doc.id}', '${data.funcionarioId}', '${data.competencia}', '${data.tipoCalculo}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCalculoFolha('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </td>
                 </tr>
             `;
         });
@@ -656,6 +584,7 @@ async function buscarFechamentoColetivo() {
                             <th class="text-end">Total Vencimentos</th>
                             <th class="text-end">Total Descontos</th>
                             <th class="text-end">Líquido a Receber</th>
+                            <th class="text-center">Ações</th>
                         </tr>
                     </thead>
                     <tbody>${trs}</tbody>
@@ -665,6 +594,7 @@ async function buscarFechamentoColetivo() {
                             <td class="text-end text-success fs-5">R$ ${somaProventos.toFixed(2)}</td>
                             <td class="text-end text-danger fs-5">R$ ${somaDescontos.toFixed(2)}</td>
                             <td class="text-end text-primary fs-5">R$ ${somaLiquido.toFixed(2)}</td>
+                            <td></td>
                         </tr>
                     </tfoot>
                 </table>
@@ -675,5 +605,37 @@ async function buscarFechamentoColetivo() {
         console.error('Erro ao buscar fechamento coletivo:', e);
         container.innerHTML = '<p class="text-center text-danger p-5">Erro ao buscar dados.</p>';
         mostrarMensagem('Erro ao consultar fechamento.', 'error');
+    }
+}
+
+async function excluirCalculoFolha(idUnico) {
+    if (!confirm("Tem certeza que deseja excluir este cálculo de folha? Esta ação não pode ser desfeita.")) return;
+    
+    try {
+        await window.db.collection('historico_folha').doc(idUnico).delete();
+        mostrarMensagem('Cálculo excluído com sucesso!', 'success');
+        buscarFechamentoColetivo();
+    } catch (e) {
+        console.error('Erro ao excluir cálculo:', e);
+        mostrarMensagem('Erro ao excluir cálculo.', 'error');
+    }
+}
+
+async function editarCalculoFolha(idUnico, funcionarioId, competencia, tipoCalculo) {
+    try {
+        // Voltar para a aba de processamento individual
+        const tabProcessamento = new bootstrap.Tab(document.querySelector('button[data-bs-target="#tab-individual"]'));
+        tabProcessamento.show();
+
+        // Preencher inputs principais
+        document.getElementById('calc-funcionario').value = funcionarioId;
+        document.getElementById('calc-competencia').value = competencia;
+        document.getElementById('calc-tipo').value = tipoCalculo;
+        
+        toggleCamposPorTipoCalculo(); // Isso irá acionar `verificarCalculoExistente()` que carregará os dados do banco para os inputs
+        
+        mostrarMensagem('Cálculo carregado para edição. Altere os parâmetros e clique em Simular.', 'info');
+    } catch (e) {
+        console.error('Erro ao carregar edição:', e);
     }
 }

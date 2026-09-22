@@ -5,7 +5,7 @@
 // Lista de todas as seções disponíveis no sistema
 const TODAS_SECOES = [
     'empresas', 'funcionarios', 'afastamentos', 'exames-ocupacionais', 'atestados', 'admissao', 'demissao', 'painel-demitidos',
-    'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',
+    'faltas', 'movimentacoes', 'alteracao-funcao', 'transferencia', 'dp-calculos', 'dp-verbas', 'relatorios', 'financeiro', 'agenda', 'iso-manutencao', 'chamados-manutencao',
     'analise-rescisao', 'analise-atestados', 'admin-usuarios', 'admin-config-iso', 'config-fluxos', 'entrevista-desligamento', 'dashboard-manutencao', 'compliance-denuncia', 'gestao-denuncias', 'analise-pessoas', 'gerenciar-avaliacoes', 'frota-dashboard', 'dp-horas-extras', 'dp-horas-extras-lancamento', 'saude-psicossocial', 'cid-manager', 'indicadores-direcao', 'controle-reunioes',
     'frota-veiculos', 'frota-motoristas', 'frota-utilizacao', 'frota-destinos', 'frota-tabelas-frete',
     'juridico-dashboard', 'juridico-processos', 'juridico-clientes', 'juridico-automacao', 'juridico-financeiro', 'juridico-documentos', 'dp-horas-solicitacao',
@@ -324,6 +324,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'dp-calculos':
                 if (typeof inicializarCalculos === 'function') await inicializarCalculos();
+                break;
+            case 'dp-verbas':
+                if (typeof inicializarVerbas === 'function') await inicializarVerbas();
                 break;
             case 'controle-cestas':
                 if (typeof inicializarControleCestas === 'function') await inicializarControleCestas();

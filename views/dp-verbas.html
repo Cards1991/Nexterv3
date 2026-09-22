@@ -1,0 +1,213 @@
+<div class="container-fluid py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="page-title mb-0"><i class="fas fa-list-ol text-primary me-2"></i>Configuração de Verbas</h2>
+            <p class="text-muted mb-0">Gerencie as regras, fórmulas e incidências do motor de cálculo de folha.</p>
+        </div>
+        <div>
+            <button class="btn btn-warning me-2" onclick="autoConfigurarVerbasTeorema()">
+                <i class="fas fa-magic me-2"></i>Auto-Configurar Padrão
+            </button>
+            <button class="btn btn-primary shadow-sm" onclick="abrirModalNovaVerba()">
+                <i class="fas fa-plus me-2"></i>Nova Verba
+            </button>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Cód</th>
+                                    <th>Nome da Verba</th>
+                                    <th>Tipo</th>
+                                    <th>Unidade</th>
+                                    <th>Origem</th>
+                                    <th>Status</th>
+                                    <th class="text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lista-verbas-tabela">
+                                <tr><td colspan="7" class="text-center p-4"><i class="fas fa-spinner fa-spin me-2"></i>Carregando verbas...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Nova/Editar Verba -->
+<div class="modal fade" id="modalVerba" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-light">
+                <h5 class="modal-title fw-bold" id="modalVerbaTitle"><i class="fas fa-file-invoice-dollar text-primary me-2"></i>Configurar Verba</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-verba">
+                    <input type="hidden" id="verba-id">
+                    
+                    <h6 class="fw-bold mb-3 border-bottom pb-2">1. Dados Básicos</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-3">
+                            <label class="form-label">Código</label>
+                            <input type="text" class="form-control" id="verba-codigo" required placeholder="Ex: 001">
+                        </div>
+                        <div class="col-md-9">
+                            <label class="form-label">Nome da Verba</label>
+                            <input type="text" class="form-control" id="verba-nome" required placeholder="Ex: Hora Extra 50%">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Tipo</label>
+                            <select class="form-select" id="verba-tipo" required>
+                                <option value="Provento">Provento</option>
+                                <option value="Desconto">Desconto</option>
+                                <option value="Informativa">Informativa</option>
+                                <option value="Base">Base de Cálculo</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Unidade</label>
+                            <select class="form-select" id="verba-unidade" required>
+                                <option value="Valor (R$)">Valor (R$)</option>
+                                <option value="Minutos">Minutos</option>
+                                <option value="Horas">Horas</option>
+                                <option value="Dias">Dias</option>
+                                <option value="Quantidade">Quantidade</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Status</label>
+                            <select class="form-select" id="verba-ativo">
+                                <option value="true">Ativo</option>
+                                <option value="false">Inativo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-3 border-bottom pb-2">2. Origem e Parâmetros</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label">Origem dos Dados</label>
+                            <select class="form-select" id="verba-origem">
+                                <option value="Manual">Informado Manualmente / Fixo</option>
+                                <option value="RHiD">Apuração de Ponto (RHiD)</option>
+                                <option value="Calculada">Variável Calculada (Salário, etc)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Campo de Origem <small class="text-muted">(Se RHiD)</small></label>
+                            <input type="text" class="form-control" id="verba-campo-origem" placeholder="Ex: horasExtrasCalculadas">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Percentual (%)</label>
+                            <input type="number" step="0.01" class="form-control" id="verba-percentual" value="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Fator Multiplicador</label>
+                            <input type="number" step="0.01" class="form-control" id="verba-fator" value="1">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Base Principal</label>
+                            <select class="form-select" id="verba-base">
+                                <option value="valorHora">Valor da Hora (Salário/Divisor)</option>
+                                <option value="salarioBase">Salário Base Mensal</option>
+                                <option value="valorDia">Valor do Dia</option>
+                                <option value="Nenhuma">Nenhuma</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-3 border-bottom pb-2">3. Regra / Fórmula de Cálculo</h6>
+                    <div class="row g-3 mb-4">
+                        <div class="col-12">
+                            <div class="alert alert-info py-2" style="font-size: 0.85rem;">
+                                <strong>Variáveis Disponíveis:</strong> BASE, QUANTIDADE, FATOR, PERCENTUAL, DIAS_UTEIS, DIAS_DSR
+                            </div>
+                            <label class="form-label">Fórmula Matemática</label>
+                            <input type="text" class="form-control font-monospace" id="verba-formula" placeholder="Ex: BASE * (QUANTIDADE / 60) * FATOR" required>
+                            <small class="text-muted">Utilize Javascript matemático. O motor substituirá as variáveis acima pelos valores reais.</small>
+                        </div>
+                    </div>
+
+                    <h6 class="fw-bold mb-3 border-bottom pb-2">4. Incidências</h6>
+                    <div class="row g-3 mb-2">
+                        <div class="col-md-3">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="inc-inss"><label class="form-check-label">INSS</label></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="inc-fgts"><label class="form-check-label">FGTS</label></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="inc-irrf"><label class="form-check-label">IRRF</label></div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-check form-switch"><input class="form-check-input" type="checkbox" id="inc-dsr"><label class="form-check-label">DSR</label></div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer bg-light justify-content-between">
+                <button type="button" class="btn btn-warning" onclick="abrirSimuladorVerba()"><i class="fas fa-flask me-2"></i>Testar Verba</button>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarVerba()"><i class="fas fa-save me-2"></i>Salvar Verba</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Simulador -->
+<div class="modal fade" id="modalSimuladorVerba" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content border-warning">
+            <div class="modal-header bg-warning text-dark">
+                <h5 class="modal-title fw-bold"><i class="fas fa-vial me-2"></i>Simulador de Cálculo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Insira valores fictícios para testar a fórmula configurada na verba.</p>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label small">Salário Base (R$)</label>
+                        <input type="number" class="form-control form-control-sm" id="sim-salario" value="3000">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Divisor</label>
+                        <input type="number" class="form-control form-control-sm" id="sim-divisor" value="220">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label small">Quantidade (Origem)</label>
+                        <input type="number" class="form-control form-control-sm" id="sim-quantidade" value="22">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">D. Úteis</label>
+                        <input type="number" class="form-control form-control-sm" id="sim-uteis" value="25">
+                    </div>
+                    <div class="col-3">
+                        <label class="form-label small">D. DSR</label>
+                        <input type="number" class="form-control form-control-sm" id="sim-dsr" value="5">
+                    </div>
+                </div>
+                <button class="btn btn-dark w-100 mb-3" onclick="executarSimulacao()"><i class="fas fa-play me-2"></i>Processar Teste</button>
+
+                <div id="sim-resultado-container" class="bg-light p-3 border rounded d-none">
+                    <h6 class="fw-bold mb-2 border-bottom pb-1">Memória de Cálculo:</h6>
+                    <pre id="sim-memoria" class="small mb-2" style="white-space: pre-wrap; color: #333;"></pre>
+                    <div class="d-flex justify-content-between align-items-center bg-white p-2 border rounded">
+                        <span class="fw-bold">RESULTADO FINAL:</span>
+                        <span class="fs-5 fw-bold text-success" id="sim-valor-final">R$ 0,00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
