@@ -143,11 +143,14 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
 
         const transResultAll = await conn.query(`SELECT TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
         
+        const validCodes = funcResult.map(f => f.FUNCIONARIO_CODIGO);
         let forwardMap = {};
         let transferMap = {}; // Reverse map for later
         for (let t of transResultAll) {
-            forwardMap[t.TRANSFERENCIA_FUNCIONARIO_DE] = t.TRANSFERENCIA_FUNCIONARIO_PARA;
-            transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
+            if (validCodes.includes(t.TRANSFERENCIA_FUNCIONARIO_DE) && validCodes.includes(t.TRANSFERENCIA_FUNCIONARIO_PARA)) {
+                forwardMap[t.TRANSFERENCIA_FUNCIONARIO_DE] = t.TRANSFERENCIA_FUNCIONARIO_PARA;
+                transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
+            }
         }
 
         // Descobrir o código ativo verdadeiro (a ponta final da cadeia de transferências)
@@ -280,14 +283,12 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         const salariosUnicosMap = new Map();
         dadosCompletos.salarios.forEach(s => {
             if (!s.data) return;
-            const dataStr = s.data instanceof Date ? s.data.toISOString().split('T')[0] : String(s.data).split('T')[0];
-            if (!salariosUnicosMap.has(dataStr)) {
-                salariosUnicosMap.set(dataStr, s);
-            } else {
-                const existente = salariosUnicosMap.get(dataStr);
-                if (Number(s.salario) > Number(existente.salario)) {
-                    salariosUnicosMap.set(dataStr, s);
-                }
+            const dataIso = typeof s.data === 'string' ? s.data.split('T')[0] : s.data.toISOString().split('T')[0];
+            const dedupKey = `${dataIso}_${s.salario}`;
+            
+            // Manter salários diferentes na mesma data, remover apenas duplicatas idênticas
+            if (!salariosUnicosMap.has(dedupKey)) {
+                salariosUnicosMap.set(dedupKey, s);
             }
         });
         
