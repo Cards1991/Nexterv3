@@ -1162,6 +1162,8 @@ async function gerarEspelhoPDF() {
                 if (mb.length > 4) ent3 = extrairHora(mb[4]);
                 if (mb.length > 5) sai3 = extrairHora(mb[5]);
 
+            }
+
             const duracao = Number(m.horasTrabalhadas || 0) > 0 ? 
                 `${Math.floor(m.horasTrabalhadas / 60).toString().padStart(2, '0')}:${(m.horasTrabalhadas % 60).toString().padStart(2, '0')}` : '';
 
