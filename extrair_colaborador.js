@@ -9,23 +9,31 @@ async function extrairColaborador() {
         conn = await odbc.connect('DSN=Teorema');
         console.log('Conexão bem-sucedida!');
 
-        const cpfAlvo = '09942495940'; // CPF limpo
+        const cpfArg = process.argv[2];
+        if (!cpfArg) {
+            console.error('ERRO: Você precisa informar o CPF. Exemplo: node extrair_colaborador.js 09942495940');
+            process.exit(1);
+        }
         
-        console.log('Buscando cadastros associados ao CPF...');
-        // Buscar TODOS os cadastros deste funcionário (pode haver mais de um devido a transferências)
+        const cpfAlvo = cpfArg.replace(/\D/g, ''); // Limpa pontuações
+        
+        console.log(`Buscando cadastros associados ao CPF ${cpfAlvo}...`);
+        // Buscar TODOS os cadastros deste funcionário (pode haver mais de um devido a transferências/readmissões)
         const funcResult = await conn.query(`SELECT * FROM FUNCIONARIOS WHERE REPLACE(REPLACE(FUNCIONARIO_CPF, '.', ''), '-', '') = '${cpfAlvo}'`);
         
         if (funcResult.length === 0) {
-            console.error('Funcionario nao encontrado.');
-            return;
+            console.error('Funcionário não encontrado no Teorema com este CPF.');
+            process.exit(1);
         }
 
-        console.log(`Encontrados ${funcResult.length} registros para o CPF ${cpfAlvo}. Agrupando histórico...`);
+        console.log(`Encontrados ${funcResult.length} registros para o CPF ${cpfAlvo}.`);
 
-        // Vamos usar o registro mais recente (maior código ou último status ativo) para o cabeçalho base
+        // Pega o registro mais recente (maior código ou último status ativo) para evitar lixo de contratos velhos
         const funcBase = funcResult.reduce((prev, current) => {
             return (prev.FUNCIONARIO_CODIGO > current.FUNCIONARIO_CODIGO) ? prev : current;
         });
+
+        console.log(`Utilizando o cadastro principal (Código: ${funcBase.FUNCIONARIO_CODIGO}) da Empresa ${funcBase.EMPRESA_CODIGO}...`);
 
         const dadosCompletos = {
             funcionario: {
@@ -44,17 +52,8 @@ async function extrairColaborador() {
             salarios: []
         };
 
-        // Iterar sobre todos os códigos encontrados
-        // Filtra para manter apenas o 00124 conforme solicitação do usuário para remover o lixo do 00167
-        const funcValidos = funcResult.filter(f => f.FUNCIONARIO_CODIGO === '00124');
-        if (funcValidos.length === 0) {
-            console.log('Nenhum cadastro 00124 encontrado.');
-            funcValidos.push(funcResult[0]); // fallback
-        }
-
-        for (let func of funcValidos) {
-            const codFuncionario = func.FUNCIONARIO_CODIGO;
-            console.log(`\nProcessando histórico do Código: ${codFuncionario} (Empresa: ${func.EMPRESA_CODIGO})`);
+        const codFuncionario = funcBase.FUNCIONARIO_CODIGO;
+        console.log(`\nExtraindo movimentações financeiras...`);
 
             // Extrair movimentações mensais (legado + atual)
             const movResult1 = await conn.query(`SELECT MOVIMENTO_ANO as ANO, MOVIMENTO_MES as MES, EVENTO_CODIGO, MOVIMENTO_VALOR as VALOR, MOVIMENTO_REFERENCIA as REFERENCIA, '0' as TIPO, 'V' as NATUREZA FROM MOVIMENTO_MENSAL WHERE FUNCIONARIO_CODIGO = '${codFuncionario}'`);
@@ -133,7 +132,6 @@ async function extrairColaborador() {
                 return d >= dataAdmissao;
             });
             dadosCompletos.salarios.push(...salMapeados);
-        }
 
         // --- DEDUPLICAÇÃO DE SALÁRIOS ---
         // É comum ERPs antigos terem várias linhas na EVOLUCAO_SALARIAL para a mesma data (ex: recalculo) ou devido a múltiplos códigos (transferência).

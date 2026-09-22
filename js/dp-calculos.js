@@ -499,18 +499,18 @@ function gerarAnaliseIAHolerite(dados) {
     }, 1200);
 }
 
-function calcularINSS(salarioBruto) {
+window.calcularINSS = function(salarioBruto) {
     if (salarioBruto <= 0) return 0;
-    // Tabela INSS Progressiva 2025/2026 (Salário Mínimo R$ 1.518,00 / Teto R$ 8.157,41)
+    // Tabela INSS Progressiva 2024
     const faixas = [
-        { limite: 1518.00, aliquota: 0.075, deducao: 0 },
-        { limite: 2793.88, aliquota: 0.09, deducao: 22.77 },
-        { limite: 4190.83, aliquota: 0.12, deducao: 106.59 },
-        { limite: 8157.41, aliquota: 0.14, deducao: 190.40 }
+        { limite: 1412.00, aliquota: 0.075, deducao: 0 },
+        { limite: 2666.68, aliquota: 0.09, deducao: 21.18 },
+        { limite: 4000.03, aliquota: 0.12, deducao: 101.18 },
+        { limite: 7786.02, aliquota: 0.14, deducao: 181.18 }
     ];
-    const teto = 951.63;
+    const teto = 908.85;
 
-    if (salarioBruto > 8157.41) return teto;
+    if (salarioBruto > 7786.02) return teto;
 
     for (const faixa of faixas) {
         if (salarioBruto <= faixa.limite) {
@@ -520,7 +520,7 @@ function calcularINSS(salarioBruto) {
     return teto;
 }
 
-function calcularIRRF(baseCalculo) {
+window.calcularIRRF = function(baseCalculo) {
     if (baseCalculo <= 2259.20) return 0;
     // Tabela IRRF Progressiva
     const faixas = [

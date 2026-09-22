@@ -222,25 +222,29 @@ async function autoConfigurarVerbasTeorema() {
     mostrarMensagem('Configurando todas as verbas, aguarde...', 'info');
 
     const regrasPadrao = {
-        '0001': { formula: 'BASE', base: 'salarioBase', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' },
-        '0019': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasExtrasCalculadas', fator: 1.5, ativo: true, tipo: 'Provento', unidade: 'Minutos' }, // HE 50%
-        '0020': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasTotalNoturno', fator: 0.2, ativo: true, tipo: 'Provento', unidade: 'Minutos' }, // Adicional Noturno (Checar se é 0020)
-        '0201': { formula: 'BASE * QUANTIDADE', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasApenasFalta', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Minutos' }, // Faltas
-        '0049': { formula: '(BASE / DIAS_UTEIS) * DIAS_DSR', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' }, // DSR
-        '0005': { formula: 'QUANTIDADE', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // INSS
-        '0008': { formula: '0', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' } // Arredondamento
+        '0001': { formula: 'BASE', base: 'salarioBase', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento', incidencias: { inss: true, fgts: true, irrf: true, dsr: false } },
+        '0019': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasExtrasCalculadas', fator: 1.5, ativo: true, tipo: 'Provento', unidade: 'Minutos', incidencias: { inss: true, fgts: true, irrf: true, dsr: true } }, // HE 50%
+        '0020': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasTotalNoturno', fator: 0.2, ativo: true, tipo: 'Provento', unidade: 'Minutos', incidencias: { inss: true, fgts: true, irrf: true, dsr: true } }, // Adicional Noturno
+        '0201': { formula: 'BASE * QUANTIDADE', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasApenasFalta', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Minutos', incidencias: { inss: true, fgts: true, irrf: true, dsr: false } }, // Faltas
+        '0049': { formula: '(BASE_DSR / DIAS_UTEIS) * DIAS_DSR', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento', incidencias: { inss: true, fgts: true, irrf: true, dsr: false } }, // DSR
+        '0005': { formula: 'calcularINSS(BASE_INSS)', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // INSS
+        '0008': { formula: '0', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento', incidencias: { inss: false, fgts: false, irrf: false, dsr: false } } // Arredondamento
     };
 
     try {
         const snapshot = await db.collection('verbas').get();
         const batch = db.batch();
         let count = 0;
+        
+        // Rastreador de verbas padrão
+        const verbasEncontradas = new Set();
 
         snapshot.docs.forEach(doc => {
             const v = doc.data();
             const codInt = parseInt(v.codigo) || 0;
             
             let regra = regrasPadrao[v.codigo];
+            if (regra) verbasEncontradas.add(v.codigo);
             
             if (!regra) {
                 // Fallback genérico para todas as outras verbas
@@ -258,7 +262,7 @@ async function autoConfigurarVerbasTeorema() {
                 };
             }
 
-            batch.update(doc.ref, {
+            const updateData = {
                 formula: regra.formula,
                 base: regra.base,
                 origem: regra.origem,
@@ -267,8 +271,38 @@ async function autoConfigurarVerbasTeorema() {
                 ativo: regra.ativo,
                 tipo: regra.tipo || v.tipo || 'Provento',
                 unidade: regra.unidade || 'Valor (R$)'
-            });
+            };
+            if (regra.incidencias) {
+                updateData.incidencias = regra.incidencias;
+            }
+
+            batch.update(doc.ref, updateData);
             count++;
+        });
+
+        // Criar as verbas padrão que não existiam no banco do Teorema
+        Object.keys(regrasPadrao).forEach(codigoRegra => {
+            if (!verbasEncontradas.has(codigoRegra)) {
+                const regra = regrasPadrao[codigoRegra];
+                const newDocRef = db.collection('verbas').doc(codigoRegra);
+                const newData = {
+                    codigo: codigoRegra,
+                    nome: codigoRegra === '0005' ? 'I.N.S.S.' : (codigoRegra === '0049' ? 'REFLEXO D.S.R.' : 'Verba ' + codigoRegra),
+                    descricao: codigoRegra === '0005' ? 'I.N.S.S.' : (codigoRegra === '0049' ? 'REFLEXO D.S.R.' : 'Verba ' + codigoRegra),
+                    formula: regra.formula,
+                    base: regra.base,
+                    origem: regra.origem,
+                    campoOrigem: regra.campoOrigem || '',
+                    fator: regra.fator,
+                    ativo: regra.ativo,
+                    tipo: regra.tipo || 'Provento',
+                    unidade: regra.unidade || 'Valor (R$)'
+                };
+                if (regra.incidencias) newData.incidencias = regra.incidencias;
+                
+                batch.set(newDocRef, newData);
+                count++;
+            }
         });
 
         if (count > 0) {
