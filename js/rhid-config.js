@@ -1089,7 +1089,21 @@ async function gerarEspelhoPDF() {
         // Ordenar
         docsFiltrados.sort((a, b) => a.dataReferencia.localeCompare(b.dataReferencia));
 
-        const formatDate = (dateStr) => dateStr.split('-').reverse().join('/');
+        const formatDate = (date) => {
+            if (!date) return '';
+            if (typeof date === 'string') {
+                if (date.includes('-')) return date.split('-').reverse().join('/');
+                return date;
+            }
+            if (date.toDate && typeof date.toDate === 'function') {
+                const d = date.toDate();
+                return d.toLocaleDateString('pt-BR');
+            }
+            if (date instanceof Date) {
+                return date.toLocaleDateString('pt-BR');
+            }
+            return String(date);
+        };
         const getWeekday = (dateStr) => {
             const d = new Date(dateStr + 'T00:00:00');
             const dias = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SAB'];
