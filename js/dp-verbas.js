@@ -223,14 +223,11 @@ async function autoConfigurarVerbasTeorema() {
 
     const regrasPadrao = {
         '0001': { formula: 'BASE', base: 'salarioBase', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' },
-        '0032': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasExtrasCalculadas', fator: 1.5, ativo: true, tipo: 'Provento', unidade: 'Minutos' },
-        '0020': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasTotalNoturno', fator: 0.2, ativo: true, tipo: 'Provento', unidade: 'Minutos' },
-        '0201': { formula: 'BASE * QUANTIDADE', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasApenasFalta', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Minutos' },
-        '0049': { formula: '(BASE / DIAS_UTEIS) * DIAS_DSR', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' },
-        '0101': { formula: 'QUANTIDADE', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // INSS
-        '0102': { formula: 'QUANTIDADE', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // IRRF
-        '0115': { formula: 'BASE * FATOR', base: 'salarioBase', origem: 'Variável Calculada', fator: 0.06, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // VT
-        '0112': { formula: 'QUANTIDADE', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // Dedução Adto
+        '0019': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasExtrasCalculadas', fator: 1.5, ativo: true, tipo: 'Provento', unidade: 'Minutos' }, // HE 50%
+        '0020': { formula: 'BASE * QUANTIDADE * FATOR', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasTotalNoturno', fator: 0.2, ativo: true, tipo: 'Provento', unidade: 'Minutos' }, // Adicional Noturno (Checar se é 0020)
+        '0201': { formula: 'BASE * QUANTIDADE', base: 'valorHora', origem: 'Apuração RHiD', campoOrigem: 'horasApenasFalta', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Minutos' }, // Faltas
+        '0049': { formula: '(BASE / DIAS_UTEIS) * DIAS_DSR', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' }, // DSR
+        '0005': { formula: 'QUANTIDADE', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Desconto', unidade: 'Valor (R$)' }, // INSS
         '0008': { formula: '0', base: 'Nenhuma', origem: 'Variável Calculada', fator: 1, ativo: true, tipo: 'Provento' } // Arredondamento
     };
 

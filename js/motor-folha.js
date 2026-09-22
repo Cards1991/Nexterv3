@@ -30,10 +30,8 @@ window.motorFolha = {
                 else if (verba.codigo === '102') quantidade = apuracaoPonto.atrasosHoras || 0; // Exemplo de manual mapeada (Atraso)
             }
 
-            // Pular se a quantidade for 0 (salvo se for o salário base)
-            if (quantidade === 0 && verba.codigo !== '001' && verba.codigo !== '0001') continue;
-
-            let memoria = `Processamento da Verba ${verba.codigo} - ${verba.nome}\n`;
+            let nomeVerba = verba.descricao || verba.nome || 'Verba ' + verba.codigo;
+            let memoria = `Processamento da Verba ${verba.codigo} - ${nomeVerba}\n`;
             memoria += `Unidade Configurada: ${verba.unidade}\n`;
 
             // Conversão de Unidade
@@ -80,14 +78,19 @@ window.motorFolha = {
                 continue;
             }
 
-            const valorArredondado = Number(resultadoValor.toFixed(2));
+            const valorArredondado = Number((resultadoValor || 0).toFixed(2));
             memoria += `Resultado: R$ ${valorArredondado}\n`;
+
+            // Pular verbas zeradas (exceto o Salário Base)
+            if (valorArredondado === 0 && verba.codigo !== '001' && verba.codigo !== '0001') {
+                continue;
+            }
 
             // Lançar no movimento financeiro se for Provento ou Desconto
             if (verba.tipo === 'Provento' || verba.tipo === 'Desconto') {
                 movimentos.push({
                     verbaCodigo: verba.codigo,
-                    nome: verba.nome,
+                    nome: nomeVerba,
                     natureza: verba.tipo === 'Provento' ? 'V' : 'D',
                     referencia: quantFinal.toFixed(2),
                     valor: valorArredondado,

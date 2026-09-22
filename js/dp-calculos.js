@@ -308,7 +308,21 @@ async function calcularFolhaPagamento() {
             };
             
             if (mesParts.length === 2 && cpfNumeros) {
-                const mesAtualStr = `${mesParts[1]}-${mesParts[0]}`;
+                let mes = parseInt(mesParts[0]);
+                let ano = parseInt(mesParts[1]);
+                
+                let mesAnterior = mes - 1;
+                let anoAnterior = ano;
+                if (mesAnterior === 0) {
+                    mesAnterior = 12;
+                    anoAnterior--;
+                }
+                const mesAnteriorStr = mesAnterior.toString().padStart(2, '0');
+                const mesStr = mes.toString().padStart(2, '0');
+                
+                const dataInicio = `${anoAnterior}-${mesAnteriorStr}-26`;
+                const dataFim = `${ano}-${mesStr}-25`;
+
                 const pontoSnap = await db.collection('espelhos_ponto')
                     .where('cpf', '==', cpfNumeros)
                     .get();
@@ -317,8 +331,8 @@ async function calcularFolhaPagamento() {
                     pontoSnap.forEach(doc => {
                         const d = doc.data();
                         
-                        // Filtro Client-side para o mês atual, evitando a necessidade de um Índice Composto no Firebase
-                        if (d.dataReferencia >= `${mesAtualStr}-01` && d.dataReferencia <= `${mesAtualStr}-31`) {
+                        // Filtro Client-side para a competência da folha (26 do mês anterior até 25 do mês atual)
+                        if (d.dataReferencia >= dataInicio && d.dataReferencia <= dataFim) {
                             // Somar os minutos da jornada diária e mapear para as chaves usadas nas verbas
                             apuracaoPonto.horasExtrasCalculadas += Number(d.horasExtras || 0);
                             apuracaoPonto.horasTotalNoturno += Number(d.horasAdicionalNoturno || 0);
@@ -344,6 +358,28 @@ async function calcularFolhaPagamento() {
             movimentos = resultadoMotor.movimentos;
             totalProventos = resultadoMotor.totalProventos;
             totalDescontos = resultadoMotor.totalDescontos;
+
+            // Busca Adiantamento já pago neste mês para Descontar na Folha
+            const idAdiantamento = `${funcionarioId}_${competencia.replace('/', '')}_2`;
+            const docAdiantamento = await db.collection('historico_folha').doc(idAdiantamento).get();
+            if (docAdiantamento.exists) {
+                const dadosAdt = docAdiantamento.data();
+                // Tenta achar a verba de provento 0060 no adiantamento, ou pega o total líquido
+                const verbaAdt = dadosAdt.movimentos.find(m => m.verbaCodigo === '0060' || m.verbaCodigo === '0003');
+                const valorDescontoAdt = verbaAdt ? verbaAdt.valor : dadosAdt.liquido;
+
+                if (valorDescontoAdt > 0) {
+                    movimentos.push({
+                        verbaCodigo: '0003',
+                        nome: 'Adiantamento de Salario',
+                        natureza: 'D',
+                        referencia: '',
+                        valor: Number(valorDescontoAdt.toFixed(2)),
+                        memoriaCalculo: `Buscou o valor do Adiantamento salvo no histórico desta competência.\nValor pago: R$ ${valorDescontoAdt}`
+                    });
+                    totalDescontos += Number(valorDescontoAdt.toFixed(2));
+                }
+            }
         }
 
         // REGRA DE NEGÓCIO: Arredondamento do Mês (Verba 0008)
