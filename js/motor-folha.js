@@ -22,16 +22,16 @@ window.motorFolha = {
             let quantidade = 0;
 
             // Identificar a Quantidade de Origem
-            if (verba.origem === 'RHiD' && verba.campoOrigem && apuracaoPonto) {
+            if ((verba.origem === 'RHiD' || verba.origem === 'Apuração RHiD') && verba.campoOrigem && apuracaoPonto) {
                 quantidade = parseFloat(apuracaoPonto[verba.campoOrigem]) || 0;
-            } else if (verba.origem === 'Calculada' || verba.origem === 'Manual') {
-                if (verba.codigo === '001') quantidade = 1; // Salário Base (1 un)
+            } else if (verba.origem === 'Calculada' || verba.origem === 'Variável Calculada' || verba.origem === 'Manual') {
+                if (verba.codigo === '001' || verba.codigo === '0001') quantidade = 1; // Salário Base (1 un)
                 else if (verba.codigo === '101') quantidade = apuracaoPonto.faltasHoras || 0; // Exemplo de manual mapeada (Falta)
                 else if (verba.codigo === '102') quantidade = apuracaoPonto.atrasosHoras || 0; // Exemplo de manual mapeada (Atraso)
             }
 
             // Pular se a quantidade for 0 (salvo se for o salário base)
-            if (quantidade === 0 && verba.codigo !== '001') continue;
+            if (quantidade === 0 && verba.codigo !== '001' && verba.codigo !== '0001') continue;
 
             let memoria = `Processamento da Verba ${verba.codigo} - ${verba.nome}\n`;
             memoria += `Unidade Configurada: ${verba.unidade}\n`;
