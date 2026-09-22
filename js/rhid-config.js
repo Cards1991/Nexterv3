@@ -884,9 +884,16 @@ async function buscarAuditoriaPonto() {
 
             let batidasStr = '<span class="text-muted small">Sem marcação</span>';
             if (m.marcacoes && m.marcacoes.length > 0) {
-                // Ordenar batidas por hora (normalmente já vem ordenado da API, mas por segurança)
-                const mb = [...m.marcacoes].sort((a, b) => a.hora.localeCompare(b.hora));
-                batidasStr = mb.map(b => `<span class="badge bg-light text-dark border">${b.hora.substring(0, 5)}</span>`).join(' ');
+                // Ordenar batidas defensivamente (lidando com strings ou objetos)
+                const mb = [...m.marcacoes].sort((a, b) => {
+                    const valA = (a && a.hora) ? String(a.hora) : String(a);
+                    const valB = (b && b.hora) ? String(b.hora) : String(b);
+                    return valA.localeCompare(valB);
+                });
+                batidasStr = mb.map(b => {
+                    const val = (b && b.hora) ? String(b.hora) : String(b);
+                    return `<span class="badge bg-light text-dark border">${val.substring(0, 5)}</span>`;
+                }).join(' ');
             }
 
             trs += `
