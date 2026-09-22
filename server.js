@@ -141,14 +141,25 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             return res.status(404).json({ error: 'Funcionário não encontrado no Teorema com este CPF.' });
         }
 
-        const funcBase = funcResult.reduce((prev, current) => {
-            if (!prev.FUNCIONARIO_DATA_DEMISSAO && current.FUNCIONARIO_DATA_DEMISSAO) return prev;
-            if (prev.FUNCIONARIO_DATA_DEMISSAO && !current.FUNCIONARIO_DATA_DEMISSAO) return current;
-            
-            let dPrev = new Date(prev.FUNCIONARIO_DATA_CONTRATO || prev.FUNCIONARIO_DATA_ADMISSAO || '1900-01-01');
-            let dCurr = new Date(current.FUNCIONARIO_DATA_CONTRATO || current.FUNCIONARIO_DATA_ADMISSAO || '1900-01-01');
-            return (dPrev > dCurr) ? prev : current;
-        });
+        const transResultAll = await conn.query(`SELECT TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
+        
+        let forwardMap = {};
+        let transferMap = {}; // Reverse map for later
+        for (let t of transResultAll) {
+            forwardMap[t.TRANSFERENCIA_FUNCIONARIO_DE] = t.TRANSFERENCIA_FUNCIONARIO_PARA;
+            transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
+        }
+
+        // Descobrir o código ativo verdadeiro (a ponta final da cadeia de transferências)
+        let finalCode = funcResult[0].FUNCIONARIO_CODIGO;
+        let traceCount = 0;
+        while (forwardMap[finalCode] && traceCount < 50) {
+            finalCode = forwardMap[finalCode];
+            traceCount++;
+        }
+        
+        const activeCode = finalCode;
+        const funcBase = funcResult.find(f => f.FUNCIONARIO_CODIGO === activeCode) || funcResult[0];
 
         const dadosCompletos = {
             funcionario: {
@@ -167,17 +178,11 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             salarios: []
         };
 
-        const activeCode = funcBase.FUNCIONARIO_CODIGO;
         let chain = [activeCode];
         
-        const transResult = await conn.query(`SELECT TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
-        let transferMap = {};
-        for (let t of transResult) {
-            transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
-        }
-        
         let currentIter = activeCode;
-        while (transferMap[currentIter]) {
+        traceCount = 0;
+        while (transferMap[currentIter] && traceCount < 50) {
             let prevCode = transferMap[currentIter];
             if (!chain.includes(prevCode)) {
                 chain.push(prevCode);
@@ -185,6 +190,7 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             } else {
                 break;
             }
+            traceCount++;
         }
         
         const inClauseCodes = chain.map(c => `'${c}'`).join(',');
