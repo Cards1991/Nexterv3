@@ -147,17 +147,22 @@
                                 <option value="">Carregando...</option>
                             </select>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label fw-bold">Data Início</label>
                             <input type="date" id="rhid-auditoria-inicio" class="form-control">
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <label class="form-label fw-bold">Data Fim</label>
                             <input type="date" id="rhid-auditoria-fim" class="form-control">
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-primary w-100 fw-bold" id="btn-buscar-auditoria" onclick="buscarAuditoriaPonto()">
                                 <i class="fas fa-search me-2"></i> Buscar
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <button class="btn btn-outline-danger w-100 fw-bold" id="btn-gerar-espelho-pdf" onclick="gerarEspelhoPDF()">
+                                <i class="fas fa-file-pdf me-2"></i> Gerar PDF
                             </button>
                         </div>
                     </div>
