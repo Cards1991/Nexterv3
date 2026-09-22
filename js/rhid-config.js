@@ -887,7 +887,13 @@ async function buscarAuditoriaPonto() {
                 const extrairHora = (obj) => {
                     let s = (obj && obj.hora) ? String(obj.hora) : String(obj);
                     if (s.includes('T')) s = s.split('T')[1];
-                    return s.trim().substring(0, 5);
+                    s = s.trim().substring(0, 5);
+                    if (!s.includes(':')) {
+                        let nums = s.replace(/\D/g, '');
+                        if (nums.length === 3) nums = '0' + nums;
+                        if (nums.length >= 4) return nums.substring(0, 2) + ':' + nums.substring(2, 4);
+                    }
+                    return s;
                 };
                 
                 const mb = [...m.marcacoes].sort((a, b) => {
@@ -1129,7 +1135,13 @@ async function gerarEspelhoPDF() {
                 const extrairHora = (obj) => {
                     let s = (obj && obj.hora) ? String(obj.hora) : String(obj);
                     if (s.includes('T')) s = s.split('T')[1];
-                    return s.trim().substring(0, 5);
+                    s = s.trim().substring(0, 5);
+                    if (!s.includes(':')) {
+                        let nums = s.replace(/\D/g, '');
+                        if (nums.length === 3) nums = '0' + nums;
+                        if (nums.length >= 4) return nums.substring(0, 2) + ':' + nums.substring(2, 4);
+                    }
+                    return s;
                 };
 
                 const mb = [...m.marcacoes].sort((a, b) => {
@@ -1152,7 +1164,7 @@ async function gerarEspelhoPDF() {
                 mb.forEach(b => {
                     let h = extrairHora(b);
                     let tipo = 'I'; // default Included
-                    let motivo = 'MARCAÇÃO IDFACE/IDFLEX';
+                    let motivo = '';
                     
                     if (b && typeof b === 'object') {
                         // Adaptar se a API enviar flag de pré-assinalado ou autom.
@@ -1244,19 +1256,31 @@ async function gerarEspelhoPDF() {
                         text-align: left;
                     }
                     .main-table th, .main-table td {
-                        border-bottom: 1px solid #ddd;
+                        border: 1px solid #ddd;
                         padding: 6px 4px;
-                        vertical-align: top;
+                        vertical-align: middle;
+                        text-align: center;
                     }
                     .main-table th {
-                        font-size: 9px;
+                        font-size: 10px;
                         font-weight: bold;
                         text-transform: uppercase;
                         color: #555;
+                        background-color: #f8f9fa;
+                    }
+                    .main-table tbody tr:nth-child(even) {
+                        background-color: #f9f9f9;
+                    }
+                    .main-table tbody tr:hover {
+                        background-color: #f1f1f1;
+                    }
+                    .main-table td:first-child {
+                        text-align: left;
+                        font-weight: bold;
                     }
                     .group-header {
                         text-align: center !important;
-                        border-bottom: 1px solid #555 !important;
+                        background-color: #e9ecef !important;
                     }
                     .legend {
                         font-size: 10px;
