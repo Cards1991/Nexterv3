@@ -284,11 +284,11 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.salarios.forEach(s => {
             if (!s.data) return;
             const dataIso = typeof s.data === 'string' ? s.data.split('T')[0] : s.data.toISOString().split('T')[0];
-            const dedupKey = `${dataIso}_${s.salario}`;
+            const current = salariosUnicosMap.get(dataIso);
             
-            // Manter salários diferentes na mesma data, remover apenas duplicatas idênticas
-            if (!salariosUnicosMap.has(dedupKey)) {
-                salariosUnicosMap.set(dedupKey, s);
+            // Priorizar o maior salário para o mesmo dia
+            if (!current || Number(s.salario) > Number(current.salario)) {
+                salariosUnicosMap.set(dataIso, s);
             }
         });
         
