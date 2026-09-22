@@ -854,8 +854,10 @@ async function buscarAuditoriaPonto() {
             
             const heOriginal = Number(m.horasExtras || 0);
             const faltaOriginal = Number(m.horasFaltaAtraso || 0);
-            const heFormatado = heOriginal > 0 ? (heOriginal / 60).toFixed(2) : '-';
-            const faltaFormatado = faltaOriginal > 0 ? (faltaOriginal / 60).toFixed(2) : '-';
+            const heFormatado = heOriginal > 0 ? `${Math.floor(heOriginal / 60).toString().padStart(2, '0')}:${(heOriginal % 60).toString().padStart(2, '0')}` : '-';
+            const faltaFormatado = faltaOriginal > 0 ? `${Math.floor(faltaOriginal / 60).toString().padStart(2, '0')}:${(faltaOriginal % 60).toString().padStart(2, '0')}` : '-';
+            const trabalhadasOriginal = Number(m.horasTrabalhadas || 0);
+            const trabalhadasFormatado = trabalhadasOriginal > 0 ? `${Math.floor(trabalhadasOriginal / 60).toString().padStart(2, '0')}:${(trabalhadasOriginal % 60).toString().padStart(2, '0')}` : '-';
             
             // Faltas Action
             let acaoFalta = '<span class="text-muted">-</span>';
@@ -910,7 +912,7 @@ async function buscarAuditoriaPonto() {
                 <tr>
                     <td class="fw-bold">${m.dataReferencia.split('-').reverse().join('/')}</td>
                     <td>${batidasStr}</td>
-                    <td>${Number(m.horasTrabalhadas || 0) > 0 ? (Number(m.horasTrabalhadas) / 60).toFixed(2) + 'h' : '-'}</td>
+                    <td>${trabalhadasFormatado}</td>
                     <td class="${faltaOriginal > 0 && m.statusFalta !== 'Justificada' ? 'text-danger fw-bold' : (m.statusFalta === 'Justificada' ? 'text-success text-decoration-line-through' : '')}">${faltaFormatado}</td>
                     <td>${acaoFalta}</td>
                     <td class="${heOriginal > 0 && m.statusAprovacaoHe !== 'Descartada' ? 'text-success fw-bold' : (m.statusAprovacaoHe === 'Descartada' ? 'text-muted text-decoration-line-through' : '')}">${heFormatado}</td>
@@ -1160,28 +1162,16 @@ async function gerarEspelhoPDF() {
                 if (mb.length > 4) ent3 = extrairHora(mb[4]);
                 if (mb.length > 5) sai3 = extrairHora(mb[5]);
 
-                // TRATAMENTOS EFETUADOS
-                mb.forEach(b => {
-                    let h = extrairHora(b);
-                    let tipo = 'I'; // default Included
-                    let motivo = '';
-                    
-                    if (b && typeof b === 'object') {
-                        // Adaptar se a API enviar flag de pré-assinalado ou autom.
-                        if (b.preAssinalado) { tipo = 'P'; motivo = 'BATIDA AUTOMÁTICA'; }
-                        if (b.desconsiderado) { tipo = 'D'; motivo = 'DESCONSIDERADO'; }
-                    }
-                    
-                    tratamentos.push(`<tr>
-                        <td style="border: none; padding: 0 4px; font-size: 10px;">${h}</td>
-                        <td style="border: none; padding: 0 4px; font-size: 10px; text-align: center;">${tipo}</td>
-                        <td style="border: none; padding: 0 4px; font-size: 10px;">${motivo}</td>
-                    </tr>`);
-                });
-            }
-
             const duracao = Number(m.horasTrabalhadas || 0) > 0 ? 
                 `${Math.floor(m.horasTrabalhadas / 60).toString().padStart(2, '0')}:${(m.horasTrabalhadas % 60).toString().padStart(2, '0')}` : '';
+
+            const faltaM = Number(m.faltasAtrasos || 0);
+            const faltaStr = faltaM > 0 ? 
+                `${Math.floor(faltaM / 60).toString().padStart(2, '0')}:${(faltaM % 60).toString().padStart(2, '0')}` : '';
+
+            const heM = Number(m.horasExtras || 0);
+            const heStr = heM > 0 ? 
+                `${Math.floor(heM / 60).toString().padStart(2, '0')}:${(heM % 60).toString().padStart(2, '0')}` : '';
 
             tableRows += `
                 <tr>
@@ -1194,10 +1184,8 @@ async function gerarEspelhoPDF() {
                     <td>${ent3}</td>
                     <td>${sai3}</td>
                     <td>${duracao}</td>
-                    <td>00004</td>
-                    <td style="padding: 0;">
-                        <table style="width: 100%; margin: 0; border: none;">${tratamentos.join('')}</table>
-                    </td>
+                    <td class="${faltaM > 0 ? 'text-danger fw-bold' : ''}" style="${faltaM > 0 ? 'color: #d9534f; font-weight: bold;' : ''}">${faltaStr}</td>
+                    <td class="${heM > 0 ? 'text-success fw-bold' : ''}" style="${heM > 0 ? 'color: #5cb85c; font-weight: bold;' : ''}">${heStr}</td>
                 </tr>
             `;
         });
@@ -1355,12 +1343,8 @@ async function gerarEspelhoPDF() {
                             <th rowspan="2">MARCAÇÕES REGISTRADAS<br>NO PONTO ELETRÔNICO</th>
                             <th colspan="6" class="group-header">JORNADA REALIZADA</th>
                             <th rowspan="2">DURAÇÃO</th>
-                            <th rowspan="2">CH</th>
-                            <th rowspan="2">TRATAMENTOS EFETUADOS SOBRE OS DADOS ORIGINAIS<br>
-                                <div style="display: flex; gap: 20px; font-weight: normal; margin-top: 4px;">
-                                    <span>HORÁRIO</span> <span>OCORR</span> <span>MOTIVO</span>
-                                </div>
-                            </th>
+                            <th rowspan="2">FALTAS / ATRASOS</th>
+                            <th rowspan="2">HORAS EXTRAS</th>
                         </tr>
                         <tr>
                             <th>ENT. 1</th>
@@ -1375,10 +1359,6 @@ async function gerarEspelhoPDF() {
                         ${tableRows}
                     </tbody>
                 </table>
-
-                <div class="legend">
-                    (I)=Incluído, (P)=Pré-assinalado, (D)=Desconsiderado
-                </div>
 
                 <div style="font-size: 18px; color: #555; margin-bottom: 10px;">
                     Horários Contratuais<br>do Empregado
