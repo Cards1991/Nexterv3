@@ -884,15 +884,19 @@ async function buscarAuditoriaPonto() {
 
             let batidasStr = '<span class="text-muted small">Sem marcação</span>';
             if (m.marcacoes && m.marcacoes.length > 0) {
-                // Ordenar batidas defensivamente (lidando com strings ou objetos)
+                const extrairHora = (obj) => {
+                    let s = (obj && obj.hora) ? String(obj.hora) : String(obj);
+                    if (s.includes('T')) s = s.split('T')[1];
+                    return s.trim().substring(0, 5);
+                };
+                
                 const mb = [...m.marcacoes].sort((a, b) => {
-                    const valA = (a && a.hora) ? String(a.hora) : String(a);
-                    const valB = (b && b.hora) ? String(b.hora) : String(b);
-                    return valA.localeCompare(valB);
+                    const valA = extrairHora(a);
+                    const valB = extrairHora(b);
+                    return valA > valB ? 1 : (valA < valB ? -1 : 0);
                 });
                 batidasStr = mb.map(b => {
-                    const val = (b && b.hora) ? String(b.hora) : String(b);
-                    return `<span class="badge bg-light text-dark border">${val.substring(0, 5)}</span>`;
+                    return `<span class="badge bg-light text-dark border">${extrairHora(b)}</span>`;
                 }).join(' ');
             }
 
@@ -1122,28 +1126,31 @@ async function gerarEspelhoPDF() {
             let tratamentos = [];
 
             if (m.marcacoes && m.marcacoes.length > 0) {
+                const extrairHora = (obj) => {
+                    let s = (obj && obj.hora) ? String(obj.hora) : String(obj);
+                    if (s.includes('T')) s = s.split('T')[1];
+                    return s.trim().substring(0, 5);
+                };
+
                 const mb = [...m.marcacoes].sort((a, b) => {
-                    const valA = (a && a.hora) ? String(a.hora) : String(a);
-                    const valB = (b && b.hora) ? String(b.hora) : String(b);
-                    return valA.localeCompare(valB);
+                    const valA = extrairHora(a);
+                    const valB = extrairHora(b);
+                    return valA > valB ? 1 : (valA < valB ? -1 : 0);
                 });
 
-                batidasStr = mb.map(b => {
-                    const val = (b && b.hora) ? String(b.hora) : String(b);
-                    return val.substring(0, 5);
-                }).join(' ');
+                batidasStr = mb.map(b => extrairHora(b)).join(' ');
 
                 // Preencher JORNADA REALIZADA
-                if (mb.length > 0) ent1 = ((mb[0] && mb[0].hora) ? String(mb[0].hora) : String(mb[0])).substring(0, 5);
-                if (mb.length > 1) sai1 = ((mb[1] && mb[1].hora) ? String(mb[1].hora) : String(mb[1])).substring(0, 5);
-                if (mb.length > 2) ent2 = ((mb[2] && mb[2].hora) ? String(mb[2].hora) : String(mb[2])).substring(0, 5);
-                if (mb.length > 3) sai2 = ((mb[3] && mb[3].hora) ? String(mb[3].hora) : String(mb[3])).substring(0, 5);
-                if (mb.length > 4) ent3 = ((mb[4] && mb[4].hora) ? String(mb[4].hora) : String(mb[4])).substring(0, 5);
-                if (mb.length > 5) sai3 = ((mb[5] && mb[5].hora) ? String(mb[5].hora) : String(mb[5])).substring(0, 5);
+                if (mb.length > 0) ent1 = extrairHora(mb[0]);
+                if (mb.length > 1) sai1 = extrairHora(mb[1]);
+                if (mb.length > 2) ent2 = extrairHora(mb[2]);
+                if (mb.length > 3) sai2 = extrairHora(mb[3]);
+                if (mb.length > 4) ent3 = extrairHora(mb[4]);
+                if (mb.length > 5) sai3 = extrairHora(mb[5]);
 
                 // TRATAMENTOS EFETUADOS
                 mb.forEach(b => {
-                    let h = (b && b.hora) ? String(b.hora).substring(0, 5) : String(b).substring(0, 5);
+                    let h = extrairHora(b);
                     let tipo = 'I'; // default Included
                     let motivo = 'MARCAÇÃO IDFACE/IDFLEX';
                     
