@@ -114,11 +114,16 @@ window.motorFolha = {
 
             // Lançar no movimento financeiro se for Provento ou Desconto
             if (verba.tipo === 'Provento' || verba.tipo === 'Desconto') {
+                let refFormatada = quantFinal.toFixed(2);
+                if (verba.unidade === 'Minutos') {
+                    refFormatada = `${Math.floor(quantidade / 60).toString().padStart(2, '0')}:${Math.floor(quantidade % 60).toString().padStart(2, '0')}`;
+                }
+
                 movimentos.push({
                     verbaCodigo: verba.codigo,
                     nome: nomeVerba,
                     natureza: verba.tipo === 'Provento' ? 'V' : 'D',
-                    referencia: quantFinal.toFixed(2),
+                    referencia: refFormatada,
                     valor: valorArredondado,
                     memoriaCalculo: memoria
                 });

@@ -148,8 +148,8 @@ async function verificarCalculoExistente() {
                         }
                     });
 
-                    const horasExtrasDecimais = (totalMinutosExtra / 60).toFixed(2);
-                    const horasFaltaDecimais = (totalMinutosFalta / 60).toFixed(2);
+                    const horasExtrasDecimais = totalMinutosExtra > 0 ? `${Math.floor(totalMinutosExtra / 60).toString().padStart(2, '0')}:${(totalMinutosExtra % 60).toString().padStart(2, '0')}` : '00:00';
+                    const horasFaltaDecimais = totalMinutosFalta > 0 ? `${Math.floor(totalMinutosFalta / 60).toString().padStart(2, '0')}:${(totalMinutosFalta % 60).toString().padStart(2, '0')}` : '00:00';
 
                     document.getElementById('calc-horas-extras').value = horasExtrasDecimais;
                     document.getElementById('calc-faltas-horas').value = horasFaltaDecimais;

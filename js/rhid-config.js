@@ -492,7 +492,7 @@ async function apurarHorasExtrasPeriodo() {
         // Renderiza as linhas
         let html = '';
         rankingList.forEach((r, i) => {
-            const horas = (r.totalHeMinutos / 60).toFixed(2);
+            const horas = `${Math.floor(r.totalHeMinutos / 60).toString().padStart(2, '0')}:${(r.totalHeMinutos % 60).toString().padStart(2, '0')}`;
             let rankBadge = `<span class="badge bg-secondary rounded-circle px-2">${i+1}</span>`;
             if (i === 0) rankBadge = `<span class="badge bg-danger rounded-circle px-2 shadow-sm"><i class="fas fa-crown text-warning"></i> 1</span>`;
             else if (i === 1) rankBadge = `<span class="badge bg-warning text-dark rounded-circle px-2">2</span>`;
@@ -503,7 +503,7 @@ async function apurarHorasExtrasPeriodo() {
                     <td class="align-middle">${rankBadge}</td>
                     <td class="align-middle fw-semibold text-dark">${r.nome}</td>
                     <td class="align-middle font-monospace text-muted small">${r.cpf}</td>
-                    <td class="align-middle text-center fw-bold text-success">${horas} h</td>
+                    <td class="align-middle text-center fw-bold text-success">${horas}</td>
                 </tr>
             `;
         });
