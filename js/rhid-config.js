@@ -305,8 +305,8 @@ async function importarApuracaoRhid() {
             ? 'http://localhost:3000/api'
             : '/api';
 
-        // Lotes de 20 funcionários para não sobrecarregar
-        const CHUNK_SIZE = 20;
+        // Lotes menores para evitar sobrecarga no Firebase (Resource Exhausted)
+        const CHUNK_SIZE = 10;
         let totaisLotesProcessados = 0;
         let totalEspelhosSalvos = 0;
 
@@ -370,8 +370,8 @@ async function importarApuracaoRhid() {
                     operations++;
                     totalEspelhosSalvos++;
 
-                    // Limite do batch do firestore é 500
-                    if (operations >= 400) {
+                    // Limite menor para evitar erro de resource-exhausted
+                    if (operations >= 100) {
                         await batch.commit();
                         batch = window.db.batch();
                         operations = 0;

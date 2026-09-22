@@ -346,6 +346,26 @@ async function calcularFolhaPagamento() {
             totalDescontos = resultadoMotor.totalDescontos;
         }
 
+        // REGRA DE NEGÓCIO: Arredondamento do Mês (Verba 0008)
+        // Aplica-se tanto para Adiantamento quanto Folha Mensal
+        let provisorioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
+        if (provisorioLiquido > 0 && !Number.isInteger(provisorioLiquido)) {
+            const liquidoArredondado = Math.ceil(provisorioLiquido);
+            const valorArredondamento = Number((liquidoArredondado - provisorioLiquido).toFixed(2));
+            
+            if (valorArredondamento > 0) {
+                movimentos.push({ 
+                    verbaCodigo: '0008', 
+                    natureza: 'V', 
+                    referencia: '', 
+                    valor: valorArredondamento,
+                    nome: 'Arredondamento do Mês',
+                    memoriaCalculo: `Líquido provisório: R$ ${provisorioLiquido}\nLíquido arredondado (Teto): R$ ${liquidoArredondado}\nDiferença injetada: R$ ${valorArredondamento}`
+                });
+                totalProventos += valorArredondamento;
+            }
+        }
+
         // Renderizar Preview em Tabela
         const totais = renderizarPreviewCalculo(movimentos, funcionario.nome, tipoCalculo, competencia, jaExiste);
 
