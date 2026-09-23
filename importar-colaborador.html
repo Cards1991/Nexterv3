@@ -11,6 +11,7 @@
     <!-- Configuração do Firebase -->
     <script src="js/env-loader.js"></script>
     <script src="firebase-config.js"></script>
+    <script src="js/constantes-setores.js"></script>
     
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
@@ -31,13 +32,21 @@
         <button onclick="fazerLogin()" class="btn" style="background-color: #198754;">Login</button>
     </div>
 
-    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #f8f9fa;">
-        <label for="funcSelect" style="font-weight: bold; display: block; margin-bottom: 10px;">Selecione o Colaborador (Ativo no Nexter):</label>
-        <select id="funcSelect" style="margin-bottom: 15px; padding: 10px; width: 100%; font-size: 16px;">
-            <option value="">Carregando colaboradores...</option>
-        </select>
-        <br>
-        <button id="btnImportar" class="btn" onclick="iniciarImportacao()" disabled style="background-color: #6f42c1;">✨ Iniciar Integração Mágica (Teorema -> Firestore)</button>
+    <div style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 5px; background-color: #f8f9fa; display: flex; gap: 20px;">
+        <div style="flex: 1;">
+            <label for="funcSelect" style="font-weight: bold; display: block; margin-bottom: 10px;">Por Colaborador (CPF):</label>
+            <select id="funcSelect" style="margin-bottom: 15px; padding: 10px; width: 100%; font-size: 16px;">
+                <option value="">Carregando colaboradores...</option>
+            </select>
+            <button id="btnImportar" class="btn" onclick="iniciarImportacao()" disabled style="background-color: #6f42c1; width: 100%;">✨ Importar Individual</button>
+        </div>
+        <div style="flex: 1; border-left: 1px solid #ccc; padding-left: 20px;">
+            <label for="setorSelect" style="font-weight: bold; display: block; margin-bottom: 10px;">Ou Importação em Lote (Por Setor):</label>
+            <select id="setorSelect" style="margin-bottom: 15px; padding: 10px; width: 100%; font-size: 16px;">
+                <option value="">Carregando setores...</option>
+            </select>
+            <button id="btnImportarLote" class="btn" onclick="iniciarImportacaoLote()" disabled style="background-color: #198754; width: 100%;">🚀 Importar Setor Inteiro</button>
+        </div>
     </div>
     
     <div id="log">Aguardando...</div>
@@ -59,23 +68,41 @@
             if (user) {
                 loginSec.style.display = 'none';
                 btn.disabled = false;
+                document.getElementById('btnImportarLote').disabled = false;
                 log(`🔐 Sessão detectada! Logado como: ${user.email}`);
                 carregarFuncionarios();
             } else {
                 loginSec.style.display = 'block';
                 btn.disabled = true;
+                document.getElementById('btnImportarLote').disabled = true;
                 log(`⚠️ Atenção: Nenhuma sessão ativa encontrada. Faça login acima.`);
             }
         });
 
+        window.todosFuncionariosCache = [];
         async function carregarFuncionarios() {
             try {
+                log('Carregando setores...');
+                const setorSelect = document.getElementById('setorSelect');
+                setorSelect.innerHTML = '<option value="">-- Selecione o Setor --</option>';
+                
+                let setoresArray = [];
+                if (typeof SETORES_OFICIAIS !== 'undefined') {
+                    setoresArray = [...SETORES_OFICIAIS];
+                }
+                setoresArray.sort();
+                
+                setoresArray.forEach(nomeSetor => {
+                    setorSelect.innerHTML += `<option value="${nomeSetor}">${nomeSetor}</option>`;
+                });
+
                 log('Carregando lista de funcionários ativos...');
                 const snap = await db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).orderBy('nome').get();
                 const select = document.getElementById('funcSelect');
                 select.innerHTML = '<option value="">-- Selecione o Colaborador --</option>';
                 snap.forEach(doc => {
                     const f = doc.data();
+                    window.todosFuncionariosCache.push(f);
                     if(f.cpf) {
                         select.innerHTML += `<option value="${f.cpf}">${f.nome} (CPF: ${f.cpf})</option>`;
                     }
@@ -107,25 +134,58 @@
             console.log(message);
         }
 
-        async function iniciarImportacao() {
-            const btn = document.getElementById('btnImportar');
-            const select = document.getElementById('funcSelect');
-            const cpfSelecionado = select.value;
+        async function iniciarImportacaoLote() {
+            const setor = document.getElementById('setorSelect').value;
+            if (!setor) return alert("Por favor, selecione um setor na lista.");
+            if (!currentUser) return alert("Faça login primeiro");
             
-            if (!cpfSelecionado) {
+            const btnLote = document.getElementById('btnImportarLote');
+            const btnIndiv = document.getElementById('btnImportar');
+            
+            btnLote.disabled = true; 
+            btnIndiv.disabled = true;
+            
+            log(`🚀 INICIANDO IMPORTAÇÃO EM LOTE PARA O SETOR: ${setor}`);
+            const funcsDoSetor = window.todosFuncionariosCache.filter(f => f.setor === setor && f.cpf);
+            
+            if(funcsDoSetor.length === 0) {
+                log(`Nenhum funcionário ativo com CPF encontrado para o setor ${setor}.`);
+                btnLote.disabled = false; btnIndiv.disabled = false;
+                return;
+            }
+            
+            log(`Encontrados ${funcsDoSetor.length} funcionários com CPF neste setor.`);
+            for (let i = 0; i < funcsDoSetor.length; i++) {
+                log(`\n--- Processando (${i+1}/${funcsDoSetor.length}): ${funcsDoSetor[i].nome} ---`);
+                await processarImportacaoCpf(funcsDoSetor[i].cpf);
+            }
+            log(`\n✅ LOTE FINALIZADO COM SUCESSO PARA O SETOR: ${setor}!`);
+            
+            btnLote.disabled = false; 
+            btnIndiv.disabled = false;
+        }
+
+        async function iniciarImportacao() {
+            const cpf = document.getElementById('funcSelect').value;
+            if (!cpf) {
                 alert("Por favor, selecione um colaborador na lista.");
                 return;
             }
+            const btnLote = document.getElementById('btnImportarLote');
+            const btnIndiv = document.getElementById('btnImportar');
+            btnLote.disabled = true; btnIndiv.disabled = true;
+            
+            await processarImportacaoCpf(cpf);
+            
+            btnLote.disabled = false; btnIndiv.disabled = false;
+        }
 
-            btn.disabled = true;
-
+        async function processarImportacaoCpf(cpfSelecionado) {
             if (!currentUser) {
                 log('❌ ERRO: Você não está logado no Firebase.');
-                btn.disabled = false;
                 return;
             }
 
-            log(`👤 Iniciando com usuário: ${currentUser.email}`);
             log(`✨ Solicitando extração mágica do Teorema para o CPF: ${cpfSelecionado}...`);
 
             try {
@@ -163,7 +223,6 @@
 
                 if (!funcionarioId) {
                     log('❌ ERRO: O funcionário não foi encontrado na base do Nexter (ou não está Ativo). O histórico não foi importado.');
-                    btn.disabled = false;
                     return;
                 }
 
@@ -248,8 +307,6 @@
             } catch (error) {
                 log('❌ ERRO DURANTE A IMPORTAÇÃO: ' + error.message);
                 console.error(error);
-            } finally {
-                btn.disabled = false;
             }
         }
     </script>
