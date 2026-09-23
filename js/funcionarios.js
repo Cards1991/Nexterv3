@@ -1287,9 +1287,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
 
     try {
         // CORREÇÃO: Removido orderBy('descricao') para evitar erro de índice composto. Ordenação feita em memória.
-        const setoresSnapshot = await db.collection('setores')
-            .where('empresaId', '==', empresaId)
-            .get();
+        const setoresSnapshot = await db.collection('setores').get();
 
         if (setoresSnapshot.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
@@ -1435,18 +1433,20 @@ async function carregarFuncoesPorEmpresa(empresaId, selectId, funcaoSelecionada 
     select.disabled = true;
 
     try {
-        const funcoesSnapshot = await db.collection('funcoes')
-                                      .where('empresaId', '==', empresaId)
-                                      .get();
+        const funcoesSnapshot = await db.collection('funcoes').get();
 
         if (funcoesSnapshot.empty) {
-            select.innerHTML = '<option value="">Nenhuma função cadastrada para esta empresa</option>';
+            select.innerHTML = '<option value="">Nenhuma função cadastrada</option>';
             return;
         }
 
         const funcoesList = [];
+        window.todasAsFuncoesGlobais = {}; // Cache global para autopreenchimento
+        
         funcoesSnapshot.forEach(doc => {
-            funcoesList.push(doc.data().nome);
+            const data = doc.data();
+            funcoesList.push(data.nome);
+            window.todasAsFuncoesGlobais[data.nome] = data;
         });
 
         // Ordenar as funções por nome em ordem alfabética
@@ -1491,6 +1491,47 @@ function inicializarModalFuncionario() {
             carregarFuncoesPorEmpresa(this.value, 'cargo-funcionario');
         });
         empresaSelect.dataset.listenerAttached = 'true';
+    }
+    
+    // Delegação de eventos para preenchimento de salário (modal é dinâmico)
+    if (!document.body.dataset.listenerCargoAttached) {
+        document.body.addEventListener('change', function (e) {
+            if (e.target && e.target.id === 'cargo-funcionario') {
+                const cargoNome = e.target.value;
+                const configSalarial = window.todasAsFuncoesGlobais ? window.todasAsFuncoesGlobais[cargoNome] : null;
+                
+                if (configSalarial && configSalarial.inicial) {
+                    const elSalario = document.getElementById('salario-funcionario');
+                    const elBonus = document.getElementById('salario-por-fora-funcionario');
+                    
+                    // Função auxiliar para animar e preencher
+                    const preencherAnimado = (el, valor) => {
+                        if (!el) return;
+                        el.value = valor;
+                        el.style.transition = 'all 0.3s ease';
+                        el.style.backgroundColor = '#d1e7dd'; // verde claro
+                        el.style.color = '#0f5132';
+                        el.style.fontWeight = 'bold';
+                        
+                        // Adicionar ícone de check temporário se possível
+                        setTimeout(() => {
+                            el.style.backgroundColor = '';
+                            el.style.color = '';
+                            el.style.fontWeight = '';
+                        }, 1500);
+                    };
+
+                    if (elSalario) preencherAnimado(elSalario, parseFloat(configSalarial.inicial).toFixed(2));
+                    if (elBonus) preencherAnimado(elBonus, parseFloat(configSalarial.bonus || 0).toFixed(2));
+                    
+                    // Toast de aviso
+                    if (window.mostrarToast) {
+                        mostrarToast('Salário Atualizado', `Valores para ${cargoNome} preenchidos pela matriz salarial.`, 'success');
+                    }
+                }
+            }
+        });
+        document.body.dataset.listenerCargoAttached = 'true';
     }
 
     if (setorSelect && !setorSelect.dataset.listenerAttached) {
@@ -1918,7 +1959,7 @@ async function imprimirAumentoSalario() {
 
     const dataFormatada = new Date(dataAumento).toLocaleDateString('pt-BR');
     const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-    const tipoTexto = tipoAumento === 'folha' ? 'Salário em Folha' : 'Salário por Fora';
+    const tipoTexto = tipoAumento === 'folha' ? 'Salário em Folha' : 'Bônus';
 
     const conteudo = `
         <html>
@@ -1982,7 +2023,7 @@ async function visualizarTermoAumento(funcionarioId, historicoIndex) {
 
         const dataFormatada = formatarData(aumento.data);
         const hojeFormatado = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
-        const tipoTexto = aumento.tipo === 'folha' ? 'Salário em Folha' : 'Salário por Fora';
+        const tipoTexto = aumento.tipo === 'folha' ? 'Salário em Folha' : 'Bônus';
 
         const conteudo = `
             <html>
@@ -3547,9 +3588,7 @@ async function abrirModalTransferenciaLote() {
                     containerFuncionarios.innerHTML = '<span class="text-muted small">Carregando colaboradores...</span>';
                     
                     try {
-                        const setoresSnapshot = await db.collection('setores')
-                            .where('empresaId', '==', empresaId)
-                            .get();
+                        const setoresSnapshot = await db.collection('setores').get();
 
                         if (setoresSnapshot.empty) {
                             selectSetorOrigem.innerHTML = '<option value="">Nenhum setor cadastrado</option>';
@@ -3589,9 +3628,7 @@ async function abrirModalTransferenciaLote() {
                 if (selectSetorDestino) {
                     selectSetorDestino.innerHTML = '<option value="">Carregando setores...</option>';
                     try {
-                        const setoresSnapshot = await db.collection('setores')
-                            .where('empresaId', '==', empresaId)
-                            .get();
+                        const setoresSnapshot = await db.collection('setores').get();
 
                         if (setoresSnapshot.empty) {
                             selectSetorDestino.innerHTML = '<option value="">Nenhum setor cadastrado</option>';

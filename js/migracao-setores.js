@@ -1,72 +1,158 @@
 // js/migracao-setores.js
 
 /**
- * Script Descartável de Migração de Setores (O.D.)
- * 
- * Este script deve ser executado MANUALMENTE via console do navegador (DevTools)
- * Comando: window.iniciarMigracaoDeSetores()
- * 
- * ATENÇÃO: Esta ação APAGA todos os setores antigos e recria os 34 OFICIAIS globalmente.
+ * Script de Migracao de Setores
  */
 
 window.iniciarMigracaoDeSetores = async function() {
-    if (!confirm("⚠️ ATENÇÃO: Tem certeza que deseja rodar a migração? Isso apagará TODOS os documentos da coleção 'setores' e criará apenas os 34 globais. Certifique-se de que o sistema está fora de uso.")) return;
-    if (!confirm("⚠️ SEGUNDO AVISO: Esta ação é destrutiva na coleção 'setores'. Confirma?")) return;
+    if (!confirm("ATENCAO: Tem certeza que deseja rodar a migracao? Isso apagara TODOS os documentos da colecao 'setores' e criara apenas os 33 globais.")) return;
     
-    console.log("🚀 INICIANDO MIGRAÇÃO DE SETORES...");
+    console.log("INICIANDO MIGRACAO DE SETORES...");
     
     try {
         const batch = db.batch();
-        let opsCont = 0;
         
         // 1. Apagar TODOS os setores atuais
-        console.log("🧹 Apagando setores antigos...");
+        console.log("Apagando setores antigos...");
         const setoresSnap = await db.collection('setores').get();
+        const docs = setoresSnap.docs;
         
-        setoresSnap.forEach(doc => {
-            batch.delete(doc.ref);
-            opsCont++;
-            
-            // O Firestore limita batches a 500 operações. Como são poucos setores (esperamos < 200),
-            // podemos colocar tudo no mesmo batch, mas manteremos o contador seguro.
-        });
-        
-        console.log(`🧹 Marcado ${opsCont} setores antigos para exclusão.`);
+        console.log(`Marcado ${docs.length} setores antigos para exclusao.`);
 
-        // 2. Inserir os 34 oficiais
-        console.log("🌱 Inserindo os 34 setores globais oficiais...");
-        if (typeof SETORES_OFICIAIS === 'undefined' || SETORES_OFICIAIS.length !== 34) {
-            throw new Error("❌ ERRO: A constante SETORES_OFICIAIS não foi carregada ou não contém exatos 34 itens.");
+        // Processar delecoes em lotes de 400
+        for (let i = 0; i < docs.length; i += 400) {
+            const chunk = docs.slice(i, i + 400);
+            const delBatch = db.batch();
+            chunk.forEach(doc => delBatch.delete(doc.ref));
+            await delBatch.commit();
+            console.log(`Apagado lote de ${chunk.length} setores...`);
         }
-        
-        SETORES_OFICIAIS.forEach(nomeSetor => {
-            const docRef = db.collection('setores').doc(); // Auto-id
-            batch.set(docRef, {
-                descricao: nomeSetor,
-                empresaId: "GLOBAL", // Marca como setor global
-                global: true,
-                gerenteId: null,
-                qtdIdeal: 0,
-                controlaProducao: false,
-                horarioEntrada: "",
-                horarioSaida: "",
-                observacao: "Criado automaticamente pela Migração O.D.",
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            opsCont++;
-        });
 
-        // 3. Efetivar as operações no Firestore
-        console.log("🔥 Efetivando transação (Batch Commit)...");
-        await batch.commit();
+        // 2. Inserir os 33 oficiais
+        console.log("Inserindo os 33 setores globais oficiais...");
         
-        console.log("✅ MIGRAÇÃO CONCLUÍDA COM SUCESSO!");
-        console.log(`✅ Foram excluídos ${setoresSnap.size} setores antigos e criados 34 novos setores globais.`);
-        alert("Migração concluída! Verifique o console para detalhes.");
+        const insBatch = db.batch();
+        for (const setorNome of SETORES_OFICIAIS) {
+            const newRef = db.collection('setores').doc();
+            insBatch.set(newRef, {
+                nome: setorNome,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        await insBatch.commit();
+
+        console.log("SUCESSO! Migracao concluida.");
+        alert("Migracao concluida! Todos os setores foram apagados e os 33 oficiais foram criados.");
         
-    } catch (error) {
-        console.error("❌ ERRO FATAL NA MIGRAÇÃO:", error);
-        alert("Erro na migração! Veja o console.");
+    } catch (e) {
+        console.error("Erro na migracao:", e);
+        alert("Erro na migracao: " + e.message);
+    }
+};
+
+window.sincronizarSetoresDoTeorema = async function() {
+    if (!confirm('Tem certeza que deseja sincronizar os Setores e Empresas do banco local (Teorema) com a nuvem (Nexter)?\nIsso pode levar alguns minutos.')) {
+        return;
+    }
+    
+    try {
+        console.log('Iniciando sincronizacao com Teorema...');
+        const res = await fetch('http://localhost:3000/api/teorema-setores');
+        if (!res.ok) throw new Error('Erro na comunicacao com o servidor local do Teorema');
+        
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Erro desconhecido');
+
+        const teoremaMap = json.data;
+        const empresasTeorema = json.empresasTeorema || {};
+
+        // Criar mapeamento reverso (codigo -> nome)
+        const MAPA_REVERSO = {};
+        for (const [nome, codigo] of Object.entries(SETORES_CODIGOS)) {
+            MAPA_REVERSO[codigo] = nome;
+        }
+
+        // Buscar empresas do Firebase para cruzar pelo CNPJ
+        const firebaseEmpresasSnap = await db.collection('empresas').get();
+        const firebaseEmpresasMap = {};
+        for (const doc of firebaseEmpresasSnap.docs) {
+            const empData = doc.data();
+            if (empData.cnpj) {
+                const cnpjLp = String(empData.cnpj).replace(/\D/g, '');
+                firebaseEmpresasMap[cnpjLp] = doc.id;
+            }
+        }
+
+        // Mapear Codigo Teorema -> Firebase Empresa ID
+        const teoremaParaFirebaseEmpresa = {};
+        for (const [codigoT, cnpjT] of Object.entries(empresasTeorema)) {
+            if (firebaseEmpresasMap[cnpjT]) {
+                teoremaParaFirebaseEmpresa[codigoT] = firebaseEmpresasMap[cnpjT];
+            }
+        }
+
+        console.log('Buscando funcionarios na nuvem...');
+        const nexterSnap = await db.collection('funcionarios').get();
+
+        let ops = 0;
+        let totalUpdated = 0;
+        let semCorrespondenciaSetor = 0;
+        let currentBatch = db.batch();
+
+        for (const doc of nexterSnap.docs) {
+            const data = doc.data();
+            if (!data.cpf) continue;
+
+            const cpfLp = String(data.cpf).replace(/\D/g, '');
+            const teoremaInfo = teoremaMap[cpfLp];
+
+            if (teoremaInfo) {
+                const codigoSetor = teoremaInfo.setor;
+                const codigoEmpresa = teoremaInfo.empresaCodigo;
+                
+                const novoSetorNome = MAPA_REVERSO[codigoSetor];
+                const novaEmpresaId = teoremaParaFirebaseEmpresa[codigoEmpresa];
+
+                const atualizacoes = {};
+                let precisaAtualizar = false;
+
+                if (novoSetorNome && data.setor !== novoSetorNome) {
+                    atualizacoes.setor = novoSetorNome;
+                    precisaAtualizar = true;
+                } else if (!novoSetorNome) {
+                    semCorrespondenciaSetor++;
+                }
+
+                if (novaEmpresaId && data.empresaId !== novaEmpresaId) {
+                    atualizacoes.empresaId = novaEmpresaId;
+                    precisaAtualizar = true;
+                }
+
+                if (precisaAtualizar) {
+                    currentBatch.update(doc.ref, atualizacoes);
+                    ops++;
+                    totalUpdated++;
+
+                    if (ops >= 400) {
+                        await currentBatch.commit();
+                        currentBatch = db.batch();
+                        ops = 0;
+                        console.log(`Atualizados ${totalUpdated} funcionarios...`);
+                    }
+                }
+            }
+        }
+
+        if (ops > 0) {
+            await currentBatch.commit();
+        }
+
+        console.log(`Sincronizacao concluida! ${totalUpdated} atualizados.`);
+        alert(`Sincronizacao concluida!\n\n${totalUpdated} funcionarios tiveram seu Setor ou Empresa atualizados.\n${semCorrespondenciaSetor} ignorados no setor.`);
+        window.location.reload();
+
+    } catch (e) {
+        console.error('Erro na sincronizacao:', e);
+        alert('Erro na sincronizacao: ' + e.message);
     }
 };

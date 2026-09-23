@@ -75,6 +75,14 @@
             <div id="header-container"></div>
 
             <main class="content-wrapper">
+                <!-- Botão Flutuante de Sync -->
+                <button 
+                    onclick="if(window.sincronizarSetoresDoTeorema) window.sincronizarSetoresDoTeorema(); else alert('Aguarde o carregamento do script...')" 
+                    style="position: fixed; bottom: 30px; right: 30px; z-index: 9999; border-radius: 50px; padding: 15px 25px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);"
+                    class="btn btn-info text-white fw-bold">
+                    <i class="fas fa-sync-alt me-2"></i> Sincronizar Teorema
+                </button>
+
                 <!-- Botão de Correção (Oculto por padrão) -->
                 <div id="data-fix-wrapper" style="display: none; text-align: center; margin-bottom: 1rem;">
                     <button class="btn btn-warning" onclick="fixMissingFuncoes()">
@@ -113,7 +121,6 @@
     <script src="js/config-fluxos.js?v=1" defer></script>
     <script src="js/treinamento.js" defer></script>
     <script src="js/funcoes.js" defer></script>
-
     <script>
         // Check for data-fix hash
         if (window.location.hash === '#data-fix') {

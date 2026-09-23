@@ -599,3 +599,114 @@ function renderizarMapaVisualCorporativo() {
     }
 }
 
+// -------------------------------------------------------------
+// PLANO DE CARGOS E SALÁRIOS (REAJUSTES PROGRAMADOS)
+// -------------------------------------------------------------
+window.verificarReajustesPendentes = async function() {
+    const tbody = document.getElementById('lista-alertas-salarios');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin text-warning me-2"></i> Calculando tempo de casa...</td></tr>';
+    
+    try {
+        // Primeiro carregar as funções e suas tabelas
+        const funcoesSnap = await db.collection('funcoes').get();
+        const configSalarialMap = {};
+        funcoesSnap.forEach(doc => {
+            const data = doc.data();
+            configSalarialMap[data.nome] = data;
+        });
+
+        const funcionariosSnap = await db.collection('funcionarios').where('situacao', 'in', ['01', 'Ativo']).get();
+        let alertas = [];
+        
+        const hoje = new Date();
+        
+        funcionariosSnap.forEach(doc => {
+            const func = doc.data();
+            if (!func.admissao || !func.cargo) return;
+            
+            const cargo = func.cargo;
+            const configSalarial = configSalarialMap[cargo];
+            if (!configSalarial) return; // Cargo não mapeado
+            
+            const dataAdmissao = new Date(func.admissao);
+            // Calcular diferença em meses brutos
+            const mesesTotais = (hoje.getFullYear() - dataAdmissao.getFullYear()) * 12 + (hoje.getMonth() - dataAdmissao.getMonth());
+            
+            // Determinar qual deveria ser o salário atual baseado no tempo
+            let salarioDevido = parseFloat(configSalarial.inicial || 0);
+            if (salarioDevido === 0) return; // Se não tem salário inicial cadastrado, ignora
+            
+            let marcoAtingido = 'Inicial';
+            
+            if (mesesTotais >= 14 && configSalarial.m14) {
+                salarioDevido = parseFloat(configSalarial.m14);
+                marcoAtingido = '1 ano e 2 meses';
+            } else if (mesesTotais >= 8 && configSalarial.m8) {
+                salarioDevido = parseFloat(configSalarial.m8);
+                marcoAtingido = '8 Meses';
+            } else if (mesesTotais >= 6 && configSalarial.m6) {
+                salarioDevido = parseFloat(configSalarial.m6);
+                marcoAtingido = '6 Meses';
+            } else if (mesesTotais >= 3 && configSalarial.m3) {
+                salarioDevido = parseFloat(configSalarial.m3);
+                marcoAtingido = '3 Meses';
+            }
+            
+            const salarioAtual = parseFloat(func.salario || 0);
+            
+            // Se o salário atual é menor que o salário devido para o tempo de casa dele
+            if (salarioDevido > salarioAtual) {
+                alertas.push({
+                    id: doc.id,
+                    nome: func.nome,
+                    cargo: cargo,
+                    admissao: func.admissao,
+                    meses: mesesTotais,
+                    salarioAtual: salarioAtual,
+                    salarioDevido: salarioDevido,
+                    marco: marcoAtingido
+                });
+            }
+        });
+        
+        if (alertas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-success"><i class="fas fa-check-circle me-2"></i>Nenhum reajuste pendente! Todos os salários estão em dia com a matriz.</td></tr>';
+            return;
+        }
+        
+        // Ordenar por maior defasagem de meses
+        alertas.sort((a, b) => b.meses - a.meses);
+        
+        tbody.innerHTML = '';
+        alertas.forEach(alerta => {
+            const dateParts = alerta.admissao.split('-');
+            const dataBr = `${dateParts[2]}/${dateParts[1]}/${dateParts[0]}`;
+            const diffValor = (alerta.salarioDevido - alerta.salarioAtual).toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            const salarioDevidoStr = alerta.salarioDevido.toLocaleString('pt-BR', {style: 'currency', currency: 'BRL'});
+            
+            const tempoStr = alerta.meses >= 12 ? `${Math.floor(alerta.meses / 12)}a ${alerta.meses % 12}m` : `${alerta.meses} meses`;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="ps-4 fw-bold text-dark">${alerta.nome}</td>
+                <td><span class="badge bg-light text-dark border">${alerta.cargo}</span></td>
+                <td>${dataBr}</td>
+                <td><span class="text-danger fw-bold"><i class="fas fa-clock me-1"></i> ${tempoStr}</span></td>
+                <td>
+                    <div class="small text-muted mb-1">Marco: <strong>${alerta.marco}</strong></div>
+                    <div class="fw-bold text-success">${salarioDevidoStr} <span class="badge bg-success-subtle text-success ms-1">+${diffValor}</span></div>
+                </td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-primary" onclick="abrirModalFuncionario('${alerta.id}')" title="Ver Colaborador"><i class="fas fa-external-link-alt"></i></button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+        
+    } catch (e) {
+        console.error("Erro ao verificar reajustes:", e);
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-danger">Erro ao calcular reajustes.</td></tr>';
+    }
+}

@@ -301,6 +301,33 @@ app.post('/api/consultar-judicial', async (req, res) => {
     }
 });
 
+// Rota para extrair seções do Teorema para atualizar o Firebase pelo frontend
+app.get('/api/teorema-setores', async (req, res) => {
+    let conn;
+    try {
+        const odbc = require('odbc');
+        conn = await odbc.connect('DSN=Teorema');
+        const query = 'SELECT FUNCIONARIO_CPF, SECAO_CODIGO, SETOR_CODIGO FROM FUNCIONARIOS WHERE FUNCIONARIO_CPF IS NOT NULL';
+        const teoremaEmps = await conn.query(query);
+
+        const mapa = {};
+        teoremaEmps.forEach(emp => {
+            const cpf = emp.FUNCIONARIO_CPF;
+            const codigo = emp.SECAO_CODIGO || emp.SETOR_CODIGO;
+            if (cpf && codigo) {
+                const cpfLimpo = String(cpf).replace(/\D/g, '');
+                mapa[cpfLimpo] = parseInt(codigo, 10);
+            }
+        });
+        res.json({ success: true, data: mapa });
+    } catch (error) {
+        console.error('Erro ao buscar setores no Teorema:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        if (conn) await conn.close();
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor de análise rodando na porta ${PORT}`);

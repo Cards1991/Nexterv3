@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexter V3 - Sincronização Estrutural Teorema</title>
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Configuração do Firebase -->
+    <script src="js/env-loader.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <style>
+        body { font-family: 'Outfit', sans-serif; padding: 40px; }
+        .log-container {
+            background-color: #1a1d21;
+            color: #4CAF50;
+            font-family: monospace;
+            padding: 15px;
+            border-radius: 8px;
+            height: 400px;
+            overflow-y: auto;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Sincronização de Empresas e Setores (Teorema)</h2>
+    <div class="alert alert-danger mt-3">
+        <strong><i class="fas fa-exclamation-triangle"></i> OPERAÇÃO DESTRUTIVA:</strong>
+        Isto irá apagar TODAS as empresas e setores atuais do banco e recriá-los espelhando o Teorema.
+    </div>
+
+    <button id="btnSync" class="btn btn-warning btn-lg">
+        <i class="fas fa-sync"></i> Iniciar Sincronização
+    </button>
+
+    <div class="log-container" id="logBox">
+        [Aguardando comando...]
+    </div>
+</div>
+
+<script>
+    if (!firebase.apps.length && window.__FIREBASE_CONFIG__) {
+        firebase.initializeApp(window.__FIREBASE_CONFIG__);
+    }
+
+    function log(msg) {
+        const box = document.getElementById('logBox');
+        box.innerHTML += `<div>> ${msg}</div>`;
+        box.scrollTop = box.scrollHeight;
+    }
+
+    document.getElementById('btnSync').addEventListener('click', async () => {
+        const btn = document.getElementById('btnSync');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sincronizando...';
+        
+        try {
+            log('Iniciando...');
+            log('Buscando dados no Servidor Node (Teorema)...');
+            
+            const res = await fetch('http://localhost:3000/api/sync-estruturas');
+            if(!res.ok) throw new Error('Falha ao conectar no endpoint do Teorema (o server.js está rodando?)');
+            
+            const data = await res.json();
+            log(`Retornado: ${data.empresas.length} empresas e ${data.setores.length} setores combinados.`);
+
+            const db = firebase.firestore();
+
+            log('Deletando todas as empresas atuais...');
+            const empSnap = await db.collection('empresas').get();
+            const batch1 = db.batch();
+            empSnap.docs.forEach(doc => batch1.delete(doc.ref));
+            await batch1.commit();
+            log('Empresas antigas deletadas.');
+
+            log('Deletando todos os setores atuais...');
+            const setSnap = await db.collection('setores').get();
+            const batch2 = db.batch();
+            setSnap.docs.forEach(doc => batch2.delete(doc.ref));
+            await batch2.commit();
+            log('Setores antigos deletados.');
+
+            log('Criando novas empresas baseadas no Teorema...');
+            const batch3 = db.batch();
+            data.empresas.forEach(emp => {
+                // USA O EMPRESA_CODIGO COMO O DOCUMENT ID NO FIRESTORE!
+                const ref = db.collection('empresas').doc(emp.EMPRESA_CODIGO);
+                batch3.set(ref, {
+                    nome: emp.EMPRESA_NOME,
+                    cnpj: emp.EMPRESA_CNPJ,
+                    codigoTeorema: emp.EMPRESA_CODIGO,
+                    impostos: { terceiros: 0, patronal: 0 },
+                    jornadaTrabalho: {
+                        domingo: { h1: "", h2: "", h3: "", h4: "" },
+                        segunda: { h1: "07:30", h2: "11:50", h3: "13:00", h4: "17:28" },
+                        terca: { h1: "07:30", h2: "11:50", h3: "13:00", h4: "17:28" },
+                        quarta: { h1: "07:30", h2: "11:50", h3: "13:00", h4: "17:28" },
+                        quinta: { h1: "07:30", h2: "11:50", h3: "13:00", h4: "17:28" },
+                        sexta: { h1: "07:30", h2: "11:50", h3: "13:00", h4: "17:28" },
+                        sabado: { h1: "", h2: "", h3: "", h4: "" },
+                        tolerancia: 10,
+                        horarioNoturnoInicio: "22:00",
+                        horarioNoturnoFim: "05:00"
+                    },
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            await batch3.commit();
+            log('Empresas criadas!');
+
+            log('Criando novos setores vinculados...');
+            // O Firestore Batch suporta no máximo 500 operações. Como temos ~250 setores, um batch resolve!
+            const batch4 = db.batch();
+            data.setores.forEach(setor => {
+                const docId = `${setor.EMPRESA_CODIGO}_${setor.SECAO_CODIGO}`;
+                const ref = db.collection('setores').doc(docId);
+                batch4.set(ref, {
+                    empresaId: setor.EMPRESA_CODIGO, // Linkado com o código da empresa
+                    codigoTeorema: setor.SECAO_CODIGO,
+                    nome: setor.SECAO_DESCRICAO,
+                    descricao: setor.SECAO_DESCRICAO,
+                    gerenteRef: null,
+                    controlaProducao: false,
+                    qtdIdealColaboradores: 0,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+            await batch4.commit();
+            log('Setores criados!');
+
+            log('SUCESSO TOTAL! A sincronização foi finalizada. Você pode fechar esta página e voltar ao Nexter.');
+
+        } catch(e) {
+            log(`ERRO: ${e.message}`);
+            console.error(e);
+        } finally {
+            btn.innerHTML = '<i class="fas fa-check"></i> Concluído';
+        }
+    });
+</script>
+</body>
+</html>

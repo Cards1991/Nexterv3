@@ -1218,9 +1218,8 @@ async function carregarSetoresPorEmpresa(empresaId, selectId, setorSelecionado =
     select.innerHTML = '<option value="">Carregando...</option>';
 
     try {
-        const setoresSnapshot = await db.collection('setores')
-            .where('empresaId', '==', empresaId)
-            .get();
+        // SETORES SÃO GLOBAIS: não filtrar por empresaId
+        const setoresSnapshot = await db.collection('setores').get();
 
         if (setoresSnapshot.empty) {
             select.innerHTML = '<option value="">Nenhum setor cadastrado</option>';

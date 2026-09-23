@@ -13,6 +13,33 @@
     </div>
 </div>
 
+<!-- Nova Seção: Alertas de Reajuste Salarial -->
+<div class="card shadow-sm border-0 mb-4 border-start border-warning border-4">
+    <div class="card-header bg-white py-3 border-bottom-0 d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-hand-holding-usd text-warning me-2"></i> Reajustes Programados (Plano de Cargos e Salários)</h5>
+        <button class="btn btn-sm btn-outline-warning" onclick="verificarReajustesPendentes()"><i class="fas fa-sync-alt me-1"></i> Verificar</button>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="tabela-alertas-salarios">
+                <thead class="table-light">
+                    <tr>
+                        <th class="ps-4">Colaborador</th>
+                        <th>Função</th>
+                        <th>Data de Admissão</th>
+                        <th>Tempo de Casa</th>
+                        <th>Reajuste Sugerido</th>
+                        <th class="text-center">Ações</th>
+                    </tr>
+                </thead>
+                <tbody id="lista-alertas-salarios">
+                    <tr><td colspan="6" class="text-center py-4 text-muted">Clique em "Verificar" para calcular os reajustes pendentes.</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 
 <div class="row mb-4">
     <div class="col-md-3">

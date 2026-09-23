@@ -19,7 +19,22 @@ async function carregarSetores() {
         ]);
 
         const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
-        const funcionariosMap = new Map(funcionariosSnap.docs.map(doc => [doc.id, doc.data().nome]));
+        const funcionariosMap = new Map();
+        const alocacaoRealMap = new Map();
+
+        funcionariosSnap.docs.forEach(doc => {
+            const f = doc.data();
+            funcionariosMap.set(doc.id, f.nome);
+            
+            // Contagem apenas de funcionários ativos
+            if (f.status === 'Ativo' && f.setor) {
+                const setorNormalizado = f.setor.trim();
+                const countAtual = alocacaoRealMap.get(setorNormalizado) || 0;
+                alocacaoRealMap.set(setorNormalizado, countAtual + 1);
+            }
+        });
+
+        const sectorsRendered = new Set();
 
         if (setoresSnap.empty) {
             tbody.innerHTML = '<tr><td colspan="7" class="text-center">Nenhum setor cadastrado.</td></tr>';
@@ -29,7 +44,12 @@ async function carregarSetores() {
         tbody.innerHTML = '';
         setoresSnap.forEach(doc => {
             const setor = doc.data();
-            const empresaNome = empresasMap.get(setor.empresaId) || 'N/A';
+            const desc = (setor.descricao || '').trim();
+
+            // Evitar renderizar setores duplicados com o mesmo nome
+            if (sectorsRendered.has(desc)) return;
+            sectorsRendered.add(desc);
+
             const gerenteNome = funcionariosMap.get(setor.gerenteId) || 'N/A';
             const dataCriacao = setor.createdAt?.toDate ? setor.createdAt.toDate().toLocaleDateString('pt-BR') : 'N/A';
 
@@ -37,13 +57,24 @@ async function carregarSetores() {
                 ? '<span class="badge bg-success"><i class="fas fa-check"></i> Sim</span>'
                 : '<span class="badge bg-light text-muted">Não</span>';
 
+            const qtdIdeal = setor.qtdIdeal || 0;
+            const qtdReal = alocacaoRealMap.get(desc) || 0;
+            
+            // Destaca a Qtd Real se estiver acima da ideal
+            let qtdRealBadge = `<span class="badge bg-secondary" style="font-size: 0.9em;">${qtdReal}</span>`;
+            if (qtdIdeal > 0 && qtdReal > qtdIdeal) {
+                qtdRealBadge = `<span class="badge bg-danger" style="font-size: 0.9em;" title="Acima da Qtd. Ideal!">${qtdReal}</span>`;
+            } else if (qtdIdeal > 0 && qtdReal === qtdIdeal) {
+                qtdRealBadge = `<span class="badge bg-success" style="font-size: 0.9em;" title="Alocação perfeita">${qtdReal}</span>`;
+            }
+
             const row = `
                 <tr>
                     <td>${setor.descricao}</td>
-                    <!-- Removida coluna Empresa: <td>${empresaNome}</td> -->
                     <td>${gerenteNome}</td>
                     <td class="text-center">${badgeProducao}</td>
-                    <td class="text-center">${setor.qtdIdeal || 0}</td>
+                    <td class="text-center">${qtdIdeal}</td>
+                    <td class="text-center">${qtdRealBadge}</td>
                     <td>${dataCriacao}</td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-outline-primary" onclick="abrirModalSetor('${doc.id}')"><i class="fas fa-edit"></i></button>
@@ -79,7 +110,7 @@ async function abrirModalSetor(setorId = null) {
 
     // Popular selects
     const empresaSelect = document.getElementById('setor-empresa');
-    if(empresaSelect) empresaSelect.closest('.mb-3').style.display = 'none'; // Esconde o campo Empresa
+    if(empresaSelect) empresaSelect.closest('.mb-3').style.display = 'none'; // Esconde o campo Empresa (mantido por precaução caso exista no cache do DOM)
 
     const gerenteSelect = document.getElementById('setor-gerente');
     
@@ -89,15 +120,9 @@ async function abrirModalSetor(setorId = null) {
 
     gerenteSelect.innerHTML = '<option value="">Carregando...</option>';
 
-    const [empresasSnap, funcionariosSnap] = await Promise.all([
-        db.collection('empresas').orderBy('nome').get(),
+    const [funcionariosSnap] = await Promise.all([
         db.collection('funcionarios').where('status', '==', 'Ativo').orderBy('nome').get()
     ]);
-
-    empresaSelect.innerHTML = '<option value="">Selecione uma empresa</option>';
-    empresasSnap.forEach(doc => {
-        empresaSelect.innerHTML += `<option value="${doc.id}">${doc.data().nome}</option>`;
-    });
 
     gerenteSelect.innerHTML = '<option value="">Nenhum</option>';
     funcionariosSnap.forEach(doc => {
@@ -108,7 +133,6 @@ async function abrirModalSetor(setorId = null) {
         const doc = await db.collection('setores').doc(setorId).get();
         if (doc.exists) {
             const data = doc.data();
-            document.getElementById('setor-empresa').value = data.empresaId;
             document.getElementById('setor-descricao').value = data.descricao;
             document.getElementById('setor-gerente').value = data.gerenteId || '';
             document.getElementById('setor-qtd-ideal').value = data.qtdIdeal || '';
@@ -135,7 +159,6 @@ async function salvarSetor() {
     if (!btn) return;
 
     const setorId = document.getElementById('setor-id').value;
-    const empresaId = document.getElementById('setor-empresa').value;
     const descricao = document.getElementById('setor-descricao').value.trim();
     const controlaProducaoCheckbox = document.getElementById('setor-controla-producao');
 
@@ -225,29 +248,31 @@ async function carregarDashboardSetores() {
         // Estrutura para agrupar dados por setor
         const dadosSetores = {};
 
-        // 1. Inicializa com os setores cadastrados
+        // 1. Inicializa com os setores cadastrados (agrupados globalmente pelo nome)
         setoresSnap.forEach(doc => {
             const s = doc.data();
-            const chave = `${s.empresaId}_${s.descricao}`; // Chave única composta
-            dadosSetores[chave] = {
-                id: doc.id,
-                empresaId: s.empresaId,
-                empresaNome: empresasMap.get(s.empresaId) || 'N/A',
-                nome: s.descricao,
-                qtdIdeal: parseInt(s.qtdIdeal) || 0,
-                qtdAtual: 0,
-                reposicoesPendentes: 0,
-                admissoesPendentes: 0,
-                faltasHoje: 0,
-                colaboradoresSumidos: 0
-            };
+            const chave = s.descricao.trim(); // Chave única pelo nome do setor
+            
+            // Se o setor já foi adicionado por outra empresa, apenas preserva
+            if (!dadosSetores[chave]) {
+                dadosSetores[chave] = {
+                    id: doc.id,
+                    nome: s.descricao,
+                    qtdIdeal: parseInt(s.qtdIdeal) || 0,
+                    qtdAtual: 0,
+                    reposicoesPendentes: 0,
+                    admissoesPendentes: 0,
+                    faltasHoje: 0,
+                    colaboradoresSumidos: 0
+                };
+            }
         });
 
         // 2. Conta funcionários ativos
         funcionariosSnap.forEach(doc => {
             const f = doc.data();
-            if (f.empresaId && f.setor) {
-                const chave = `${f.empresaId}_${f.setor}`;
+            if (f.setor) {
+                const chave = f.setor.trim();
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].qtdAtual++;
                 }
@@ -257,8 +282,8 @@ async function carregarDashboardSetores() {
         // 3. Conta reposições pendentes
         reposicoesSnap.forEach(doc => {
             const r = doc.data();
-            if (r.empresaId && r.setor) {
-                const chave = `${r.empresaId}_${r.setor}`;
+            if (r.setor) {
+                const chave = r.setor.trim();
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].reposicoesPendentes++;
                 }
@@ -268,8 +293,8 @@ async function carregarDashboardSetores() {
         // 4. Conta admissões pendentes (somando a quantidade de vagas)
         contratacoesSnap.forEach(doc => {
             const c = doc.data();
-            if (c.empresaId && c.setor) {
-                const chave = `${c.empresaId}_${c.setor}`;
+            if (c.setor) {
+                const chave = c.setor.trim();
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].admissoesPendentes += (parseInt(c.quantidade) || 1);
                 }
@@ -279,8 +304,8 @@ async function carregarDashboardSetores() {
         // 5. Conta faltas de hoje
         faltasSnap.forEach(doc => {
             const f = doc.data();
-            if (f.empresaId && f.setor) {
-                const chave = `${f.empresaId}_${f.setor}`;
+            if (f.setor) {
+                const chave = f.setor.trim();
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].faltasHoje++;
                 }
@@ -295,8 +320,8 @@ async function carregarDashboardSetores() {
             if (s.status === 'Finalizado') return;
 
             const func = funcionariosMap.get(s.funcionarioId);
-            if (func && func.empresaId && s.setor) {
-                const chave = `${func.empresaId}_${s.setor}`;
+            if (func && s.setor) {
+                const chave = s.setor.trim();
                 if (dadosSetores[chave]) {
                     dadosSetores[chave].colaboradoresSumidos++;
                 }
@@ -305,7 +330,6 @@ async function carregarDashboardSetores() {
 
         // Renderiza a tabela
         const listaOrdenada = Object.values(dadosSetores).sort((a, b) => {
-            if (a.empresaNome !== b.empresaNome) return a.empresaNome.localeCompare(b.empresaNome);
             return a.nome.localeCompare(b.nome);
         });
 
@@ -329,7 +353,7 @@ async function carregarDashboardSetores() {
 
             return `
                 <tr>
-                    <td>${s.empresaNome}</td>
+                    <td>Todas (Global)</td>
                     <td><strong>${s.nome}</strong></td>
                     <td class="text-center bg-light">${s.qtdIdeal}</td>
                     <td class="text-center fw-bold">${s.qtdAtual}</td>
@@ -565,18 +589,18 @@ async function verificarDesconformidadeSetores() {
         ]);
 
         const empresasMap = new Map(empresasSnap.docs.map(doc => [doc.id, doc.data().nome]));
-        const setoresValidos = new Set(setoresSnap.docs.map(doc => `${doc.data().empresaId}_${doc.data().descricao.trim()}`));
+        const setoresValidos = new Set(setoresSnap.docs.map(doc => doc.data().descricao.trim()));
 
         const desconformidades = [];
         funcionariosSnap.forEach(doc => {
             const f = doc.data();
-            const chave = `${f.empresaId}_${(f.setor || '').trim()}`;
-            if (!f.empresaId || !f.setor || !setoresValidos.has(chave)) {
+            const setorStr = (f.setor || '').trim();
+            if (!f.empresaId || !setorStr || !setoresValidos.has(setorStr)) {
                 desconformidades.push({
                     id: doc.id,
                     ...f,
                     empresaNome: f.empresaId ? (empresasMap.get(f.empresaId) || 'ID Desconhecido') : 'Sem Empresa',
-                    motivo: !f.empresaId || !f.setor ? 'Cadastro incompleto' : 'Setor não cadastrado na empresa'
+                    motivo: !setorStr ? 'Cadastro de setor incompleto' : 'Setor não é mais válido no sistema'
                 });
             }
         });
@@ -665,7 +689,7 @@ async function abrirModalCorrecaoSetor(funcId, empresaId, nomeFunc, setorAtual) 
         const setoresSnap = await db.collection('setores').orderBy('descricao').get();
 
         if (setoresSnap.empty) {
-            select.innerHTML = '<option value="">Nenhum setor cadastrado para esta empresa</option>';
+            select.innerHTML = '<option value="">Nenhum setor cadastrado globalmente</option>';
         } else {
             const setores = setoresSnap.docs.map(doc => doc.data());
             setores.sort((a, b) => a.descricao.localeCompare(b.descricao));

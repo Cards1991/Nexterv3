@@ -24,9 +24,7 @@ async function carregarSetoresPorEmpresa(empresaId, selectId) {
             return;
         }
 
-        const setoresSnap = await db.collection('setores')
-            .where('empresaId', '==', empresaId)
-            .get();
+        const setoresSnap = await db.collection('setores').get();
 
         const setoresDocs = setoresSnap.docs.sort((a, b) => {
             const descA = a.data().descricao || '';

@@ -1,11 +1,107 @@
+<style>
+    /* Estilo Premium para a Página de Setores */
+    .page-title {
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 1.5rem;
+        letter-spacing: -0.5px;
+    }
+    .card.setores-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .card.setores-card:hover {
+        box-shadow: 0 12px 32px rgba(0,0,0,0.1);
+    }
+    .setores-card .card-header {
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+        color: #ffffff;
+        border-bottom: none;
+        padding: 1.25rem 1.5rem;
+    }
+    .setores-card .card-header span {
+        font-size: 1.1rem;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+    }
+    .setores-card .btn {
+        border-radius: 8px;
+        font-weight: 600;
+        letter-spacing: 0.3px;
+        padding: 0.5rem 1rem;
+        transition: all 0.2s ease;
+    }
+    .setores-card .btn-warning {
+        background-color: #f39c12;
+        border-color: #f39c12;
+        color: #fff;
+    }
+    .setores-card .btn-warning:hover {
+        background-color: #e67e22;
+        border-color: #e67e22;
+        transform: translateY(-2px);
+    }
+    .setores-card .btn-primary {
+        background-color: #3498db;
+        border-color: #3498db;
+    }
+    .setores-card .btn-primary:hover {
+        background-color: #2980b9;
+        border-color: #2980b9;
+        transform: translateY(-2px);
+    }
+    .table-hover tbody tr {
+        transition: background-color 0.15s ease;
+    }
+    .table-hover tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+    .table thead th {
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        color: #7f8c8d;
+        border-bottom: 2px solid #eaedf1;
+        padding-bottom: 0.75rem;
+        font-weight: 700;
+        position: sticky;
+        top: 0;
+        background-color: #ffffff;
+        z-index: 10;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02); /* Suave sombra para separar o cabeçalho no scroll */
+    }
+    .table td {
+        vertical-align: middle;
+        color: #34495e;
+        font-weight: 500;
+    }
+    .badge.bg-success {
+        background-color: #2ecc71 !important;
+        font-weight: 600;
+        padding: 0.4em 0.6em;
+        border-radius: 6px;
+    }
+    .btn-outline-primary, .btn-outline-danger {
+        border-radius: 6px;
+        border-width: 2px;
+    }
+</style>
+
 <h2 class="page-title">Cadastro de Setores</h2>
 
-<div class="card">
+<div class="card setores-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <span>Setores Cadastrados</span>
-        <button class="btn btn-primary btn-sm" onclick="abrirModalSetor()">
-            <i class="fas fa-plus"></i> Novo Setor
-        </button>
+        <span><i class="fas fa-building me-2"></i> Setores Cadastrados</span>
+        <div>
+            <button class="btn btn-warning btn-sm me-2 shadow-sm" onclick="if(window.iniciarMigracaoDeSetores) window.iniciarMigracaoDeSetores()" title="Apaga os antigos e recria apenas os 33 oficiais limpos.">
+                <i class="fas fa-broom me-1"></i> Resetar para os 33 Setores
+            </button>
+            <button class="btn btn-primary btn-sm shadow-sm" onclick="abrirModalSetor()">
+                <i class="fas fa-plus me-1"></i> Novo Setor
+            </button>
+        </div>
     </div>
     <div class="card-body">
         <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
@@ -13,12 +109,12 @@
                 <thead>
                     <tr>
                         <th>Descrição</th>
-                        <th>Empresa</th>
                         <th>Gerente Responsável</th>
                         <th class="text-center">Contr. Prod.</th>
                         <th class="text-center">Qtd. Ideal Colab.</th>
+                        <th class="text-center">Qtd. Real</th>
                         <th>Data Criação</th>
-                        <th>Ações</th>
+                        <th class="text-end">Ações</th>
                     </tr>
                 </thead>
                 <tbody id="tabela-setores"></tbody>

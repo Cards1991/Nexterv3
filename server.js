@@ -125,6 +125,38 @@ app.post('/identificar', (req, res) => {
         res.status(500).json({ error: `Erro na DLL: ${e.message}` });
     }
 });
+
+// ENDPOINT PARA SINCRONIZAÇÃO DE EMPRESAS E SETORES
+app.get('/api/sync-estruturas', async (req, res) => {
+    let conn;
+    try {
+        const codigos = ['0017', '0018', '0020', '0025', '0026', '0028', '0029', '0030', '0031', '0032', '0033', '0034', '0035', '0036'];
+        const inClause = codigos.map(c => `'${c}'`).join(',');
+        
+        conn = await odbc.connect('DSN=Teorema');
+        
+        const empresasResult = await conn.query(`SELECT EMPRESA_CODIGO, EMPRESA_NOME, EMPRESA_CNPJ FROM EMPRESAS WHERE EMPRESA_CODIGO IN (${inClause})`);
+        
+        const setoresResult = await conn.query(`
+            SELECT DISTINCT f.EMPRESA_CODIGO, f.SECAO_CODIGO, s.SECAO_DESCRICAO 
+            FROM FUNCIONARIOS f 
+            JOIN SECOES s ON f.SECAO_CODIGO = s.SECAO_CODIGO 
+            WHERE f.EMPRESA_CODIGO IN (${inClause})
+            ORDER BY f.EMPRESA_CODIGO, s.SECAO_DESCRICAO
+        `);
+
+        res.json({
+            empresas: empresasResult,
+            setores: setoresResult
+        });
+    } catch (e) {
+        console.error('Erro na sincronizacao de estruturas:', e);
+        res.status(500).json({ error: 'Erro ao buscar estruturas no Teorema' });
+    } finally {
+        if (conn) await conn.close();
+    }
+});
+
 // GET /extrair-teorema/:cpf: Extrai histórico financeiro mágico direto do banco
 app.get('/extrair-teorema/:cpf', async (req, res) => {
     let conn;
@@ -141,28 +173,30 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             return res.status(404).json({ error: 'Funcionário não encontrado no Teorema com este CPF.' });
         }
 
-        const transResultAll = await conn.query(`SELECT TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
+        const transResultAll = await conn.query(`SELECT TRANSFERENCIA_EMPRESA_DE, TRANSFERENCIA_FUNCIONARIO_DE, TRANSFERENCIA_EMPRESA_PARA, TRANSFERENCIA_FUNCIONARIO_PARA FROM TRANSFERENCIAS`);
         
-        const validCodes = funcResult.map(f => f.FUNCIONARIO_CODIGO);
+        const validKeys = funcResult.map(f => `${f.EMPRESA_CODIGO}_${f.FUNCIONARIO_CODIGO}`);
         let forwardMap = {};
         let transferMap = {}; // Reverse map for later
         for (let t of transResultAll) {
-            if (validCodes.includes(t.TRANSFERENCIA_FUNCIONARIO_DE) && validCodes.includes(t.TRANSFERENCIA_FUNCIONARIO_PARA)) {
-                forwardMap[t.TRANSFERENCIA_FUNCIONARIO_DE] = t.TRANSFERENCIA_FUNCIONARIO_PARA;
-                transferMap[t.TRANSFERENCIA_FUNCIONARIO_PARA] = t.TRANSFERENCIA_FUNCIONARIO_DE;
+            const keyDe = `${t.TRANSFERENCIA_EMPRESA_DE}_${t.TRANSFERENCIA_FUNCIONARIO_DE}`;
+            const keyPara = `${t.TRANSFERENCIA_EMPRESA_PARA}_${t.TRANSFERENCIA_FUNCIONARIO_PARA}`;
+            if (validKeys.includes(keyDe) && validKeys.includes(keyPara)) {
+                forwardMap[keyDe] = keyPara;
+                transferMap[keyPara] = keyDe;
             }
         }
 
         // Descobrir o código ativo verdadeiro (a ponta final da cadeia de transferências)
-        let finalCode = funcResult[0].FUNCIONARIO_CODIGO;
+        let finalKey = `${funcResult[0].EMPRESA_CODIGO}_${funcResult[0].FUNCIONARIO_CODIGO}`;
         let traceCount = 0;
-        while (forwardMap[finalCode] && traceCount < 50) {
-            finalCode = forwardMap[finalCode];
+        while (forwardMap[finalKey] && traceCount < 50) {
+            finalKey = forwardMap[finalKey];
             traceCount++;
         }
         
-        const activeCode = finalCode;
-        const funcBase = funcResult.find(f => f.FUNCIONARIO_CODIGO === activeCode) || funcResult[0];
+        const [activeEmpresa, activeCode] = finalKey.split('_');
+        const funcBase = funcResult.find(f => f.FUNCIONARIO_CODIGO === activeCode && f.EMPRESA_CODIGO === activeEmpresa) || funcResult[0];
 
         const dadosCompletos = {
             funcionario: {
@@ -181,27 +215,33 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             salarios: []
         };
 
-        let chain = [activeCode];
+        let chain = [finalKey];
         
-        let currentIter = activeCode;
+        let currentIter = finalKey;
         traceCount = 0;
         while (transferMap[currentIter] && traceCount < 50) {
-            let prevCode = transferMap[currentIter];
-            if (!chain.includes(prevCode)) {
-                chain.push(prevCode);
-                currentIter = prevCode;
+            let prevKey = transferMap[currentIter];
+            if (!chain.includes(prevKey)) {
+                chain.push(prevKey);
+                currentIter = prevKey;
             } else {
                 break;
             }
             traceCount++;
         }
         
-        const inClauseCodes = chain.map(c => `'${c}'`).join(',');
+        // Montar a cláusula WHERE composta (EMPRESA_CODIGO = X AND FUNCIONARIO_CODIGO = Y)
+        const whereClauseChain = chain.map(k => {
+            const [e, f] = k.split('_');
+            return `(EMPRESA_CODIGO = '${e}' AND FUNCIONARIO_CODIGO = '${f}')`;
+        }).join(' OR ');
+
         console.log(`Cadeia de transferências detectada: ${chain.join(' <- ')}`);
         
         let earliestDate = new Date('2099-01-01');
         funcResult.forEach(f => {
-            if (chain.includes(f.FUNCIONARIO_CODIGO)) {
+            const key = `${f.EMPRESA_CODIGO}_${f.FUNCIONARIO_CODIGO}`;
+            if (chain.includes(key)) {
                 let dStr = f.FUNCIONARIO_DATA_CONTRATO || f.FUNCIONARIO_DATA_ADMISSAO;
                 if (dStr) {
                     let d = new Date(dStr);
@@ -225,14 +265,14 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         console.log(`Data de admissão original considerada: ${dataAdmissao.toISOString().split('T')[0]}`);
 
         // 1. Movimentações Mensais
-        const movResult1 = await conn.query(`SELECT MOVIMENTO_ANO as ANO, MOVIMENTO_MES as MES, EVENTO_CODIGO, MOVIMENTO_VALOR as VALOR, MOVIMENTO_REFERENCIA as REFERENCIA, '0' as TIPO, 'V' as NATUREZA, FUNCIONARIO_CODIGO as COD_FONTE FROM MOVIMENTO_MENSAL WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
+        const movResult1 = await conn.query(`SELECT MOVIMENTO_ANO as ANO, MOVIMENTO_MES as MES, EVENTO_CODIGO, MOVIMENTO_VALOR as VALOR, MOVIMENTO_REFERENCIA as REFERENCIA, '0' as TIPO, 'V' as NATUREZA, FUNCIONARIO_CODIGO as COD_FONTE FROM MOVIMENTO_MENSAL WHERE (${whereClauseChain})`);
         const movResult2 = await conn.query(`
             SELECT ms.MOVIMENTO_ANO as ANO, ms.MOVIMENTO_MES as MES, dt.EVENTO_CODIGO, dt.MOVIMENTO_VALOR as VALOR, dt.MOVIMENTO_REFERENCIA as REFERENCIA, 
             ms.MOVIMENTO_TIPO as TIPO, ms.MOVIMENTO_BASE_INSS as BASE_INSS, ms.MOVIMENTO_BASE_FGTS as BASE_FGTS, ms.MOVIMENTO_VALOR_FGTS as FGTS_MES, ms.MOVIMENTO_BASE_IRRF as BASE_IRRF,
             dt.EVENTO_NATUREZA as NATUREZA, ms.FUNCIONARIO_CODIGO as COD_FONTE
             FROM MOVIMENTO_FUNCIONARIO_MS ms
             JOIN MOVIMENTO_FUNCIONARIO_DT dt ON ms.TRANSACAO = dt.TRANSACAO
-            WHERE ms.FUNCIONARIO_CODIGO IN (${inClauseCodes})
+            WHERE (${whereClauseChain.replace(/EMPRESA_CODIGO/g, 'ms.EMPRESA_CODIGO').replace(/FUNCIONARIO_CODIGO/g, 'ms.FUNCIONARIO_CODIGO')})
         `);
 
         const movMapeadas = [...movResult1, ...movResult2].map(m => ({
@@ -250,7 +290,7 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.movimentacoes.push(...movMapeadas);
 
         // 2. Férias
-        const feriasResult = await conn.query(`SELECT * FROM FUNCIONARIOS_FERIAS WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
+        const feriasResult = await conn.query(`SELECT * FROM FUNCIONARIOS_FERIAS WHERE (${whereClauseChain})`);
         const feriasMapeadas = feriasResult.map(f => ({
             dataInicio: f.FERIAS_AQUISITIVO_INI || f.FERIAS_INICIO,
             dataFim: f.FERIAS_AQUISITIVO_FIM || f.FERIAS_FIM,
@@ -265,7 +305,7 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.ferias.push(...feriasMapeadas);
 
         // 3. Salários
-        const salResult = await conn.query(`SELECT * FROM EVOLUCAO_SALARIAL WHERE FUNCIONARIO_CODIGO IN (${inClauseCodes})`);
+        const salResult = await conn.query(`SELECT * FROM EVOLUCAO_SALARIAL WHERE (${whereClauseChain})`);
         const salMapeados = salResult.map(s => ({
             data: s.EVOLUCAO_DATA,
             salario: s.EVOLUCAO_VALOR_ATUAL,
@@ -284,11 +324,11 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         dadosCompletos.salarios.forEach(s => {
             if (!s.data) return;
             const dataIso = typeof s.data === 'string' ? s.data.split('T')[0] : s.data.toISOString().split('T')[0];
-            const current = salariosUnicosMap.get(dataIso);
+            const dedupKey = `${dataIso}_${s.salario}`;
             
-            // Priorizar o maior salário para o mesmo dia
-            if (!current || Number(s.salario) > Number(current.salario)) {
-                salariosUnicosMap.set(dataIso, s);
+            // Manter salários diferentes na mesma data, remover apenas duplicatas idênticas (já que agora os dados estão filtrados por empresa corretamente)
+            if (!salariosUnicosMap.has(dedupKey)) {
+                salariosUnicosMap.set(dedupKey, s);
             }
         });
         
@@ -335,6 +375,57 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
         if (conn) await conn.close();
     }
 });
+
+// Rota para extrair seções do Teorema para atualizar o Firebase pelo frontend
+app.get('/api/teorema-setores', async (req, res) => {
+    let conn;
+    try {
+        const odbc = require('odbc');
+        conn = await odbc.connect('DSN=Teorema');
+        const queryFuncionarios = 'SELECT FUNCIONARIO_CPF, SECAO_CODIGO, SETOR_CODIGO, EMPRESA_CODIGO, FUNCIONARIO_SITUACAO FROM FUNCIONARIOS WHERE FUNCIONARIO_CPF IS NOT NULL';
+        const teoremaEmps = await conn.query(queryFuncionarios);
+
+        const mapa = {};
+        teoremaEmps.forEach(emp => {
+            const cpf = emp.FUNCIONARIO_CPF;
+            const codigo = emp.SECAO_CODIGO || emp.SETOR_CODIGO;
+            const empresaCodigo = emp.EMPRESA_CODIGO;
+            const situacao = emp.FUNCIONARIO_SITUACAO;
+            
+            if (cpf && codigo) {
+                const cpfLimpo = String(cpf).replace(/\D/g, '');
+                
+                // Se ainda não mapeou, mapeia.
+                // Se já mapeou, MAS o novo registro NÃO é demitido ('99'), ele sobrescreve (prioriza o contrato atual, seja ativo '01' ou afastado '08').
+                if (!mapa[cpfLimpo] || situacao !== '99') {
+                    mapa[cpfLimpo] = {
+                        setor: parseInt(codigo, 10),
+                        empresaCodigo: empresaCodigo ? String(empresaCodigo).trim() : null
+                    };
+                }
+            }
+        });
+
+        // Buscar CNPJs das empresas no Teorema para mapeamento dinâmico
+        const queryEmpresas = 'SELECT EMPRESA_CODIGO, EMPRESA_CNPJ FROM EMPRESAS';
+        const teoremaCnpjs = await conn.query(queryEmpresas);
+        const empresasTeorema = {};
+        teoremaCnpjs.forEach(emp => {
+            if (emp.EMPRESA_CODIGO && emp.EMPRESA_CNPJ) {
+                const cnpjLimpo = String(emp.EMPRESA_CNPJ).replace(/\D/g, '');
+                empresasTeorema[String(emp.EMPRESA_CODIGO).trim()] = cnpjLimpo;
+            }
+        });
+
+        res.json({ success: true, data: mapa, empresasTeorema: empresasTeorema });
+    } catch (error) {
+        console.error('Erro ao buscar setores no Teorema:', error);
+        res.status(500).json({ success: false, error: error.message });
+    } finally {
+        if (conn) await conn.close();
+    }
+});
+
 app.listen(PORT, '127.0.0.1', () => {
     console.log(`================================================`);
     console.log(`🚀 Servidor-Ponte ControlID rodando em http://localhost:${PORT}`);
