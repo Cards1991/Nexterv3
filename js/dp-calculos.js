@@ -585,9 +585,81 @@ async function buscarFechamentoColetivo() {
             return;
         }
 
+        // Buscar todos os funcionários para pegar os nomes e dados adicionais
+        const funcSnap = await db.collection('funcionarios').get();
+        const mapFuncs = {};
+        const mapCPFs = {};
+        const mapCargos = {};
+        const mapFuncEmpresas = {};
+        funcSnap.forEach(f => { 
+            const d = f.data();
+            mapFuncs[f.id] = d.nome || 'Desconhecido';
+            mapCPFs[f.id] = d.cpf || '';
+            mapCargos[f.id] = d.cargo || '';
+            mapFuncEmpresas[f.id] = d.empresaId || '';
+        });
+
+        let somaProventos = 0;
+        let somaDescontos = 0;
+        let somaLiquido = 0;
+        let trs = '';
+
+        const empresaSelecionada = document.getElementById('filtro-fechamento-empresa').value;
+        const docsValidos = [];
+
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            
+            if (empresaSelecionada && mapFuncEmpresas[data.funcionarioId] !== empresaSelecionada) {
+                return; // Pula se não for da empresa filtrada
+            }
+            
+            docsValidos.push({ id: doc.id, ...data });
+            
+            const nome = mapFuncs[data.funcionarioId] || 'Funcionário não encontrado';
+            
+            // Recalcular totais desse holerite
+            let prov = 0;
+            let desc = 0;
+            if (data.movimentos) {
+                data.movimentos.forEach(m => {
+                    if (m.natureza === 'V') prov += parseFloat(m.valor);
+                    if (m.natureza === 'D') desc += parseFloat(m.valor);
+                });
+            }
+            const liq = prov - desc;
+
+            somaProventos += prov;
+            somaDescontos += desc;
+            somaLiquido += liq;
+
+            trs += `
+                <tr>
+                    <td>${nome}</td>
+                    <td class="text-end text-success">R$ ${prov.toFixed(2)}</td>
+                    <td class="text-end text-danger">R$ ${desc.toFixed(2)}</td>
+                    <td class="text-end fw-bold text-primary">R$ ${liq.toFixed(2)}</td>
+                    <td class="text-center">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editarCalculoFolha('${doc.id}', '${data.funcionarioId}', '${data.competencia}', '${data.tipoCalculo}')" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCalculoFolha('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        if (docsValidos.length === 0) {
+            container.innerHTML = `
+                <div class="text-center text-muted p-5">
+                    <i class="fas fa-folder-open fa-3x mb-3 text-light"></i>
+                    <p>Nenhum cálculo encontrado para os filtros selecionados.</p>
+                </div>
+            `;
+            return;
+        }
+
         // Armazenar os dados na variável global para uso nos relatórios
         window.currentFechamento = {
-            docs: snapshot.docs.map(d => ({ id: d.id, ...d.data() })),
+            docs: docsValidos,
             mapFuncs,
             mapCPFs,
             mapCargos,
@@ -600,7 +672,8 @@ async function buscarFechamentoColetivo() {
                 <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-file-invoice-dollar me-2"></i>Resultados de ${comp} (${tipo === '1' ? 'Folha Mensal' : 'Adiantamento'})</h6>
                 <div class="d-flex gap-2">
                     <button class="btn btn-sm btn-outline-primary" onclick="imprimirHoleritesLote()"><i class="fas fa-print me-1"></i> Holerites</button>
-                    <button class="btn btn-sm btn-outline-success" onclick="imprimirMapaEventos()"><i class="fas fa-table me-1"></i> Mapa de Eventos</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="imprimirMapaEventos()"><i class="fas fa-table me-1"></i> Mapa de Eventos (Sintético)</button>
+                    <button class="btn btn-sm btn-outline-info" onclick="imprimirRelatorioAnalitico()"><i class="fas fa-list-alt me-1"></i> Relatório Analítico</button>
                 </div>
             </div>
             <div class="table-responsive">
@@ -695,11 +768,11 @@ function imprimirHoleritesLote() {
                 else desc += parseFloat(m.valor);
                 
                 // Extrair bases das verbas geradas
-                if (m.verbaCodigo === '0011' || m.nome.includes('FGTS')) fgtsValor += parseFloat(m.valor);
+                if (m.verbaCodigo === '0011' || (m.nome && m.nome.includes('FGTS'))) fgtsValor += parseFloat(m.valor);
                 
                 trs += `<tr>
                     <td>${m.verbaCodigo || ''}</td>
-                    <td>${m.nome}</td>
+                    <td>${m.nome || (m.verbaCodigo === '0060' ? 'Adiantamento de Salário' : 'Desconhecido')}</td>
                     <td class="text-right">${m.referencia || ''}</td>
                     <td class="text-right">${isProv ? parseFloat(m.valor).toFixed(2) : ''}</td>
                     <td class="text-right">${!isProv ? parseFloat(m.valor).toFixed(2) : ''}</td>
@@ -800,9 +873,10 @@ function imprimirMapaEventos() {
         if (data.movimentos) {
             data.movimentos.forEach(m => {
                 const cod = m.verbaCodigo || '9999';
-                const key = `${cod}-${m.nome}`;
+                const nomeEvento = m.nome || (cod === '0060' ? 'Adiantamento de Salário' : 'Desconhecido');
+                const key = `${cod}-${nomeEvento}`;
                 if (!eventosMap[key]) {
-                    eventosMap[key] = { codigo: cod, nome: m.nome, natureza: m.natureza, valor: 0, referencia: 0 };
+                    eventosMap[key] = { codigo: cod, nome: nomeEvento, natureza: m.natureza, valor: 0, referencia: 0 };
                 }
                 eventosMap[key].valor += parseFloat(m.valor || 0);
                 eventosMap[key].referencia += parseFloat(m.referencia || 0);
@@ -865,6 +939,173 @@ function imprimirMapaEventos() {
     openPrintWindow(html, { autoPrint: true, name: '_blank' });
 }
 
+function imprimirRelatorioAnalitico() {
+    if (!window.currentFechamento || window.currentFechamento.docs.length === 0) {
+        mostrarMensagem('Nenhum dado para imprimir.', 'warning');
+        return;
+    }
+    const { docs, mapFuncs, comp } = window.currentFechamento;
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    
+    let totalGeralProv = 0;
+    let totalGeralDesc = 0;
+    
+    let trs = '';
+    
+    docs.sort((a, b) => {
+        const nomeA = mapFuncs[a.funcionarioId] || '';
+        const nomeB = mapFuncs[b.funcionarioId] || '';
+        return nomeA.localeCompare(nomeB);
+    }).forEach(data => {
+        const nome = mapFuncs[data.funcionarioId] || 'Desconhecido';
+        
+        let prov = 0;
+        let desc = 0;
+        let linhasEventos = '';
+        
+        if (data.movimentos) {
+            data.movimentos.forEach(m => {
+                const cod = m.verbaCodigo || '';
+                const nomeEvento = m.nome || (cod === '0060' ? 'Adiantamento de Salário' : 'Desconhecido');
+                
+                if (m.natureza === 'V') {
+                    prov += parseFloat(m.valor || 0);
+                    linhasEventos += `<tr>
+                        <td style="padding-left: 20px; color: #555;">${cod} - ${nomeEvento}</td>
+                        <td class="text-right text-success">${parseFloat(m.referencia || 0).toFixed(2).replace(/\.00$/, '')}</td>
+                        <td class="text-right text-success">R$ ${parseFloat(m.valor || 0).toFixed(2)}</td>
+                        <td></td>
+                    </tr>`;
+                } else {
+                    desc += parseFloat(m.valor || 0);
+                    linhasEventos += `<tr>
+                        <td style="padding-left: 20px; color: #555;">${cod} - ${nomeEvento}</td>
+                        <td class="text-right text-danger">${parseFloat(m.referencia || 0).toFixed(2).replace(/\.00$/, '')}</td>
+                        <td></td>
+                        <td class="text-right text-danger">R$ ${parseFloat(m.valor || 0).toFixed(2)}</td>
+                    </tr>`;
+                }
+            });
+        }
+        
+        const liq = prov - desc;
+        totalGeralProv += prov;
+        totalGeralDesc += desc;
+        
+        trs += `
+            <tr class="func-header">
+                <td colspan="4">
+                    <strong>${data.funcionarioId.substring(0,6)} - ${nome}</strong>
+                </td>
+            </tr>
+            ${linhasEventos}
+            <tr class="func-totais">
+                <td colspan="2" class="text-right"><strong>Subtotal:</strong></td>
+                <td class="text-right"><strong>R$ ${prov.toFixed(2)}</strong></td>
+                <td class="text-right"><strong>R$ ${desc.toFixed(2)}</strong></td>
+            </tr>
+            <tr class="func-liquido">
+                <td colspan="2" class="text-right"><strong>Líquido:</strong></td>
+                <td colspan="2" class="text-right text-primary"><strong>R$ ${liq.toFixed(2)}</strong></td>
+            </tr>
+        `;
+    });
+    
+    // Gerar Mapa de Eventos Sintético para o Analítico
+    const eventosMap = {};
+    docs.forEach(data => {
+        if (data.movimentos) {
+            data.movimentos.forEach(m => {
+                const cod = m.verbaCodigo || '9999';
+                const nomeEvento = m.nome || (cod === '0060' ? 'Adiantamento de Salário' : 'Desconhecido');
+                const key = `${cod}-${nomeEvento}`;
+                if (!eventosMap[key]) {
+                    eventosMap[key] = { codigo: cod, nome: nomeEvento, natureza: m.natureza, valor: 0, referencia: 0 };
+                }
+                eventosMap[key].valor += parseFloat(m.valor || 0);
+                eventosMap[key].referencia += parseFloat(m.referencia || 0);
+            });
+        }
+    });
+
+    const eventosOrdenados = Object.values(eventosMap).sort((a, b) => a.codigo.localeCompare(b.codigo));
+    let trsResumo = '';
+    eventosOrdenados.forEach(e => {
+        trsResumo += `<tr>
+            <td>${e.codigo}</td>
+            <td>${e.nome}</td>
+            <td class="text-right">${e.referencia.toFixed(2).replace(/\.00$/, '')}</td>
+            <td class="text-right text-success">${e.natureza === 'V' ? 'R$ ' + e.valor.toFixed(2) : ''}</td>
+            <td class="text-right text-danger">${e.natureza === 'D' ? 'R$ ' + e.valor.toFixed(2) : ''}</td>
+        </tr>`;
+    });
+
+    const totalGeralLiq = totalGeralProv - totalGeralDesc;
+    
+    const html = `<html><head><title>Relatório Analítico - ${comp}</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; font-size: 11px; margin: 0; padding: 20px; background: white; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th, td { padding: 4px; border-bottom: 1px dashed #eee; }
+        th { text-align: left; font-weight: bold; border-bottom: 2px solid #666; background-color: #f5f5f5; }
+        .text-right { text-align: right; }
+        .text-success { color: #15803d; }
+        .text-danger { color: #b91c1c; }
+        .text-primary { color: #1d4ed8; }
+        .func-header td { background-color: #e2e8f0; font-size: 12px; border-top: 2px solid #94a3b8; padding: 6px; margin-top: 10px; }
+        .func-totais td { border-top: 1px dashed #ccc; background-color: #f8fafc; }
+        .func-liquido td { border-bottom: 2px solid #ccc; background-color: #f1f5f9; padding-bottom: 8px; }
+        .totais-gerais { font-weight: bold; font-size: 13px; border-top: 2px solid #000; padding: 15px; margin-top: 20px; background-color: #e8f5e9; display: flex; justify-content: space-around; }
+    </style></head><body>
+        <div class="header">
+            <div>RELATÓRIO ANALÍTICO DA FOLHA DE PAGAMENTO</div>
+            <div>Competência: ${comp}</div>
+            <div style="font-size:10px; font-weight:normal; margin-top:5px;">Emitido em: ${dataAtual}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="45%">Colaborador / Evento</th>
+                    <th width="15%" class="text-right">Referência</th>
+                    <th width="20%" class="text-right">Vencimentos</th>
+                    <th width="20%" class="text-right">Descontos</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${trs}
+            </tbody>
+        </table>
+
+        <div style="page-break-before: always; margin-top: 30px;">
+            <div class="header" style="margin-bottom: 20px;">
+                <div>RESUMO GERAL DOS EVENTOS (SINTÉTICO)</div>
+            </div>
+            <table>
+                <thead>
+                    <tr>
+                        <th width="10%">Código</th>
+                        <th width="40%">Evento</th>
+                        <th width="15%" class="text-right">Referência</th>
+                        <th width="17%" class="text-right">Vencimentos</th>
+                        <th width="18%" class="text-right">Descontos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trsResumo}
+                </tbody>
+            </table>
+            <div class="totais-gerais">
+                <div>Total Vencimentos: R$ ${totalGeralProv.toFixed(2)}</div>
+                <div>Total Descontos: R$ ${totalGeralDesc.toFixed(2)}</div>
+                <div>Líquido Total: R$ ${totalGeralLiq.toFixed(2)}</div>
+            </div>
+        </div>
+    </body></html>`;
+    
+    openPrintWindow(html, { autoPrint: true, name: '_blank' });
+}
+
 async function excluirCalculoFolha(idUnico) {
     if (!confirm("Tem certeza que deseja excluir este cálculo de folha? Esta ação não pode ser desfeita.")) return;
     
@@ -896,3 +1137,36 @@ async function editarCalculoFolha(idUnico, funcionarioId, competencia, tipoCalcu
         console.error('Erro ao carregar edição:', e);
     }
 }
+
+function openPrintWindow(html, options = {}) {
+    const w = window.open('', options.name || '_blank');
+    if (!w) {
+        mostrarMensagem('O navegador bloqueou o pop-up de impressão. Por favor, permita pop-ups para este site.', 'warning');
+        return;
+    }
+    w.document.write(html);
+    w.document.close();
+    if (options.autoPrint) {
+        w.setTimeout(() => {
+            w.print();
+        }, 500);
+    }
+}
+
+// Carregar empresas no filtro
+async function carregarFiltroEmpresasDp() {
+    try {
+        const select = document.getElementById('filtro-fechamento-empresa');
+        if (!select) return;
+        const snapshot = await window.db.collection('empresas').orderBy('nome').get();
+        let options = '<option value="">Todas as Empresas</option>';
+        snapshot.forEach(doc => {
+            options += `<option value="${doc.id}">${doc.data().nome}</option>`;
+        });
+        select.innerHTML = options;
+    } catch (e) {
+        console.error('Erro ao carregar empresas:', e);
+    }
+}
+document.addEventListener('DOMContentLoaded', carregarFiltroEmpresasDp);
+setTimeout(carregarFiltroEmpresasDp, 1000); // Em caso de carregamento dinâmico

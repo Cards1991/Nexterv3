@@ -809,7 +809,8 @@ const nexterAITools = {
                                     verbaCodigo: '0060',
                                     natureza: 'V',
                                     referencia: '40.00',
-                                    valor: adiantamento
+                                    valor: adiantamento,
+                                    nome: 'Adiantamento de Salário'
                                 }];
                                 
                                 if (valorArredondamento > 0) {

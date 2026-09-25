@@ -104,18 +104,24 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-body">
                 <div class="row align-items-end g-3">
-                    <div class="col-md-4">
+                    <div class="col-md-3">
+                        <label for="filtro-fechamento-empresa" class="form-label">Empresa</label>
+                        <select class="form-select" id="filtro-fechamento-empresa">
+                            <option value="">Todas as Empresas</option>
+                        </select>
+                    </div>
+                    <div class="col-md-3">
                         <label for="filtro-fechamento-competencia" class="form-label">Competência</label>
                         <input type="text" class="form-control" id="filtro-fechamento-competencia" placeholder="MM/YYYY">
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <label for="filtro-fechamento-tipo" class="form-label">Tipo de Cálculo</label>
                         <select class="form-select" id="filtro-fechamento-tipo">
                             <option value="2">Adiantamento (Vale)</option>
                             <option value="1">Folha Mensal</option>
                         </select>
                     </div>
-                    <div class="col-md-4">
+                    <div class="col-md-3">
                         <button type="button" class="btn btn-primary w-100" onclick="buscarFechamentoColetivo()"><i class="fas fa-search me-2"></i>Buscar Processamentos</button>
                     </div>
                 </div>
