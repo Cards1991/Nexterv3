@@ -1091,7 +1091,10 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
                         </div>
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
-                        ${proc.fonte_url ? `<div class="mt-2"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.75rem;" onclick="abrirDocumentosEscavador('${proc.numero_cnj}')"><i class="fas fa-file-pdf"></i> Documentos Públicos</button>
+                            ${proc.fonte_url ? `<a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                        </div>
                     </div>
                 `;
             });
@@ -1218,7 +1221,10 @@ window.renderizarEscavadorGenerico = function(funcData) {
                         </div>
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
-                        ${proc.fonte_url ? `<div class="mt-2"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
+                        <div class="mt-2 d-flex gap-1 flex-wrap">
+                            <button type="button" class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.75rem;" onclick="abrirDocumentosEscavador('${proc.numero_cnj}')"><i class="fas fa-file-pdf"></i> Documentos Públicos</button>
+                            ${proc.fonte_url ? `<a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                        </div>
                     </div>
                 `;
             });
