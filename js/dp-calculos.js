@@ -585,53 +585,23 @@ async function buscarFechamentoColetivo() {
             return;
         }
 
-        // Buscar todos os funcionários para pegar os nomes
-        const funcSnap = await db.collection('funcionarios').get();
-        const mapFuncs = {};
-        funcSnap.forEach(f => { mapFuncs[f.id] = f.data().nome || 'Desconhecido'; });
-
-        let somaProventos = 0;
-        let somaDescontos = 0;
-        let somaLiquido = 0;
-        let trs = '';
-
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            const nome = mapFuncs[data.funcionarioId] || 'Funcionário não encontrado';
-            
-            // Recalcular totais desse holerite
-            let prov = 0;
-            let desc = 0;
-            if (data.movimentos) {
-                data.movimentos.forEach(m => {
-                    if (m.natureza === 'V') prov += parseFloat(m.valor);
-                    if (m.natureza === 'D') desc += parseFloat(m.valor);
-                });
-            }
-            const liq = prov - desc;
-
-            somaProventos += prov;
-            somaDescontos += desc;
-            somaLiquido += liq;
-
-            trs += `
-                <tr>
-                    <td>${nome}</td>
-                    <td class="text-end text-success">R$ ${prov.toFixed(2)}</td>
-                    <td class="text-end text-danger">R$ ${desc.toFixed(2)}</td>
-                    <td class="text-end fw-bold text-primary">R$ ${liq.toFixed(2)}</td>
-                    <td class="text-center">
-                        <button class="btn btn-sm btn-outline-primary me-1" onclick="editarCalculoFolha('${doc.id}', '${data.funcionarioId}', '${data.competencia}', '${data.tipoCalculo}')" title="Editar"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="excluirCalculoFolha('${doc.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `;
-        });
+        // Armazenar os dados na variável global para uso nos relatórios
+        window.currentFechamento = {
+            docs: snapshot.docs.map(d => ({ id: d.id, ...d.data() })),
+            mapFuncs,
+            mapCPFs,
+            mapCargos,
+            comp,
+            tipo
+        };
 
         container.innerHTML = `
-            <div class="d-flex justify-content-between align-items-center mb-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
                 <h6 class="fw-bold mb-0 text-secondary"><i class="fas fa-file-invoice-dollar me-2"></i>Resultados de ${comp} (${tipo === '1' ? 'Folha Mensal' : 'Adiantamento'})</h6>
-                <button class="btn btn-sm btn-outline-secondary" onclick="window.print()"><i class="fas fa-print me-1"></i> Imprimir</button>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary" onclick="imprimirHoleritesLote()"><i class="fas fa-print me-1"></i> Holerites</button>
+                    <button class="btn btn-sm btn-outline-success" onclick="imprimirMapaEventos()"><i class="fas fa-table me-1"></i> Mapa de Eventos</button>
+                </div>
             </div>
             <div class="table-responsive">
                 <table class="table table-hover table-bordered align-middle">
@@ -663,6 +633,236 @@ async function buscarFechamentoColetivo() {
         container.innerHTML = '<p class="text-center text-danger p-5">Erro ao buscar dados.</p>';
         mostrarMensagem('Erro ao consultar fechamento.', 'error');
     }
+}
+
+function formatarDataBrasileira(dataStr) {
+    if (!dataStr) return '';
+    try {
+        const d = new Date(dataStr);
+        d.setMinutes(d.getMinutes() + d.getTimezoneOffset());
+        return d.toLocaleDateString('pt-BR');
+    } catch {
+        return dataStr;
+    }
+}
+
+function imprimirHoleritesLote() {
+    if (!window.currentFechamento || window.currentFechamento.docs.length === 0) {
+        mostrarMensagem('Nenhum dado para imprimir.', 'warning');
+        return;
+    }
+    const { docs, mapFuncs, mapCPFs, mapCargos, comp } = window.currentFechamento;
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    
+    let html = `<html><head><title>Holerites - ${comp}</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; font-size: 11px; margin: 0; padding: 20px; background: white; }
+        .holerite-page { page-break-after: always; margin-bottom: 30px; border-bottom: 2px dashed #ccc; padding-bottom: 20px; }
+        .holerite-page:last-child { page-break-after: avoid; border-bottom: none; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid #000; padding-bottom: 10px; }
+        .info-row { display: flex; justify-content: space-between; margin-bottom: 5px; }
+        .empresa { text-transform: uppercase; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
+        th, td { padding: 4px; border: 1px solid #ddd; }
+        th { background-color: #f5f5f5; text-align: left; }
+        .text-right { text-align: right; }
+        .text-center { text-align: center; }
+        .totais-row { font-weight: bold; background-color: #e8f5e9; }
+        .rodape-bases { margin-top: 10px; display: flex; justify-content: space-between; border: 1px solid #000; padding: 5px; background: #f9f9f9; }
+        .rodape-box { text-align: center; flex: 1; border-right: 1px solid #ccc; }
+        .rodape-box:last-child { border-right: none; }
+        .rodape-title { font-size: 10px; color: #555; }
+        .rodape-val { font-weight: bold; font-size: 11px; }
+    </style></head><body>`;
+
+    docs.forEach((data, index) => {
+        const nome = mapFuncs[data.funcionarioId] || 'Desconhecido';
+        const cpf = mapCPFs ? mapCPFs[data.funcionarioId] || '' : '';
+        const cargo = mapCargos ? mapCargos[data.funcionarioId] || '' : '';
+        
+        let trs = '';
+        let prov = 0;
+        let desc = 0;
+        let baseInss = 0;
+        let baseFgts = 0;
+        let fgtsValor = 0;
+        let baseIrrf = 0;
+
+        if (data.movimentos) {
+            data.movimentos.forEach(m => {
+                const isProv = m.natureza === 'V';
+                if (isProv) prov += parseFloat(m.valor);
+                else desc += parseFloat(m.valor);
+                
+                // Extrair bases das verbas geradas
+                if (m.verbaCodigo === '0011' || m.nome.includes('FGTS')) fgtsValor += parseFloat(m.valor);
+                
+                trs += `<tr>
+                    <td>${m.verbaCodigo || ''}</td>
+                    <td>${m.nome}</td>
+                    <td class="text-right">${m.referencia || ''}</td>
+                    <td class="text-right">${isProv ? parseFloat(m.valor).toFixed(2) : ''}</td>
+                    <td class="text-right">${!isProv ? parseFloat(m.valor).toFixed(2) : ''}</td>
+                </tr>`;
+            });
+        }
+        const liq = prov - desc;
+        // Se quisermos os totais de base corretos, seria ideal salvá-los no json. Por enquanto, estimamos base no salário base.
+        baseInss = data.memoriaCalculo?.salarioBase || 0; 
+        baseFgts = data.memoriaCalculo?.salarioBase || 0;
+        
+        html += `
+        <div class="holerite-page">
+            <div class="header">
+                <div>RECIBO DE PAGAMENTO DE SALÁRIO</div>
+                <div class="info-row" style="margin-top: 10px;">
+                    <div class="empresa">Empresa Padrão LTDA - CNPJ: 00.000.000/0001-00</div>
+                    <div>Mês Ref: ${comp}</div>
+                </div>
+            </div>
+            <div class="info-row">
+                <div><strong>Cód:</strong> ${data.funcionarioId.substring(0,6)} - <strong>Nome:</strong> ${nome}</div>
+            </div>
+            <div class="info-row">
+                <div><strong>Cargo:</strong> ${cargo || 'N/A'}</div>
+                <div><strong>CPF:</strong> ${cpf || 'N/A'}</div>
+            </div>
+            
+            <table>
+                <thead>
+                    <tr>
+                        <th width="10%">Cód</th>
+                        <th width="45%">Descrição</th>
+                        <th width="15%" class="text-right">Referência</th>
+                        <th width="15%" class="text-right">Vencimentos</th>
+                        <th width="15%" class="text-right">Descontos</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${trs}
+                </tbody>
+                <tfoot>
+                    <tr class="totais-row">
+                        <td colspan="3" class="text-right">TOTAIS</td>
+                        <td class="text-right">${prov.toFixed(2)}</td>
+                        <td class="text-right">${desc.toFixed(2)}</td>
+                    </tr>
+                    <tr class="totais-row">
+                        <td colspan="3" class="text-right"><strong>LÍQUIDO A RECEBER</strong></td>
+                        <td colspan="2" class="text-right text-center" style="font-size: 14px;"><strong>R$ ${liq.toFixed(2)}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+            
+            <div class="rodape-bases">
+                <div class="rodape-box">
+                    <div class="rodape-title">Salário Base</div>
+                    <div class="rodape-val">${parseFloat(data.memoriaCalculo?.salarioBase || 0).toFixed(2)}</div>
+                </div>
+                <div class="rodape-box">
+                    <div class="rodape-title">Base INSS</div>
+                    <div class="rodape-val">${parseFloat(data.memoriaCalculo?.salarioBase || 0).toFixed(2)}</div>
+                </div>
+                <div class="rodape-box">
+                    <div class="rodape-title">Base FGTS</div>
+                    <div class="rodape-val">${parseFloat(data.memoriaCalculo?.salarioBase || 0).toFixed(2)}</div>
+                </div>
+                <div class="rodape-box">
+                    <div class="rodape-title">FGTS do Mês</div>
+                    <div class="rodape-val">${fgtsValor.toFixed(2)}</div>
+                </div>
+                <div class="rodape-box">
+                    <div class="rodape-title">Base IRRF</div>
+                    <div class="rodape-val">0.00</div>
+                </div>
+            </div>
+        </div>`;
+    });
+    
+    html += `</body></html>`;
+    openPrintWindow(html, { autoPrint: true, name: '_blank' });
+}
+
+function imprimirMapaEventos() {
+    if (!window.currentFechamento || window.currentFechamento.docs.length === 0) {
+        mostrarMensagem('Nenhum dado para imprimir.', 'warning');
+        return;
+    }
+    const { docs, comp } = window.currentFechamento;
+    const dataAtual = new Date().toLocaleDateString('pt-BR');
+    
+    // Agrupar eventos
+    const eventosMap = {};
+    let totalProv = 0;
+    let totalDesc = 0;
+    
+    docs.forEach(data => {
+        if (data.movimentos) {
+            data.movimentos.forEach(m => {
+                const cod = m.verbaCodigo || '9999';
+                const key = `${cod}-${m.nome}`;
+                if (!eventosMap[key]) {
+                    eventosMap[key] = { codigo: cod, nome: m.nome, natureza: m.natureza, valor: 0, referencia: 0 };
+                }
+                eventosMap[key].valor += parseFloat(m.valor || 0);
+                eventosMap[key].referencia += parseFloat(m.referencia || 0);
+                
+                if (m.natureza === 'V') totalProv += parseFloat(m.valor || 0);
+                else totalDesc += parseFloat(m.valor || 0);
+            });
+        }
+    });
+
+    const eventosOrdenados = Object.values(eventosMap).sort((a, b) => a.codigo.localeCompare(b.codigo));
+    
+    let trs = '';
+    eventosOrdenados.forEach(e => {
+        trs += `<tr>
+            <td>${e.codigo}</td>
+            <td>${e.nome}</td>
+            <td class="text-right">${e.referencia.toFixed(2).replace(/\.00$/, '')}</td>
+            <td class="text-right">${e.natureza === 'V' ? 'R$ ' + e.valor.toFixed(2) : ''}</td>
+            <td class="text-right">${e.natureza === 'D' ? 'R$ ' + e.valor.toFixed(2) : ''}</td>
+        </tr>`;
+    });
+    
+    const html = `<html><head><title>Mapa de Eventos - ${comp}</title>
+    <style>
+        body { font-family: 'Courier New', Courier, monospace; font-size: 12px; margin: 0; padding: 20px; background: white; }
+        .header { text-align: center; font-weight: bold; margin-bottom: 20px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        th, td { padding: 6px 4px; border-bottom: 1px dashed #ccc; }
+        th { text-align: left; font-weight: bold; border-bottom: 2px solid #666; }
+        .text-right { text-align: right; }
+        .totais { font-weight: bold; font-size: 13px; border-top: 2px solid #000; padding-top: 10px; margin-top: 20px; display: flex; justify-content: space-around; }
+    </style></head><body>
+        <div class="header">
+            <div>RESUMO DA FOLHA DE PAGAMENTO (MAPA DE EVENTOS)</div>
+            <div>Competência: ${comp}</div>
+            <div style="font-size:10px; font-weight:normal; margin-top:5px;">Emitido em: ${dataAtual}</div>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th width="10%">Código</th>
+                    <th width="40%">Evento</th>
+                    <th width="15%" class="text-right">Referência</th>
+                    <th width="15%" class="text-right">Vencimentos</th>
+                    <th width="15%" class="text-right">Descontos</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${trs}
+            </tbody>
+        </table>
+        <div class="totais">
+            <div>Total Vencimentos: R$ ${totalProv.toFixed(2)}</div>
+            <div>Total Descontos: R$ ${totalDesc.toFixed(2)}</div>
+            <div>Líquido: R$ ${(totalProv - totalDesc).toFixed(2)}</div>
+        </div>
+    </body></html>`;
+    
+    openPrintWindow(html, { autoPrint: true, name: '_blank' });
 }
 
 async function excluirCalculoFolha(idUnico) {

@@ -2407,6 +2407,40 @@ async function exportarFuncionariosExcel() {
     }
 }
 
+async function exportarFuncionariosSimplesExcel() {
+    if (typeof XLSX === 'undefined') {
+        const script = document.createElement('script');
+        script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
+        script.onload = () => exportarFuncionariosSimplesExcel();
+        document.head.appendChild(script);
+        return;
+    }
+
+    if (!funcionarios || funcionarios.length === 0) {
+        mostrarMensagem("Nenhum funcionário carregado para exportar.", "warning");
+        return;
+    }
+
+    try {
+        const dadosExportacao = funcionarios.map(f => {
+            return {
+                "CPF": f.cpf || '',
+                "Nome": f.nome || '',
+                "Salário": f.salario || 0
+            };
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+        XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
+        XLSX.writeFile(wb, "Cadastro_Simples_CPF_Nome_Salario.xlsx");
+
+    } catch (error) {
+        console.error("Erro ao exportar excel simples:", error);
+        mostrarMensagem("Erro ao exportar para Excel.", "error");
+    }
+}
+
 // Função para reprocessar custos de todos os funcionários
 async function reprocessarCustosFuncionarios() {
     if (!confirm("Deseja reprocessar os custos de TODOS os funcionários? Isso pode levar alguns segundos.")) {
@@ -2522,9 +2556,68 @@ window.abrirModalAumentoColetivo = abrirModalAumentoColetivo;
 window.aplicarAumentoColetivo = aplicarAumentoColetivo;
 window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
 window.exportarFuncionariosExcel = exportarFuncionariosExcel;
+window.exportarFuncionariosSimplesExcel = exportarFuncionariosSimplesExcel;
 window.reprocessarCustosFuncionarios = reprocessarCustosFuncionarios;
 window.abrirModalSelecaoDedo = abrirModalSelecaoDedo;
 window.selecionarDedo = selecionarDedo;
+
+async function atualizarSalariosPeloTeorema() {
+    if (!confirm("Deseja sincronizar os salários (Folha) de todos os colaboradores ativos com os dados atuais do Teorema?")) return;
+    
+    try {
+        mostrarMensagem("Buscando salários no Teorema... aguarde.", "info");
+        const res = await fetch('http://localhost:3000/api/teorema-salarios');
+        const json = await res.json();
+        
+        if (!json.success) throw new Error(json.error);
+        
+        const salariosTeorema = json.data; // { cpfLimpo: salario }
+        
+        mostrarMensagem("Sincronizando valores...", "info");
+        const funcionariosSnap = await db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
+        let batch = db.batch();
+        let cont = 0;
+        let batchSize = 0;
+        
+        for (const doc of funcionariosSnap.docs) {
+            const f = doc.data();
+            const cpfLimpo = f.cpf ? String(f.cpf).replace(/\D/g, '') : null;
+            
+            if (cpfLimpo && salariosTeorema[cpfLimpo] !== undefined) {
+                const novoSalario = salariosTeorema[cpfLimpo];
+                const salarioAtual = parseFloat(f.salario || 0);
+                
+                if (novoSalario !== salarioAtual) {
+                    batch.update(doc.ref, {
+                        salario: novoSalario,
+                        updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    cont++;
+                    batchSize++;
+                    
+                    if (batchSize >= 400) {
+                        await batch.commit();
+                        batch = db.batch();
+                        batchSize = 0;
+                    }
+                }
+            }
+        }
+        
+        if (batchSize > 0) {
+            await batch.commit();
+        }
+        
+        mostrarMensagem(`Sincronização concluída! ${cont} salários foram atualizados no sistema.`, "success");
+        carregarFuncionarios(); // Recarrega a tabela
+        
+    } catch (error) {
+        console.error(error);
+        mostrarMensagem("Erro ao sincronizar salários: " + error.message, "error");
+    }
+}
+window.atualizarSalariosPeloTeorema = atualizarSalariosPeloTeorema;
 
 // Funções auxiliares para editar e excluir aumentos salariais
 async function editarAumentoSalario(funcionarioId, historicoIndex) {

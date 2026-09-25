@@ -51,11 +51,23 @@
                         <li>
                             <a class="dropdown-item funcs-dropdown-item" href="#" onclick="exportarFuncionariosExcel(); return false;">
                                 <span class="funcs-di-icon bg-success-soft"><i class="fas fa-file-excel text-success"></i></span>
-                                Exportar Excel
+                                Exportar Completo (Todas as Colunas)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item funcs-dropdown-item" href="#" onclick="exportarFuncionariosSimplesExcel(); return false;">
+                                <span class="funcs-di-icon bg-success-soft"><i class="fas fa-file-csv text-success"></i></span>
+                                Exportar Simples (CPF, Nome, Salário)
                             </a>
                         </li>
                         <li><hr class="dropdown-divider my-1"></li>
                         <li><h6 class="dropdown-header text-uppercase" style="font-size:0.65rem;letter-spacing:.06em;">Sistema</h6></li>
+                        <li>
+                            <a class="dropdown-item funcs-dropdown-item" href="#" onclick="atualizarSalariosPeloTeorema(); return false;">
+                                <span class="funcs-di-icon bg-info-soft"><i class="fas fa-sync text-info"></i></span>
+                                Sincronizar Salários (Teorema)
+                            </a>
+                        </li>
                         <li>
                             <a class="dropdown-item funcs-dropdown-item" href="#" onclick="reprocessarCustosFuncionarios(); return false;">
                                 <span class="funcs-di-icon bg-danger-soft"><i class="fas fa-sync-alt text-danger"></i></span>
