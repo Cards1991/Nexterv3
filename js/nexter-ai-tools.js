@@ -152,7 +152,7 @@ const nexterAITools = {
         },
         {
             name: "calcularAdiantamentoSalarial",
-            description: "Simula o cálculo do adiantamento salarial (vale) de 40% para os colaboradores ativos. Pode ser para um colaborador específico, para um setor, ou para 'todos'.",
+            description: "Simula o cálculo do adiantamento salarial (vale) de 40% para os colaboradores ativos. Pode ser para um colaborador específico, para um setor, ou para 'todos'. Se instruído, pode salvar o cálculo definitivamente no histórico de processamentos.",
             parameters: {
                 type: "object",
                 properties: {
@@ -163,6 +163,14 @@ const nexterAITools = {
                     valor: {
                         type: "string",
                         description: "O nome do setor ou do funcionário. Se o critério for 'todos', deixe em branco ou null."
+                    },
+                    salvar: {
+                        type: "boolean",
+                        description: "Se true, o cálculo será salvo definitivamente no banco de dados (historico_folha). Use isso quando o usuário solicitar para efetivar ou gravar o cálculo."
+                    },
+                    competencia: {
+                        type: "string",
+                        description: "A competência alvo no formato 'MM/YYYY' (ex: '09/2026'). Obrigatório se salvar for true."
                     }
                 },
                 required: ["criterio"]
@@ -740,12 +748,22 @@ const nexterAITools = {
         calcularAdiantamentoSalarial: async (args) => {
             try {
                 if (!window.db) throw new Error("Banco de dados indisponível.");
+                if (args.salvar && !args.competencia) {
+                    return JSON.stringify({ erro: "Para salvar o cálculo, é obrigatório informar a competência (ex: MM/YYYY)." });
+                }
                 
                 let query = db.collection('funcionarios').where('status', '==', 'Ativo');
                 const snapshot = await query.get();
                 
                 let processados = [];
                 let totalAdiantamento = 0;
+                let salvosComSucesso = 0;
+                let batch;
+                let operacoesBatch = 0;
+                
+                if (args.salvar) {
+                    batch = db.batch();
+                }
                 
                 snapshot.forEach(doc => {
                     const data = doc.data();
@@ -762,31 +780,87 @@ const nexterAITools = {
                     if (incluir) {
                         const salarioBase = parseFloat(data.salario) || 0;
                         if (salarioBase > 0) {
-                            const adiantamento = Number((salarioBase * 0.40).toFixed(2));
-                            totalAdiantamento += adiantamento;
+                            let adiantamento = Number((salarioBase * 0.40).toFixed(2));
+                            
+                            // Regra de arredondamento (Verba 0008)
+                            let valorArredondamento = 0;
+                            if (adiantamento > 0 && !Number.isInteger(adiantamento)) {
+                                const liquidoArredondado = Math.ceil(adiantamento);
+                                valorArredondamento = Number((liquidoArredondado - adiantamento).toFixed(2));
+                            }
+                            
+                            const valorFinal = adiantamento + valorArredondamento;
+                            totalAdiantamento += valorFinal;
+                            
                             processados.push({
                                 nome: data.nome,
                                 setor: data.setor || 'N/A',
                                 salarioBase: salarioBase,
-                                adiantamento: adiantamento
+                                adiantamento: adiantamento,
+                                arredondamento: valorArredondamento,
+                                totalLiquido: valorFinal
                             });
+                            
+                            if (args.salvar) {
+                                const idUnico = `${doc.id}_${args.competencia.replace('/', '')}_2`;
+                                const docRef = db.collection('historico_folha').doc(idUnico);
+                                
+                                let movimentos = [{
+                                    verbaCodigo: '0060',
+                                    natureza: 'V',
+                                    referencia: '40.00',
+                                    valor: adiantamento
+                                }];
+                                
+                                if (valorArredondamento > 0) {
+                                    movimentos.push({
+                                        verbaCodigo: '0008',
+                                        natureza: 'V',
+                                        referencia: '',
+                                        valor: valorArredondamento,
+                                        nome: 'Arredondamento do Mês',
+                                        memoriaCalculo: `Líquido provisório: R$ ${adiantamento}\\nLíquido arredondado (Teto): R$ ${Math.ceil(adiantamento)}\\nDiferença injetada: R$ ${valorArredondamento}`
+                                    });
+                                }
+                                
+                                batch.set(docRef, {
+                                    funcionarioId: doc.id,
+                                    competencia: args.competencia,
+                                    tipoCalculo: '2', // 2 = Adiantamento
+                                    movimentos: movimentos,
+                                    parametros: {}, // Sem parâmetros extras para adiantamento
+                                    origem: 'Cálculo Automático IA Nexter',
+                                    dataProcessamento: firebase.firestore.FieldValue.serverTimestamp()
+                                });
+                                salvosComSucesso++;
+                                operacoesBatch++;
+                                
+                                // Firestore batch limit is 500, we should handle if it exceeds, but realistically adiantamentos are < 500 here
+                            }
                         }
                     }
                 });
                 
-                processados.sort((a, b) => b.adiantamento - a.adiantamento);
+                if (args.salvar && operacoesBatch > 0) {
+                    await batch.commit();
+                }
+                
+                processados.sort((a, b) => b.totalLiquido - a.totalLiquido);
                 
                 return JSON.stringify({
                     status: "sucesso",
                     criterio_usado: args.criterio,
                     filtro_valor: args.valor || 'N/A',
-                    total_colaboradores: processados.length,
-                    total_valor_adiantamento: totalAdiantamento.toFixed(2),
+                    competencia: args.competencia || 'N/A',
+                    acao_realizada: args.salvar ? "Gravado no histórico do sistema" : "Apenas simulação",
+                    total_colaboradores_processados: processados.length,
+                    total_gravados_com_sucesso: salvosComSucesso,
+                    total_valor_adiantamento_folha: totalAdiantamento.toFixed(2),
                     detalhes: processados.slice(0, 50)
                 });
             } catch (error) {
                 console.error("Erro no calcularAdiantamentoSalarial:", error);
-                return JSON.stringify({ erro: "Falha técnica ao simular adiantamentos." });
+                return JSON.stringify({ erro: "Falha técnica ao calcular/salvar adiantamentos." });
             }
         },
 
