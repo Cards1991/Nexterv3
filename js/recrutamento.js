@@ -329,7 +329,7 @@ async function editarCandidato(id) {
                 if (sum.confirmed > 0) badges += `<span class="badge bg-danger mb-1">Confirmados: ${sum.confirmed}</span> `;
                 if (sum.homonyms > 0) badges += `<span class="badge bg-warning text-dark mb-1">Homônimos: ${sum.homonyms}</span> `;
                 if (sum.possible > 0) badges += `<span class="badge bg-info text-dark mb-1">Possíveis: ${sum.possible}</span> `;
-                escavadorDiv.innerHTML = badges + `<br><small class="text-primary mt-1 d-block" style="cursor:pointer;" onclick="consultarCandidatoAPI()"><i class="fas fa-search-plus"></i> Atualizar Consulta</small>`;
+                escavadorDiv.innerHTML = badges + `<br><small class="text-success mt-1 d-block"><i class="fas fa-check-circle"></i> Consulta Concluída</small>`;
             }
         }
 
@@ -369,8 +369,7 @@ async function editarCandidato(id) {
                             </div>
                             ${proc.fonte_url ? `<div class="process-actions"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
                         </div>`;
-                });
-                html += `</div><div class="mt-3"><button class="btn btn-sm btn-outline-warning" onclick="consultarCandidatoAPI()"><i class="fas fa-sync-alt"></i> Atualizar consulta Escavador</button></div>`;
+                html += `</div>`;
                 divResult.innerHTML = html;
             }
         }
@@ -677,10 +676,7 @@ window.prepararPasso3BancoTalentos = async function () {
                         <div class="d-flex gap-2 flex-wrap">
                             <button class="btn btn-success btn-sm rounded-pill px-3" onclick="reutilizarDadosBancoTalentos()"
                                 data-dados='${JSON.stringify({summary: melhor.escavador_summary, processos: melhor.escavador_processos || []})}' id="btn-reutilizar-banco">
-                                <i class="fas fa-recycle me-1"></i> Reutilizar dados salvos
-                            </button>
-                            <button class="btn btn-outline-warning btn-sm rounded-pill px-3" onclick="prepararPasso4Escavador()">
-                                <i class="fas fa-sync-alt me-1"></i> Realizar nova consulta (gera custo)
+                                <i class="fas fa-recycle me-1"></i> Visualizar dados salvos
                             </button>
                         </div>
                     </div>

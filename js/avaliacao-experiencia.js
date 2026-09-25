@@ -384,19 +384,25 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
                     html += '<div class="mt-2 small"><strong>Advertências/Suspensões:</strong></div><ul class="mb-0 ps-3 small">';
                     discipList.forEach(d => {
                         html += `<li>${d._dt.toLocaleDateString('pt-BR')} - ${d.medidaAplicada}: ${d.descricao || ''}</li>`;
-                    });
-                    html += '</ul>';
-                }
-                
                 if (permitirEscavador) {
-                    html += `
-                        <div class="mt-3 pt-2 border-top border-warning text-end">
-                            <span class="small text-muted me-2">Deseja aprofundar a investigação?</span>
-                            <button type="button" class="btn btn-sm btn-warning shadow-sm" onclick="document.getElementById('aval-exp-escavador-area').scrollIntoView({behavior: 'smooth'}); consultarEscavadorAvaliacao('AUTO');">
-                                <i class="fas fa-balance-scale"></i> Consultar Antecedentes (Escavador)
-                            </button>
-                        </div>
-                    `;
+                    if (funcData.escavador_summary) {
+                        html += `
+                            <div class="mt-3 pt-2 border-top border-info text-end">
+                                <button type="button" class="btn btn-sm btn-info text-white shadow-sm" onclick="document.getElementById('aval-exp-escavador-area').scrollIntoView({behavior: 'smooth'});">
+                                    <i class="fas fa-eye"></i> Visualizar Antecedentes (Já consultado)
+                                </button>
+                            </div>
+                        `;
+                    } else {
+                        html += `
+                            <div class="mt-3 pt-2 border-top border-warning text-end">
+                                <span class="small text-muted me-2">Deseja aprofundar a investigação?</span>
+                                <button type="button" class="btn btn-sm btn-warning shadow-sm" onclick="document.getElementById('aval-exp-escavador-area').scrollIntoView({behavior: 'smooth'}); consultarEscavadorAvaliacao('AUTO');">
+                                    <i class="fas fa-balance-scale"></i> Consultar Antecedentes Externa
+                                </button>
+                            </div>
+                        `;
+                    }
                 }
                 html += '</div>';
             } else {
@@ -1032,7 +1038,7 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
-                <button class="btn btn-sm btn-outline-warning" onclick="consultarEscavadorAvaliacao('AUTO')"><i class="fas fa-sync-alt"></i> Atualizar Consulta</button>
+                <span class="badge bg-light text-success border border-success"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
             </div>
             <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
                 <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
@@ -1157,7 +1163,7 @@ window.renderizarEscavadorGenerico = function(funcData) {
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
-                <button class="btn btn-sm btn-outline-warning" onclick="consultarEscavadorMenuAPI('${funcData.id}', 'AUTO')"><i class="fas fa-sync-alt"></i> Atualizar Consulta</button>
+                <span class="badge bg-light text-success border border-success"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
             </div>
             <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
                 <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
