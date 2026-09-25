@@ -1064,7 +1064,10 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
-                <span class="badge bg-light text-success border border-success"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
+                <div>
+                    <span class="badge bg-light text-success border border-success me-2"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
+                    <button class="btn btn-sm btn-outline-warning py-0" style="font-size: 0.75rem;" title="Gera custo na API" onclick="if(confirm('Atenção: Executar nova consulta gera custo de crédito na API. Deseja continuar?')) consultarEscavadorAvaliacao('AUTO')"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                </div>
             </div>
             <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
                 <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
@@ -1092,7 +1095,7 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
                         <div class="mt-2 d-flex gap-1 flex-wrap">
-                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url)) ? `<a href="${proc.fonte_url || proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url) || proc.numero_cnj) ? `<a href="${proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url) || ('https://www.escavador.com/busca?q=' + encodeURIComponent(proc.numero_cnj))}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
                         </div>
                     </div>
                 `;
@@ -1193,7 +1196,10 @@ window.renderizarEscavadorGenerico = function(funcData) {
         let html = `
             <div class="d-flex justify-content-between align-items-center mb-2">
                 <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
-                <span class="badge bg-light text-success border border-success"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
+                <div>
+                    <span class="badge bg-light text-success border border-success me-2"><i class="fas fa-check-circle"></i> Consulta Concluída</span>
+                    <button class="btn btn-sm btn-outline-warning py-0" style="font-size: 0.75rem;" title="Gera custo na API" onclick="if(confirm('Atenção: Executar nova consulta gera custo de crédito na API. Deseja continuar?')) consultarEscavadorMenu('${funcData.id}', '${funcData.nome || ''}', 'AUTO')"><i class="fas fa-sync-alt"></i> Atualizar</button>
+                </div>
             </div>
             <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
                 <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
@@ -1221,7 +1227,7 @@ window.renderizarEscavadorGenerico = function(funcData) {
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
                         <div class="mt-2 d-flex gap-1 flex-wrap">
-                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url)) ? `<a href="${proc.fonte_url || proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url) || proc.numero_cnj) ? `<a href="${proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url) || ('https://www.escavador.com/busca?q=' + encodeURIComponent(proc.numero_cnj))}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
                         </div>
                     </div>
                 `;
