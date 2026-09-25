@@ -316,7 +316,22 @@ async function editarCandidato(id) {
 
     // Renderizar Painel de Resumo do Totem
     const painelResumo = document.getElementById('painel-resumo-totem');
+    const btnEscavadorHeader = document.getElementById('btn-escavador-candidato');
+    
+    if (btnEscavadorHeader) {
+        btnEscavadorHeader.disabled = false;
+        btnEscavadorHeader.innerHTML = 'Buscar Antecedentes';
+        btnEscavadorHeader.classList.remove('btn-secondary');
+        btnEscavadorHeader.classList.add('btn-primary');
+    }
+
     if (cand.escavador_summary) {
+        if (btnEscavadorHeader) {
+            btnEscavadorHeader.disabled = true;
+            btnEscavadorHeader.innerHTML = '<i class="fas fa-check-circle"></i> Já Consultado';
+            btnEscavadorHeader.classList.remove('btn-primary');
+            btnEscavadorHeader.classList.add('btn-secondary');
+        }
         painelResumo.style.display = 'block';
 
         const escavadorDiv = document.getElementById('totem-resumo-escavador');

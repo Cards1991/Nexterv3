@@ -1090,7 +1090,8 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
                             <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
                         </div>
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
-                        <small class="text-muted">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                        <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                        ${proc.fonte_url ? `<div class="mt-2"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
                     </div>
                 `;
             });
@@ -1157,7 +1158,8 @@ window.consultarEscavadorAvaliacao = async function(modeToUse = 'AUTO') {
                 titulo_polo_ativo: p.titulo_polo_ativo,
                 titulo_polo_passivo: p.titulo_polo_passivo,
                 orgao_julgador: p.capa?.orgao_julgador || '',
-                situacao: p.capa?.situacao || ''
+                situacao: p.capa?.situacao || '',
+                fonte_url: p.fonte_url || p.url || ''
             }));
 
             await docRef.update({
@@ -1215,7 +1217,8 @@ window.renderizarEscavadorGenerico = function(funcData) {
                             <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
                         </div>
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
-                        <small class="text-muted">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                        <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                        ${proc.fonte_url ? `<div class="mt-2"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
                     </div>
                 `;
             });
@@ -1330,7 +1333,8 @@ window.consultarEscavadorMenuAPI = async function(id, modeToUse = 'AUTO') {
                 titulo_polo_ativo: p.titulo_polo_ativo,
                 titulo_polo_passivo: p.titulo_polo_passivo,
                 orgao_julgador: p.capa?.orgao_julgador || '',
-                situacao: p.capa?.situacao || ''
+                situacao: p.capa?.situacao || '',
+                fonte_url: p.fonte_url || p.url || ''
             }));
 
             await docRef.update({
