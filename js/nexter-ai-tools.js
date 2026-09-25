@@ -149,6 +149,24 @@ const nexterAITools = {
                 type: "object",
                 properties: {}
             }
+        },
+        {
+            name: "calcularAdiantamentoSalarial",
+            description: "Simula o cálculo do adiantamento salarial (vale) de 40% para os colaboradores ativos. Pode ser para um colaborador específico, para um setor, ou para 'todos'.",
+            parameters: {
+                type: "object",
+                properties: {
+                    criterio: {
+                        type: "string",
+                        description: "O critério do cálculo: 'todos', 'setor' ou 'funcionario'."
+                    },
+                    valor: {
+                        type: "string",
+                        description: "O nome do setor ou do funcionário. Se o critério for 'todos', deixe em branco ou null."
+                    }
+                },
+                required: ["criterio"]
+            }
         }
     ],
 
@@ -716,6 +734,59 @@ const nexterAITools = {
             } catch (error) {
                 console.error("Erro no consultarExperiencia:", error);
                 return JSON.stringify({ erro: "Falha técnica ao consultar contratos de experiência." });
+            }
+        },
+
+        calcularAdiantamentoSalarial: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                
+                let query = db.collection('funcionarios').where('status', '==', 'Ativo');
+                const snapshot = await query.get();
+                
+                let processados = [];
+                let totalAdiantamento = 0;
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    let incluir = false;
+                    
+                    if (args.criterio === 'todos') {
+                        incluir = true;
+                    } else if (args.criterio === 'setor' && args.valor) {
+                        if (data.setor && data.setor.toLowerCase().includes(args.valor.toLowerCase())) incluir = true;
+                    } else if (args.criterio === 'funcionario' && args.valor) {
+                        if (data.nome && data.nome.toLowerCase().includes(args.valor.toLowerCase())) incluir = true;
+                    }
+                    
+                    if (incluir) {
+                        const salarioBase = parseFloat(data.salario) || 0;
+                        if (salarioBase > 0) {
+                            const adiantamento = Number((salarioBase * 0.40).toFixed(2));
+                            totalAdiantamento += adiantamento;
+                            processados.push({
+                                nome: data.nome,
+                                setor: data.setor || 'N/A',
+                                salarioBase: salarioBase,
+                                adiantamento: adiantamento
+                            });
+                        }
+                    }
+                });
+                
+                processados.sort((a, b) => b.adiantamento - a.adiantamento);
+                
+                return JSON.stringify({
+                    status: "sucesso",
+                    criterio_usado: args.criterio,
+                    filtro_valor: args.valor || 'N/A',
+                    total_colaboradores: processados.length,
+                    total_valor_adiantamento: totalAdiantamento.toFixed(2),
+                    detalhes: processados.slice(0, 50)
+                });
+            } catch (error) {
+                console.error("Erro no calcularAdiantamentoSalarial:", error);
+                return JSON.stringify({ erro: "Falha técnica ao simular adiantamentos." });
             }
         },
 

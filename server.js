@@ -187,12 +187,14 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             }
         }
 
-        // Descobrir o registro mais recente ou ativo como ponto de partida
+        // Descobrir o registro ativo como ponto de partida (ignorar os que estão com situação 09 ou 99, ou demitidos)
         let bestFunc = funcResult[0];
-        const activeFuncs = funcResult.filter(f => !f.FUNCIONARIO_DATA_DEMISSAO);
+        const activeFuncs = funcResult.filter(f => f.FUNCIONARIO_SITUACAO !== '09' && f.FUNCIONARIO_SITUACAO !== '99' && !f.FUNCIONARIO_DATA_DEMISSAO);
+        
         if (activeFuncs.length > 0) {
             bestFunc = activeFuncs.sort((a, b) => new Date(b.FUNCIONARIO_DATA_ADMISSAO || 0) - new Date(a.FUNCIONARIO_DATA_ADMISSAO || 0))[0];
         } else {
+            // Fallback caso todos estejam demitidos (ex: importando alguém já desligado)
             bestFunc = funcResult.sort((a, b) => new Date(b.FUNCIONARIO_DATA_ADMISSAO || 0) - new Date(a.FUNCIONARIO_DATA_ADMISSAO || 0))[0];
         }
 

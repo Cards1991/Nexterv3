@@ -367,6 +367,38 @@ async function importarApuracaoRhid() {
                         importadoEm: firebase.firestore.FieldValue.serverTimestamp()
                     }, { merge: true }); // Merge true para não sobrescrever justificativas já feitas na auditoria
 
+                    // Alimentar autorizações de horas extras ("solicitacoes_horas") automaticamente
+                    if (doc.horasExtrasCalculadas > 0) {
+                        const solId = `rhid_he_${docId}`;
+                        const solRef = window.db.collection('solicitacoes_horas').doc(solId);
+                        
+                        let dtStart = new Date(dateStr + 'T17:00:00'); // Fictício se não houver batida
+                        let dtEnd = new Date(dateStr + 'T18:00:00');
+                        
+                        if (doc.listAfdtManutencao && doc.listAfdtManutencao.length >= 2) {
+                            const ultima = doc.listAfdtManutencao[doc.listAfdtManutencao.length - 1].hora;
+                            if (ultima) {
+                                dtEnd = new Date(ultima);
+                                dtStart = new Date(dtEnd.getTime() - (doc.horasExtrasCalculadas * 60000));
+                            }
+                        }
+
+                        batch.set(solRef, {
+                            employeeId: func.id,
+                            employeeName: func.nome,
+                            department: func.setor || 'Não Informado',
+                            reason: 'Apuração Automática RHiD',
+                            formaPagamento: 'folha',
+                            start: firebase.firestore.Timestamp.fromDate(dtStart),
+                            end: firebase.firestore.Timestamp.fromDate(dtEnd),
+                            horasExtrasMinutos: doc.horasExtrasCalculadas,
+                            status: 'pendente',
+                            origem: 'RHiD',
+                            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                            createdByName: 'Integração RHiD'
+                        }, { merge: true }); 
+                    }
+
                     operations++;
                     totalEspelhosSalvos++;
 
