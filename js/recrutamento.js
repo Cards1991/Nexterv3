@@ -369,6 +369,7 @@ async function editarCandidato(id) {
                             </div>
                             ${proc.fonte_url ? `<div class="process-actions"><a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a></div>` : ''}
                         </div>`;
+                });
                 html += `</div>`;
                 divResult.innerHTML = html;
             }

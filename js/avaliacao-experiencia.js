@@ -282,13 +282,9 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     const form = document.getElementById('form-avaliacao-experiencia');
     if (!modalEl || !form) return;
 
-    const btnEscavador = document.getElementById('btn-escavador-avaliacao');
     let permitirEscavador = window.currentUserPermissions?.isAdmin;
     if (!permitirEscavador && window.configFluxos) {
         permitirEscavador = await window.configFluxos.getConfiguracao('permitirEscavador') === true;
-    }
-    if (btnEscavador) {
-        btnEscavador.style.display = permitirEscavador ? 'inline-block' : 'none';
     }
 
     const alertContainer = document.getElementById('aval-exp-alerts');
@@ -384,6 +380,10 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
                     html += '<div class="mt-2 small"><strong>Advertências/Suspensões:</strong></div><ul class="mb-0 ps-3 small">';
                     discipList.forEach(d => {
                         html += `<li>${d._dt.toLocaleDateString('pt-BR')} - ${d.medidaAplicada}: ${d.descricao || ''}</li>`;
+                    });
+                    html += '</ul>';
+                }
+                
                 if (permitirEscavador) {
                     if (funcData.escavador_summary) {
                         html += `
@@ -499,7 +499,7 @@ async function salvarAvaliacaoExperiencia() {
 
         // Opções de Impressão
         if (confirm("Deseja imprimir o formulário de avaliação?")) {
-            imprimirAvaliacaoExperiencia(avaliacaoData, nomeFuncionario, setorFuncionario, gerenteSetor);
+            imprimirAvaliacaoExperiencia(avaliacaoData, nomeFuncionario, setorFuncionario, gerenteSetor, funcDoc.exists ? funcDoc.data() : null);
         }
         if (resultado === 'Aprovado' && confirm("O colaborador foi aprovado! Deseja imprimir a carta de parabenização?")) {
             imprimirCartaParabenizacao(nomeFuncionario, periodo);
@@ -575,13 +575,37 @@ async function carregarDashboardExperienciaAnalitico() {
 
 // --- Funções de Impressão ---
 
-function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '_________________________') {
+function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '_________________________', funcData = null) {
     let dataFormatada = 'N/A';
     if (dados.dataAvaliacao) {
         const dataObj = dados.dataAvaliacao.toDate ? dados.dataAvaliacao.toDate() : new Date(dados.dataAvaliacao);
         if (!isNaN(dataObj.getTime())) {
             dataFormatada = dataObj.toLocaleDateString('pt-BR');
         }
+    }
+    
+    let escavadorHtml = '';
+    if (funcData && funcData.escavador_summary) {
+        const sum = funcData.escavador_summary;
+        escavadorHtml = `
+            <div class="info-box" style="margin-top: 20px; border: 1px solid #17a2b8;">
+                <h5 style="color: #17a2b8;">Antecedentes (Consulta Externa)</h5>
+                <p style="margin-bottom: 5px;"><strong>Total de processos:</strong> ${sum.total} (Confirmados: ${sum.confirmed} | Alta Prob.: ${sum.highConfidence} | Possíveis: ${sum.possible} | Homônimos: ${sum.homonyms})</p>
+        `;
+        if (funcData.escavador_processos && funcData.escavador_processos.length > 0) {
+            escavadorHtml += `<ul style="font-size: 0.9em; margin-bottom: 5px;">`;
+            funcData.escavador_processos.forEach(p => {
+                escavadorHtml += `<li><strong>${p.numero_cnj || 'S/N'}</strong> - ${p.classificacao} - ${p.titulo_polo_ativo || 'N/I'} x ${p.titulo_polo_passivo || 'N/I'}</li>`;
+            });
+            escavadorHtml += `</ul>`;
+        } else {
+            escavadorHtml += `<p style="font-size: 0.9em; color: green; margin-bottom: 5px;">Nenhum processo listado.</p>`;
+        }
+        if (funcData.data_ultima_consulta_escavador) {
+            let dataUlt = funcData.data_ultima_consulta_escavador.toDate ? funcData.data_ultima_consulta_escavador.toDate().toLocaleDateString('pt-BR') : 'N/A';
+            escavadorHtml += `<p style="margin-bottom: 0;"><small>Última consulta em: ${dataUlt}</small></p>`;
+        }
+        escavadorHtml += `</div>`;
     }
     
     const conteudo = `
@@ -633,6 +657,8 @@ function imprimirAvaliacaoExperiencia(dados, nome, setor, gerenteSetor = '______
                 <strong>Observações do Avaliador:</strong>
                 <p class="border p-2 rounded" style="min-height: 60px;">${dados.observacoes || 'Sem observações.'}</p>
             </div>
+            
+            ${escavadorHtml}
 
             <div class="result-box">
                 PARECER FINAL: ${dados.resultado.toUpperCase()}
@@ -830,7 +856,7 @@ async function visualizarAvaliacao(id) {
             }
         }
         
-        imprimirAvaliacaoExperiencia(avaliacao, nomeFunc, setorFunc, gerenteSetor);
+        imprimirAvaliacaoExperiencia(avaliacao, nomeFunc, setorFunc, gerenteSetor, funcDoc.exists ? funcDoc.data() : null);
     } catch (e) {
         console.error("Erro ao visualizar avaliação:", e);
         mostrarMensagem("Erro ao carregar dados para visualização.", "error");
