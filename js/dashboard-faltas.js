@@ -97,7 +97,7 @@ async function carregarDashboardFaltas(db) {
         });
 
         // 2. Buscar faltas com filtro de data
-        let query = db.collection('faltas');
+        let query = db.collection('faltas_diarias');
         
         const dataInicio = document.getElementById('dash-faltas-data-inicio')?.value;
         const dataFim = document.getElementById('dash-faltas-data-fim')?.value;
@@ -143,9 +143,9 @@ async function carregarDashboardFaltas(db) {
                 // Aplicar filtros de Setor e Sexo (em memória)
                 if (setorFiltro && funcionario.setor !== setorFiltro) return;
                 if (sexoFiltro && funcionario.sexo !== sexoFiltro) return;
-                if (periodoFiltro && falta.periodo !== periodoFiltro) return;
+                if (periodoFiltro && falta.periodo && falta.periodo !== periodoFiltro) return;
 
-                // Adiciona à lista de faltas filtradas para o gráfico de evolução (mantém dados brutos para o gráfico)
+                // Adiciona à lista de faltas filtradas para a tabela e gráfico
                 faltasFiltradas.push(falta);
 
                 const dataFaltaStr = falta.data?.toDate().toDateString();
@@ -209,7 +209,10 @@ async function carregarDashboardFaltas(db) {
         renderizarRanking(rankingArray, rankingContainer);
         renderizarGraficoSexo(contagemFuncionariosPorSexo);
         renderizarGraficoSetor(faltasPorSetor);
-        renderizarGraficoEvolucaoFaltas(faltasFiltradas);
+        renderizarTabelaFaltasDiarias(faltasFiltradas);
+        if(typeof renderizarGraficoEvolucaoFaltas === 'function') {
+            renderizarGraficoEvolucaoFaltas(faltasFiltradas);
+        }
 
     } catch (error) {
         console.error('Erro ao carregar dashboard de faltas:', error);
@@ -483,3 +486,49 @@ function exportarDashboardFaltasExcel() {
     XLSX.writeFile(wb, "Dashboard_Faltas_Resumo.xlsx");
     mostrarMensagem('Exportação concluída com sucesso!', 'success');
 }
+
+function renderizarTabelaFaltasDiarias(faltas) {
+    const tbody = document.getElementById('tabela-faltas-diarias-body');
+    if (!tbody) return;
+    
+    if (!faltas || faltas.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted p-4"><i class="fas fa-check-circle fs-4 mb-2 d-block"></i> Nenhum registro encontrado.</td></tr>';
+        return;
+    }
+    
+    // Sort by date desc
+    faltas.sort((a, b) => {
+        const d1 = a.data?.toDate ? a.data.toDate() : new Date(a.data);
+        const d2 = b.data?.toDate ? b.data.toDate() : new Date(b.data);
+        return d2 - d1;
+    });
+
+    tbody.innerHTML = faltas.map(f => {
+        const dObj = f.data?.toDate ? f.data.toDate() : new Date(f.data);
+        const dateStr = dObj.toLocaleDateString('pt-BR');
+        
+        return `
+        <tr>
+            <td class="text-secondary fw-semibold">${dateStr}</td>
+            <td class="fw-bold">${f.funcionarioNome || 'N/I'}</td>
+            <td>${f.setor || 'N/I'}</td>
+            <td><span class="badge bg-danger">${f.motivo || 'N/I'}</span></td>
+            <td class="text-muted small">${f.observacao || '-'}</td>
+            <td class="text-end">
+                <button class="btn btn-sm btn-outline-danger" onclick="excluirFaltaDiaria('${f.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+window.excluirFaltaDiaria = async function(id) {
+    if(!confirm('Deseja realmente remover este registro de falta?')) return;
+    try {
+        await firebase.firestore().collection('faltas_diarias').doc(id).delete();
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Registro removido com sucesso!', 'success');
+        carregarDashboardFaltas(firebase.firestore());
+    } catch(e) {
+        console.error(e);
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao remover: ' + e.message, 'error');
+    }
+}

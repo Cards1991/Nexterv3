@@ -700,6 +700,16 @@ async function verificarFaltasHoje() {
                     extra = `<br><span class="text-muted small extra-info">${f.condicao}</span>`;
                 }
 
+                let actions = '';
+                if (title === 'Faltas Injustificadas') {
+                    actions = `
+                    <div class="mt-2">
+                        <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill shadow-sm" onclick="abrirModalAcoesFaltaRhid('${f.id}', '${f.nome.replace(/'/g, "\\'")}', '${(f.setor || '').replace(/'/g, "\\'")}')">
+                            <i class="fas fa-cog me-1"></i> Ações
+                        </button>
+                    </div>`;
+                }
+
                 return `
                 <div class="list-group-item py-2 px-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -707,6 +717,7 @@ async function verificarFaltasHoje() {
                             <div class="fw-bold text-dark small">${f.nome}</div>
                             <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
                             ${extra}
+                            ${actions}
                         </div>
                         <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
                     </div>
@@ -1412,5 +1423,103 @@ async function gerarEspelhoPDF() {
     } catch (e) {
         console.error(e);
         mostrarMensagem('Erro ao gerar o PDF.', 'error');
+    }
+}
+
+window.abrirModalAcoesFaltaRhid = function(funcId, funcNome, funcSetor) {
+    let modalEl = document.getElementById('modalAcoesFaltaRhid');
+    if (!modalEl) {
+        modalEl = document.createElement('div');
+        modalEl.className = 'modal fade';
+        modalEl.id = 'modalAcoesFaltaRhid';
+        modalEl.innerHTML = `
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white border-0">
+                        <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i> Tratar Falta</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <p class="mb-4">Colaborador: <strong id="acao-falta-nome" class="text-danger"></strong></p>
+                        <input type="hidden" id="acao-falta-id">
+                        <input type="hidden" id="acao-falta-setor">
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold text-secondary small">Motivo da Falta</label>
+                            <select class="form-select bg-light border-0 shadow-sm" id="acao-falta-motivo">
+                                <option value="Esquecimento de Batida">Esquecimento de Batida</option>
+                                <option value="Falta Injustificada">Falta Injustificada</option>
+                                <option value="Problema de Energia/Internet">Problema de Energia / Internet</option>
+                                <option value="Problema no Transporte">Problema no Transporte</option>
+                                <option value="Atraso Justificado">Atraso Justificado</option>
+                                <option value="Problemas Pessoais/Familiares">Problemas Pessoais / Familiares</option>
+                                <option value="Outros">Outros</option>
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label fw-bold text-secondary small">Observação Adicional</label>
+                            <textarea class="form-control bg-light border-0 shadow-sm" id="acao-falta-obs" rows="3" placeholder="Opcional..."></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pb-4 pe-4">
+                        <button class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button class="btn btn-danger fw-bold rounded-pill shadow-sm px-4" onclick="salvarAcaoFaltaRhid()">
+                            <i class="fas fa-save me-2"></i> Salvar Movimento
+                        </button>
+                    </div>
+                </div>
+            </div>`;
+        document.body.appendChild(modalEl);
+    }
+    
+    document.getElementById('acao-falta-nome').textContent = funcNome;
+    document.getElementById('acao-falta-id').value = funcId;
+    document.getElementById('acao-falta-setor').value = funcSetor;
+    document.getElementById('acao-falta-motivo').value = 'Falta Injustificada';
+    document.getElementById('acao-falta-obs').value = '';
+    
+    new bootstrap.Modal(modalEl).show();
+}
+
+window.salvarAcaoFaltaRhid = async function() {
+    const funcId = document.getElementById('acao-falta-id').value;
+    const funcNome = document.getElementById('acao-falta-nome').textContent;
+    const funcSetor = document.getElementById('acao-falta-setor').value;
+    const motivo = document.getElementById('acao-falta-motivo').value;
+    const obs = document.getElementById('acao-falta-obs').value;
+    
+    try {
+        const docFunc = await window.db.collection('funcionarios').doc(funcId).get();
+        const f = docFunc.data();
+        
+        const hojeObj = new Date();
+        const y = hojeObj.getFullYear();
+        const m = String(hojeObj.getMonth() + 1).padStart(2, '0');
+        const d = String(hojeObj.getDate()).padStart(2, '0');
+        const dataReferencia = new Date(`${y}-${m}-${d}T00:00:00`);
+        
+        const dataSave = {
+            funcionarioId: funcId,
+            funcionarioNome: funcNome,
+            empresaId: f?.empresaId || null,
+            setor: funcSetor || 'N/I',
+            sexo: f?.sexo || 'N/I',
+            data: dataReferencia,
+            motivo: motivo,
+            observacao: obs,
+            criado_em: firebase.firestore.FieldValue.serverTimestamp(),
+            createdByUid: firebase.auth().currentUser?.uid || null
+        };
+        
+        await window.db.collection('faltas_diarias').add(dataSave);
+        
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Movimento salvo com sucesso! Já está disponível no novo painel de Faltas Diárias.', 'success');
+        bootstrap.Modal.getInstance(document.getElementById('modalAcoesFaltaRhid')).hide();
+        
+        // Atualiza a lista para refletir
+        verificarFaltasHoje();
+    } catch(e) {
+        console.error(e);
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao salvar movimento: ' + e.message, 'error');
     }
 }
