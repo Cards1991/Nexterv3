@@ -187,8 +187,16 @@ app.get('/extrair-teorema/:cpf', async (req, res) => {
             }
         }
 
-        // Descobrir o código ativo verdadeiro (a ponta final da cadeia de transferências)
-        let finalKey = `${funcResult[0].EMPRESA_CODIGO}_${funcResult[0].FUNCIONARIO_CODIGO}`;
+        // Descobrir o registro mais recente ou ativo como ponto de partida
+        let bestFunc = funcResult[0];
+        const activeFuncs = funcResult.filter(f => !f.FUNCIONARIO_DATA_DEMISSAO);
+        if (activeFuncs.length > 0) {
+            bestFunc = activeFuncs.sort((a, b) => new Date(b.FUNCIONARIO_DATA_ADMISSAO || 0) - new Date(a.FUNCIONARIO_DATA_ADMISSAO || 0))[0];
+        } else {
+            bestFunc = funcResult.sort((a, b) => new Date(b.FUNCIONARIO_DATA_ADMISSAO || 0) - new Date(a.FUNCIONARIO_DATA_ADMISSAO || 0))[0];
+        }
+
+        let finalKey = `${bestFunc.EMPRESA_CODIGO}_${bestFunc.FUNCIONARIO_CODIGO}`;
         let traceCount = 0;
         while (forwardMap[finalKey] && traceCount < 50) {
             finalKey = forwardMap[finalKey];

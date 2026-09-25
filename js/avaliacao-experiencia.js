@@ -283,11 +283,11 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     if (!modalEl || !form) return;
 
     const btnEscavador = document.getElementById('btn-escavador-avaliacao');
+    let permitirEscavador = window.currentUserPermissions?.isAdmin;
+    if (!permitirEscavador && window.configFluxos) {
+        permitirEscavador = await window.configFluxos.getConfiguracao('permitirEscavador') === true;
+    }
     if (btnEscavador) {
-        let permitirEscavador = window.currentUserPermissions?.isAdmin;
-        if (!permitirEscavador && window.configFluxos) {
-            permitirEscavador = await window.configFluxos.getConfiguracao('permitirEscavador') === true;
-        }
         btnEscavador.style.display = permitirEscavador ? 'inline-block' : 'none';
     }
 
@@ -305,10 +305,10 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
     document.getElementById('aval-exp-nome').value = nome;
     document.getElementById('aval-exp-data').value = new Date().toISOString().split('T')[0];
 
-    // Clear Escavador Area
+    // Clear and Setup Escavador Area
     const escavadorArea = document.getElementById('aval-exp-escavador-area');
     const escavadorResultado = document.getElementById('aval-exp-escavador-resultado');
-    if (escavadorArea) escavadorArea.style.display = 'none';
+    if (escavadorArea) escavadorArea.style.display = permitirEscavador ? 'block' : 'none';
     if (escavadorResultado) escavadorResultado.innerHTML = '';
 
     if (alertContainer) {
@@ -338,6 +338,10 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
 
         const dtAdmissao = normalize(funcData.dataAdmissao);
         console.log(`[AvalExp] Admissão: ${dtAdmissao?.toLocaleDateString('pt-BR') || 'Não informada'}`);
+
+        if (permitirEscavador) {
+            renderizarEscavadorAvaliacao(funcData);
+        }
 
         console.log(`[AvalExp Query] Timestamp: ${Date.now()} - Fetching faltas/alerts for ${id}`);
         const [ateSnap, falSnap, disSnap] = await Promise.all([
@@ -1008,19 +1012,82 @@ window.reimprimirCarta = reimprimirCarta;
 window.exportarAvaliacoesConcluidasExcel = exportarAvaliacoesConcluidasExcel;
 
 // --- INTEGRAÇÃO ESCAVADOR (AVALIAÇÃO) ---
-window.consultarEscavadorAvaliacao = async function() {
+window.renderizarEscavadorAvaliacao = function(funcData) {
+    const resultDiv = document.getElementById('aval-exp-escavador-resultado');
+    if (!resultDiv) return;
+
+    if (funcData.escavador_summary) {
+        const sum = funcData.escavador_summary;
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
+                <button class="btn btn-sm btn-outline-warning" onclick="consultarEscavadorAvaliacao('AUTO')"><i class="fas fa-sync-alt"></i> Atualizar Consulta</button>
+            </div>
+            <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms || 0}</b></div>
+            </div>
+        `;
+        
+        if (funcData.escavador_processos && funcData.escavador_processos.length > 0) {
+            html += `<div class="list-group list-group-flush mb-3">`;
+            funcData.escavador_processos.forEach(proc => {
+                let color = 'secondary';
+                if (proc.classificacao === 'CONFIRMADO') color = 'success';
+                else if (proc.classificacao === 'ALTA_PROBABILIDADE') color = 'primary';
+                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
+                else color = 'danger';
+                
+                html += `
+                    <div class="list-group-item px-0 py-2">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h6 class="mb-1 text-truncate" style="max-width: 75%;">${proc.numero_cnj || 'S/N'}</h6>
+                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
+                        </div>
+                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
+                        <small class="text-muted">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        } else {
+            html += '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado na última consulta.</div>';
+        }
+        
+        if (funcData.data_ultima_consulta_escavador) {
+            let dataUlt = funcData.data_ultima_consulta_escavador.toDate ? funcData.data_ultima_consulta_escavador.toDate() : new Date(funcData.data_ultima_consulta_escavador);
+            html += `<div class="text-end text-muted small"><i class="fas fa-clock"></i> Última consulta em: ${dataUlt.toLocaleString('pt-BR')}</div>`;
+        }
+        
+        resultDiv.innerHTML = html;
+    } else {
+        resultDiv.innerHTML = `
+            <div class="alert alert-info py-3 mb-2">
+                <i class="fas fa-info-circle me-2"></i> <strong>Consulta Externa (Escavador)</strong><br>
+                <p class="small mb-3 mt-2">A consulta processual em tribunais gera custos adicionais para a empresa por CPF. Se for necessário confirmar antecedentes na justiça, execute a busca externa abaixo. Ela será salva para consultas futuras.</p>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning btn-sm shadow-sm" onclick="consultarEscavadorAvaliacao('AUTO')"><i class="fas fa-search"></i> Executar Busca Padrão</button>
+                    <button class="btn btn-outline-secondary btn-sm shadow-sm" onclick="consultarEscavadorAvaliacao('ALWAYS')"><i class="fas fa-search-plus"></i> Busca Ampliada</button>
+                </div>
+            </div>
+        `;
+    }
+};
+
+window.consultarEscavadorAvaliacao = async function(modeToUse = 'AUTO') {
     const id = document.getElementById('aval-exp-funcionario-id').value;
     const nome = document.getElementById('aval-exp-nome').value;
-    const area = document.getElementById('aval-exp-escavador-area');
     const resultDiv = document.getElementById('aval-exp-escavador-resultado');
 
     if (!id) return;
 
-    area.style.display = 'block';
     resultDiv.innerHTML = '<div class="text-center py-3"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Consultando Escavador via API...</p></div>';
 
     try {
-        const doc = await db.collection('funcionarios').doc(id).get();
+        const docRef = db.collection('funcionarios').doc(id);
+        const doc = await docRef.get();
         if (!doc.exists) {
             resultDiv.innerHTML = '<div class="alert alert-danger">Funcionário não encontrado.</div>';
             return;
@@ -1035,48 +1102,33 @@ window.consultarEscavadorAvaliacao = async function() {
             return;
         }
 
-        const respData = await window.frontendEscavadorSearch(cpf, nome, 'NAME_ONLY');
+        const respData = await window.frontendEscavadorSearch(cpf, nome, modeToUse);
         const response = { ok: respData.status === 'SUCCESS_WITH_RESULTS' || respData.status === 'SUCCESS_NO_RESULTS' };
         
-        if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
-            const sum = respData.summary;
-            let html = `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</strong>
-                </div>
-                <div class="d-flex gap-2 mb-2 text-center" style="font-size: 0.8em;">
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms}</b></div>
-                </div>
-                <div class="list-group list-group-flush">
-            `;
-            
-            respData.processes.forEach(proc => {
-                let color = 'secondary';
-                if (proc.classificacao === 'CONFIRMADO') color = 'success';
-                else if (proc.classificacao === 'ALTA_PROBABILIDADE') color = 'primary';
-                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
-                else color = 'danger';
-                
-                html += `
-                    <div class="list-group-item px-0 py-2">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">${proc.numero_cnj || 'S/N'}</h6>
-                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
-                        </div>
-                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
-                        <small class="text-muted">${proc.capa?.orgao_julgador || ''} - ${proc.capa?.situacao || ''}</small>
-                    </div>
-                `;
+        if (response.ok) {
+            const sum = respData.summary || { total: 0, confirmed: 0, highConfidence: 0, possible: 0, homonyms: 0 };
+            const processos = (respData.processes || []).map(p => ({
+                numero_cnj: p.numero_cnj,
+                classificacao: p.classificacao,
+                badgeText: p.badgeText,
+                titulo_polo_ativo: p.titulo_polo_ativo,
+                titulo_polo_passivo: p.titulo_polo_passivo,
+                orgao_julgador: p.capa?.orgao_julgador || '',
+                situacao: p.capa?.situacao || ''
+            }));
+
+            await docRef.update({
+                escavador_summary: sum,
+                escavador_processos: processos,
+                data_ultima_consulta_escavador: firebase.firestore.FieldValue.serverTimestamp()
             });
-            html += `</div>`;
-            resultDiv.innerHTML = html;
-        } else if (response.ok && respData.status === 'SUCCESS_NO_RESULTS') {
-            resultDiv.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF/Nome.</div>';
+
+            // Re-render
+            const updatedDoc = await docRef.get();
+            window.renderizarEscavadorAvaliacao(updatedDoc.data());
         } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.error || respData.message || 'Desconhecido'}</div>`;
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.error || respData.message || 'Desconhecido'}</div>
+            <button class="btn btn-sm btn-outline-secondary mt-2" onclick="renderizarEscavadorAvaliacao(${JSON.stringify(data).replace(/"/g, '&quot;')})">Voltar</button>`;
         }
     } catch (e) {
         console.error("Erro Escavador:", e);
@@ -1085,10 +1137,73 @@ window.consultarEscavadorAvaliacao = async function() {
 };
 
 // --- INTEGRAÇÃO ESCAVADOR (MENU PRINCIPAL) ---
+window.renderizarEscavadorGenerico = function(funcData) {
+    const resultDiv = document.getElementById('escavador-generico-resultado');
+    if (!resultDiv) return;
+
+    if (funcData.escavador_summary) {
+        const sum = funcData.escavador_summary;
+        let html = `
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <strong><i class="fas fa-gavel text-primary"></i> ${sum.total || 0} processos encontrados</strong>
+                <button class="btn btn-sm btn-outline-warning" onclick="consultarEscavadorMenuAPI('${funcData.id}', 'AUTO')"><i class="fas fa-sync-alt"></i> Atualizar Consulta</button>
+            </div>
+            <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible || 0}</b></div>
+                <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms || 0}</b></div>
+            </div>
+        `;
+        
+        if (funcData.escavador_processos && funcData.escavador_processos.length > 0) {
+            html += `<div class="list-group list-group-flush mb-3">`;
+            funcData.escavador_processos.forEach(proc => {
+                let color = 'secondary';
+                if (proc.classificacao === 'CONFIRMADO') color = 'success';
+                else if (proc.classificacao === 'ALTA_PROBABILIDADE') color = 'primary';
+                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
+                else color = 'danger';
+                
+                html += `
+                    <div class="list-group-item px-0 py-2">
+                        <div class="d-flex w-100 justify-content-between align-items-center">
+                            <h6 class="mb-1 text-truncate" style="max-width: 75%;">${proc.numero_cnj || 'S/N'}</h6>
+                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
+                        </div>
+                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
+                        <small class="text-muted">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
+                    </div>
+                `;
+            });
+            html += `</div>`;
+        } else {
+            html += '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado na última consulta.</div>';
+        }
+        
+        if (funcData.data_ultima_consulta_escavador) {
+            let dataUlt = funcData.data_ultima_consulta_escavador.toDate ? funcData.data_ultima_consulta_escavador.toDate() : new Date(funcData.data_ultima_consulta_escavador);
+            html += `<div class="text-end text-muted small"><i class="fas fa-clock"></i> Última consulta em: ${dataUlt.toLocaleString('pt-BR')}</div>`;
+        }
+        
+        resultDiv.innerHTML = html;
+    } else {
+        resultDiv.innerHTML = `
+            <div class="alert alert-info py-3 mb-2">
+                <i class="fas fa-info-circle me-2"></i> <strong>Consulta Externa (Escavador)</strong><br>
+                <p class="small mb-3 mt-2">Nenhuma consulta anterior encontrada. Execute a busca para visualizar os antecedentes.</p>
+                <div class="d-flex gap-2">
+                    <button class="btn btn-warning btn-sm shadow-sm" onclick="consultarEscavadorMenuAPI('${funcData.id}', 'AUTO')"><i class="fas fa-search"></i> Executar Busca Padrão</button>
+                    <button class="btn btn-outline-secondary btn-sm shadow-sm" onclick="consultarEscavadorMenuAPI('${funcData.id}', 'ALWAYS')"><i class="fas fa-search-plus"></i> Busca Ampliada</button>
+                </div>
+            </div>
+        `;
+    }
+};
+
 window.consultarEscavadorMenu = async function(id, nome) {
     if (!id) return;
 
-    // Criar modal dinâmico se não existir
     let modalEl = document.getElementById('modalEscavadorGenerico');
     if (!modalEl) {
         const modalHtml = `
@@ -1104,7 +1219,7 @@ window.consultarEscavadorMenu = async function(id, nome) {
                             <label class="form-label text-muted small mb-0">Colaborador</label>
                             <div class="fw-bold fs-5" id="escavador-generico-nome"></div>
                         </div>
-                        <div id="escavador-generico-resultado" class="border p-2 rounded bg-light" style="max-height: 400px; overflow-y: auto; font-size: 0.9em;">
+                        <div id="escavador-generico-resultado" class="border p-3 rounded bg-light" style="max-height: 400px; overflow-y: auto; font-size: 0.9em;">
                         </div>
                     </div>
                 </div>
@@ -1117,13 +1232,35 @@ window.consultarEscavadorMenu = async function(id, nome) {
     document.getElementById('escavador-generico-nome').textContent = nome;
     const resultDiv = document.getElementById('escavador-generico-resultado');
     
-    resultDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Consultando Escavador (Busca Rápida)...</p></div>';
+    resultDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Carregando dados...</p></div>';
     
     const modalInstance = bootstrap.Modal.getOrCreateInstance(modalEl);
     modalInstance.show();
 
     try {
         const doc = await db.collection('funcionarios').doc(id).get();
+        if (!doc.exists) {
+            resultDiv.innerHTML = '<div class="alert alert-danger">Funcionário não encontrado.</div>';
+            return;
+        }
+        const data = doc.data();
+        data.id = doc.id;
+        renderizarEscavadorGenerico(data);
+    } catch (e) {
+        console.error(e);
+        resultDiv.innerHTML = '<div class="alert alert-danger">Erro ao carregar dados.</div>';
+    }
+};
+
+window.consultarEscavadorMenuAPI = async function(id, modeToUse = 'AUTO') {
+    const resultDiv = document.getElementById('escavador-generico-resultado');
+    const nome = document.getElementById('escavador-generico-nome').textContent;
+    
+    resultDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Consultando Escavador via API...</p></div>';
+    
+    try {
+        const docRef = db.collection('funcionarios').doc(id);
+        const doc = await docRef.get();
         if (!doc.exists) {
             resultDiv.innerHTML = '<div class="alert alert-danger">Funcionário não encontrado.</div>';
             return;
@@ -1138,48 +1275,34 @@ window.consultarEscavadorMenu = async function(id, nome) {
             return;
         }
 
-        const respData = await window.frontendEscavadorSearch(cpf, nome, 'NAME_ONLY');
+        const respData = await window.frontendEscavadorSearch(cpf, nome, modeToUse);
         const response = { ok: respData.status === 'SUCCESS_WITH_RESULTS' || respData.status === 'SUCCESS_NO_RESULTS' };
         
-        if (response.ok && respData.status === 'SUCCESS_WITH_RESULTS') {
-            const sum = respData.summary;
-            let html = `
-                <div class="d-flex justify-content-between align-items-center mb-2">
-                    <strong><i class="fas fa-gavel"></i> ${sum.total} processos encontrados</strong>
-                </div>
-                <div class="d-flex gap-2 mb-3 text-center" style="font-size: 0.8em;">
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #28a745 !important;">CPF: <b class="text-success">${sum.confirmed}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #0d6efd !important;">Alta: <b class="text-primary">${sum.highConfidence}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #ffc107 !important;">Possível: <b class="text-warning">${sum.possible}</b></div>
-                    <div class="border p-1 rounded flex-fill" style="border-left: 3px solid #dc3545 !important;">Homônimos: <b class="text-danger">${sum.homonyms}</b></div>
-                </div>
-                <div class="list-group list-group-flush">
-            `;
-            
-            respData.processes.forEach(proc => {
-                let color = 'secondary';
-                if (proc.classificacao === 'CONFIRMADO') color = 'success';
-                else if (proc.classificacao === 'ALTA_PROBABILIDADE') color = 'primary';
-                else if (proc.classificacao === 'POSSIVEL_CORRESPONDENCIA') color = 'warning';
-                else color = 'danger';
-                
-                html += `
-                    <div class="list-group-item px-0 py-2">
-                        <div class="d-flex w-100 justify-content-between">
-                            <h6 class="mb-1 text-truncate" style="max-width: 80%;">${proc.numero_cnj || 'S/N'}</h6>
-                            <span class="badge bg-${color}">${proc.badgeText || proc.classificacao}</span>
-                        </div>
-                        <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
-                        <small class="text-muted">${proc.capa?.orgao_julgador || ''} - ${proc.capa?.situacao || ''}</small>
-                    </div>
-                `;
+        if (response.ok) {
+            const sum = respData.summary || { total: 0, confirmed: 0, highConfidence: 0, possible: 0, homonyms: 0 };
+            const processos = (respData.processes || []).map(p => ({
+                numero_cnj: p.numero_cnj,
+                classificacao: p.classificacao,
+                badgeText: p.badgeText,
+                titulo_polo_ativo: p.titulo_polo_ativo,
+                titulo_polo_passivo: p.titulo_polo_passivo,
+                orgao_julgador: p.capa?.orgao_julgador || '',
+                situacao: p.capa?.situacao || ''
+            }));
+
+            await docRef.update({
+                escavador_summary: sum,
+                escavador_processos: processos,
+                data_ultima_consulta_escavador: firebase.firestore.FieldValue.serverTimestamp()
             });
-            html += `</div>`;
-            resultDiv.innerHTML = html;
-        } else if (response.ok && respData.status === 'SUCCESS_NO_RESULTS') {
-            resultDiv.innerHTML = '<div class="alert alert-success py-2"><i class="fas fa-check-circle"></i> Nenhum processo encontrado para este CPF.</div>';
+
+            const updatedDoc = await docRef.get();
+            const updatedData = updatedDoc.data();
+            updatedData.id = id;
+            renderizarEscavadorGenerico(updatedData);
         } else {
-            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.message || 'Desconhecido'}</div>`;
+            resultDiv.innerHTML = `<div class="alert alert-danger py-2">Erro na consulta: ${respData.error || respData.message || 'Desconhecido'}</div>
+            <button class="btn btn-sm btn-outline-secondary mt-2" onclick="consultarEscavadorMenu('${id}', '${nome}')">Voltar</button>`;
         }
     } catch (e) {
         console.error("Erro Escavador Menu:", e);
