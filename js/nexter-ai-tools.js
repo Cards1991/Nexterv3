@@ -27,6 +27,19 @@ const nexterAITools = {
             }
         },
         {
+            name: "consultarMovimentosFaltasDiarias",
+            description: "Consulta os lançamentos e tratamento diários de faltas e atrasos integrados ao RHiD (novo painel de Faltas Diárias). Retorna as ocorrências do dia, motivos informados (Energia, Atraso, etc) e setor.",
+            parameters: {
+                type: "object",
+                properties: {
+                    data: {
+                        type: "string",
+                        description: "Data no formato 'YYYY-MM-DD' (ex: 2026-09-25). Se omitido, consultará os movimentos registrados no dia de hoje.",
+                    }
+                }
+            }
+        },
+        {
             name: "consultarHorasExtras",
             description: "Consulta as solicitações de horas extras realizadas ou autorizadas.",
             parameters: {
@@ -218,6 +231,42 @@ const nexterAITools = {
             } catch (error) {
                 console.error("Erro no consultarFaltas:", error);
                 return JSON.stringify({ erro: "Você não tem permissão para acessar faltas ou ocorreu falha técnica." });
+            }
+        },
+
+        consultarMovimentosFaltasDiarias: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                
+                const dObj = args.data ? new Date(args.data + "T00:00:00") : new Date();
+                const startOfDay = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate(), 0, 0, 0);
+                const endOfDay = new Date(dObj.getFullYear(), dObj.getMonth(), dObj.getDate(), 23, 59, 59);
+
+                const snapshot = await db.collection('faltas_diarias')
+                    .where('data', '>=', startOfDay)
+                    .where('data', '<=', endOfDay)
+                    .get();
+                
+                let ocorrencias = [];
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    ocorrencias.push({
+                        funcionario: data.funcionarioNome || 'N/I',
+                        setor: data.setor || 'N/I',
+                        motivo: data.motivo || 'N/I',
+                        observacao: data.observacao || ''
+                    });
+                });
+                
+                return JSON.stringify({ 
+                    status: "sucesso",
+                    data_consultada: startOfDay.toLocaleDateString('pt-BR'),
+                    total_ocorrencias: ocorrencias.length,
+                    detalhes: ocorrencias
+                });
+            } catch (error) {
+                console.error("Erro no consultarMovimentosFaltasDiarias:", error);
+                return JSON.stringify({ erro: "Falha técnica ao consultar os movimentos diários." });
             }
         },
 
