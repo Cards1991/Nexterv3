@@ -1,6 +1,7 @@
 let dashboardFaltasCarregado = false;
-let chartFaltasSexo = null;
+let chartFaltasMotivos = null;
 let chartFaltasSetor = null;
+let chartEvolucao = null;
 let __dados_dashboard_faltas_cache = { faltas: [], funcionariosMap: new Map() };
 
 /**
@@ -130,89 +131,67 @@ async function carregarDashboardFaltas(db) {
         const contagemFaltas = {}; // Objeto para armazenar Sets de datas de falta por funcionário
         let totalFaltasFiltradas = 0;
         const funcionariosComFalta = new Set();
-        const funcionariosPorSexo = {}; // Contará funcionários únicos por sexo
-        const faltasPorSetor = {}; // Contará dias de falta únicos por setor
-        const faltasFiltradas = []; // Array para armazenar faltas brutas após filtros, para o gráfico de evolução
-        const diasFaltas = new Map(); // Mapa para garantir que cada dia de falta por funcionário seja contado apenas uma vez
+        let totalInjustificadas = 0;
+        let infratoresRepeticao = 0;
+        const faltasPorMotivo = {};
 
         faltas.forEach(falta => {
             const idFuncionario = falta.funcionarioId;
             const funcionario = funcionariosMap.get(idFuncionario);
 
             if (idFuncionario && funcionario) {
-                // Aplicar filtros de Setor e Sexo (em memória)
                 if (setorFiltro && funcionario.setor !== setorFiltro) return;
-                if (sexoFiltro && funcionario.sexo !== sexoFiltro) return;
-                if (periodoFiltro && falta.periodo && falta.periodo !== periodoFiltro) return;
 
-                // Adiciona à lista de faltas filtradas para a tabela e gráfico
                 faltasFiltradas.push(falta);
-
                 const dataFaltaStr = falta.data?.toDate().toDateString();
-                if (!dataFaltaStr) return; // Ignora faltas com data inválida
+                if (!dataFaltaStr) return;
 
-                // Chave única para funcionário + dia
                 const faltaKey = `${idFuncionario}_${dataFaltaStr}`;
-
-                // Contagem para o ranking (deduplicada por dia)
-                if (!contagemFaltas[idFuncionario]) {
-                    contagemFaltas[idFuncionario] = new Set();
+                
+                // Track motivos
+                const mot = falta.motivo || 'Sem Motivo';
+                faltasPorMotivo[mot] = (faltasPorMotivo[mot] || 0) + 1;
+                
+                if (mot.toLowerCase().includes('injustificada') || mot.toLowerCase().includes('esquecimento')) {
+                    totalInjustificadas++;
                 }
+
+                if (!contagemFaltas[idFuncionario]) contagemFaltas[idFuncionario] = new Set();
                 contagemFaltas[idFuncionario].add(dataFaltaStr);
 
-                // Contagem para KPIs e gráfico de setor, garantindo que contamos apenas uma vez por dia por funcionário
                 if (!diasFaltas.has(faltaKey)) {
                     diasFaltas.set(faltaKey, true);
                     totalFaltasFiltradas++;
                     funcionariosComFalta.add(idFuncionario);
 
-                    // Contagem por Setor (agora deduplicada por dia)
                     const setor = funcionario.setor || 'Não Definido';
                     faltasPorSetor[setor] = (faltasPorSetor[setor] || 0) + 1;
                 }
-
-                // Contagem por Sexo (conta funcionários únicos com falta)
-                const sexo = funcionario.sexo || 'Não Informado';
-                if (!funcionariosPorSexo[sexo]) {
-                    funcionariosPorSexo[sexo] = new Set();
-                }
-                funcionariosPorSexo[sexo].add(idFuncionario);
             }
         });
         
-        // Converter os Sets de funcionários por sexo em contagens numéricas
-        const contagemFuncionariosPorSexo = {};
-        for (const sexo in funcionariosPorSexo) {
-            contagemFuncionariosPorSexo[sexo] = funcionariosPorSexo[sexo].size;
+        // Calcular reincidentes
+        for (const [fId, dias] of Object.entries(contagemFaltas)) {
+            if (dias.size >= 2) infratoresRepeticao++;
         }
         
-        // 4. Montar e ordenar o ranking a partir dos dias únicos de falta
         const rankingArray = Object.entries(contagemFaltas)
             .map(([funcionarioId, datas]) => {
-                const funcionario = funcionariosMap.get(funcionarioId) || {
-                    nome: 'Funcionário Desconhecido',
-                    empresa: 'Não definida',
-                    setor: 'Não definido'
-                };
+                const funcionario = funcionariosMap.get(funcionarioId) || { nome: 'Desconhecido', empresa: '', setor: '' };
                 return {
-                    funcionarioId,
-                    nome: funcionario.nome,
-                    empresa: funcionario.empresa,
-                    setor: funcionario.setor,
-                    totalFaltas: datas.size // O total de faltas é o número de dias únicos
+                    funcionarioId, nome: funcionario.nome, empresa: funcionario.empresa, setor: funcionario.setor,
+                    totalFaltas: datas.size 
                 };
             })
             .sort((a, b) => b.totalFaltas - a.totalFaltas);
 
-        // 5. Renderizar o dashboard
-        renderizarKPIs(totalFaltasFiltradas, funcionariosComFalta.size);
+        // 5. Renderizar
+        renderizarKPIs(totalFaltasFiltradas, funcionariosComFalta.size, totalInjustificadas, infratoresRepeticao);
         renderizarRanking(rankingArray, rankingContainer);
-        renderizarGraficoSexo(contagemFuncionariosPorSexo);
+        renderizarGraficoMotivos(faltasPorMotivo);
         renderizarGraficoSetor(faltasPorSetor);
         renderizarTabelaFaltasDiarias(faltasFiltradas);
-        if(typeof renderizarGraficoEvolucaoFaltas === 'function') {
-            renderizarGraficoEvolucaoFaltas(faltasFiltradas);
-        }
+        renderizarGraficoEvolucao(faltasFiltradas);
 
     } catch (error) {
         console.error('Erro ao carregar dashboard de faltas:', error);
@@ -225,17 +204,16 @@ async function carregarDashboardFaltas(db) {
     }
 }
 
-/**
- * Renderiza os cartões de KPI no dashboard.
- * @param {number} totalFaltas - O número total de faltas.
- * @param {number} funcionariosUnicos - O número de funcionários únicos com faltas.
- */
-function renderizarKPIs(totalFaltas, funcionariosUnicos) {
+function renderizarKPIs(totalFaltas, funcionariosUnicos, injsutificadas, taxa) {
     const kpiTotalEl = document.getElementById('kpi-total-faltas');
     const kpiMesEl = document.getElementById('kpi-faltas-mes');
+    const kpiInjus = document.getElementById('kpi-faltas-injustificadas');
+    const kpiTaxa = document.getElementById('kpi-taxa-repeticao');
 
     if (kpiTotalEl) kpiTotalEl.textContent = totalFaltas.toLocaleString('pt-BR');
     if (kpiMesEl) kpiMesEl.textContent = funcionariosUnicos.toLocaleString('pt-BR');
+    if (kpiInjus) kpiInjus.textContent = injsutificadas.toLocaleString('pt-BR');
+    if (kpiTaxa) kpiTaxa.textContent = taxa.toLocaleString('pt-BR');
 }
 
 /**
@@ -264,20 +242,27 @@ function renderizarRanking(ranking, container) {
         const posicao = index < 3 ? medalhas[index] : `#${index + 1}`;
         const classeCor = index < 3 ? 'fw-bold' : '';
 
+        const badgeColor = index === 0 ? 'bg-danger' : (index === 1 ? 'bg-warning text-dark' : (index === 2 ? 'bg-info text-dark' : 'bg-secondary'));
+
         const itemEl = document.createElement('div');
-        itemEl.className = 'list-group-item';
+        itemEl.className = 'list-group-item py-3 px-4 border-0 border-bottom';
         itemEl.innerHTML = `
             <div class="d-flex justify-content-between align-items-center">
                 <div class="d-flex align-items-center">
-                    <span class="${classeCor} me-3" style="min-width: 40px;">${posicao}</span>
+                    <div class="d-flex align-items-center justify-content-center bg-light rounded-circle me-3 fw-bold" style="width: 40px; height: 40px; font-size: 1.1rem; color: #64748b;">
+                        ${posicao}
+                    </div>
                     <div>
-                        <div class="fw-semibold">${item.nome}</div>
-                        <small class="text-muted">${item.empresa} / ${item.setor}</small>
+                        <div class="fw-bold text-dark mb-1" style="font-size: 1rem;">${item.nome}</div>
+                        <div class="text-muted small"><i class="fas fa-building me-1 opacity-50"></i> ${item.setor}</div>
                     </div>
                 </div>
-                <span class="badge bg-danger rounded-pill px-3 py-2">
-                    ${item.totalFaltas} ${item.totalFaltas === 1 ? 'falta' : 'faltas'}
-                </span>
+                <div class="text-center">
+                    <span class="badge ${badgeColor} rounded-pill shadow-sm" style="font-size: 1rem; padding: 0.5em 1em;">
+                        ${item.totalFaltas}
+                    </span>
+                    <div class="small text-muted mt-1" style="font-size: 0.7rem;">ocorrências</div>
+                </div>
             </div>
         `;
         container.appendChild(itemEl);
@@ -292,52 +277,44 @@ function renderizarRanking(ranking, container) {
     }
 }
 
-/**
- * Renderiza o gráfico de barras de faltas por sexo.
- * @param {Object} dados - Objeto com a contagem de faltas por sexo.
- */
-function renderizarGraficoSexo(dados) {
-    const ctx = document.getElementById('grafico-faltas-sexo')?.getContext('2d');
+function renderizarGraficoMotivos(dados) {
+    const ctx = document.getElementById('grafico-motivos')?.getContext('2d');
     if (!ctx) return;
 
-    if (chartFaltasSexo) {
-        chartFaltasSexo.destroy();
-    }
+    if (chartFaltasMotivos) chartFaltasMotivos.destroy();
 
     const labels = Object.keys(dados);
     const values = Object.values(dados);
 
-    // Cores: Azul para Masculino, Rosa para Feminino
-    const backgroundColors = labels.map(label => {
-        const l = label.toLowerCase();
-        if (l.includes('fem')) return '#FF69B4'; // Rosa
-        if (l.includes('masc')) return '#36A2EB'; // Azul
-        return '#CCCCCC'; // Cinza para outros
-    });
+    // Gradient colors
+    const colors = [
+        '#ef4444', // red
+        '#f59e0b', // amber
+        '#3b82f6', // blue
+        '#8b5cf6', // violet
+        '#10b981', // emerald
+        '#64748b'  // slate
+    ];
 
-    chartFaltasSexo = new Chart(ctx, {
+    chartFaltasMotivos = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: labels,
             datasets: [{
-                label: 'Faltas',
                 data: values,
-                backgroundColor: backgroundColors,
-                borderColor: '#ffffff',
-                borderWidth: 1
+                backgroundColor: colors,
+                borderWidth: 0,
+                hoverOffset: 4
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: '75%',
             plugins: {
                 legend: {
-                    display: true,
-                    position: 'right',
-                    labels: {
-                        usePointStyle: true,
-                        boxWidth: 8
-                    }
+                    position: 'bottom',
+                    labels: { padding: 20, usePointStyle: true, pointStyle: 'circle' }
                 }
             }
         }
@@ -374,33 +351,83 @@ function renderizarGraficoSetor(dados) {
         data: {
             labels: labels,
             datasets: [{
-                label: 'Faltas',
+                label: 'Ocorrências',
                 data: values,
-                backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                borderColor: 'rgba(54, 162, 235, 1)',
-                borderWidth: 1
+                backgroundColor: '#3b82f6',
+                borderRadius: 4,
+                barPercentage: 0.6
             }]
         },
         options: {
-            indexAxis: 'y', // Torna o gráfico horizontal
+            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: {
-                    beginAtZero: true,
-                    grid: { display: false },
-                    ticks: {
-                        stepSize: 1
-                    }
-                },
-                y: {
-                    grid: { display: false },
-                    ticks: { autoSkip: false }
-                }
+                x: { grid: { display: false }, ticks: { stepSize: 1 } },
+                y: { grid: { display: false, drawBorder: false } }
             }
+        }
+    });
+}
+
+function renderizarGraficoEvolucao(faltas) {
+    const ctx = document.getElementById('grafico-evolucao-faltas-dia')?.getContext('2d');
+    if(!ctx) return;
+    if(chartEvolucao) chartEvolucao.destroy();
+    
+    // Group by date
+    const counts = {};
+    faltas.forEach(f => {
+        const dStr = f.data?.toDate ? f.data.toDate().toLocaleDateString('pt-BR') : new Date(f.data).toLocaleDateString('pt-BR');
+        counts[dStr] = (counts[dStr] || 0) + 1;
+    });
+    
+    // Sort keys by date
+    const sortedDates = Object.keys(counts).sort((a,b) => {
+        const [da,ma,ya] = a.split('/');
+        const [db,mb,yb] = b.split('/');
+        return new Date(`${ya}-${ma}-${da}`) - new Date(`${yb}-${mb}-${db}`);
+    });
+    
+    const values = sortedDates.map(d => counts[d]);
+    
+    // Create gradient
+    let gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(79, 70, 229, 0.4)');
+    gradient.addColorStop(1, 'rgba(79, 70, 229, 0.0)');
+
+    chartEvolucao = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: sortedDates,
+            datasets: [{
+                label: 'Ocorrências Diárias',
+                data: values,
+                borderColor: '#4f46e5',
+                backgroundColor: gradient,
+                borderWidth: 3,
+                pointBackgroundColor: '#ffffff',
+                pointBorderColor: '#4f46e5',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                tension: 0.4 // Curve
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+                y: { beginAtZero: true, grid: { borderDash: [4, 4] }, ticks: { stepSize: 1 } },
+                x: { grid: { display: false } }
+            },
+            interaction: {
+                intersect: false,
+                mode: 'index',
+            },
         }
     });
 }
@@ -509,13 +536,29 @@ function renderizarTabelaFaltasDiarias(faltas) {
         
         return `
         <tr>
-            <td class="text-secondary fw-semibold">${dateStr}</td>
-            <td class="fw-bold">${f.funcionarioNome || 'N/I'}</td>
-            <td>${f.setor || 'N/I'}</td>
-            <td><span class="badge bg-danger">${f.motivo || 'N/I'}</span></td>
-            <td class="text-muted small">${f.observacao || '-'}</td>
-            <td class="text-end">
-                <button class="btn btn-sm btn-outline-danger" onclick="excluirFaltaDiaria('${f.id}')" title="Excluir"><i class="fas fa-trash"></i></button>
+            <td class="ps-4 text-secondary fw-semibold">${dateStr}</td>
+            <td>
+                <div class="fw-bold text-dark">${f.funcionarioNome || 'N/I'}</div>
+            </td>
+            <td>
+                <div class="d-inline-flex align-items-center bg-light text-secondary rounded-pill px-3 py-1 small fw-medium">
+                    <i class="fas fa-building me-2 opacity-50"></i>${f.setor || 'N/I'}
+                </div>
+            </td>
+            <td>
+                <span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1 rounded-pill" style="font-size: 0.75rem;">
+                    ${f.motivo || 'N/I'}
+                </span>
+            </td>
+            <td>
+                <div class="text-muted text-truncate" style="max-width: 200px; font-size: 0.85rem;">
+                    ${f.observacao || '<span class="opacity-50">Sem obs.</span>'}
+                </div>
+            </td>
+            <td class="text-end pe-4">
+                <button class="btn btn-sm btn-light text-danger rounded-circle shadow-sm" onclick="excluirFaltaDiaria('${f.id}')" title="Excluir" style="width: 32px; height: 32px; padding: 0;">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
             </td>
         </tr>`;
     }).join('');
