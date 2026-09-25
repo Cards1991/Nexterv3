@@ -387,6 +387,17 @@ async function abrirModalAvaliacaoExperiencia(id, nome, periodo) {
                     });
                     html += '</ul>';
                 }
+                
+                if (permitirEscavador) {
+                    html += `
+                        <div class="mt-3 pt-2 border-top border-warning text-end">
+                            <span class="small text-muted me-2">Deseja aprofundar a investigação?</span>
+                            <button type="button" class="btn btn-sm btn-warning shadow-sm" onclick="document.getElementById('aval-exp-escavador-area').scrollIntoView({behavior: 'smooth'}); consultarEscavadorAvaliacao('AUTO');">
+                                <i class="fas fa-balance-scale"></i> Consultar Antecedentes (Escavador)
+                            </button>
+                        </div>
+                    `;
+                }
                 html += '</div>';
             } else {
                 html = '<div class="alert alert-success border-success py-2 mb-3"><i class="fas fa-check-circle me-2"></i> Sem ocorrências no histórico.</div>';
