@@ -1092,8 +1092,7 @@ window.renderizarEscavadorAvaliacao = function(funcData) {
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
                         <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.75rem;" onclick="abrirDocumentosEscavador('${proc.numero_cnj}')"><i class="fas fa-file-pdf"></i> Documentos Públicos</button>
-                            ${proc.fonte_url ? `<a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url)) ? `<a href="${proc.fonte_url || proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
                         </div>
                     </div>
                 `;
@@ -1162,7 +1161,7 @@ window.consultarEscavadorAvaliacao = async function(modeToUse = 'AUTO') {
                 titulo_polo_passivo: p.titulo_polo_passivo,
                 orgao_julgador: p.capa?.orgao_julgador || '',
                 situacao: p.capa?.situacao || '',
-                fonte_url: p.fonte_url || p.url || ''
+                fonte_url: (p.fontes && p.fontes.length > 0) ? p.fontes[0].url : (p.fonte_url || p.url || '')
             }));
 
             await docRef.update({
@@ -1222,8 +1221,7 @@ window.renderizarEscavadorGenerico = function(funcData) {
                         <p class="mb-1 small">${proc.titulo_polo_ativo || 'N/I'} x ${proc.titulo_polo_passivo || 'N/I'}</p>
                         <small class="text-muted d-block">${proc.orgao_julgador || ''} - ${proc.situacao || ''}</small>
                         <div class="mt-2 d-flex gap-1 flex-wrap">
-                            <button type="button" class="btn btn-sm btn-outline-danger py-0" style="font-size: 0.75rem;" onclick="abrirDocumentosEscavador('${proc.numero_cnj}')"><i class="fas fa-file-pdf"></i> Documentos Públicos</button>
-                            ${proc.fonte_url ? `<a href="${proc.fonte_url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
+                            ${(proc.fonte_url || (proc.fontes && proc.fontes[0] && proc.fontes[0].url)) ? `<a href="${proc.fonte_url || proc.fontes[0].url}" target="_blank" class="btn btn-sm btn-outline-secondary py-0" style="font-size: 0.75rem;"><i class="fas fa-external-link-alt"></i> Abrir fonte externa</a>` : ''}
                         </div>
                     </div>
                 `;
@@ -1340,7 +1338,7 @@ window.consultarEscavadorMenuAPI = async function(id, modeToUse = 'AUTO') {
                 titulo_polo_passivo: p.titulo_polo_passivo,
                 orgao_julgador: p.capa?.orgao_julgador || '',
                 situacao: p.capa?.situacao || '',
-                fonte_url: p.fonte_url || p.url || ''
+                fonte_url: (p.fontes && p.fontes.length > 0) ? p.fontes[0].url : (p.fonte_url || p.url || '')
             }));
 
             await docRef.update({
