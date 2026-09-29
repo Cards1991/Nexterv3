@@ -1051,6 +1051,104 @@ function exportarFaltasCSV() {
     document.body.removeChild(link);
 }
 
+async function enviarTudoFolhaPagamento() {
+    const btn = document.getElementById('btn-enviar-folha');
+    const dtInicio = document.getElementById('rhid-he-inicio').value;
+    const dtFim = document.getElementById('rhid-he-fim').value;
+
+    if (!dtInicio || !dtFim) {
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Selecione o período de início e fim (Filtro Local).', 'warning');
+        } else {
+            alert('Selecione o período de início e fim.');
+        }
+        return;
+    }
+
+    if (!confirm("Deseja aprovar todas as horas extras pendentes do RHiD neste período?")) {
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando...';
+
+        // Converter datas
+        const startTimestamp = firebase.firestore.Timestamp.fromDate(new Date(dtInicio + 'T00:00:00'));
+        const endTimestamp = firebase.firestore.Timestamp.fromDate(new Date(dtFim + 'T23:59:59'));
+
+        // Buscar todas solicitações pendentes originadas do RHiD
+        const snap = await window.db.collection('solicitacoes_horas')
+            .where('origem', '==', 'RHiD')
+            .where('status', '==', 'pendente')
+            .get();
+
+        if (snap.empty) {
+            if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhuma hora extra pendente encontrada para este período.', 'info');
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+            return;
+        }
+
+        let batch = window.db.batch();
+        let ops = 0;
+        let aprovadas = 0;
+
+        snap.forEach(doc => {
+            const data = doc.data();
+            const docStart = data.start;
+            
+            // Verificar se está no período
+            if (docStart && docStart >= startTimestamp && docStart <= endTimestamp) {
+                batch.update(doc.ref, {
+                    status: 'aprovado',
+                    aprovadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+                    aprovadoPor: 'Envio em Lote RHiD'
+                });
+                ops++;
+                aprovadas++;
+
+                if (ops === 400) {
+                    batch.commit();
+                    batch = window.db.batch();
+                    ops = 0;
+                }
+            }
+        });
+
+        if (ops > 0) {
+            await batch.commit();
+        }
+
+        if (aprovadas > 0) {
+            if (typeof mostrarMensagem === 'function') {
+                mostrarMensagem(`Sucesso! ${aprovadas} solicitações aprovadas e prontas para a folha.`, 'success');
+            } else {
+                alert(`Sucesso! ${aprovadas} solicitações aprovadas e prontas para a folha.`);
+            }
+        } else {
+            if (typeof mostrarMensagem === 'function') {
+                mostrarMensagem('Nenhuma hora extra pendente no período selecionado.', 'info');
+            } else {
+                alert('Nenhuma hora extra pendente no período selecionado.');
+            }
+        }
+        
+        btn.innerHTML = textoOriginal;
+
+    } catch (e) {
+        console.error("Erro ao enviar p/ folha:", e);
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Erro ao aprovar horas.', 'error');
+        } else {
+            alert('Erro ao aprovar horas.');
+        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane me-2"></i> ENVIAR P/ FOLHA DE PAGAMENTO';
+    }
+}
+
 function exportarHorasExtrasCSV() {
     const tbody = document.getElementById('rhid-he-tbody');
     const rows = tbody.querySelectorAll('tr');

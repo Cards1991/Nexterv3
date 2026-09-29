@@ -1168,5 +1168,210 @@ async function carregarFiltroEmpresasDp() {
         console.error('Erro ao carregar empresas:', e);
     }
 }
+}
 document.addEventListener('DOMContentLoaded', carregarFiltroEmpresasDp);
 setTimeout(carregarFiltroEmpresasDp, 1000); // Em caso de carregamento dinâmico
+
+async function processarTodaEmpresa() {
+    const btn = document.getElementById('btn-processar-lote');
+    const competencia = document.getElementById('filtro-fechamento-competencia').value;
+    const tipoCalculo = document.getElementById('filtro-fechamento-tipo').value;
+
+    if (!competencia || competencia.length < 7) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Informe uma competência válida (MM/YYYY).', 'warning');
+        return;
+    }
+
+    if (!confirm(`Deseja iniciar o processamento em lote para TODA A EMPRESA na competência ${competencia}?\nIsso processará todos os funcionários ativos.`)) {
+        return;
+    }
+
+    const tipoNome = tipoCalculo === '1' ? 'Folha Mensal' : 'Adiantamento';
+    
+    try {
+        btn.disabled = true;
+        const textoOriginal = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Processando...';
+        if (typeof mostrarMensagem === 'function') mostrarMensagem(`Iniciando processamento em lote (${tipoNome})...`, 'info');
+
+        // Pré-carregar verbas
+        const verbasSnap = await window.db.collection('verbas').get();
+        const verbasCadastradas = [];
+        verbasSnap.forEach(v => verbasCadastradas.push(v.data()));
+
+        if (tipoCalculo === '1' && verbasCadastradas.length === 0) {
+            if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhuma verba configurada. Abortando.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+            return;
+        }
+
+        // Buscar funcionários ativos (com limite para segurança de lock no navegador)
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO']).get();
+        const funcionarios = [];
+        funcSnap.forEach(doc => {
+            const data = doc.data();
+            data.id = doc.id;
+            funcionarios.push(data);
+        });
+
+        if (funcionarios.length === 0) {
+            if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum funcionário ativo encontrado.', 'warning');
+            btn.disabled = false;
+            btn.innerHTML = textoOriginal;
+            return;
+        }
+
+        // Definir período da apuração para a competência (se for folha mensal)
+        let dtInicio, dtFim;
+        if (tipoCalculo === '1') {
+            const mesParts = competencia.split('/');
+            let mes = parseInt(mesParts[0], 10);
+            let ano = parseInt(mesParts[1], 10);
+            
+            let mesAnterior = mes - 1;
+            let anoAnterior = ano;
+            if (mesAnterior === 0) {
+                mesAnterior = 12;
+                anoAnterior--;
+            }
+            dtInicio = `${anoAnterior}-${mesAnterior.toString().padStart(2, '0')}-26`;
+            dtFim = `${ano}-${mes.toString().padStart(2, '0')}-25`;
+        }
+
+        const diasUteis = 25; // Default (pode ser ajustado futuramente numa modal)
+        const diasDsr = 5;
+        const parametrosEntrada = { diasUteis, diasDsr };
+
+        let processados = 0;
+        const batchSize = 100;
+        let batch = window.db.batch();
+        let opsCount = 0;
+
+        for (const func of funcionarios) {
+            const salarioBase = parseFloat(func.salario) || 0;
+            let movimentos = [];
+            let totalProventos = 0;
+            let totalDescontos = 0;
+
+            if (tipoCalculo === '2') {
+                const valorAdiantamento = Number((salarioBase * 0.40).toFixed(2));
+                movimentos.push({
+                    verbaCodigo: '0060',
+                    natureza: 'V',
+                    referencia: '40.00',
+                    valor: valorAdiantamento
+                });
+                totalProventos += valorAdiantamento;
+            } else if (tipoCalculo === '1') {
+                let apuracaoPonto = { horasExtrasCalculadas: 0, horasTotalNoturno: 0, horasApenasFalta: 0, diasTrabalhados: 0 };
+                const cpfNumeros = (func.cpf || '').replace(/\D/g, '');
+
+                if (cpfNumeros) {
+                    const pontoSnap = await window.db.collection('espelhos_ponto').where('cpf', '==', cpfNumeros).get();
+                    if (!pontoSnap.empty) {
+                        pontoSnap.forEach(doc => {
+                            const d = doc.data();
+                            if (d.dataReferencia >= dtInicio && d.dataReferencia <= dtFim) {
+                                apuracaoPonto.horasExtrasCalculadas += Number(d.horasExtras || 0);
+                                apuracaoPonto.horasTotalNoturno += Number(d.horasAdicionalNoturno || 0);
+                                apuracaoPonto.horasApenasFalta += Number(d.horasFaltaAtraso || 0);
+                                apuracaoPonto.diasTrabalhados += 1;
+                            }
+                        });
+                    }
+                }
+
+                // Chamar o motor
+                const resultadoMotor = await window.motorFolha.processar(func, apuracaoPonto, verbasCadastradas, parametrosEntrada);
+                movimentos = resultadoMotor.movimentos;
+                totalProventos = resultadoMotor.totalProventos;
+                totalDescontos = resultadoMotor.totalDescontos;
+
+                // Desconto de adiantamento
+                const idAdiantamento = `${func.id}_${competencia.replace('/', '')}_2`;
+                const docAdiantamento = await window.db.collection('historico_folha').doc(idAdiantamento).get();
+                if (docAdiantamento.exists) {
+                    const dadosAdt = docAdiantamento.data();
+                    const verbaAdt = dadosAdt.movimentos.find(m => m.verbaCodigo === '0060' || m.verbaCodigo === '0003');
+                    const valorDescontoAdt = verbaAdt ? verbaAdt.valor : dadosAdt.liquido;
+
+                    if (valorDescontoAdt > 0) {
+                        movimentos.push({
+                            verbaCodigo: '0003',
+                            nome: 'Adiantamento de Salario',
+                            natureza: 'D',
+                            referencia: '',
+                            valor: Number(valorDescontoAdt.toFixed(2)),
+                            memoriaCalculo: `Buscou o valor do Adiantamento salvo no histórico desta competência.\nValor pago: R$ ${valorDescontoAdt}`
+                        });
+                        totalDescontos += Number(valorDescontoAdt.toFixed(2));
+                    }
+                }
+            }
+
+            // Arredondamento do Mês
+            let provisorioLiquido = Number((totalProventos - totalDescontos).toFixed(2));
+            if (provisorioLiquido > 0 && !Number.isInteger(provisorioLiquido)) {
+                const liquidoArredondado = Math.ceil(provisorioLiquido);
+                const valorArredondamento = Number((liquidoArredondado - provisorioLiquido).toFixed(2));
+                
+                if (valorArredondamento > 0) {
+                    movimentos.push({ 
+                        verbaCodigo: '0008', 
+                        natureza: 'V', 
+                        referencia: '', 
+                        valor: valorArredondamento,
+                        nome: 'Arredondamento do Mês',
+                        memoriaCalculo: `Arredondamento Automático na Folha.`
+                    });
+                    totalProventos += valorArredondamento;
+                }
+            }
+
+            // Salvar no histórico usando Batch
+            const idUnico = `${func.id}_${competencia.replace('/', '')}_${tipoCalculo}`;
+            const docRef = window.db.collection('historico_folha').doc(idUnico);
+            
+            batch.set(docRef, {
+                funcionarioId: func.id,
+                competencia: competencia,
+                tipoCalculo: tipoCalculo,
+                movimentos: movimentos,
+                parametros: parametrosEntrada,
+                origem: 'Cálculo Sistema Nexter (Em Lote)',
+                dataProcessamento: firebase.firestore.FieldValue.serverTimestamp(),
+                liquido: Number((totalProventos - totalDescontos).toFixed(2))
+            });
+
+            opsCount++;
+            processados++;
+
+            if (opsCount >= batchSize) {
+                await batch.commit();
+                batch = window.db.batch();
+                opsCount = 0;
+            }
+        }
+
+        if (opsCount > 0) {
+            await batch.commit();
+        }
+
+        if (typeof mostrarMensagem === 'function') mostrarMensagem(`Sucesso! ${processados} funcionários processados.`, 'success');
+        
+        btn.disabled = false;
+        btn.innerHTML = textoOriginal;
+
+        // Atualizar a view coletiva após salvar
+        if (typeof buscarFechamentoColetivo === 'function') {
+            buscarFechamentoColetivo();
+        }
+
+    } catch (e) {
+        console.error("Erro no processamento em lote:", e);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem("Erro durante o processamento da folha.", "error");
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-play me-2"></i>Auto-Processar Tudo';
+    }
+}
