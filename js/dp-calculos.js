@@ -1168,7 +1168,6 @@ async function carregarFiltroEmpresasDp() {
         console.error('Erro ao carregar empresas:', e);
     }
 }
-}
 document.addEventListener('DOMContentLoaded', carregarFiltroEmpresasDp);
 setTimeout(carregarFiltroEmpresasDp, 1000); // Em caso de carregamento dinâmico
 
