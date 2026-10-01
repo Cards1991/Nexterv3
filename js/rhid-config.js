@@ -1592,8 +1592,8 @@ window.abrirModalAcoesFaltaRhid = function(funcId, funcNome, funcSetor) {
                         </div>
                     </div>
                     <div class="modal-footer border-0 pb-4 pe-4">
-                        <button class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
-                        <button class="btn btn-danger fw-bold rounded-pill shadow-sm px-4" onclick="salvarAcaoFaltaRhid()">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="button" class="btn btn-danger fw-bold rounded-pill shadow-sm px-4" onclick="salvarAcaoFaltaRhid()">
                             <i class="fas fa-save me-2"></i> Salvar Movimento
                         </button>
                     </div>
