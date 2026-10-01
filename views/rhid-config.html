@@ -201,13 +201,17 @@
             <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
                 <div class="card-body p-4 d-flex flex-column justify-content-between">
                     <div>
-                        <h5 class="fw-bold text-danger"><i class="fas fa-user-times me-2"></i> Faltas de Hoje</h5>
+                        <h5 class="fw-bold text-danger"><i class="fas fa-user-times me-2"></i> Faltas Diárias</h5>
                         <p class="text-muted small">
-                            Faz uma consulta instantânea na nuvem RHiD e retorna quem ainda não teve batidas ou tem horas zeradas no dia de hoje.
+                            Faz uma consulta instantânea na nuvem RHiD e retorna quem ainda não teve batidas ou tem horas zeradas na data selecionada.
                         </p>
+                        <div class="mt-2 mb-2">
+                            <label class="form-label small text-muted mb-1">Data da Consulta</label>
+                            <input type="date" id="rhid-faltas-data" class="form-control form-control-sm">
+                        </div>
                     </div>
-                    <button class="btn btn-outline-danger w-100 mt-3 rounded-pill fw-semibold shadow-sm" id="btn-verificar-faltas-hoje" onclick="verificarFaltasHoje()">
-                        <i class="fas fa-search me-2"></i> VERIFICAR FALTAS HOJE
+                    <button class="btn btn-outline-danger w-100 mt-2 rounded-pill fw-semibold shadow-sm" id="btn-verificar-faltas-hoje" onclick="verificarFaltasHoje()">
+                        <i class="fas fa-search me-2"></i> VERIFICAR FALTAS
                     </button>
                     <div id="rhid-faltas-hoje-container" class="mt-4 d-none">
                         <!-- Tabela de Faltas Hoje injetada aqui -->

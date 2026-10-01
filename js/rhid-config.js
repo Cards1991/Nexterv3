@@ -587,8 +587,13 @@ async function verificarFaltasHoje() {
             }
         });
 
-        // Hoje, compensando fuso (Y-m-d) local
-        const hojeObj = new Date();
+        // Data selecionada ou Hoje
+        const dataInput = document.getElementById('rhid-faltas-data')?.value;
+        let hojeObj = new Date();
+        if (dataInput) {
+            hojeObj = new Date(dataInput + 'T00:00:00');
+        }
+        
         const y = hojeObj.getFullYear();
         const m = String(hojeObj.getMonth() + 1).padStart(2, '0');
         const d = String(hojeObj.getDate()).padStart(2, '0');
@@ -735,26 +740,52 @@ async function verificarFaltasHoje() {
                 let actions = '';
                 if (title === 'Faltas Injustificadas') {
                     actions = `
-                    <div class="mt-2">
-                        <button class="btn btn-sm btn-outline-danger fw-bold rounded-pill shadow-sm" onclick="abrirModalAcoesFaltaRhid('${f.id}', '${f.nome.replace(/'/g, "\\'")}', '${(f.setor || '').replace(/'/g, "\\'")}')">
-                            <i class="fas fa-cog me-1"></i> Ações
-                        </button>
+                    <div class="mt-2 p-2 bg-light rounded border border-danger border-opacity-25 falta-batch-item" data-id="${f.id}" data-nome="${f.nome.replace(/'/g, '&apos;')}" data-setor="${(f.setor || '').replace(/'/g, '&apos;')}">
+                        <div class="row g-2">
+                            <div class="col-12">
+                                <select class="form-select form-select-sm bg-white border-0 shadow-sm falta-batch-motivo">
+                                    <option value="">(Ignorar - Manter como Falta)</option>
+                                    <option value="Falta Injustificada">Confirmar Falta Injustificada</option>
+                                    <option value="Esquecimento de Batida">Esquecimento de Batida</option>
+                                    <option value="Problema de Energia/Internet">Problema de Energia / Internet</option>
+                                    <option value="Problema no Transporte">Problema no Transporte</option>
+                                    <option value="Atraso Justificado">Atraso Justificado</option>
+                                    <option value="Problemas Pessoais/Familiares">Problemas Pessoais / Familiares</option>
+                                    <option value="Outros">Outros</option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <input type="text" class="form-control form-control-sm bg-white border-0 shadow-sm falta-batch-obs" placeholder="Obs (opcional)">
+                            </div>
+                        </div>
                     </div>`;
                 }
 
                 return `
                 <div class="list-group-item py-2 px-3">
-                    <div class="d-flex justify-content-between align-items-center">
-                        <div>
-                            <div class="fw-bold text-dark small">${f.nome}</div>
-                            <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
-                            ${extra}
-                            ${actions}
+                    <div class="d-flex flex-column">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <div>
+                                <div class="fw-bold text-dark small">${f.nome}</div>
+                                <div class="text-muted" style="font-size: 0.75rem;"><i class="fas fa-building me-1"></i> ${f.setor || 'N/I'}</div>
+                            </div>
+                            <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
                         </div>
-                        <span class="badge bg-${colorClass} rounded-pill shadow-sm" style="font-size: 0.7rem;">${badgeText}</span>
+                        ${extra}
+                        ${actions}
                     </div>
                 </div>`;
             }).join('');
+            
+            if (title === 'Faltas Injustificadas' && list.length > 0) {
+                listHtml += `
+                    <div class="list-group-item bg-light text-end p-3">
+                        <button class="btn btn-danger fw-bold shadow-sm rounded-pill px-4" onclick="salvarLoteFaltasRhid()">
+                            <i class="fas fa-save me-2"></i> Salvar Lote
+                        </button>
+                    </div>
+                `;
+            }
 
             return `
                 <div class="card shadow-sm border-0 border-${colorClass} border-opacity-25 mb-3" style="border-radius: 12px;">
@@ -762,7 +793,7 @@ async function verificarFaltasHoje() {
                         <div><i class="${icon} me-2"></i> ${list.length} ${title}</div>
                     </div>
                     <div class="card-body p-0">
-                        <div class="list-group list-group-flush" style="max-height: 250px; overflow-y: auto;">
+                        <div class="list-group list-group-flush" style="max-height: 400px; overflow-y: auto;">
                             ${listHtml}
                         </div>
                     </div>
@@ -1651,5 +1682,66 @@ window.salvarAcaoFaltaRhid = async function() {
     } catch(e) {
         console.error(e);
         if(typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao salvar movimento: ' + e.message, 'error');
+    }
+}
+
+window.salvarLoteFaltasRhid = async function() {
+    const items = document.querySelectorAll('.falta-batch-item');
+    if (items.length === 0) return;
+
+    // Pega a data selecionada no filtro (ou usa a de hoje)
+    const dataInput = document.getElementById('rhid-faltas-data')?.value;
+    let hojeObj = new Date();
+    if (dataInput) {
+        hojeObj = new Date(dataInput + 'T00:00:00');
+    }
+    const y = hojeObj.getFullYear();
+    const m = String(hojeObj.getMonth() + 1).padStart(2, '0');
+    const d = String(hojeObj.getDate()).padStart(2, '0');
+    const dataReferencia = new Date(`${y}-${m}-${d}T00:00:00`);
+
+    const promessas = [];
+    let qtdeSalvos = 0;
+
+    items.forEach(item => {
+        const funcId = item.getAttribute('data-id');
+        const funcNome = item.getAttribute('data-nome');
+        const funcSetor = item.getAttribute('data-setor');
+        const motivo = item.querySelector('.falta-batch-motivo').value;
+        const obs = item.querySelector('.falta-batch-obs').value;
+
+        // Se nenhum motivo for selecionado, ignoramos esse funcionário no lote
+        if (!motivo) return;
+
+        const dataSave = {
+            funcionarioId: funcId,
+            funcionarioNome: funcNome,
+            setor: funcSetor || 'N/I',
+            data: dataReferencia,
+            motivo: motivo,
+            observacao: obs,
+            criado_em: firebase.firestore.FieldValue.serverTimestamp(),
+            createdByUid: firebase.auth().currentUser?.uid || null
+        };
+        
+        promessas.push(window.db.collection('faltas_diarias').add(dataSave));
+        qtdeSalvos++;
+    });
+
+    if (promessas.length === 0) {
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum motivo de falta foi selecionado para salvar.', 'warning');
+        return;
+    }
+
+    try {
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Salvando lote de faltas, aguarde...', 'info');
+        await Promise.all(promessas);
+        if(typeof mostrarMensagem === 'function') mostrarMensagem(`${qtdeSalvos} registros salvos com sucesso!`, 'success');
+        
+        // Atualiza a lista
+        verificarFaltasHoje();
+    } catch(e) {
+        console.error(e);
+        if(typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao salvar lote: ' + e.message, 'error');
     }
 }
