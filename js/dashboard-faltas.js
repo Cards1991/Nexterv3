@@ -135,6 +135,8 @@ async function carregarDashboardFaltas(db) {
         let infratoresRepeticao = 0;
         const faltasPorMotivo = {};
         const faltasFiltradas = [];
+        const diasFaltas = new Map();
+        const faltasPorSetor = {};
 
         faltas.forEach(falta => {
             const idFuncionario = falta.funcionarioId;
