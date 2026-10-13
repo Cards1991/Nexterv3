@@ -61,12 +61,18 @@
             <button class="btn btn-primary btn-sm flex-grow-1" id="btn-filtrar-atestados" title="Aplicar filtros">
                 <i class="fas fa-filter me-1"></i> Filtrar
             </button>
-            <button class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-atestados" title="Limpar todos os filtros">
+            <button class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-atestados" title="Restaurar período padrão do mês atual">
                 <i class="fas fa-undo"></i>
+            </button>
+            <button class="btn btn-outline-primary btn-sm" id="btn-recarregar-atestados" title="Recarregar dados do servidor">
+                <i class="fas fa-sync-alt"></i>
             </button>
         </div>
     </div>
-    <div class="d-flex gap-2 w-100 w-lg-auto justify-content-end">
+    <div class="d-flex flex-wrap gap-2 w-100 w-lg-auto justify-content-end">
+        <button class="btn btn-outline-warning flex-grow-1 flex-lg-grow-0" id="btn-reprocessar-empresas-atestados" onclick="reprocessarEmpresasAtestados()" title="Reprocessar e vincular as empresas dos atestados com base no cadastro dos funcionários">
+            <i class="fas fa-sync-alt me-1"></i><span class="d-none d-sm-inline">Reprocessar Empresas</span>
+        </button>
         <button class="btn btn-success flex-grow-1 flex-lg-grow-0" onclick="exportarAtestadosExcel()">
             <i class="fas fa-file-excel me-2"></i><span class="d-none d-sm-inline">Exportar</span>
         </button>

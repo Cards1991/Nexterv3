@@ -6,6 +6,9 @@
 
 let __atestados_cache = [];
 let __empresasCache = null;
+let __funcionariosCustoMap = null;
+let __empresasMapCache = null;
+let __totalFuncionariosAtivosCache = null;
 let __initializedAtestados = false;
 let __cid_familias_cache = null;
 let __filterTimeout = null;
@@ -54,6 +57,35 @@ function formatarDataParaInput(date) {
     const day = String(date.getDate()).padStart(2, '0');
     
     return `${year}-${month}-${day}`;
+}
+
+/**
+ * Calcula o período de vigência/competência atual padrão do RH:
+ * Do dia 26 do mês anterior ao dia de hoje (se hoje <= 25).
+ * Se hoje > 25, do dia 26 deste mês até hoje.
+ * Exemplo: Em 13/10/2026 -> 26/09/2026 até 13/10/2026.
+ * @returns {{inicio: string, fim: string}} Datas formatadas para input (YYYY-MM-DD)
+ */
+function calcularPeriodoVigenciaPadrao() {
+    const hoje = new Date();
+    let anoInicio = hoje.getFullYear();
+    let mesInicio = hoje.getMonth();
+
+    if (hoje.getDate() <= 25) {
+        mesInicio -= 1;
+        if (mesInicio < 0) {
+            mesInicio = 11;
+            anoInicio -= 1;
+        }
+    }
+
+    const dataInicio = new Date(anoInicio, mesInicio, 26);
+    const dataFim = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
+    return {
+        inicio: formatarDataParaInput(dataInicio),
+        fim: formatarDataParaInput(dataFim)
+    };
 }
 
 /**
@@ -249,24 +281,21 @@ function classeStatus(s) {
 
 // Inicializar atestados
 async function inicializarAtestados() {
-    // Configurar datas padrão (mês atual) COM FUSO LOCAL se ainda não preenchidas
-    const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
-    
-    // Formatar sem problemas de fuso
-    const inicioMesStr = formatarDataParaInput(inicioMes);
-    const fimMesStr = formatarDataParaInput(fimMes);
+    // Configurar datas padrão da vigência/competência atual (dia 26 do mês anterior até hoje)
+    const periodoPadrao = calcularPeriodoVigenciaPadrao();
 
     const filtroInicio = document.getElementById('filtro-data-inicio-atestados');
     const filtroFim = document.getElementById('filtro-data-fim-atestados');
 
-    if (filtroInicio && !filtroInicio.value) filtroInicio.value = inicioMesStr;
-    if (filtroFim && !filtroFim.value) filtroFim.value = fimMesStr;
+    if (filtroInicio && !filtroInicio.value) filtroInicio.value = periodoPadrao.inicio;
+    if (filtroFim && !filtroFim.value) filtroFim.value = periodoPadrao.fim;
 
     configurarEventListenersAtestados();
     await preencherFiltroEmpresasAtestados();
-    await renderizarAtestados(true);
+    
+    // Se já estiver em cache nesta sessão, renderiza direto sem recarregar tudo do Firestore
+    const precisaRecarregar = !__atestados_cache || __atestados_cache.length === 0;
+    await renderizarAtestados(precisaRecarregar);
     await atualizarMetricasAtestados();
     
     __initializedAtestados = true;
@@ -288,16 +317,19 @@ function configurarEventListenersAtestados() {
     if (btnFiltrar) {
         btnFiltrar.onclick = async () => {
             clearTimeout(__filterTimeout);
+            window.__exibirTodosAtestados = false;
             await renderizarAtestados();
             await atualizarMetricasAtestados();
         };
     }
 
-    // Botão de limpar filtros
+    // Botão de limpar filtros (restaura o ciclo padrão do mês atual)
     const btnLimpar = document.getElementById('btn-limpar-filtros-atestados');
     if (btnLimpar) {
         btnLimpar.onclick = async () => {
             clearTimeout(__filterTimeout);
+            window.__exibirTodosAtestados = false;
+            const periodoPadrao = calcularPeriodoVigenciaPadrao();
             const filtroInicio = document.getElementById('filtro-data-inicio-atestados');
             const filtroFim = document.getElementById('filtro-data-fim-atestados');
             const filtroEmpresa = document.getElementById('filtro-empresa-atestados');
@@ -305,8 +337,8 @@ function configurarEventListenersAtestados() {
             const filtroStatus = document.getElementById('filtro-status-atestados');
             const filtroModo = document.getElementById('filtro-modo-data-atestados');
 
-            if (filtroInicio) filtroInicio.value = '';
-            if (filtroFim) filtroFim.value = '';
+            if (filtroInicio) filtroInicio.value = periodoPadrao.inicio;
+            if (filtroFim) filtroFim.value = periodoPadrao.fim;
             if (filtroEmpresa) filtroEmpresa.value = '';
             if (filtroTipo) filtroTipo.value = '';
             if (filtroStatus) filtroStatus.value = '';
@@ -314,6 +346,28 @@ function configurarEventListenersAtestados() {
 
             await renderizarAtestados();
             await atualizarMetricasAtestados();
+        };
+    }
+
+    // Botão de recarregar dados do servidor
+    const btnRecarregar = document.getElementById('btn-recarregar-atestados');
+    if (btnRecarregar) {
+        btnRecarregar.onclick = async () => {
+            clearTimeout(__filterTimeout);
+            window.__exibirTodosAtestados = false;
+            btnRecarregar.disabled = true;
+            const icon = btnRecarregar.querySelector('i');
+            if (icon) icon.classList.add('fa-spin');
+            try {
+                __funcionariosCustoMap = null;
+                __empresasMapCache = null;
+                __totalFuncionariosAtivosCache = null;
+                await renderizarAtestados(true);
+                await atualizarMetricasAtestados();
+            } finally {
+                btnRecarregar.disabled = false;
+                if (icon) icon.classList.remove('fa-spin');
+            }
         };
     }
 
@@ -526,8 +580,14 @@ async function atualizarTabelaAtestados(filtrados) {
         return;
     }
 
-    tbody.innerHTML = filtrados.map(a => {
-        const empresaNome = empMap[a.empresaId] || '-';
+    const LIMITE_EXIBICAO = 100;
+    const exibirTodos = window.__exibirTodosAtestados || false;
+    const listaExibicao = (exibirTodos || filtrados.length <= LIMITE_EXIBICAO)
+        ? filtrados
+        : filtrados.slice(0, LIMITE_EXIBICAO);
+
+    let html = listaExibicao.map(a => {
+        const empresaNome = empMap[a.empresaId] || '<span class="badge bg-warning text-dark"><i class="fas fa-exclamation-triangle me-1"></i>Empresa: N/A</span>';
         const dataFormatada = formatarData(a.data_atestado);
         const duracaoText = a.duracaoTipo === 'horas' 
             ? `${a.duracaoValor} horas` 
@@ -618,6 +678,21 @@ async function atualizarTabelaAtestados(filtrados) {
         </tr>
         `;
     }).join('');
+
+    if (filtrados.length > LIMITE_EXIBICAO && !exibirTodos) {
+        html += `
+            <tr>
+                <td colspan="4" class="text-center py-3 bg-light">
+                    <span class="text-muted small me-2">Exibindo 100 de ${filtrados.length} atestados no período.</span>
+                    <button class="btn btn-sm btn-outline-primary" onclick="window.__exibirTodosAtestados = true; renderizarAtestados();">
+                        <i class="fas fa-list me-1"></i> Carregar todos os ${filtrados.length} atestados
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+
+    tbody.innerHTML = html;
 }
 
 // =================================================================
@@ -634,12 +709,16 @@ async function atualizarMetricasAtestados() {
 
     const custoTotal = await calcularCustoAtestados(filtrados);
     
-    let totalFuncionariosAtivos = 0;
-    try {
-        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
-        totalFuncionariosAtivos = funcSnap.size;
-    } catch (e) {
-        console.warn('Erro ao obter total de funcionários ativos:', e);
+    let totalFuncionariosAtivos = __totalFuncionariosAtivosCache;
+    if (totalFuncionariosAtivos === null) {
+        try {
+            const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+            totalFuncionariosAtivos = funcSnap.size;
+            __totalFuncionariosAtivosCache = totalFuncionariosAtivos;
+        } catch (e) {
+            console.warn('Erro ao obter total de funcionários ativos:', e);
+            totalFuncionariosAtivos = 0;
+        }
     }
     const taxaAbsenteismo = totalFuncionariosAtivos > 0 ? ((totalDias / (totalFuncionariosAtivos * 22)) * 100).toFixed(1) : 0;
 
@@ -669,25 +748,27 @@ async function calcularCustoAtestados(atestados) {
     if (!atestados.length) return 0;
 
     try {
-        const funcionariosSnap = await db.collection('funcionarios').get();
-        const custoTotalMap = new Map();
-
-        funcionariosSnap.forEach(doc => {
-            const data = doc.data();
-            const custoTotal = data.custoTotal || 0;
-            custoTotalMap.set(doc.id, custoTotal);
-        });
+        if (!__funcionariosCustoMap) {
+            const funcionariosSnap = await db.collection('funcionarios').get();
+            __funcionariosCustoMap = new Map();
+            funcionariosSnap.forEach(doc => {
+                const data = doc.data();
+                __funcionariosCustoMap.set(doc.id, data.custoTotal || 0);
+            });
+        }
 
         // Fetch companies for schedule (jornadaTrabalho)
-        const empresasSnap = await db.collection('empresas').get();
-        const empresasMap = new Map();
-        empresasSnap.forEach(doc => {
-            empresasMap.set(doc.id, doc.data());
-        });
+        if (!__empresasMapCache) {
+            const empresasSnap = await db.collection('empresas').get();
+            __empresasMapCache = new Map();
+            empresasSnap.forEach(doc => {
+                __empresasMapCache.set(doc.id, doc.data());
+            });
+        }
 
         return atestados.reduce((total, atestado) => {
-            const custoTotalFuncionario = custoTotalMap.get(atestado.funcionarioId);
-            const empresa = empresasMap.get(atestado.empresaId);
+            const custoTotalFuncionario = __funcionariosCustoMap.get(atestado.funcionarioId);
+            const empresa = __empresasMapCache.get(atestado.empresaId);
 
             if (custoTotalFuncionario && empresa) {
                 let horasPerdidas = 0;
@@ -2188,6 +2269,174 @@ function renderizarGraficoTendenciaPsicossocial(casos) {
 }
 
 // =================================================================
+// REPROCESSAMENTO E SINCRONIZAÇÃO DE EMPRESAS
+// =================================================================
+
+/**
+ * Reprocessa todos os atestados no banco de dados e sincroniza
+ * o campo empresaId (e setor) com o cadastro atual dos colaboradores (funcionários).
+ */
+async function reprocessarEmpresasAtestados() {
+    const confirmou = confirm(
+        "Deseja reprocessar e sincronizar as empresas de todos os atestados?\n\n" +
+        "Esta rotina irá verificar cada atestado no banco de dados e atualizar a Empresa e o Setor " +
+        "conforme o cadastro atual dos funcionários, corrigindo colaboradores que estão com 'Empresa: N/A'."
+    );
+    if (!confirmou) return;
+
+    const btn = document.getElementById('btn-reprocessar-empresas-atestados');
+    const originalHtml = btn ? btn.innerHTML : '';
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Processando...';
+    }
+
+    try {
+        mostrarMensagem('Iniciando reprocessamento de empresas dos atestados...', 'info');
+
+        // 1. Carrega todas as empresas cadastradas
+        const empSnap = await db.collection('empresas').get();
+        const empresasMap = new Map(); // id -> nome
+        const empresasNomeMap = new Map(); // nome em minúsculas -> id
+        empSnap.forEach(d => {
+            const data = d.data();
+            empresasMap.set(d.id, data.nome || d.id);
+            if (data.nome) {
+                empresasNomeMap.set(data.nome.trim().toLowerCase(), d.id);
+            }
+        });
+
+        // 2. Carrega todos os funcionários
+        const funcSnap = await db.collection('funcionarios').get();
+        const funcById = new Map();
+        const funcByNome = new Map();
+        
+        funcSnap.forEach(d => {
+            const data = d.data();
+            const funcObj = {
+                id: d.id,
+                nome: (data.nome || '').trim(),
+                empresaId: data.empresaId || '',
+                empresa: data.empresa || '',
+                setor: data.setor || ''
+            };
+            
+            // Resolve empresaId do funcionário caso tenha apenas o nome da empresa
+            if (!funcObj.empresaId && funcObj.empresa) {
+                if (empresasMap.has(funcObj.empresa)) {
+                    funcObj.empresaId = funcObj.empresa;
+                } else {
+                    const idPorNome = empresasNomeMap.get(funcObj.empresa.trim().toLowerCase());
+                    if (idPorNome) funcObj.empresaId = idPorNome;
+                }
+            }
+
+            funcById.set(d.id, funcObj);
+            if (funcObj.nome) {
+                funcByNome.set(funcObj.nome.toLowerCase(), funcObj);
+            }
+        });
+
+        // 3. Carrega todos os atestados do banco
+        const atestadosSnap = await db.collection('atestados').get();
+        let totalAnalisados = atestadosSnap.size;
+        let totalAtualizados = 0;
+        let docsParaAtualizar = [];
+
+        atestadosSnap.forEach(doc => {
+            const at = doc.data();
+            let func = null;
+
+            // Busca por funcionarioId
+            if (at.funcionarioId && funcById.has(at.funcionarioId)) {
+                func = funcById.get(at.funcionarioId);
+            }
+
+            // Fallback: busca pelo nome do colaborador
+            if (!func && at.colaborador_nome) {
+                const nomeNorm = at.colaborador_nome.trim().toLowerCase();
+                if (funcByNome.has(nomeNorm)) {
+                    func = funcByNome.get(nomeNorm);
+                }
+            }
+
+            if (func) {
+                const updates = {};
+                
+                // Se o atestado não tem empresaId, tem empresaId vazio ou divergente da do cadastro
+                const empresaIdAtual = at.empresaId || '';
+                const empresaIdEsperada = func.empresaId || '';
+
+                if (empresaIdEsperada && empresaIdAtual !== empresaIdEsperada) {
+                    updates.empresaId = empresaIdEsperada;
+                }
+
+                // Vincula funcionarioId se estiver faltando
+                if (!at.funcionarioId && func.id) {
+                    updates.funcionarioId = func.id;
+                }
+
+                // Sincroniza setor se o atestado não tiver setor preenchido
+                if (!at.setor && func.setor) {
+                    updates.setor = func.setor;
+                }
+
+                if (Object.keys(updates).length > 0) {
+                    docsParaAtualizar.push({
+                        ref: doc.ref,
+                        updates: updates
+                    });
+                }
+            }
+        });
+
+        // 4. Executa as atualizações em lotes (batch do Firestore)
+        if (docsParaAtualizar.length > 0) {
+            const BATCH_SIZE = 450;
+            for (let i = 0; i < docsParaAtualizar.length; i += BATCH_SIZE) {
+                const lote = docsParaAtualizar.slice(i, i + BATCH_SIZE);
+                const batch = db.batch();
+                lote.forEach(item => {
+                    batch.update(item.ref, item.updates);
+                });
+                await batch.commit();
+                totalAtualizados += lote.length;
+            }
+        }
+
+        // 5. Invalida caches locais e recarrega os dados
+        __atestados_cache = [];
+        __empresasCache = null;
+        __funcionariosCustoMap = null;
+        __empresasMapCache = null;
+        __totalFuncionariosAtivosCache = null;
+
+        await renderizarAtestados(true);
+        await atualizarMetricasAtestados();
+
+        if (totalAtualizados > 0) {
+            mostrarMensagem(
+                `Sucesso! ${totalAtualizados} atestado(s) foram reprocessados e vinculados à empresa e setor cadastrados nos funcionários.`,
+                'success'
+            );
+        } else {
+            mostrarMensagem(
+                `Verificação concluída: todos os ${totalAnalisados} atestados já estão sincronizados com as empresas dos colaboradores.`,
+                'info'
+            );
+        }
+    } catch (error) {
+        console.error('Erro ao reprocessar empresas dos atestados:', error);
+        mostrarMensagem('Erro ao reprocessar atestados: ' + error.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+        }
+    }
+}
+
+// =================================================================
 // EXPORTAÇÃO DAS FUNÇÕES PARA O ESCOPO GLOBAL
 // =================================================================
 
@@ -2215,3 +2464,4 @@ window.renderizarAtestados = renderizarAtestados;
 window.atualizarMetricasAtestados = atualizarMetricasAtestados;
 window.renderizarMetricasPsicossociais = renderizarMetricasPsicossociais;
 window.renderizarGraficoTendenciaPsicossocial = renderizarGraficoTendenciaPsicossocial;
+window.reprocessarEmpresasAtestados = reprocessarEmpresasAtestados;

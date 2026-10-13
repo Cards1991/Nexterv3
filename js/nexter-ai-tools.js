@@ -175,6 +175,35 @@ const nexterAITools = {
                 },
                 required: ["criterio"]
             }
+        },
+        {
+            name: "consultarAtestados",
+            description: "Consulta e quantifica os atestados médicos homologados no sistema Nexter (coleção 'atestados'). Permite filtrar por intervalo de datas ('dataInicio' e 'dataFim', formato 'YYYY-MM-DD', ex: '2026-08-26' e '2026-09-25'), mês específico ('anoMes', ex: '2026-08'), setor, empresa e tipo de atestado. Retorna o total exato de atestados, dias abonados, média de dias e relação de colaboradores.",
+            parameters: {
+                type: "object",
+                properties: {
+                    dataInicio: {
+                        type: "string",
+                        description: "Data inicial no formato 'YYYY-MM-DD' (ex: '2026-08-26')."
+                    },
+                    dataFim: {
+                        type: "string",
+                        description: "Data final no formato 'YYYY-MM-DD' (ex: '2026-09-25')."
+                    },
+                    anoMes: {
+                        type: "string",
+                        description: "Mês no formato 'YYYY-MM' (ex: '2026-08') se o usuário consultar um mês fechado."
+                    },
+                    setor: {
+                        type: "string",
+                        description: "Nome do setor para filtrar, se informado."
+                    },
+                    tipo: {
+                        type: "string",
+                        description: "Tipo de atestado ('Doença', 'Acidente', 'Consulta', 'Exame', 'Acompanhamento', etc), se informado."
+                    }
+                }
+            }
         }
     ],
 
@@ -1069,6 +1098,134 @@ const nexterAITools = {
             } catch (error) {
                 console.error("Erro ao salvar preferencia:", error);
                 return JSON.stringify({ erro: "Falha técnica ao salvar preferência no banco." });
+            }
+        },
+
+        consultarAtestados: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                
+                const snapshot = await db.collection('atestados').get();
+                
+                let dataInicioObj = null;
+                let dataFimObj = null;
+                
+                if (args.dataInicio) {
+                    const [y, m, d] = args.dataInicio.split('-').map(Number);
+                    dataInicioObj = new Date(y, m - 1, d, 0, 0, 0);
+                }
+                
+                if (args.dataFim) {
+                    const [y, m, d] = args.dataFim.split('-').map(Number);
+                    dataFimObj = new Date(y, m - 1, d, 23, 59, 59, 999);
+                } else if (args.anoMes && !dataInicioObj) {
+                    const [y, m] = args.anoMes.split('-').map(Number);
+                    dataInicioObj = new Date(y, m - 1, 1, 0, 0, 0);
+                    dataFimObj = new Date(y, m, 0, 23, 59, 59, 999);
+                } else if (!dataInicioObj && !dataFimObj) {
+                    // Padrão Nexter RH: vigência da competência atual (dia 26 do mês anterior até o dia de hoje)
+                    const hoje = new Date();
+                    let anoIni = hoje.getFullYear();
+                    let mesIni = hoje.getMonth();
+                    if (hoje.getDate() <= 25) {
+                        mesIni -= 1;
+                        if (mesIni < 0) {
+                            mesIni = 11;
+                            anoIni -= 1;
+                        }
+                    }
+                    dataInicioObj = new Date(anoIni, mesIni, 26, 0, 0, 0);
+                    dataFimObj = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59, 999);
+                }
+                
+                let totalAtestados = 0;
+                let totalDias = 0;
+                let porTipo = {};
+                let porSetor = {};
+                let detalhado = [];
+                
+                snapshot.forEach(doc => {
+                    const data = doc.data();
+                    const rawDate = data.data_atestado ?? data.data ?? data.dataAtestado ?? data.data_inicio;
+                    if (!rawDate) return;
+                    
+                    let dataAtestado = null;
+                    if (rawDate.toDate) {
+                        const d = rawDate.toDate();
+                        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+                            dataAtestado = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0);
+                        } else {
+                            dataAtestado = d;
+                        }
+                    } else if (typeof rawDate === 'string' && /^\d{4}-\d{2}-\d{2}/.test(rawDate)) {
+                        const [y, m, d] = rawDate.substring(0, 10).split('-').map(Number);
+                        dataAtestado = new Date(y, m - 1, d, 12, 0, 0);
+                    } else if (typeof rawDate === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(rawDate)) {
+                        const [d, m, y] = rawDate.substring(0, 10).split('/').map(Number);
+                        dataAtestado = new Date(y, m - 1, d, 12, 0, 0);
+                    } else if (rawDate instanceof Date) {
+                        dataAtestado = rawDate;
+                    } else {
+                        dataAtestado = new Date(rawDate);
+                    }
+                    
+                    if (!dataAtestado || isNaN(dataAtestado.getTime())) return;
+                    
+                    const inicio = new Date(dataAtestado);
+                    inicio.setHours(0, 0, 0, 0);
+                    
+                    const fim = new Date(dataAtestado);
+                    const dias = parseInt(data.dias, 10) || 1;
+                    if (data.duracaoTipo !== 'horas' && dias > 1) {
+                        fim.setDate(inicio.getDate() + (dias - 1));
+                    }
+                    fim.setHours(23, 59, 59, 999);
+                    
+                    // Filtro de período por vigência/interseção
+                    if (dataInicioObj && fim < dataInicioObj) return;
+                    if (dataFimObj && inicio > dataFimObj) return;
+                    
+                    if (args.setor && (data.setor || '').toLowerCase() !== args.setor.toLowerCase()) return;
+                    if (args.tipo && (data.tipo || '').toLowerCase() !== args.tipo.toLowerCase()) return;
+                    
+                    totalAtestados++;
+                    totalDias += dias;
+                    
+                    const t = data.tipo || 'Outros';
+                    porTipo[t] = (porTipo[t] || 0) + 1;
+                    
+                    const s = data.setor || 'Não Informado';
+                    porSetor[s] = (porSetor[s] || 0) + 1;
+                    
+                    detalhado.push({
+                        colaborador: data.colaborador_nome || 'Não informado',
+                        data: dataAtestado.toLocaleDateString('pt-BR'),
+                        dias: dias,
+                        tipo: t,
+                        cid: data.cid || '',
+                        setor: s
+                    });
+                });
+                
+                return JSON.stringify({
+                    status: "sucesso",
+                    dados: {
+                        periodo_consultado: {
+                            inicio: args.dataInicio || (dataInicioObj ? dataInicioObj.toLocaleDateString('pt-BR') : 'Início'),
+                            fim: args.dataFim || (dataFimObj ? dataFimObj.toLocaleDateString('pt-BR') : 'Fim')
+                        },
+                        total_atestados: totalAtestados,
+                        total_dias_atestado: totalDias,
+                        media_dias_por_atestado: totalAtestados > 0 ? (totalDias / totalAtestados).toFixed(2) : '0.00',
+                        distribuicao_por_tipo: porTipo,
+                        distribuicao_por_setor: porSetor,
+                        total_colaboradores_com_atestado: new Set(detalhado.map(d => d.colaborador)).size,
+                        amostra_atestados: detalhado.slice(0, 15)
+                    }
+                });
+            } catch (error) {
+                console.error("Erro no consultarAtestados:", error);
+                return JSON.stringify({ erro: "Erro ao consultar atestados médicos: " + error.message });
             }
         }
     }
