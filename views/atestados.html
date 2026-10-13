@@ -16,22 +16,29 @@
 
 <div class="d-flex flex-column flex-lg-row justify-content-between align-items-lg-center mb-3 gap-3">
     <div class="row g-2 align-items-end w-100">
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
-            <label class="form-label mb-1 small">De:</label>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto">
+            <label class="form-label mb-1 small fw-semibold">De:</label>
             <input type="date" class="form-control form-control-sm" id="filtro-data-inicio-atestados">
         </div>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
-            <label class="form-label mb-1 small">Até:</label>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto">
+            <label class="form-label mb-1 small fw-semibold">Até:</label>
             <input type="date" class="form-control form-control-sm" id="filtro-data-fim-atestados">
         </div>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto flex-grow-1">
-            <label class="form-label mb-1 small">Empresa:</label>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto">
+            <label class="form-label mb-1 small fw-semibold">Critério Data:</label>
+            <select class="form-select form-select-sm" id="filtro-modo-data-atestados" title="Critério para o filtro de datas">
+                <option value="vigencia" selected>No período (Vigência)</option>
+                <option value="inicio">Data Início / Emissão</option>
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto flex-grow-1">
+            <label class="form-label mb-1 small fw-semibold">Empresa:</label>
             <select class="form-select form-select-sm" id="filtro-empresa-atestados">
                 <option value="">Todas as empresas</option>
             </select>
         </div>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
-            <label class="form-label mb-1 small">Tipo:</label>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto">
+            <label class="form-label mb-1 small fw-semibold">Tipo:</label>
             <select class="form-select form-select-sm" id="filtro-tipo-atestados">
                 <option value="">Todos os tipos</option>
                 <option value="Doença">Doença</option>
@@ -41,8 +48,8 @@
                 <option value="Outros">Outros</option>
             </select>
         </div>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
-            <label class="form-label mb-1 small">Status:</label>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto">
+            <label class="form-label mb-1 small fw-semibold">Status:</label>
             <select class="form-select form-select-sm" id="filtro-status-atestados">
                 <option value="">Todos</option>
                 <option value="Válido">Válidos</option>
@@ -50,9 +57,13 @@
                 <option value="Analise">Em Análise</option>
             </select>
         </div>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-auto">
-            <button class="btn btn-primary btn-sm w-100" id="btn-filtrar-atestados"><i class="fas fa-filter"></i>
-                Filtrar</button>
+        <div class="col-12 col-sm-6 col-md-3 col-lg-auto d-flex gap-1">
+            <button class="btn btn-primary btn-sm flex-grow-1" id="btn-filtrar-atestados" title="Aplicar filtros">
+                <i class="fas fa-filter me-1"></i> Filtrar
+            </button>
+            <button class="btn btn-outline-secondary btn-sm" id="btn-limpar-filtros-atestados" title="Limpar todos os filtros">
+                <i class="fas fa-undo"></i>
+            </button>
         </div>
     </div>
     <div class="d-flex gap-2 w-100 w-lg-auto justify-content-end">
@@ -73,7 +84,7 @@
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
                         <div class="h4 mb-0" id="total-atestados-mes">0</div>
-                        <small>Este mês</small>
+                        <small id="label-total-atestados-card">Total no período</small>
                     </div>
                     <i class="fas fa-file-medical fa-2x opacity-50"></i>
                 </div>

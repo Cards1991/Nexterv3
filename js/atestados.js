@@ -124,28 +124,50 @@ function parseDateSafe(dateInput) {
     
     // Se for um objeto Timestamp do Firestore
     if (dateInput.toDate && typeof dateInput.toDate === 'function') {
-        return dateInput.toDate();
+        const d = dateInput.toDate();
+        // Se foi salvo com UTC midnight (00:00:00 UTC), em fusos UTC negativos (ex: Brasil UTC-3)
+        // a conversão direta para Date local recua para as 21:00 do dia anterior.
+        // Recuperamos a data pretendida usando getUTC*:
+        if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+            return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), 12, 0, 0);
+        }
+        return d;
     }
     
     // Se for uma string no formato YYYY-MM-DD
-    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateInput)) {
-        return parseDataLocal(dateInput);
+    if (typeof dateInput === 'string' && /^\d{4}-\d{2}-\d{2}/.test(dateInput)) {
+        const cleanDate = dateInput.substring(0, 10);
+        return parseDataLocal(cleanDate);
+    }
+
+    // Se for uma string no formato DD/MM/YYYY
+    if (typeof dateInput === 'string' && /^\d{2}\/\d{2}\/\d{4}/.test(dateInput)) {
+        const [day, month, year] = dateInput.substring(0, 10).split('/').map(Number);
+        return new Date(year, month - 1, day, 12, 0, 0);
     }
     
     // Se for uma string ISO
     if (typeof dateInput === 'string' && dateInput.includes('T')) {
         const date = new Date(dateInput);
-        // Ajusta para fuso local
-        const offset = date.getTimezoneOffset() * 60000;
-        return new Date(date.getTime() + offset);
+        if (!isNaN(date.getTime())) {
+            // Se a hora UTC for zero, trata como data de calendário
+            if (date.getUTCHours() === 0 && date.getUTCMinutes() === 0 && date.getUTCSeconds() === 0) {
+                return new Date(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate(), 12, 0, 0);
+            }
+            const offset = date.getTimezoneOffset() * 60000;
+            return new Date(date.getTime() + offset);
+        }
     }
     
     // Se for um objeto Date
     if (dateInput instanceof Date) {
+        if (dateInput.getUTCHours() === 0 && dateInput.getUTCMinutes() === 0 && dateInput.getUTCSeconds() === 0 && dateInput.getHours() !== 0) {
+            return new Date(dateInput.getUTCFullYear(), dateInput.getUTCMonth(), dateInput.getUTCDate(), 12, 0, 0);
+        }
         return new Date(dateInput.getTime());
     }
     
-    // Default
+    // Default fallback
     const date = new Date(dateInput);
     return isNaN(date.getTime()) ? null : date;
 }
@@ -227,9 +249,7 @@ function classeStatus(s) {
 
 // Inicializar atestados
 async function inicializarAtestados() {
-    if (__initializedAtestados) return;
-
-    // Configurar datas padrão (mês atual) COM FUSO LOCAL
+    // Configurar datas padrão (mês atual) COM FUSO LOCAL se ainda não preenchidas
     const hoje = new Date();
     const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
     const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0);
@@ -246,37 +266,86 @@ async function inicializarAtestados() {
 
     configurarEventListenersAtestados();
     await preencherFiltroEmpresasAtestados();
-    await renderizarAtestados();
+    await renderizarAtestados(true);
     await atualizarMetricasAtestados();
     
     __initializedAtestados = true;
 }
 
 function configurarEventListenersAtestados() {
-    // Usar event delegation para os botões principais
-    try {
+    // Usar event delegation para o botão de novo atestado (uma única vez)
+    if (!window.__atestadosNovoListenerBound) {
         document.addEventListener('click', (e) => {
-            // Adicionado listener para o botão de novo atestado
             if (e.target.closest('#btn-novo-atestado')) {
                 abrirModalAtestado();
             }
         });
-    } catch (error) { console.error('Erro ao configurar event listener de clique:', error); }
+        window.__atestadosNovoListenerBound = true;
+    }
 
-    // Debounce para filtros
-    const filtros = ['#filtro-empresa-atestados', '#filtro-tipo-atestados', '#filtro-status-atestados', '#filtro-data-inicio-atestados', '#filtro-data-fim-atestados'];
+    // Botão de filtrar
+    const btnFiltrar = document.getElementById('btn-filtrar-atestados');
+    if (btnFiltrar) {
+        btnFiltrar.onclick = async () => {
+            clearTimeout(__filterTimeout);
+            await renderizarAtestados();
+            await atualizarMetricasAtestados();
+        };
+    }
+
+    // Botão de limpar filtros
+    const btnLimpar = document.getElementById('btn-limpar-filtros-atestados');
+    if (btnLimpar) {
+        btnLimpar.onclick = async () => {
+            clearTimeout(__filterTimeout);
+            const filtroInicio = document.getElementById('filtro-data-inicio-atestados');
+            const filtroFim = document.getElementById('filtro-data-fim-atestados');
+            const filtroEmpresa = document.getElementById('filtro-empresa-atestados');
+            const filtroTipo = document.getElementById('filtro-tipo-atestados');
+            const filtroStatus = document.getElementById('filtro-status-atestados');
+            const filtroModo = document.getElementById('filtro-modo-data-atestados');
+
+            if (filtroInicio) filtroInicio.value = '';
+            if (filtroFim) filtroFim.value = '';
+            if (filtroEmpresa) filtroEmpresa.value = '';
+            if (filtroTipo) filtroTipo.value = '';
+            if (filtroStatus) filtroStatus.value = '';
+            if (filtroModo) filtroModo.value = 'vigencia';
+
+            await renderizarAtestados();
+            await atualizarMetricasAtestados();
+        };
+    }
+
+    // Debounce para filtros quando o usuário interage com inputs/selects
+    const filtros = [
+        '#filtro-empresa-atestados',
+        '#filtro-tipo-atestados',
+        '#filtro-status-atestados',
+        '#filtro-modo-data-atestados',
+        '#filtro-data-inicio-atestados',
+        '#filtro-data-fim-atestados'
+    ];
+
     filtros.forEach(selector => {
         const filtroEl = document.querySelector(selector);
         if (filtroEl) {
-            filtroEl.addEventListener('change', () => {
-            clearTimeout(__filterTimeout);
-            __filterTimeout = setTimeout(async () => {
-                try {
-                    await renderizarAtestados();
-                    await atualizarMetricasAtestados();
-                } catch (error) { console.error('Erro ao aplicar filtros com debounce:', error); }
-            }, 300);
-        });
+            const triggerFilter = () => {
+                clearTimeout(__filterTimeout);
+                __filterTimeout = setTimeout(async () => {
+                    try {
+                        await renderizarAtestados();
+                        await atualizarMetricasAtestados();
+                    } catch (error) { 
+                        console.error('Erro ao aplicar filtros com debounce:', error); 
+                    }
+                }, 250);
+            };
+
+            filtroEl.onchange = triggerFilter;
+            if (filtroEl.type === 'date') {
+                filtroEl.oninput = triggerFilter;
+            }
         }
     });
 }
@@ -305,82 +374,140 @@ async function preencherFiltroEmpresasAtestados() {
 // FUNÇÕES DE FILTRO E RENDERIZAÇÃO
 // =================================================================
 
-// Aplicar filtros aos atestados
-function aplicarFiltrosAtestados(lista) {
-    const emp = document.getElementById('filtro-empresa-atestados')?.value || '';
-    const tipo = document.getElementById('filtro-tipo-atestados')?.value || '';
-    const status = document.getElementById('filtro-status-atestados')?.value || '';
-    const dataInicio = document.getElementById('filtro-data-inicio-atestados')?.value;
-    const dataFim = document.getElementById('filtro-data-fim-atestados')?.value;
-    
-    return lista.filter(a => {
-        const dataAtestado = parseDateSafe(a.data_atestado);
-        if (!dataAtestado) return false;
-
-        const dataInicioObj = parseDataLocal(dataInicio);
-        const dataFimAjustada = dataFim ? new Date(parseDataLocal(dataFim).setHours(23, 59, 59, 999)) : null;
-
-        return (!emp || a.empresaId === emp) &&
-               (!tipo || a.tipo === tipo) &&
-               (!status || a.status === status) &&
-               (!dataInicioObj || dataAtestado >= dataInicioObj) &&
-               (!dataFimAjustada || dataAtestado <= dataFimAjustada);
-    });
-}
-
-// Renderizar atestados na tabela
-async function renderizarAtestados() {
+// Carrega todos os atestados do banco para o cache
+async function carregarAtestadosDoBanco() {
     try {
-        const tbody = document.getElementById('atestados-container');
-        const totalEl = document.getElementById('total-atestados');
+        // Consulta sem orderBy no Firestore para garantir que nenhum documento com campo
+        // com tipagem mista ou nome alternativo (data, data_inicio) seja descartado pelo índice
+        const snap = await db.collection('atestados').get();
         
-        if (!tbody) return;
-        
-        tbody.innerHTML = '<tr><td colspan="9" class="text-center"><div class="spinner-border"></div></td></tr>';
-
-        // Carrega todos os atestados do banco
-        const snap = await db.collection('atestados')
-            .orderBy('data_atestado', 'desc')
-            .get();
-            
         __atestados_cache = snap.docs.map(d => {
             const data = d.data();
-            // Converte Timestamp para Date local corretamente
-            let dataAtestado = null;
-            if (data.data_atestado) {
-                if (data.data_atestado.toDate) {
-                    dataAtestado = data.data_atestado.toDate();
-                } else if (data.data_atestado instanceof Date) {
-                    dataAtestado = data.data_atestado;
-                }
-            }
+            const rawDate = data.data_atestado ?? data.data ?? data.dataAtestado ?? data.data_inicio;
+            const dataAtestado = parseDateSafe(rawDate);
             
             return {
                 id: d.id,
                 ...data,
                 data_atestado: dataAtestado
             };
-        }).filter(atestado => atestado.data_atestado);
+        }).filter(atestado => atestado.data_atestado !== null);
+
+        // Ordena em memória decrescente por data
+        __atestados_cache.sort((a, b) => {
+            const timeA = a.data_atestado ? a.data_atestado.getTime() : 0;
+            const timeB = b.data_atestado ? b.data_atestado.getTime() : 0;
+            return timeB - timeA;
+        });
+
+        return __atestados_cache;
+    } catch (e) {
+        console.error('Erro ao buscar atestados do banco:', e);
+        throw e;
+    }
+}
+
+// Aplicar filtros aos atestados
+function aplicarFiltrosAtestados(lista) {
+    if (!Array.isArray(lista)) return [];
+
+    const emp = document.getElementById('filtro-empresa-atestados')?.value || '';
+    const tipo = document.getElementById('filtro-tipo-atestados')?.value || '';
+    const status = document.getElementById('filtro-status-atestados')?.value || '';
+    const dataInicio = document.getElementById('filtro-data-inicio-atestados')?.value;
+    const dataFim = document.getElementById('filtro-data-fim-atestados')?.value;
+    const modoData = document.getElementById('filtro-modo-data-atestados')?.value || 'vigencia';
+    
+    let dataInicioObj = null;
+    if (dataInicio) {
+        const d = parseDataLocal(dataInicio);
+        if (d) {
+            d.setHours(0, 0, 0, 0); // Início exato do dia (00:00:00)
+            dataInicioObj = d;
+        }
+    }
+
+    let dataFimAjustada = null;
+    if (dataFim) {
+        const d = parseDataLocal(dataFim);
+        if (d) {
+            d.setHours(23, 59, 59, 999); // Fim exato do dia (23:59:59)
+            dataFimAjustada = d;
+        }
+    }
+    
+    return lista.filter(a => {
+        const dataAtestado = parseDateSafe(a.data_atestado);
+        if (!dataAtestado) return false;
+
+        // Filtro de empresa
+        if (emp && a.empresaId !== emp) return false;
+
+        // Filtro de tipo
+        if (tipo && a.tipo !== tipo) return false;
+
+        // Filtro de status
+        if (status && a.status !== status) return false;
+
+        // Filtro de datas
+        if (dataInicioObj || dataFimAjustada) {
+            if (modoData === 'inicio') {
+                // Modo data de início/emissão
+                if (dataInicioObj && dataAtestado < dataInicioObj) return false;
+                if (dataFimAjustada && dataAtestado > dataFimAjustada) return false;
+            } else {
+                // Modo vigência (padrão): atestados ativos/abrangidos pelo período
+                const inicioAtestado = new Date(dataAtestado);
+                inicioAtestado.setHours(0, 0, 0, 0);
+
+                const fimAtestado = new Date(dataAtestado);
+                const dias = parseInt(a.dias, 10) || 1;
+                if (a.duracaoTipo !== 'horas' && dias > 1) {
+                    fimAtestado.setDate(inicioAtestado.getDate() + (dias - 1));
+                }
+                fimAtestado.setHours(23, 59, 59, 999);
+
+                // Interseção entre o período do atestado e o período selecionado
+                if (dataInicioObj && fimAtestado < dataInicioObj) return false;
+                if (dataFimAjustada && inicioAtestado > dataFimAjustada) return false;
+            }
+        }
+
+        return true;
+    });
+}
+
+// Renderizar atestados na tabela
+async function renderizarAtestados(forcarRecarregamento = false) {
+    try {
+        const tbody = document.getElementById('atestados-container');
+        const totalEl = document.getElementById('total-atestados');
+        
+        if (!tbody) return;
+        
+        // Se o cache estiver vazio ou forçado, carrega do Firestore
+        if (!__atestados_cache || __atestados_cache.length === 0 || forcarRecarregamento) {
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4"><div class="spinner-border text-primary"></div><div class="small text-muted mt-2">Carregando atestados...</div></td></tr>';
+            await carregarAtestadosDoBanco();
+        }
 
         const filtrados = aplicarFiltrosAtestados(__atestados_cache);
         
         if (filtrados.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">Nenhum atestado encontrado</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-muted"><i class="fas fa-inbox fa-2x mb-2 d-block"></i>Nenhum atestado encontrado com os filtros selecionados</td></tr>';
             if (totalEl) totalEl.textContent = '0 registros';
             return;
         }
         
-        // Atualizar UI em paralelo
-        await Promise.all([
-            atualizarTabelaAtestados(filtrados),
-        ]);
+        // Atualizar tabela
+        await atualizarTabelaAtestados(filtrados);
         
         if (totalEl) totalEl.textContent = `${filtrados.length} ${filtrados.length === 1 ? 'registro' : 'registros'}`;
 
     } catch (e) {
         console.error('Erro ao renderizar atestados:', e);
         const tbodyError = document.getElementById('atestados-container');
-        if (tbodyError) tbodyError.innerHTML = '<tr><td colspan="9" class="text-center text-danger">Erro ao carregar dados</td></tr>';
+        if (tbodyError) tbodyError.innerHTML = '<tr><td colspan="4" class="text-center text-danger py-4">Erro ao carregar dados</td></tr>';
     }
 }
 
@@ -500,35 +627,42 @@ async function atualizarTabelaAtestados(filtrados) {
 // Atualizar métricas de atestados
 async function atualizarMetricasAtestados() {
     const filtrados = aplicarFiltrosAtestados(__atestados_cache);
-    const hoje = new Date();
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const totalAtestados = filtrados.length;
     
-    const atestMes = filtrados.filter(a => {
-        const dataAtestado = parseDateSafe(a.data_atestado);
-        return dataAtestado && dataAtestado >= inicioMes;
-    }).length;
-    
-    const totalDias = filtrados.reduce((s, a) => s + (a.dias || 0), 0);
-    const media = filtrados.length ? (totalDias / filtrados.length).toFixed(2) : '0.00';
+    const totalDias = filtrados.reduce((s, a) => s + (parseFloat(a.dias) || 0), 0);
+    const media = totalAtestados ? (totalDias / totalAtestados).toFixed(2) : '0.00';
 
     const custoTotal = await calcularCustoAtestados(filtrados);
-    const totalFuncionariosAtivos = (await db.collection('funcionarios').where('status', '==', 'Ativo').get()).size;
+    
+    let totalFuncionariosAtivos = 0;
+    try {
+        const funcSnap = await db.collection('funcionarios').where('status', '==', 'Ativo').get();
+        totalFuncionariosAtivos = funcSnap.size;
+    } catch (e) {
+        console.warn('Erro ao obter total de funcionários ativos:', e);
+    }
     const taxaAbsenteismo = totalFuncionariosAtivos > 0 ? ((totalDias / (totalFuncionariosAtivos * 22)) * 100).toFixed(1) : 0;
 
     const totalAtestadosMes = document.getElementById('total-atestados-mes');
+    const labelTotalAtestados = document.getElementById('label-total-atestados-card');
     const totalDiasAtestados = document.getElementById('total-dias-atestados');
     const mediaDiasAtestado = document.getElementById('media-dias-atestado');
     const custoTotalAtestados = document.getElementById('custo-total-atestados');
+    const percentualAfastamento = document.getElementById('percentual-afastamento');
+    const totalEl = document.getElementById('total-atestados');
 
-    if (totalAtestadosMes) totalAtestadosMes.textContent = atestMes;
-if (totalDiasAtestados) totalDiasAtestados.textContent = Number(totalDias).toFixed(2).replace('.', ',');
+    if (totalAtestadosMes) totalAtestadosMes.textContent = totalAtestados;
+    if (labelTotalAtestados) {
+        const dInicio = document.getElementById('filtro-data-inicio-atestados')?.value;
+        const dFim = document.getElementById('filtro-data-fim-atestados')?.value;
+        labelTotalAtestados.textContent = (dInicio || dFim) ? 'Total no período' : 'Total de atestados';
+    }
+
+    if (totalDiasAtestados) totalDiasAtestados.textContent = Number(totalDias).toFixed(1).replace('.', ',');
     if (mediaDiasAtestado) mediaDiasAtestado.textContent = media.replace('.', ',');
     if (custoTotalAtestados) custoTotalAtestados.textContent = `R$ ${custoTotal.toFixed(2).replace('.', ',')}`;
-    
-    const percentualAfastamento = document.getElementById('percentual-afastamento');
-    if (percentualAfastamento) {
-        percentualAfastamento.textContent = `${taxaAbsenteismo}%`;
-    }
+    if (percentualAfastamento) percentualAfastamento.textContent = `${taxaAbsenteismo}%`;
+    if (totalEl) totalEl.textContent = `${totalAtestados} ${totalAtestados === 1 ? 'registro' : 'registros'}`;
 }
 
 async function calcularCustoAtestados(atestados) {
@@ -1166,8 +1300,8 @@ async function salvarAtestado() {
         const modal = bootstrap.Modal.getInstance(modalEl);
         if (modal) modal.hide();
         
-        renderizarAtestados();
-        atualizarMetricasAtestados();
+        await renderizarAtestados(true);
+        await atualizarMetricasAtestados();
         mostrarMensagem('Atestado cadastrado com sucesso!');
     } catch (e) {
         console.error('Erro ao salvar atestado:', e);
@@ -1420,8 +1554,8 @@ async function editarAtestado(id) {
                 const modal = bootstrap.Modal.getInstance(document.getElementById(mid));
                 if (modal) modal.hide();
                 
-                await renderizarAtestados();
-                atualizarMetricasAtestados();
+                await renderizarAtestados(true);
+                await atualizarMetricasAtestados();
                 mostrarMensagem('Atestado atualizado com sucesso!');
             } catch(e) { 
                 console.error('Erro ao atualizar atestado:', e); 
@@ -1439,7 +1573,7 @@ async function excluirAtestado(id) {
     
     try {
         await db.collection('atestados').doc(id).delete();
-        await renderizarAtestados();
+        await renderizarAtestados(true);
         await atualizarMetricasAtestados();
         mostrarMensagem('Atestado excluído com sucesso!');
     } catch(e) { 

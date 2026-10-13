@@ -21,7 +21,7 @@ const ScriptLoader = {
         'alteracao-funcao': ['js/alteracao-funcao.js'],
         'faltas': ['js/faltas.js?v=4'],
         'afastamentos': ['js/afastamentos.js?v=4'],
-        'atestados': ['js/atestados.js?v=2'],
+        'atestados': ['js/atestados.js?v=3'],
         'controle-disciplinar': ['js/controle-disciplinar.js'],
         'dp-calculos': ['js/dp-calculos.js'],
         'controle-cestas': ['js/controle-cestas.js'],
