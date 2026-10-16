@@ -712,6 +712,17 @@
 
         if (houveMudanca) {
             renderizarCheckpointsRonda();
+
+            // Atualiza status visual dos marcadores no mapa móvel
+            if (checkpointsMarkers && checkpointsMarkers.length > 0) {
+                checkpointsMarkers.forEach(item => {
+                    const cpMatch = rondaAtiva.pontos.find(p => p.pontoId === item.pontoId);
+                    if (cpMatch && cpMatch.status === 'CONFIRMADO') {
+                        item.marker.setStyle({ color: '#10b981', fillColor: '#10b981' });
+                    }
+                });
+            }
+
             // Sincroniza status dos checkpoints com o Firestore
             window.db.collection('vigilancia_rondas').doc(rondaAtiva.id).update({
                 checkpointsStatus: rondaAtiva.pontos
@@ -761,10 +772,32 @@
         container.innerHTML = html;
     }
 
+    let configEmpresaMobile = {
+        centroLat: -27.0543,
+        centroLng: -48.9832,
+        zoomInicial: 17
+    };
+    let areasEmpresaMobile = [];
+
+    async function carregarConfigEAreasMobile() {
+        if (!window.db) return;
+        try {
+            const docConf = await window.db.collection('vigilancia_configuracoes').doc('config_empresa').get();
+            if (docConf.exists) {
+                configEmpresaMobile = { ...configEmpresaMobile, ...docConf.data() };
+            }
+            const snapAreas = await window.db.collection('vigilancia_areas').where('ativo', '==', true).get();
+            areasEmpresaMobile = [];
+            snapAreas.forEach(d => areasEmpresaMobile.push({ id: d.id, ...d.data() }));
+        } catch (e) {
+            console.warn("Aviso ao carregar config/áreas no mobile:", e);
+        }
+    }
+
     /**
-     * Inicializa o Mapa Móvel do Vigia
+     * Inicializa o Mapa Móvel do Vigia com Satélite HD e Áreas Fabris
      */
-    function initMapaVigia(pontosRota) {
+    async function initMapaVigia(pontosRota) {
         const container = document.getElementById('mapa-operacao-vigia');
         if (!container) return;
 
@@ -773,27 +806,60 @@
             mapaVigia = null;
         }
 
+        await carregarConfigEAreasMobile();
+
+        const centerLat = Number(configEmpresaMobile.centroLat) || -27.0543;
+        const centerLng = Number(configEmpresaMobile.centroLng) || -48.9832;
+        const zoom = Number(configEmpresaMobile.zoomInicial) || 17;
+
         mapaVigia = L.map('mapa-operacao-vigia', {
             zoomControl: false,
             attributionControl: false
-        }).setView([-27.0543, -48.9832], 17);
+        }).setView([centerLat, centerLng], zoom);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapaVigia);
+        // Satélite HD de Alta Resolução + Etiquetas
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaVigia);
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaVigia);
+
+        // Desenha polígonos das áreas da empresa
+        if (areasEmpresaMobile && areasEmpresaMobile.length > 0) {
+            areasEmpresaMobile.forEach(a => {
+                if (!a.coordenadas || a.coordenadas.length < 3) return;
+                const latlngs = a.coordenadas.map(c => [Number(c.lat), Number(c.lng)]);
+                const cor = a.cor || '#3b82f6';
+                L.polygon(latlngs, {
+                    color: cor,
+                    weight: 1.5,
+                    dashArray: '3, 3',
+                    fillColor: cor,
+                    fillOpacity: 0.2
+                }).bindTooltip(a.nome, { sticky: true }).addTo(mapaVigia);
+            });
+        }
 
         // Plota pontos da rota no mapa móvel
         checkpointsMarkers = [];
         if (pontosRota && pontosRota.length > 0) {
             pontosRota.forEach(p => {
                 if (!p.latitude || !p.longitude) return;
-                const m = L.circleMarker([Number(p.latitude), Number(p.longitude)], {
+                const lat = Number(p.latitude);
+                const lng = Number(p.longitude);
+                const ok = p.status === 'CONFIRMADO';
+                const m = L.circleMarker([lat, lng], {
                     radius: 7,
-                    color: '#f59e0b',
-                    fillColor: '#f59e0b',
-                    fillOpacity: 0.8
+                    color: ok ? '#10b981' : '#f59e0b',
+                    fillColor: ok ? '#10b981' : '#f59e0b',
+                    fillOpacity: 0.9,
+                    weight: 2
                 }).addTo(mapaVigia);
-                checkpointsMarkers.push(m);
+                m.bindTooltip(p.nome, { sticky: true });
+                checkpointsMarkers.push({ pontoId: p.pontoId, marker: m });
             });
         }
+
+        setTimeout(() => {
+            if (mapaVigia) mapaVigia.invalidateSize();
+        }, 350);
     }
 
     function atualizarMapaVigia(lat, lng) {

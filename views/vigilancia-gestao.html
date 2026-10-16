@@ -5,7 +5,13 @@
             <h2><i class="fas fa-shield-halved text-primary"></i> Central de Vigilância & Rondas</h2>
             <p class="text-muted mb-0">Monitoramento patrimonial em tempo real, rastreamento GPS e gestão de rotas</p>
         </div>
-        <div class="d-flex gap-2">
+        <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-dark" onclick="window.abrirModalConfigMapa()" title="Configurar Localização da Empresa e Provedor Cartográfico">
+                <i class="fas fa-sliders me-1"></i> Configurar Mapa
+            </button>
+            <button class="btn btn-primary" id="btn-toggle-editor-areas" onclick="window.alternarModoEditorAreas()" title="Ativar ferramenta de desenho de polígonos no mapa">
+                <i class="fas fa-draw-polygon me-1"></i> Desenhar Áreas
+            </button>
             <button class="btn btn-outline-primary" onclick="window.atualizarDadosVigilancia(true)">
                 <i class="fas fa-sync-alt" id="icon-refresh-vigilancia"></i> Atualizar
             </button>
@@ -71,6 +77,11 @@
             </button>
         </li>
         <li class="nav-item">
+            <button class="nav-link" id="tab-areas-btn" data-bs-toggle="tab" data-bs-target="#tab-areas" type="button">
+                <i class="fas fa-draw-polygon text-warning me-1"></i> Áreas da Empresa
+            </button>
+        </li>
+        <li class="nav-item">
             <button class="nav-link" id="tab-rotas-btn" data-bs-toggle="tab" data-bs-target="#tab-rotas" type="button">
                 <i class="fas fa-route text-primary me-1"></i> Cadastro de Rotas
             </button>
@@ -118,6 +129,60 @@
                             </div>
                         </div>
                         <div class="card-body p-0 position-relative">
+                            <!-- Banner do Modo Editor de Áreas (quando ativo) -->
+                            <div id="banner-editor-areas" class="map-editor-banner animate__animated animate__fadeInDown" style="display: none;">
+                                <i class="fas fa-draw-polygon fs-5"></i>
+                                <div>
+                                    <div class="fw-bold">MODO EDITOR DE ÁREAS ATIVO</div>
+                                    <small class="opacity-90">Use os botões de polígono no canto esquerdo do mapa para delimitar galpões, muros e pátios.</small>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-light ms-2 fw-bold" onclick="window.alternarModoEditorAreas()">
+                                    <i class="fas fa-check me-1"></i> Concluir Edição
+                                </button>
+                            </div>
+
+                            <!-- Barra de Ferramentas Flutuante sobre o Mapa -->
+                            <div class="map-floating-toolbar">
+                                <button type="button" class="btn btn-light border text-dark" onclick="window.centralizarMapaVigilancia()" title="Centralizar na Empresa">
+                                    <i class="fas fa-crosshairs text-primary"></i> <span class="d-none d-md-inline">Centralizar</span>
+                                </button>
+                                <button type="button" class="btn btn-light border text-dark" onclick="window.alternarCamadaSatélite()" id="btn-toggle-satelite" title="Alternar Satélite / Mapa Vetorial">
+                                    <i class="fas fa-satellite text-info"></i> <span id="label-camada-satelite" class="d-none d-md-inline">Satélite HD</span>
+                                </button>
+                                <div class="dropdown d-inline-block">
+                                    <button class="btn btn-light border text-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                        <i class="fas fa-layer-group text-secondary"></i> <span class="d-none d-md-inline">Camadas</span>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm p-2" style="min-width: 200px; font-size: 0.85rem;">
+                                        <li><h6 class="dropdown-header px-2 py-1">Exibir no Mapa</h6></li>
+                                        <li>
+                                            <label class="dropdown-item d-flex align-items-center gap-2 cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="check-camada-areas" checked onchange="window.toggleCamadaAreas(this.checked)">
+                                                <span>Áreas da Empresa</span>
+                                            </label>
+                                        </li>
+                                        <li>
+                                            <label class="dropdown-item d-flex align-items-center gap-2 cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="check-camada-rotas" checked onchange="window.toggleCamadaRotas(this.checked)">
+                                                <span>Rotas Planejadas</span>
+                                            </label>
+                                        </li>
+                                        <li>
+                                            <label class="dropdown-item d-flex align-items-center gap-2 cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="check-camada-pontos" checked onchange="window.toggleCamadaPontos(this.checked)">
+                                                <span>Pontos de Controle</span>
+                                            </label>
+                                        </li>
+                                        <li>
+                                            <label class="dropdown-item d-flex align-items-center gap-2 cursor-pointer">
+                                                <input class="form-check-input mt-0" type="checkbox" id="check-camada-vigias" checked onchange="window.toggleCamadaVigias(this.checked)">
+                                                <span>Vigias em Tempo Real</span>
+                                            </label>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+
                             <div id="mapa-vigilancia-aovivo"></div>
                             
                             <!-- Legenda do Mapa Flutuante -->
@@ -129,8 +194,11 @@
                                 <div class="d-flex align-items-center gap-2 mb-1">
                                     <span style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; display:inline-block;"></span> Trajeto Percorrido (Real)
                                 </div>
-                                <div class="d-flex align-items-center gap-2">
+                                <div class="d-flex align-items-center gap-2 mb-1">
                                     <span style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; display:inline-block;"></span> Ponto de Controle Pendente
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="width: 12px; height: 12px; border: 2px dashed #f59e0b; background: rgba(245, 158, 11, 0.2); border-radius: 3px; display:inline-block;"></span> Área / Galpão da Empresa
                                 </div>
                             </div>
                         </div>
@@ -157,7 +225,51 @@
             </div>
         </div>
 
-        <!-- ABA 2: CADASTRO DE ROTAS -->
+        <!-- ABA 2: ÁREAS DA EMPRESA (DELIMITAÇÕES & POLÍGONOS) -->
+        <div class="tab-pane fade" id="tab-areas" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <h5 class="mb-0 fw-bold"><i class="fas fa-draw-polygon text-warning me-2"></i> Áreas e Delimitações da Empresa</h5>
+                        <small class="text-muted">Perímetros, galpões, estacionamentos, pátios e acessos desenhados sobre o satélite</small>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-dark" onclick="window.abrirModalConfigMapa()">
+                            <i class="fas fa-sliders me-1"></i> Configurar Unidade
+                        </button>
+                        <button class="btn btn-primary" onclick="window.irParaDesenhoArea()">
+                            <i class="fas fa-plus me-1"></i> Desenhar Nova Área no Satélite
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th style="width: 60px;">Cor</th>
+                                    <th>Nome da Área</th>
+                                    <th>Categoria</th>
+                                    <th>Vértices</th>
+                                    <th>Descrição</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-areas-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando áreas da empresa...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 3: CADASTRO DE ROTAS -->
         <div class="tab-pane fade" id="tab-rotas" role="tabpanel">
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
@@ -198,9 +310,14 @@
             <div class="card shadow-sm border-0">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
                     <h5 class="mb-0 fw-bold"><i class="fas fa-map-pin text-danger me-2"></i> Pontos de Inspeção e Controle</h5>
-                    <button class="btn btn-danger" onclick="window.abrirModalPonto()">
-                        <i class="fas fa-plus me-1"></i> Novo Ponto de Controle
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-danger" onclick="window.ativarCliqueNovoPontoNoMapa()">
+                            <i class="fas fa-crosshairs me-1"></i> Marcar no Mapa
+                        </button>
+                        <button class="btn btn-danger" onclick="window.abrirModalPonto()">
+                            <i class="fas fa-plus me-1"></i> Novo Ponto de Controle
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -610,6 +727,157 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- NOVO MODAL: CONFIGURAÇÃO DO MAPA & UNIDADE     -->
+<!-- ============================================== -->
+<div class="modal fade" id="modalConfigMapa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="fas fa-sliders me-2"></i> Configuração do Mapa & Imagens de Satélite</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formConfigMapa" onsubmit="event.preventDefault(); window.salvarConfiguracaoMapa();">
+                    <div class="alert alert-info py-2 small d-flex align-items-center gap-2 mb-3">
+                        <i class="fas fa-circle-info fs-5"></i>
+                        <span>Informe as coordenadas centrais da empresa. O mapa da Central e dos vigias carregará automaticamente na fábrica com imagens de satélite.</span>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-8">
+                            <label class="form-label fw-bold">Nome da Unidade / Empresa *</label>
+                            <input type="text" class="form-control" id="config-unidade-nome" required placeholder="Ex: Calçados Crival - Fábrica Matriz">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Nível de Zoom Padrão *</label>
+                            <select class="form-select" id="config-unidade-zoom">
+                                <option value="15">15 - Visão do Bairro</option>
+                                <option value="16">16 - Visão Perimetral</option>
+                                <option value="17" selected>17 - Padrão Fabril (Recomendado)</option>
+                                <option value="18">18 - Detalhe de Galpões e Vias</option>
+                                <option value="19">19 - Zoom Máximo de Portarias</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-5">
+                            <label class="form-label fw-bold">Latitude Central * (-90 a 90)</label>
+                            <input type="number" step="any" min="-90" max="90" class="form-control font-monospace" id="config-unidade-lat" required placeholder="-27.054300">
+                        </div>
+                        <div class="col-12 col-md-5">
+                            <label class="form-label fw-bold">Longitude Central * (-180 a 180)</label>
+                            <input type="number" step="any" min="-180" max="180" class="form-control font-monospace" id="config-unidade-lng" required placeholder="-48.983200">
+                        </div>
+                        <div class="col-12 col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-outline-primary w-100" onclick="window.capturarPosicaoEmpresa()" title="Capturar GPS do Dispositivo Atual">
+                                <i class="fas fa-location-crosshairs"></i> GPS
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold">Provedor Cartográfico Padrão *</label>
+                            <select class="form-select" id="config-unidade-provedor">
+                                <option value="ESRI_SATELLITE" selected>🛰️ Esri World Imagery (Satélite de Alta Definição)</option>
+                                <option value="ESRI_HYBRID">🏙️ Satélite Híbrido (Satélite + Vias/Ruas)</option>
+                                <option value="OSM_STANDARD">🗺️ OpenStreetMap (Mapa Vetorial Convencional)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold">Chave de API Google Maps (Opcional)</label>
+                            <input type="password" class="form-control font-monospace" id="config-google-api-key" placeholder="Opcional - deixe em branco para usar Esri Satélite">
+                            <small class="text-muted">Utilizada apenas se a empresa optar por ativar a Google Maps Platform.</small>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success fw-bold px-4" onclick="window.salvarConfiguracaoMapa()">
+                    <i class="fas fa-save me-1"></i> Salvar Configurações do Mapa
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- NOVO MODAL: CADASTRO / EDIÇÃO DE ÁREA (POLÍGONO) -->
+<!-- ============================================== -->
+<div class="modal fade" id="modalAreaEmpresa" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalAreaTitulo"><i class="fas fa-draw-polygon me-2"></i> Identificar Área da Empresa</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formAreaEmpresa" onsubmit="event.preventDefault(); window.salvarAreaEmpresa();">
+                    <input type="hidden" id="area-id">
+                    <input type="hidden" id="area-coordenadas-json">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome da Área / Instalação *</label>
+                        <input type="text" class="form-control" id="area-nome" required placeholder="Ex: Galpão A - Produção, Estacionamento de Caminhões...">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Categoria da Área *</label>
+                        <select class="form-select" id="area-categoria" required>
+                            <option value="Prédio / Galpão">🏢 Prédio / Galpão</option>
+                            <option value="Perímetro / Muro Fabril">🛡️ Perímetro / Muro Fabril</option>
+                            <option value="Estacionamento">🚗 Estacionamento</option>
+                            <option value="Pátio Externo / Docas">🚚 Pátio Externo / Docas</option>
+                            <option value="Portaria / Acesso">🚪 Portaria / Acesso</option>
+                            <option value="Área Restrita / Crítica">⛔ Área Restrita / Crítica</option>
+                            <option value="Outro Local">📍 Outro Local Operacional</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Descrição / Detalhes</label>
+                        <textarea class="form-control" id="area-descricao" rows="2" placeholder="Observações sobre este setor ou perímetro..."></textarea>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Cor de Identificação no Mapa</label>
+                        <input type="hidden" id="area-cor" value="#3b82f6">
+                        <div class="color-picker-pills" id="area-color-picker">
+                            <div class="color-pill-btn active" style="background: #3b82f6;" onclick="window.selecionarCorArea('#3b82f6', this)"></div>
+                            <div class="color-pill-btn" style="background: #10b981;" onclick="window.selecionarCorArea('#10b981', this)"></div>
+                            <div class="color-pill-btn" style="background: #f59e0b;" onclick="window.selecionarCorArea('#f59e0b', this)"></div>
+                            <div class="color-pill-btn" style="background: #ef4444;" onclick="window.selecionarCorArea('#ef4444', this)"></div>
+                            <div class="color-pill-btn" style="background: #8b5cf6;" onclick="window.selecionarCorArea('#8b5cf6', this)"></div>
+                            <div class="color-pill-btn" style="background: #06b6d4;" onclick="window.selecionarCorArea('#06b6d4', this)"></div>
+                            <div class="color-pill-btn" style="background: #ec4899;" onclick="window.selecionarCorArea('#ec4899', this)"></div>
+                            <div class="color-pill-btn" style="background: #64748b;" onclick="window.selecionarCorArea('#64748b', this)"></div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border small py-2 d-flex align-items-center justify-content-between mb-3">
+                        <span><i class="fas fa-vector-square text-primary me-1"></i> <span id="area-total-vertices">0</span> vértices capturados</span>
+                        <span class="badge bg-success-subtle text-success">Geometria Válida</span>
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="area-ativo" checked>
+                        <label class="form-check-label fw-semibold" for="area-ativo">Área Ativa no Mapa</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="window.cancelarEdicaoArea()">Cancelar</button>
+                <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.salvarAreaEmpresa()">
+                    <i class="fas fa-save me-1"></i> Salvar Área
+                </button>
             </div>
         </div>
     </div>

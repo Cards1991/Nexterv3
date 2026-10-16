@@ -439,6 +439,11 @@ async function carregarDadosSecao(sectionName) {
             case 'gestao-sumidos':
                 if (typeof inicializarGestaoSumidos === 'function') await inicializarGestaoSumidos();
                 break;
+            case 'vigilancia-gestao':
+                if (typeof window.inicializarVigilanciaGestao === 'function') {
+                    await window.inicializarVigilanciaGestao();
+                }
+                break;
             case 'historico-colaborador':
                 if (typeof inicializarHistoricoColaborador === 'function') await inicializarHistoricoColaborador();
                 break;
@@ -1034,6 +1039,31 @@ function inicializarNavegacao() {
         });
     }
 
+    // Permissão da Central de Vigilância
+    if (currentUserPermissions.isAdmin || currentUserPermissions.secoesPermitidas?.includes('vigilancia-gestao')) {
+        if (!currentUserPermissions.secoesPermitidas) currentUserPermissions.secoesPermitidas = [];
+        if (!currentUserPermissions.secoesPermitidas.includes('vigilancia-gestao')) {
+            currentUserPermissions.secoesPermitidas.push('vigilancia-gestao');
+        }
+        const vigiaLinks = navContainer.querySelectorAll('a[data-target="vigilancia-gestao"], a[data-target="vigia-mobile"]');
+        vigiaLinks.forEach(link => {
+            const navItemDoLink = link.closest('.nav-item');
+            if (navItemDoLink) navItemDoLink.style.display = 'block';
+
+            let parentCollapse = link.closest('.collapse');
+            while (parentCollapse) {
+                const toggleLink = navContainer.querySelector(`a[data-bs-toggle="collapse"][href="#${parentCollapse.id}"]`);
+                if (toggleLink) {
+                    const parentNavItem = toggleLink.closest('.nav-item');
+                    if (parentNavItem) parentNavItem.style.display = 'block';
+                    parentCollapse = toggleLink.closest('.collapse');
+                } else {
+                    break;
+                }
+            }
+        });
+    }
+
     currentUserPermissions.secoesPermitidas?.forEach(secao => {
         if (secao === 'nexter-ai') return; // Já tratado acima
         const links = navContainer.querySelectorAll(`a[data-target="${secao}"]`);
@@ -1067,8 +1097,11 @@ function inicializarNavegacao() {
             // Permissão da IA
             const allowAI = targetSection === 'nexter-ai' && (currentUserPermissions.isAdmin || currentUserPermissions.acessoAI);
 
+            // Permissão da Central de Vigilância
+            const allowVigilancia = targetSection === 'vigilancia-gestao' && (currentUserPermissions.isAdmin || currentUserPermissions.secoesPermitidas?.includes('vigilancia-gestao'));
+
             // Verifica permissão
-            if (currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO || allowAI) {
+            if (currentUserPermissions.isAdmin || currentUserPermissions.secoesPermitidas.includes(targetSection) || allowMecanicoAdminISO || allowAI || allowVigilancia) {
                 if (isExternal) {
                     // Se for link externo (ex: Portal Mobile), deixa o navegador abrir a aba
                     return;

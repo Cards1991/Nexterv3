@@ -13,6 +13,33 @@
     let markerSeletorPonto = null;
     let circuloSeletorRaio = null;
 
+    // Configuração Cartográfica da Unidade
+    let configuracaoEmpresa = {
+        nomeUnidade: 'Calçados Crival - Fábrica',
+        centroLat: -27.0543,
+        centroLng: -48.9832,
+        zoomInicial: 17,
+        provedorPadrao: 'ESRI_SATELLITE',
+        googleMapsApiKey: ''
+    };
+
+    // Camadas de Mapa e Grupos de Elementos
+    let tileLayerSatelite = null;
+    let tileLayerHibridoLabels = null;
+    let tileLayerOsm = null;
+    let camadaAtualSatelite = true;
+
+    let layerGroupAreas = null;
+    let layerGroupRotas = null;
+    let layerGroupPontos = null;
+    let layerGroupVigias = null;
+
+    // Estado do Editor Visual de Áreas
+    let modoEditorAreasAtivo = false;
+    let cacheAreas = [];
+    let camadaAreaSendoDesenhada = null;
+    let modoCriarPontoNoMapa = false;
+
     let markersAoVivo = new Map(); // rondaId -> L.Marker
     let polylinesAoVivo = new Map(); // rondaId -> L.Polyline
     let markersPontosFixos = []; // Array de markers de pontos no mapa ao vivo
@@ -59,6 +86,22 @@
     }
 
     /**
+     * Carrega a Configuração Salva da Empresa
+     */
+    async function carregarConfiguracaoEmpresa() {
+        if (!window.db) return;
+        try {
+            const doc = await window.db.collection('vigilancia_configuracoes').doc('config_empresa').get();
+            if (doc.exists) {
+                const data = doc.data();
+                configuracaoEmpresa = { ...configuracaoEmpresa, ...data };
+            }
+        } catch (e) {
+            console.warn("Aviso ao carregar config da empresa:", e);
+        }
+    }
+
+    /**
      * Inicialização Principal do Painel
      */
     window.inicializarVigilanciaGestao = async function () {
@@ -71,11 +114,15 @@
         if (elInicio && !elInicio.value) elInicio.value = hojeStr;
         if (elFim && !elFim.value) elFim.value = hojeStr;
 
-        // Inicializa o Mapa Ao Vivo Leaflet
+        // 1. Carrega configuração da empresa (coordenadas e satélite)
+        await carregarConfiguracaoEmpresa();
+
+        // 2. Inicializa o Mapa Ao Vivo Leaflet
         initMapaAoVivo();
 
-        // Carrega dados iniciais do Firestore
+        // 3. Carrega dados do Firestore
         await Promise.all([
+            carregarAreasEmpresa(),
             carregarPontosControle(),
             carregarRotas(),
             carregarVigias(),
@@ -95,7 +142,7 @@
     };
 
     /**
-     * Inicializa o Mapa Leaflet de Monitoramento Ao Vivo
+     * Inicializa o Mapa Leaflet com Camadas de Satélite Esri HD e Geoman
      */
     function initMapaAoVivo() {
         const container = document.getElementById('mapa-vigilancia-aovivo');
@@ -106,35 +153,553 @@
             mapaAoVivo = null;
         }
 
-        // Padrão inicial: centro da fábrica ou centro aproximado da região (-27.1, -49.0)
-        const latInicial = -27.0543;
-        const lngInicial = -48.9832;
+        const lat = Number(configuracaoEmpresa.centroLat) || -27.0543;
+        const lng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const zoom = Number(configuracaoEmpresa.zoomInicial) || 17;
 
         mapaAoVivo = L.map('mapa-vigilancia-aovivo', {
             zoomControl: true,
             attributionControl: false
-        }).setView([latInicial, lngInicial], 17);
+        }).setView([lat, lng], zoom);
 
-        // Camada Base: OpenStreetMap CartoDB Positron / OpenStreetMap Padrão
-        const osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19
-        }).addTo(mapaAoVivo);
+        // Camadas Base
+        tileLayerOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        tileLayerSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        tileLayerHibridoLabels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
 
-        // Camada Satélite Esri
-        const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-            maxZoom: 19
+        // Adiciona camada padrão com base na configuração
+        if (configuracaoEmpresa.provedorPadrao === 'OSM_STANDARD') {
+            tileLayerOsm.addTo(mapaAoVivo);
+            camadaAtualSatelite = false;
+            atualizarBotaoCamadaSatelite('Mapa Vetorial');
+        } else if (configuracaoEmpresa.provedorPadrao === 'ESRI_HYBRID') {
+            tileLayerSatelite.addTo(mapaAoVivo);
+            tileLayerHibridoLabels.addTo(mapaAoVivo);
+            camadaAtualSatelite = true;
+            atualizarBotaoCamadaSatelite('Satélite Híbrido');
+        } else {
+            tileLayerSatelite.addTo(mapaAoVivo);
+            camadaAtualSatelite = true;
+            atualizarBotaoCamadaSatelite('Satélite HD');
+        }
+
+        // Grupos de Sobreposição (FeatureGroups)
+        layerGroupAreas = L.featureGroup().addTo(mapaAoVivo);
+        layerGroupRotas = L.featureGroup().addTo(mapaAoVivo);
+        layerGroupPontos = L.featureGroup().addTo(mapaAoVivo);
+        layerGroupVigias = L.featureGroup().addTo(mapaAoVivo);
+
+        // Configura Geoman para Desenho de Áreas
+        configurarGeomanEditor();
+
+        // Clique no mapa para marcar novo ponto quando ativado
+        mapaAoVivo.on('click', (e) => {
+            if (modoCriarPontoNoMapa) {
+                modoCriarPontoNoMapa = false;
+                window.abrirModalPontoComCoordenadas(e.latlng.lat, e.latlng.lng);
+            }
         });
 
-        // Controle de Camadas
-        L.control.layers({
-            "Mapa Padrão": osm,
-            "Satélite": satellite
-        }, null, { position: 'topright' }).addTo(mapaAoVivo);
+        // Renderiza elementos nos grupos
+        renderizarAreasNoMapa();
+        renderizarPontosFixosNoMapa();
 
         setTimeout(() => {
             if (mapaAoVivo) mapaAoVivo.invalidateSize();
         }, 300);
     }
+
+    function atualizarBotaoCamadaSatelite(label) {
+        const el = document.getElementById('label-camada-satelite');
+        if (el) el.innerText = label;
+    }
+
+    /**
+     * Configuração do Editor Visual Geoman
+     */
+    function configurarGeomanEditor() {
+        if (!mapaAoVivo || !mapaAoVivo.pm) return;
+
+        mapaAoVivo.pm.setLang('pt_br');
+
+        mapaAoVivo.on('pm:create', (e) => {
+            camadaAreaSendoDesenhada = e.layer;
+            abrirModalCadastroAreaComLayer(e.layer);
+        });
+    }
+
+    window.alternarModoEditorAreas = function () {
+        modoEditorAreasAtivo = !modoEditorAreasAtivo;
+        const banner = document.getElementById('banner-editor-areas');
+        const btnToggle = document.getElementById('btn-toggle-editor-areas');
+
+        if (modoEditorAreasAtivo) {
+            if (banner) banner.style.display = 'flex';
+            if (btnToggle) {
+                btnToggle.className = 'btn btn-warning fw-bold';
+                btnToggle.innerHTML = '<i class="fas fa-check me-1"></i> Concluir Edição de Áreas';
+            }
+
+            // Foca a aba do mapa
+            const tabMap = document.getElementById('tab-aovivo-btn');
+            if (tabMap) tabMap.click();
+
+            if (mapaAoVivo && mapaAoVivo.pm) {
+                mapaAoVivo.pm.addControls({
+                    position: 'topleft',
+                    drawPolygon: true,
+                    drawRectangle: true,
+                    drawCircle: false,
+                    drawCircleMarker: false,
+                    drawPolyline: false,
+                    drawMarker: false,
+                    drawText: false,
+                    editMode: true,
+                    dragMode: true,
+                    cutPolygon: false,
+                    removalMode: true
+                });
+            }
+        } else {
+            if (banner) banner.style.display = 'none';
+            if (btnToggle) {
+                btnToggle.className = 'btn btn-primary';
+                btnToggle.innerHTML = '<i class="fas fa-draw-polygon me-1"></i> Desenhar Áreas';
+            }
+
+            if (mapaAoVivo && mapaAoVivo.pm) {
+                mapaAoVivo.pm.removeControls();
+                mapaAoVivo.pm.disableDraw();
+                mapaAoVivo.pm.disableGlobalEditMode();
+            }
+        }
+    };
+
+    window.irParaDesenhoArea = function () {
+        const tabMap = document.getElementById('tab-aovivo-btn');
+        if (tabMap) tabMap.click();
+
+        if (!modoEditorAreasAtivo) {
+            window.alternarModoEditorAreas();
+        }
+
+        setTimeout(() => {
+            if (mapaAoVivo && mapaAoVivo.pm) {
+                mapaAoVivo.pm.enableDraw('Polygon');
+            }
+        }, 300);
+    };
+
+    function abrirModalCadastroAreaComLayer(layer) {
+        let latlngs = [];
+        if (layer.getLatLngs) {
+            const raw = layer.getLatLngs();
+            const ring = Array.isArray(raw[0]) ? raw[0] : raw;
+            latlngs = ring.map(pt => ({ lat: Number(pt.lat.toFixed(6)), lng: Number(pt.lng.toFixed(6)) }));
+        }
+
+        if (latlngs.length < 3) {
+            alert("O polígono precisa ter pelo menos 3 vértices.");
+            if (mapaAoVivo) mapaAoVivo.removeLayer(layer);
+            return;
+        }
+
+        document.getElementById('formAreaEmpresa').reset();
+        document.getElementById('area-id').value = '';
+        document.getElementById('area-coordenadas-json').value = JSON.stringify(latlngs);
+        document.getElementById('area-total-vertices').innerText = latlngs.length;
+        document.getElementById('area-cor').value = '#3b82f6';
+        document.getElementById('area-ativo').checked = true;
+        document.getElementById('modalAreaTitulo').innerHTML = '<i class="fas fa-draw-polygon me-2"></i> Identificar Área Desenhada';
+
+        const picker = document.getElementById('area-color-picker');
+        if (picker) {
+            picker.querySelectorAll('.color-pill-btn').forEach((p, idx) => {
+                p.classList.toggle('active', idx === 0);
+            });
+        }
+
+        const modalEl = document.getElementById('modalAreaEmpresa');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    window.selecionarCorArea = function (cor, elemento) {
+        document.getElementById('area-cor').value = cor;
+        const picker = document.getElementById('area-color-picker');
+        if (picker) {
+            picker.querySelectorAll('.color-pill-btn').forEach(p => p.classList.remove('active'));
+        }
+        if (elemento) elemento.classList.add('active');
+    };
+
+    window.cancelarEdicaoArea = function () {
+        if (camadaAreaSendoDesenhada && mapaAoVivo) {
+            mapaAoVivo.removeLayer(camadaAreaSendoDesenhada);
+            camadaAreaSendoDesenhada = null;
+        }
+    };
+
+    window.salvarAreaEmpresa = async function () {
+        const id = document.getElementById('area-id').value;
+        const nome = document.getElementById('area-nome').value.trim();
+        const categoria = document.getElementById('area-categoria').value;
+        const descricao = document.getElementById('area-descricao').value.trim();
+        const cor = document.getElementById('area-cor').value || '#3b82f6';
+        const ativo = document.getElementById('area-ativo').checked;
+        const coordsJson = document.getElementById('area-coordenadas-json').value;
+
+        if (!nome) {
+            alert("Informe o nome da área.");
+            return;
+        }
+
+        let coordenadas = [];
+        try {
+            coordenadas = JSON.parse(coordsJson || '[]');
+        } catch (e) {
+            alert("Coordenadas inválidas.");
+            return;
+        }
+
+        const payload = {
+            nome,
+            categoria,
+            descricao,
+            cor,
+            ativo,
+            coordenadas,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            if (id) {
+                await window.db.collection('vigilancia_areas').doc(id).update(payload);
+            } else {
+                payload.criadoEm = firebase.firestore.FieldValue.serverTimestamp();
+                await window.db.collection('vigilancia_areas').add(payload);
+            }
+
+            if (camadaAreaSendoDesenhada && mapaAoVivo) {
+                mapaAoVivo.removeLayer(camadaAreaSendoDesenhada);
+                camadaAreaSendoDesenhada = null;
+            }
+
+            const modalEl = document.getElementById('modalAreaEmpresa');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            await carregarAreasEmpresa();
+            alert("Área salva com sucesso!");
+        } catch (e) {
+            alert(`Erro ao salvar área: ${e.message}`);
+        }
+    };
+
+    window.editarArea = function (id) {
+        const a = cacheAreas.find(x => x.id === id);
+        if (!a) return;
+
+        document.getElementById('area-id').value = a.id;
+        document.getElementById('area-nome').value = a.nome || '';
+        document.getElementById('area-categoria').value = a.categoria || 'Prédio / Galpão';
+        document.getElementById('area-descricao').value = a.descricao || '';
+        document.getElementById('area-cor').value = a.cor || '#3b82f6';
+        document.getElementById('area-coordenadas-json').value = JSON.stringify(a.coordenadas || []);
+        document.getElementById('area-total-vertices').innerText = a.coordenadas ? a.coordenadas.length : 0;
+        document.getElementById('area-ativo').checked = a.ativo !== false;
+        document.getElementById('modalAreaTitulo').innerHTML = '<i class="fas fa-edit me-2"></i> Editar Área da Empresa';
+
+        const picker = document.getElementById('area-color-picker');
+        if (picker) {
+            picker.querySelectorAll('.color-pill-btn').forEach(p => {
+                p.classList.toggle('active', p.style.backgroundColor === a.cor);
+            });
+        }
+
+        const modalEl = document.getElementById('modalAreaEmpresa');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    };
+
+    window.excluirArea = async function (id) {
+        if (!confirm("Tem certeza que deseja excluir esta área da empresa?")) return;
+        try {
+            await window.db.collection('vigilancia_areas').doc(id).delete();
+            await carregarAreasEmpresa();
+        } catch (e) {
+            alert(`Erro ao excluir área: ${e.message}`);
+        }
+    };
+
+    window.focarAreaNoMapa = function (id) {
+        const a = cacheAreas.find(x => x.id === id);
+        if (!a || !a.coordenadas || a.coordenadas.length === 0 || !mapaAoVivo) return;
+
+        const tabMap = document.getElementById('tab-aovivo-btn');
+        if (tabMap) tabMap.click();
+
+        const latlngs = a.coordenadas.map(c => [Number(c.lat), Number(c.lng)]);
+        const bounds = L.latLngBounds(latlngs);
+        mapaAoVivo.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+    };
+
+    async function carregarAreasEmpresa() {
+        if (!window.db) return;
+        try {
+            const snap = await window.db.collection('vigilancia_areas').get();
+            cacheAreas = [];
+            snap.forEach(doc => cacheAreas.push({ id: doc.id, ...doc.data() }));
+
+            renderizarTabelaAreas();
+            renderizarAreasNoMapa();
+        } catch (e) {
+            console.warn("Erro ao carregar áreas:", e);
+        }
+    }
+
+    function renderizarTabelaAreas() {
+        const tbody = document.getElementById('tabela-areas-tbody');
+        if (!tbody) return;
+
+        if (cacheAreas.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center py-4 text-muted">Nenhuma área delimitada ainda. Clique em <b>Desenhar Nova Área no Satélite</b>.</td></tr>';
+            return;
+        }
+
+        let html = '';
+        cacheAreas.forEach(a => {
+            const statusBadge = a.ativo !== false ? '<span class="badge bg-success">Ativa</span>' : '<span class="badge bg-secondary">Inativa</span>';
+            const vertices = a.coordenadas ? a.coordenadas.length : 0;
+            const cor = a.cor || '#3b82f6';
+
+            html += `
+                <tr>
+                    <td>
+                        <span style="display:inline-block; width: 22px; height: 22px; background: ${cor}; border-radius: 4px; border: 1px solid rgba(0,0,0,0.2);"></span>
+                    </td>
+                    <td class="fw-bold">${a.nome}</td>
+                    <td><span class="badge bg-light text-dark border">${a.categoria || 'Geral'}</span></td>
+                    <td><small class="text-muted"><i class="fas fa-vector-square me-1"></i> ${vertices} vértices</small></td>
+                    <td class="small text-muted">${a.descricao || '-'}</td>
+                    <td>${statusBadge}</td>
+                    <td class="text-end">
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="window.focarAreaNoMapa('${a.id}')" title="Ver no Mapa">
+                            <i class="fas fa-crosshairs"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary me-1" onclick="window.editarArea('${a.id}')" title="Editar Informações">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger" onclick="window.excluirArea('${a.id}')" title="Excluir">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+        tbody.innerHTML = html;
+    }
+
+    function renderizarAreasNoMapa() {
+        if (!layerGroupAreas) return;
+        layerGroupAreas.clearLayers();
+
+        cacheAreas.forEach(a => {
+            if (a.ativo === false || !a.coordenadas || a.coordenadas.length < 3) return;
+
+            const latlngs = a.coordenadas.map(c => [Number(c.lat), Number(c.lng)]);
+            const cor = a.cor || '#3b82f6';
+
+            const polygon = L.polygon(latlngs, {
+                color: cor,
+                weight: 2,
+                dashArray: '4, 4',
+                fillColor: cor,
+                fillOpacity: 0.22
+            });
+
+            polygon.bindTooltip(`<b>${a.nome}</b><br><small>${a.categoria || ''}</small>`, {
+                sticky: true,
+                className: 'area-polygon-tooltip'
+            });
+
+            polygon.bindPopup(`
+                <div class="p-1">
+                    <h6 class="fw-bold mb-1" style="color: ${cor};"><i class="fas fa-building me-1"></i> ${a.nome}</h6>
+                    <p class="small text-muted mb-1"><b>Categoria:</b> ${a.categoria || 'Área Fabril'}</p>
+                    ${a.descricao ? `<p class="small mb-2">${a.descricao}</p>` : ''}
+                    <button class="btn btn-sm btn-primary py-0 px-2 mt-1" onclick="window.editarArea('${a.id}')">
+                        <i class="fas fa-edit me-1"></i> Editar Área
+                    </button>
+                </div>
+            `);
+
+            layerGroupAreas.addLayer(polygon);
+        });
+    }
+
+    // ==============================================
+    // CONFIGURAÇÃO DO MAPA & SATÉLITE DA EMPRESA
+    // ==============================================
+
+    window.abrirModalConfigMapa = function () {
+        document.getElementById('config-unidade-nome').value = configuracaoEmpresa.nomeUnidade || '';
+        document.getElementById('config-unidade-lat').value = configuracaoEmpresa.centroLat || -27.0543;
+        document.getElementById('config-unidade-lng').value = configuracaoEmpresa.centroLng || -48.9832;
+        document.getElementById('config-unidade-zoom').value = configuracaoEmpresa.zoomInicial || 17;
+        document.getElementById('config-unidade-provedor').value = configuracaoEmpresa.provedorPadrao || 'ESRI_SATELLITE';
+        document.getElementById('config-google-api-key').value = configuracaoEmpresa.googleMapsApiKey || '';
+
+        const modalEl = document.getElementById('modalConfigMapa');
+        const modal = new bootstrap.Modal(modalEl);
+        modal.show();
+    };
+
+    window.capturarPosicaoEmpresa = function () {
+        if (!navigator.geolocation) {
+            alert("Geolocalização não suportada neste navegador.");
+            return;
+        }
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                document.getElementById('config-unidade-lat').value = pos.coords.latitude.toFixed(6);
+                document.getElementById('config-unidade-lng').value = pos.coords.longitude.toFixed(6);
+                alert(`Coordenadas capturadas com sucesso!\nPrecisão: ±${Math.round(pos.coords.accuracy)}m`);
+            },
+            (err) => {
+                alert(`Erro ao obter GPS: ${err.message}`);
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
+    };
+
+    window.salvarConfiguracaoMapa = async function () {
+        const nome = document.getElementById('config-unidade-nome').value.trim();
+        const lat = parseFloat(document.getElementById('config-unidade-lat').value);
+        const lng = parseFloat(document.getElementById('config-unidade-lng').value);
+        const zoom = parseInt(document.getElementById('config-unidade-zoom').value, 10) || 17;
+        const provedor = document.getElementById('config-unidade-provedor').value;
+        const googleKey = document.getElementById('config-google-api-key').value.trim();
+
+        if (!nome) {
+            alert("Informe o nome da unidade.");
+            return;
+        }
+        if (isNaN(lat) || lat < -90 || lat > 90) {
+            alert("Latitude inválida! Deve estar entre -90 e 90.");
+            return;
+        }
+        if (isNaN(lng) || lng < -180 || lng > 180) {
+            alert("Longitude inválida! Deve estar entre -180 e 180.");
+            return;
+        }
+
+        configuracaoEmpresa = {
+            nomeUnidade: nome,
+            centroLat: lat,
+            centroLng: lng,
+            zoomInicial: zoom,
+            provedorPadrao: provedor,
+            googleMapsApiKey: googleKey,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        try {
+            await window.db.collection('vigilancia_configuracoes').doc('config_empresa').set(configuracaoEmpresa, { merge: true });
+
+            const modalEl = document.getElementById('modalConfigMapa');
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+
+            alert("Configurações do mapa salvas com sucesso!");
+            window.centralizarMapaVigilancia();
+
+        } catch (e) {
+            alert(`Erro ao salvar configurações do mapa: ${e.message}`);
+        }
+    };
+
+    window.centralizarMapaVigilancia = function () {
+        if (!mapaAoVivo) return;
+        const lat = Number(configuracaoEmpresa.centroLat) || -27.0543;
+        const lng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const zoom = Number(configuracaoEmpresa.zoomInicial) || 17;
+        mapaAoVivo.setView([lat, lng], zoom, { animate: true });
+    };
+
+    window.alternarCamadaSatélite = function () {
+        if (!mapaAoVivo || !tileLayerSatelite || !tileLayerOsm) return;
+
+        if (camadaAtualSatelite) {
+            if (mapaAoVivo.hasLayer(tileLayerSatelite)) mapaAoVivo.removeLayer(tileLayerSatelite);
+            if (tileLayerHibridoLabels && mapaAoVivo.hasLayer(tileLayerHibridoLabels)) mapaAoVivo.removeLayer(tileLayerHibridoLabels);
+            tileLayerOsm.addTo(mapaAoVivo);
+            camadaAtualSatelite = false;
+            atualizarBotaoCamadaSatelite('Mapa Vetorial');
+        } else {
+            if (mapaAoVivo.hasLayer(tileLayerOsm)) mapaAoVivo.removeLayer(tileLayerOsm);
+            tileLayerSatelite.addTo(mapaAoVivo);
+            if (configuracaoEmpresa.provedorPadrao === 'ESRI_HYBRID' && tileLayerHibridoLabels) {
+                tileLayerHibridoLabels.addTo(mapaAoVivo);
+            }
+            camadaAtualSatelite = true;
+            atualizarBotaoCamadaSatelite('Satélite HD');
+        }
+    };
+
+    // Alternância de Visibilidade das Camadas
+    window.toggleCamadaAreas = function (visivel) {
+        if (!mapaAoVivo || !layerGroupAreas) return;
+        if (visivel) {
+            if (!mapaAoVivo.hasLayer(layerGroupAreas)) mapaAoVivo.addLayer(layerGroupAreas);
+        } else {
+            if (mapaAoVivo.hasLayer(layerGroupAreas)) mapaAoVivo.removeLayer(layerGroupAreas);
+        }
+    };
+
+    window.toggleCamadaRotas = function (visivel) {
+        if (!mapaAoVivo || !layerGroupRotas) return;
+        if (visivel) {
+            if (!mapaAoVivo.hasLayer(layerGroupRotas)) mapaAoVivo.addLayer(layerGroupRotas);
+        } else {
+            if (mapaAoVivo.hasLayer(layerGroupRotas)) mapaAoVivo.removeLayer(layerGroupRotas);
+        }
+    };
+
+    window.toggleCamadaPontos = function (visivel) {
+        if (!mapaAoVivo || !layerGroupPontos) return;
+        if (visivel) {
+            if (!mapaAoVivo.hasLayer(layerGroupPontos)) mapaAoVivo.addLayer(layerGroupPontos);
+        } else {
+            if (mapaAoVivo.hasLayer(layerGroupPontos)) mapaAoVivo.removeLayer(layerGroupPontos);
+        }
+    };
+
+    window.toggleCamadaVigias = function (visivel) {
+        if (!mapaAoVivo || !layerGroupVigias) return;
+        if (visivel) {
+            if (!mapaAoVivo.hasLayer(layerGroupVigias)) mapaAoVivo.addLayer(layerGroupVigias);
+        } else {
+            if (mapaAoVivo.hasLayer(layerGroupVigias)) mapaAoVivo.removeLayer(layerGroupVigias);
+        }
+    };
+
+    // Marcar Ponto Diretamente Clicando no Mapa
+    window.ativarCliqueNovoPontoNoMapa = function () {
+        modoCriarPontoNoMapa = true;
+        const tabMap = document.getElementById('tab-aovivo-btn');
+        if (tabMap) tabMap.click();
+        alert("📍 Clique em qualquer local do mapa de satélite para posicionar o novo ponto de controle.");
+    };
+
+    window.abrirModalPontoComCoordenadas = function (lat, lng) {
+        window.abrirModalPonto();
+        setTimeout(() => {
+            document.getElementById('ponto-lat').value = Number(lat).toFixed(6);
+            document.getElementById('ponto-lng').value = Number(lng).toFixed(6);
+            initMapaSeletorPonto(lat, lng, 25);
+        }, 500);
+    };
 
     /**
      * Escuta Rondas Ativas via Firestore onSnapshot
@@ -252,17 +817,20 @@
         if (!mapaAoVivo) return;
 
         const idsAtivos = new Set(rondas.map(r => r.id));
+        const targetVigias = layerGroupVigias || mapaAoVivo;
 
         // Remove do mapa rondas que já foram finalizadas
         markersAoVivo.forEach((marker, id) => {
             if (!idsAtivos.has(id)) {
-                mapaAoVivo.removeLayer(marker);
+                if (targetVigias.hasLayer(marker)) targetVigias.removeLayer(marker);
+                else if (mapaAoVivo.hasLayer(marker)) mapaAoVivo.removeLayer(marker);
                 markersAoVivo.delete(id);
             }
         });
         polylinesAoVivo.forEach((poly, id) => {
             if (!idsAtivos.has(id)) {
-                mapaAoVivo.removeLayer(poly);
+                if (targetVigias.hasLayer(poly)) targetVigias.removeLayer(poly);
+                else if (mapaAoVivo.hasLayer(poly)) mapaAoVivo.removeLayer(poly);
                 polylinesAoVivo.delete(id);
             }
         });
@@ -289,7 +857,7 @@
                     iconAnchor: [16, 16]
                 });
 
-                marker = L.marker([lat, lng], { icon: customIcon }).addTo(mapaAoVivo);
+                marker = L.marker([lat, lng], { icon: customIcon }).addTo(targetVigias);
                 marker.bindPopup(`
                     <div class="p-1">
                         <b>${ronda.vigiaNome || 'Vigia'}</b><br>
@@ -307,7 +875,7 @@
                 const latlngs = ronda.trajetoRecente.map(p => [p.lat, p.lng]);
                 let poly = polylinesAoVivo.get(ronda.id);
                 if (!poly) {
-                    poly = L.polyline(latlngs, { color: '#10b981', weight: 4, opacity: 0.85 }).addTo(mapaAoVivo);
+                    poly = L.polyline(latlngs, { color: '#10b981', weight: 4, opacity: 0.85 }).addTo(targetVigias);
                     polylinesAoVivo.set(ronda.id, poly);
                 } else {
                     poly.setLatLngs(latlngs);
@@ -334,10 +902,17 @@
         if (!mapaAoVivo) return;
         const group = [];
         markersAoVivo.forEach(m => group.push(m.getLatLng()));
-        markersPontosFixos.forEach(m => group.push(m.getLatLng()));
+        markersPontosFixos.forEach(m => {
+            if (m.getLatLng) group.push(m.getLatLng());
+        });
 
         if (group.length > 0) {
             mapaAoVivo.fitBounds(L.latLngBounds(group), { padding: [50, 50], maxZoom: 18 });
+        } else {
+            const lat = Number(configuracaoEmpresa.centroLat) || -27.0543;
+            const lng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+            const zoom = Number(configuracaoEmpresa.zoomInicial) || 17;
+            mapaAoVivo.setView([lat, lng], zoom);
         }
     };
 
@@ -347,8 +922,13 @@
     function renderizarPontosFixosNoMapa() {
         if (!mapaAoVivo) return;
 
-        // Limpa marcadores anteriores
-        markersPontosFixos.forEach(m => mapaAoVivo.removeLayer(m));
+        const targetPontos = layerGroupPontos || mapaAoVivo;
+        if (layerGroupPontos) {
+            layerGroupPontos.clearLayers();
+        }
+        markersPontosFixos.forEach(m => {
+            if (mapaAoVivo.hasLayer(m)) mapaAoVivo.removeLayer(m);
+        });
         markersPontosFixos = [];
 
         cachePontos.forEach(ponto => {
@@ -365,7 +945,7 @@
                 iconAnchor: [13, 26]
             });
 
-            const m = L.marker([Number(ponto.latitude), Number(ponto.longitude)], { icon: iconPonto }).addTo(mapaAoVivo);
+            const m = L.marker([Number(ponto.latitude), Number(ponto.longitude)], { icon: iconPonto }).addTo(targetPontos);
             m.bindPopup(`
                 <div>
                     <b class="text-danger">${ponto.nome}</b><br>
@@ -382,7 +962,7 @@
                 fillColor: '#ef4444',
                 fillOpacity: 0.1,
                 weight: 1
-            }).addTo(mapaAoVivo);
+            }).addTo(targetPontos);
 
             markersPontosFixos.push(m);
             markersPontosFixos.push(circ);
@@ -453,6 +1033,9 @@
     /**
      * Modal de Ponto de Controle
      */
+    /**
+     * Modal de Ponto de Controle
+     */
     window.abrirModalPonto = function () {
         document.getElementById('formPontoControle').reset();
         document.getElementById('ponto-id').value = '';
@@ -460,12 +1043,17 @@
         document.getElementById('modalPontoTitulo').innerHTML = '<i class="fas fa-map-pin me-2"></i> Novo Ponto de Controle';
         window.toggleTipoConfirmacaoPonto();
 
+        const defLat = Number(configuracaoEmpresa.centroLat) || -27.0543;
+        const defLng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        document.getElementById('ponto-lat').value = defLat.toFixed(6);
+        document.getElementById('ponto-lng').value = defLng.toFixed(6);
+
         const modalEl = document.getElementById('modalPontoControle');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
 
         setTimeout(() => {
-            initMapaSeletorPonto(-27.0543, -48.9832, 25);
+            initMapaSeletorPonto(defLat, defLng, 25);
         }, 400);
     };
 
@@ -505,15 +1093,39 @@
             mapaSeletorPonto = null;
         }
 
-        mapaSeletorPonto = L.map('mapa-seletor-ponto').setView([lat, lng], 17);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapaSeletorPonto);
+        const centerLat = Number(lat) || Number(configuracaoEmpresa.centroLat) || -27.0543;
+        const centerLng = Number(lng) || Number(configuracaoEmpresa.centroLng) || -48.9832;
 
-        markerSeletorPonto = L.marker([lat, lng], { draggable: true }).addTo(mapaSeletorPonto);
-        circuloSeletorRaio = L.circle([lat, lng], {
+        mapaSeletorPonto = L.map('mapa-seletor-ponto', {
+            attributionControl: false
+        }).setView([centerLat, centerLng], 18);
+
+        // Satélite HD de Alta Resolução + Etiquetas
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaSeletorPonto);
+        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaSeletorPonto);
+
+        // Renderiza áreas da empresa delimitadas no mapa de seleção
+        if (cacheAreas && cacheAreas.length > 0) {
+            cacheAreas.forEach(a => {
+                if (a.ativo === false || !a.coordenadas || a.coordenadas.length < 3) return;
+                const latlngs = a.coordenadas.map(c => [Number(c.lat), Number(c.lng)]);
+                const cor = a.cor || '#3b82f6';
+                L.polygon(latlngs, {
+                    color: cor,
+                    weight: 1.5,
+                    dashArray: '3, 3',
+                    fillColor: cor,
+                    fillOpacity: 0.15
+                }).bindTooltip(a.nome, { sticky: true }).addTo(mapaSeletorPonto);
+            });
+        }
+
+        markerSeletorPonto = L.marker([centerLat, centerLng], { draggable: true }).addTo(mapaSeletorPonto);
+        circuloSeletorRaio = L.circle([centerLat, centerLng], {
             radius: Number(raio) || 25,
             color: '#ef4444',
             fillColor: '#ef4444',
-            fillOpacity: 0.15
+            fillOpacity: 0.2
         }).addTo(mapaSeletorPonto);
 
         function atualizarInputs(latlng) {
@@ -531,7 +1143,9 @@
             atualizarInputs(e.latlng);
         });
 
-        mapaSeletorPonto.invalidateSize();
+        setTimeout(() => {
+            if (mapaSeletorPonto) mapaSeletorPonto.invalidateSize();
+        }, 300);
     }
 
     window.capturarLocalizacaoAtualPonto = function () {
@@ -661,7 +1275,9 @@
                         <td>${r.duracaoEsperadaMin || 45} min</td>
                         <td>v${r.versao || 1}</td>
                         <td>${statusBadge}</td>
-                        <td class="text-end">
+                            <button class="btn btn-sm btn-outline-info me-1" onclick="window.visualizarRotaNoMapa('${r.id}')" title="Visualizar Traçado no Mapa">
+                                <i class="fas fa-eye"></i>
+                            </button>
                             <button class="btn btn-sm btn-outline-primary me-1" onclick="window.editarRota('${r.id}')" title="Editar">
                                 <i class="fas fa-edit"></i>
                             </button>
@@ -677,6 +1293,64 @@
             console.error("Erro ao carregar rotas:", e);
         }
     }
+
+    /**
+     * Visualiza Traçado da Rota Selecionada sobre a imagem de Satélite
+     */
+    window.visualizarRotaNoMapa = function (rotaId) {
+        const rota = cacheRotas.find(r => r.id === rotaId);
+        if (!rota || !rota.pontos || rota.pontos.length === 0) {
+            alert("Esta rota não possui pontos de controle vinculados.");
+            return;
+        }
+
+        const tabMap = document.getElementById('tab-aovivo-btn');
+        if (tabMap) tabMap.click();
+
+        if (layerGroupRotas) {
+            layerGroupRotas.clearLayers();
+        }
+
+        const coords = [];
+        rota.pontos.forEach((p, idx) => {
+            if (!p.latitude || !p.longitude) return;
+            const pt = [Number(p.latitude), Number(p.longitude)];
+            coords.push(pt);
+
+            const iconWaypoint = L.divIcon({
+                className: 'custom-waypoint-icon',
+                html: `
+                    <div style="background: #2563eb; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.4);">
+                        ${idx + 1}
+                    </div>
+                `,
+                iconSize: [24, 24],
+                iconAnchor: [12, 12]
+            });
+
+            const marker = L.marker(pt, { icon: iconWaypoint });
+            marker.bindPopup(`<b>${idx + 1}. ${p.nome}</b><br><small>Rota: ${rota.nome}</small>`);
+            if (layerGroupRotas) layerGroupRotas.addLayer(marker);
+            else if (mapaAoVivo) marker.addTo(mapaAoVivo);
+        });
+
+        if (coords.length > 1) {
+            const poly = L.polyline(coords, {
+                color: '#3b82f6',
+                weight: 4,
+                dashArray: '8, 8',
+                opacity: 0.9
+            });
+            if (layerGroupRotas) layerGroupRotas.addLayer(poly);
+            else if (mapaAoVivo) poly.addTo(mapaAoVivo);
+
+            if (mapaAoVivo) {
+                mapaAoVivo.fitBounds(poly.getBounds(), { padding: [60, 60], maxZoom: 18 });
+            }
+        } else if (coords.length === 1 && mapaAoVivo) {
+            mapaAoVivo.setView(coords[0], 18);
+        }
+    };
 
     /**
      * Modal de Rota
@@ -1384,15 +2058,57 @@
                     mapaDetalhe.remove();
                     mapaDetalhe = null;
                 }
-                mapaDetalhe = L.map(containerMapa).setView([-27.0543, -48.9832], 17);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(mapaDetalhe);
+                const centroAuditLat = Number(configuracaoEmpresa.centroLat) || -27.0543;
+                const centroAuditLng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+
+                mapaDetalhe = L.map(containerMapa, { attributionControl: false }).setView([centroAuditLat, centroAuditLng], 17);
+
+                // Satélite HD de Alta Resolução + Etiquetas
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaDetalhe);
+                L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaDetalhe);
+
+                // Desenha áreas da empresa para contexto perimetral
+                if (cacheAreas && cacheAreas.length > 0) {
+                    cacheAreas.forEach(a => {
+                        if (a.ativo === false || !a.coordenadas || a.coordenadas.length < 3) return;
+                        const latlngs = a.coordenadas.map(c => [Number(c.lat), Number(c.lng)]);
+                        L.polygon(latlngs, {
+                            color: a.cor || '#3b82f6',
+                            weight: 1.5,
+                            fillColor: a.cor || '#3b82f6',
+                            fillOpacity: 0.15
+                        }).bindTooltip(a.nome, { sticky: true }).addTo(mapaDetalhe);
+                    });
+                }
+
+                // Checkpoints da Ronda com indicação visual de cumprimento
+                if (ronda.checkpointsStatus && Array.isArray(ronda.checkpointsStatus)) {
+                    ronda.checkpointsStatus.forEach(cp => {
+                        if (!cp.latitude || !cp.longitude) return;
+                        const ok = cp.status === 'CONFIRMADO';
+                        const corCp = ok ? '#10b981' : '#ef4444';
+                        const iconHtml = `
+                            <div style="background: ${corCp}; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+                                <i class="fas fa-${ok ? 'check' : 'times'}"></i>
+                            </div>
+                        `;
+                        const mCp = L.marker([Number(cp.latitude), Number(cp.longitude)], {
+                            icon: L.divIcon({ className: 'audit-cp-icon', html: iconHtml, iconSize: [24, 24], iconAnchor: [12, 12] })
+                        }).addTo(mapaDetalhe);
+                        mCp.bindPopup(`<b>${cp.nome}</b><br>Status: <span style="color:${corCp}; font-weight:bold;">${cp.status}</span><br>${cp.horario ? 'Horário: ' + new Date(cp.horario).toLocaleTimeString('pt-BR') : 'Não visitado'}`);
+                    });
+                }
 
                 if (coordenadas.length > 0) {
-                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 4 }).addTo(mapaDetalhe);
+                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 4, opacity: 0.9 }).addTo(mapaDetalhe);
                     L.marker(coordenadas[0]).addTo(mapaDetalhe).bindPopup("<b>Início da Ronda</b>").openPopup();
                     L.marker(coordenadas[coordenadas.length - 1]).addTo(mapaDetalhe).bindPopup("<b>Fim da Ronda</b>");
-                    mapaDetalhe.fitBounds(poly.getBounds(), { padding: [30, 30] });
+                    mapaDetalhe.fitBounds(poly.getBounds(), { padding: [40, 40] });
                 }
+
+                setTimeout(() => {
+                    if (mapaDetalhe) mapaDetalhe.invalidateSize();
+                }, 350);
             }, 300);
 
         } catch (e) {
