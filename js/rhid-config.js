@@ -1951,10 +1951,28 @@ async function carregarListaVisitantesCadastrados() {
         if (tbody) tbody.innerHTML = tableHtml || '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhuma pessoa cadastrada para monitoramento de presença.</td></tr>';
         if (metricTotal) metricTotal.textContent = pessoas.length;
 
+        const badgeCad = document.getElementById('badge-total-cadastrados');
+        if (badgeCad) badgeCad.textContent = pessoas.length;
+
     } catch (e) {
         console.error("Erro ao carregar lista de cadastrados:", e);
     }
 }
+
+// Filtro em tempo real para a tabela de cadastrados
+window.filtrarTabelaCadastrados = function (termo) {
+    const q = (termo || '').toLowerCase().trim();
+    const rows = document.querySelectorAll('#rhid-visitantes-cadastrados-tbody tr');
+    let visiveis = 0;
+    rows.forEach(r => {
+        const text = r.innerText.toLowerCase();
+        const show = !q || text.includes(q);
+        r.style.display = show ? '' : 'none';
+        if (show) visiveis++;
+    });
+    const badgeCad = document.getElementById('badge-total-cadastrados');
+    if (badgeCad) badgeCad.textContent = visiveis;
+};
 
 // Formatação segura de horários retornados pelo RHiD (evita erros com inteiros, datas ISO ou strings)
 function formatarHoraRhid(b) {
@@ -3840,7 +3858,7 @@ async function executarImportacaoRhidAutomatico() {
     const progPerc = document.getElementById('import-rhid-percentage');
 
     const radioMode = document.querySelector('input[name="radio-import-mode"]:checked');
-    const mode = radioMode ? radioMode.value : 'managers_only';
+    const mode = radioMode ? radioMode.value : 'active_only';
 
     const hIni = (document.getElementById('import-horario-inicio') || {}).value || '08:00';
     const hFim = (document.getElementById('import-horario-fim') || {}).value || '18:00';
@@ -3885,9 +3903,9 @@ async function executarImportacaoRhidAutomatico() {
             return;
         }
 
-        if (progBar) progBar.style.width = '60%';
+        if (progBar) progBar.style.width = '50%';
         if (progText) progText.textContent = `Gravando ${persons.length} cadastros no banco de dados...`;
-        if (progPerc) progPerc.textContent = '60%';
+        if (progPerc) progPerc.textContent = '50%';
 
         // Grava no Firestore em lotes de 400 (limite do Firestore batch é 500)
         if (!window.db) throw new Error("Conexão com Firestore não inicializada.");
@@ -3900,7 +3918,7 @@ async function executarImportacaoRhidAutomatico() {
             const batch = window.db.batch();
 
             chunk.forEach(p => {
-                const docId = `vis_${p.codigo || p.rhidPersonId}`;
+                const docId = `vis_rhid_${p.rhidPersonId || p.codigo}`;
                 const ref = window.db.collection('visitantes').doc(docId);
                 batch.set(ref, {
                     codigo: p.codigo,
@@ -3908,12 +3926,12 @@ async function executarImportacaoRhidAutomatico() {
                     nome: p.nome,
                     cpf: p.cpf || '',
                     cpfLimpo: p.cpfLimpo || '',
-                    rhidPersonId: p.rhidPersonId,
-                    categoria: p.categoria || 'Cargo de Confiança / Gerência',
+                    rhidPersonId: String(p.rhidPersonId),
+                    categoria: p.categoria || (p.isManager ? 'Cargo de Confiança / Gerência' : 'Colaborador / RHiD'),
                     horarioInicio: hIni,
                     horarioFim: hFim,
                     horarioPrevisto: `${hIni} às ${hFim}`,
-                    status: 'Ativo',
+                    status: p.status || 'Ativo',
                     empresa: p.empresa || 'Calçados Crival',
                     setorVisitado: 'Geral',
                     importadoRhidEm: firebase.firestore.FieldValue.serverTimestamp()
@@ -3922,6 +3940,11 @@ async function executarImportacaoRhidAutomatico() {
             });
 
             await batch.commit();
+
+            const pct = Math.round(50 + ((i + chunk.length) / persons.length) * 48);
+            if (progBar) progBar.style.width = `${Math.min(pct, 98)}%`;
+            if (progPerc) progPerc.textContent = `${Math.min(pct, 98)}%`;
+            if (progText) progText.textContent = `Gravados ${salvos} de ${persons.length} cadastros...`;
         }
 
         if (progBar) progBar.style.width = '100%';

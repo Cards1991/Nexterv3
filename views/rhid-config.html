@@ -468,9 +468,6 @@
                         </div>
 
                         <div class="d-flex flex-wrap gap-2">
-                            <button class="btn btn-warning text-dark fw-bold shadow-sm rounded-3 px-3" onclick="abrirModalImportarRhid()" id="btn-abrir-importar-rhid" title="Importar cadastros da nuvem RHiD e salvar automaticamente no Nexter">
-                                <i class="fas fa-cloud-download-alt me-1"></i> Importar do RHiD
-                            </button>
                             <button class="btn btn-outline-success fw-bold shadow-sm rounded-3 px-3 bg-white" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
                                 <i class="fas fa-file-excel me-1"></i> Exportar
                             </button>
@@ -533,13 +530,20 @@
 
             <!-- Card Secundário: Gestão do Cadastro de Pessoas Monitoradas -->
             <div class="card shadow-sm border-0 mb-4 rounded-3">
-                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
+                <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div>
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-address-book text-primary me-2"></i> Pessoas Monitoradas Cadastradas</h5>
-                        <small class="text-muted">Cargos de confiança, gerentes, coordenadores, prestadores e visitantes com jornada prevista no Nexter.</small>
+                        <h5 class="mb-0 fw-bold text-dark">
+                            <i class="fas fa-address-book text-primary me-2"></i> Pessoas Monitoradas Cadastradas 
+                            <span class="badge bg-primary-subtle text-primary border border-primary-subtle ms-2 rounded-pill" id="badge-total-cadastrados">0</span>
+                        </h5>
+                        <small class="text-muted">Cargos de confiança, gerentes, coordenadores, prestadores e colaboradores com jornada prevista no Nexter.</small>
                     </div>
-                    <div class="d-flex gap-2">
-                        <button class="btn btn-warning text-dark btn-sm rounded-pill fw-bold shadow-sm" onclick="abrirModalImportarRhid()" title="Importar cadastros da nuvem RHiD e salvar automaticamente">
+                    <div class="d-flex flex-wrap align-items-center gap-2">
+                        <div class="input-group input-group-sm" style="max-width: 250px;">
+                            <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" id="filtro-busca-cadastrados" class="form-control border-start-0" placeholder="Buscar nome ou código..." oninput="window.filtrarTabelaCadastrados(this.value)">
+                        </div>
+                        <button class="btn btn-warning text-dark btn-sm rounded-pill fw-bold shadow-sm" onclick="abrirModalImportarRhid()" id="btn-importar-rhid-cadastros" title="Importar cadastros da nuvem RHiD e salvar automaticamente">
                             <i class="fas fa-cloud-download-alt me-1"></i> Importar do RHiD
                         </button>
                         <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold" onclick="abrirModalNovoVisitante()">
@@ -1005,17 +1009,24 @@
                 <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
                     <label class="form-label fw-bold small text-secondary mb-2">Selecione o Modo de Importação:</label>
                     <div class="form-check mb-2">
-                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-gestores" value="managers_only" checked>
-                        <label class="form-check-label fw-bold text-dark" for="import-mode-gestores">
-                            <i class="fas fa-user-shield text-warning me-1"></i> Cargos de Confiança, Gestores & Visitantes
-                            <br><small class="text-muted fw-normal">Importa apenas quem não tem admissão CLT (ex: Charles Augusto, Denis Adriano, gerentes, coordenadores).</small>
+                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-ativos" value="active_only" checked>
+                        <label class="form-check-label fw-bold text-dark" for="import-mode-ativos">
+                            <i class="fas fa-user-check text-success me-1"></i> Todos os Colaboradores Ativos do RHiD (Recomendado)
+                            <br><small class="text-muted fw-normal">Importa todos os cadastros ativos na nuvem do relógio de ponto (~777 pessoas) para monitoramento de presença.</small>
+                        </label>
+                    </div>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-todos" value="all">
+                        <label class="form-check-label fw-bold text-dark" for="import-mode-todos">
+                            <i class="fas fa-users text-primary me-1"></i> Todos os Cadastros Existentes (Ativos + Inativos)
+                            <br><small class="text-muted fw-normal">Importa a totalidade histórica registrada na nuvem (~1.287 cadastros).</small>
                         </label>
                     </div>
                     <div class="form-check">
-                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-todos" value="all">
-                        <label class="form-check-label fw-bold text-dark" for="import-mode-todos">
-                            <i class="fas fa-users text-primary me-1"></i> Todos os Cadastros do RHiD
-                            <br><small class="text-muted fw-normal">Importa todos os colaboradores e pessoas cadastradas na nuvem para monitoramento de presença.</small>
+                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-gestores" value="managers_only">
+                        <label class="form-check-label fw-bold text-dark" for="import-mode-gestores">
+                            <i class="fas fa-user-shield text-warning me-1"></i> Apenas Cargos sem Admissão CLT (Diretoria/Prestadores)
+                            <br><small class="text-muted fw-normal">Filtra exclusivamente pessoas sem data de admissão CLT registrada.</small>
                         </label>
                     </div>
                 </div>
@@ -1052,5 +1063,5 @@
     </div>
 </div>
 
-<script src="js/rhid-config.js?v=25"></script>
+<script src="js/rhid-config.js?v=26"></script>
 
