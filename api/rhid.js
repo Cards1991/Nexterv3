@@ -497,8 +497,11 @@ module.exports = async function handler(req, res) {
             case 'syncVisitors':
                 try {
                     const token = await loginToRhid();
-                    const personRes = await fetch(`${RHID_API_BASE}/person`, {
-                        headers: { 'Authorization': 'Bearer ' + token }
+                    const personRes = await fetch(`${RHID_API_BASE}/person?start=0&length=100`, {
+                        headers: { 
+                            'Authorization': 'Bearer ' + token,
+                            'Accept': 'application/json'
+                        }
                     });
                     const personData = await personRes.json();
                     const list = personData.records || [];
@@ -520,6 +523,74 @@ module.exports = async function handler(req, res) {
                 } catch (vErr) {
                     console.error('[RHID API] Erro ao sincronizar visitantes:', vErr);
                     return res.status(500).json({ success: false, message: 'Erro ao buscar visitantes.', details: vErr.message });
+                }
+
+            case 'importAllRhidPersons':
+                try {
+                    const { mode } = req.body || {}; // 'managers_only' (default) ou 'all'
+                    const token = await loginToRhid();
+                    
+                    let start = 0;
+                    const length = 100;
+                    let allPersons = [];
+                    
+                    // Busca paginada no endpoint person
+                    while (start < 1000) {
+                        const personRes = await fetch(`${RHID_API_BASE}/person?start=${start}&length=${length}`, {
+                            headers: { 
+                                'Authorization': 'Bearer ' + token,
+                                'Accept': 'application/json'
+                            }
+                        });
+                        if (!personRes.ok) break;
+                        const personData = await personRes.json();
+                        const records = personData.records || [];
+                        if (records.length === 0) break;
+                        allPersons.push(...records);
+                        start += length;
+                        if (allPersons.length >= (personData.total || 0) && personData.total > 0) break;
+                    }
+
+                    // Formatação rica e segura dos cadastros
+                    const formatted = allPersons.map(p => {
+                        const cpfClean = p.cpf ? String(p.cpf).replace(/\D/g, '') : '';
+                        const cpfPad = cpfClean ? cpfClean.padStart(11, '0') : '';
+                        const cpfFmt = cpfPad ? cpfPad.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : '';
+                        const isManager = !p.admissionDate || p.registration === '17101991' || (p.name && (p.name.toUpperCase().includes('GERENTE') || p.name.toUpperCase().includes('DIRETOR') || p.name.toUpperCase().includes('COORDENADOR') || p.name.toUpperCase().includes('SUPERVISOR')));
+
+                        return {
+                            rhidPersonId: String(p.id),
+                            nome: p.name ? p.name.trim() : 'Sem Nome',
+                            codigo: p.registration && String(p.registration).trim() ? String(p.registration).trim() : (p.code && String(p.code) !== '0' ? String(p.code) : String(p.id)),
+                            codigoRep: p.pis ? String(p.pis).replace(/\D/g, '') : '',
+                            cpf: cpfFmt,
+                            cpfLimpo: cpfPad || cpfClean,
+                            categoria: isManager ? 'Cargo de Confiança / Gerência' : 'Colaborador / RHiD',
+                            horarioInicio: '08:00',
+                            horarioFim: '18:00',
+                            horarioPrevisto: '08:00 às 18:00',
+                            status: 'Ativo',
+                            empresa: 'Calçados Crival',
+                            temAdmissaoClt: !!p.admissionDate,
+                            dataAdmissao: p.admissionDate || null,
+                            isManager: isManager
+                        };
+                    });
+
+                    let filtered = formatted;
+                    if (mode === 'managers_only') {
+                        filtered = formatted.filter(p => p.isManager || !p.temAdmissaoClt);
+                    }
+
+                    return res.status(200).json({
+                        success: true,
+                        count: filtered.length,
+                        totalDisponiveis: formatted.length,
+                        data: filtered
+                    });
+                } catch (impErr) {
+                    console.error('[RHID API] Erro ao importar pessoas do RHiD:', impErr);
+                    return res.status(500).json({ success: false, message: 'Erro ao importar cadastros do RHiD.', details: impErr.message });
                 }
                 
             default:

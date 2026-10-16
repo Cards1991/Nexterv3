@@ -15,12 +15,12 @@
     <ul class="nav nav-pills mb-4 p-2 bg-white rounded-3 shadow-sm border" id="rhidTab" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active fw-bold px-4 py-2 rounded-pill" id="tab-colaboradores-btn" data-bs-toggle="pill" data-bs-target="#tab-colaboradores" type="button" role="tab">
-                <i class="fas fa-users me-2"></i> Colaboradores & Folha
+                <i class="fas fa-users me-2"></i> Apuração de Ponto (Colaboradores & Folha)
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link fw-bold px-4 py-2 rounded-pill position-relative" id="tab-visitantes-btn" data-bs-toggle="pill" data-bs-target="#tab-visitantes" type="button" role="tab" onclick="if(typeof inicializarModuloVisitantes === 'function') inicializarModuloVisitantes();">
-                <i class="fas fa-user-shield me-2 text-warning"></i> Presença & Acesso (Cargos de Confiança & Visitantes)
+                <i class="fas fa-user-shield me-2 text-warning"></i> Presença & Espelho (Cargos de Confiança)
                 <span class="badge bg-danger rounded-pill ms-2" id="badge-visitantes-presentes">0 no local</span>
             </button>
         </li>
@@ -467,7 +467,10 @@
                             </button>
                         </div>
 
-                        <div class="d-flex gap-2">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-warning text-dark fw-bold shadow-sm rounded-3 px-3" onclick="abrirModalImportarRhid()" id="btn-abrir-importar-rhid" title="Importar cadastros da nuvem RHiD e salvar automaticamente no Nexter">
+                                <i class="fas fa-cloud-download-alt me-1"></i> Importar do RHiD
+                            </button>
                             <button class="btn btn-outline-success fw-bold shadow-sm rounded-3 px-3 bg-white" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
                                 <i class="fas fa-file-excel me-1"></i> Exportar
                             </button>
@@ -535,9 +538,14 @@
                         <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-address-book text-primary me-2"></i> Pessoas Monitoradas Cadastradas</h5>
                         <small class="text-muted">Cargos de confiança, gerentes, coordenadores, prestadores e visitantes com jornada prevista no Nexter.</small>
                     </div>
-                    <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold" onclick="abrirModalNovoVisitante()">
-                        <i class="fas fa-plus me-1"></i> Adicionar Pessoa
-                    </button>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-warning text-dark btn-sm rounded-pill fw-bold shadow-sm" onclick="abrirModalImportarRhid()" title="Importar cadastros da nuvem RHiD e salvar automaticamente">
+                            <i class="fas fa-cloud-download-alt me-1"></i> Importar do RHiD
+                        </button>
+                        <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold" onclick="abrirModalNovoVisitante()">
+                            <i class="fas fa-plus me-1"></i> Adicionar Manual
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
@@ -976,5 +984,73 @@
     </div>
 </div>
 
-<script src="js/rhid-config.js?v=21"></script>
+<!-- ============================================================== -->
+<!-- MODAL: IMPORTAÇÃO AUTOMÁTICA DE CADASTROS DO RHID -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-importar-todos" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark p-2 rounded-circle"><i class="fas fa-cloud-download-alt fs-6"></i></span>
+                    <h5 class="modal-title fw-bold mb-0">Importar Pessoas do RHiD</h5>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <p class="text-muted small mb-3">
+                    O sistema buscará todos os cadastros registrados na nuvem do RHiD (Control iD) e criará automaticamente o vínculo no Nexter com horário padrão pré-configurado.
+                </p>
+
+                <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+                    <label class="form-label fw-bold small text-secondary mb-2">Selecione o Modo de Importação:</label>
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-gestores" value="managers_only" checked>
+                        <label class="form-check-label fw-bold text-dark" for="import-mode-gestores">
+                            <i class="fas fa-user-shield text-warning me-1"></i> Cargos de Confiança, Gestores & Visitantes
+                            <br><small class="text-muted fw-normal">Importa apenas quem não tem admissão CLT (ex: Charles Augusto, Denis Adriano, gerentes, coordenadores).</small>
+                        </label>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="radio" name="radio-import-mode" id="import-mode-todos" value="all">
+                        <label class="form-check-label fw-bold text-dark" for="import-mode-todos">
+                            <i class="fas fa-users text-primary me-1"></i> Todos os Cadastros do RHiD
+                            <br><small class="text-muted fw-normal">Importa todos os colaboradores e pessoas cadastradas na nuvem para monitoramento de presença.</small>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm p-3 mb-3 bg-white border-start border-4 border-primary">
+                    <label class="form-label fw-bold small text-secondary mb-1">Horário Previsto Padrão Atribuído:</label>
+                    <div class="d-flex gap-2 align-items-center">
+                        <input type="time" id="import-horario-inicio" class="form-control form-control-sm" value="08:00" style="max-width: 110px;">
+                        <span class="text-muted small">às</span>
+                        <input type="time" id="import-horario-fim" class="form-control form-control-sm" value="18:00" style="max-width: 110px;">
+                        <span class="badge bg-light text-muted border small ms-auto">Almoço: 12:00 às 13:30</span>
+                    </div>
+                </div>
+
+                <div id="import-rhid-progress-container" class="d-none">
+                    <div class="d-flex justify-content-between small mb-1">
+                        <span id="import-rhid-status-text">Conectando à nuvem RHiD...</span>
+                        <span id="import-rhid-percentage">0%</span>
+                    </div>
+                    <div class="progress" style="height: 8px;">
+                        <div id="import-rhid-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <div id="import-rhid-alert" class="alert d-none mt-3 mb-0 small shadow-sm"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning text-dark px-4 fw-bold rounded-pill shadow-sm" id="btn-executar-importacao-rhid" onclick="executarImportacaoRhidAutomatico()">
+                    <i class="fas fa-cloud-download-alt me-1"></i> Iniciar Importação Automática
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/rhid-config.js?v=22"></script>
 

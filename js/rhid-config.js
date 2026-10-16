@@ -1759,12 +1759,12 @@ window._visitantesCadastradosCache = [];
 async function inicializarModuloVisitantes() {
     console.log("Inicializando Módulo de Presença & Acesso (Cargos de Confiança, Gerência & Visitantes)...");
     
-    // 1. Configurar datas padrão (Hoje)
+    // 1. Configurar datas padrão sempre para o dia vigente (Hoje) para máxima agilidade
     const dtInicioInput = document.getElementById('rhid-visitantes-dt-inicio');
     const dtFimInput = document.getElementById('rhid-visitantes-dt-fim');
     const hoje = new Date().toISOString().split('T')[0];
-    if (dtInicioInput && !dtInicioInput.value) dtInicioInput.value = hoje;
-    if (dtFimInput && !dtFimInput.value) dtFimInput.value = hoje;
+    if (dtInicioInput) dtInicioInput.value = hoje;
+    if (dtFimInput) dtFimInput.value = hoje;
 
     // 2. Garantir que o colaborador em foco (Charles Augusto - Cargo de Confiança / Gerência) está semeado com horário e batida
     try {
@@ -3058,17 +3058,12 @@ async function abrirEspelhoPontoGerente(gerenteId) {
     if (almocoInicioInput) almocoInicioInput.value = '12:00';
     if (almocoFimInput) almocoFimInput.value = '13:30';
 
-    // Período padrão: Mês atual completo
+    // Período padrão: Sempre traz por padrão o dia vigente (Hoje) para acelerar a consulta
     const dtInicioInput = document.getElementById('espelho-gerente-dt-inicio');
     const dtFimInput = document.getElementById('espelho-gerente-dt-fim');
-    if (dtInicioInput && dtFimInput && (!dtInicioInput.value || !dtFimInput.value)) {
-        const hoje = new Date();
-        const y = hoje.getFullYear();
-        const m = String(hoje.getMonth() + 1).padStart(2, '0');
-        const ultimoDia = new Date(y, hoje.getMonth() + 1, 0).getDate();
-        dtInicioInput.value = `${y}-${m}-01`;
-        dtFimInput.value = `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`;
-    }
+    const hojeStr = new Date().toISOString().split('T')[0];
+    if (dtInicioInput) dtInicioInput.value = hojeStr;
+    if (dtFimInput) dtFimInput.value = hojeStr;
 
     // Abre o Modal do Espelho
     const modalEl = document.getElementById('modal-rhid-espelho-gerente');
@@ -3808,5 +3803,167 @@ function imprimirEspelhoGerente() {
         w.document.close();
     } else {
         if (typeof mostrarMensagem === 'function') mostrarMensagem('Permita a abertura de pop-ups no seu navegador para imprimir.', 'warning');
+    }
+}
+
+// ==========================================================================
+// IMPORTAÇÃO AUTOMÁTICA DE TODOS OS CADASTROS DO RHID CLOUD
+// ==========================================================================
+
+// Abre o modal de importação automática
+function abrirModalImportarRhid() {
+    const modalEl = document.getElementById('modal-rhid-importar-todos');
+    const alertEl = document.getElementById('import-rhid-alert');
+    const progContainer = document.getElementById('import-rhid-progress-container');
+    const btnExec = document.getElementById('btn-executar-importacao-rhid');
+
+    if (alertEl) alertEl.classList.add('d-none');
+    if (progContainer) progContainer.classList.add('d-none');
+    if (btnExec) {
+        btnExec.disabled = false;
+        btnExec.innerHTML = '<i class="fas fa-cloud-download-alt me-1"></i> Iniciar Importação Automática';
+    }
+
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+// Executa a importação automática de cadastros do RHiD e salva no Firestore
+async function executarImportacaoRhidAutomatico() {
+    const btnExec = document.getElementById('btn-executar-importacao-rhid');
+    const alertEl = document.getElementById('import-rhid-alert');
+    const progContainer = document.getElementById('import-rhid-progress-container');
+    const progBar = document.getElementById('import-rhid-progress-bar');
+    const progText = document.getElementById('import-rhid-status-text');
+    const progPerc = document.getElementById('import-rhid-percentage');
+
+    const radioMode = document.querySelector('input[name="radio-import-mode"]:checked');
+    const mode = radioMode ? radioMode.value : 'managers_only';
+
+    const hIni = (document.getElementById('import-horario-inicio') || {}).value || '08:00';
+    const hFim = (document.getElementById('import-horario-fim') || {}).value || '18:00';
+
+    if (btnExec) {
+        btnExec.disabled = true;
+        btnExec.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Importando da Nuvem...';
+    }
+
+    if (progContainer) progContainer.classList.remove('d-none');
+    if (progBar) progBar.style.width = '20%';
+    if (progText) progText.textContent = 'Consultando cadastros na nuvem RHiD...';
+    if (progPerc) progPerc.textContent = '20%';
+
+    try {
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const resp = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'importAllRhidPersons',
+                mode: mode
+            })
+        });
+
+        const resData = await resp.json();
+        if (!resp.ok || !resData.success) {
+            throw new Error(resData.message || 'Falha ao buscar cadastros no RHiD.');
+        }
+
+        const persons = resData.data || [];
+        if (persons.length === 0) {
+            if (alertEl) {
+                alertEl.className = 'alert alert-info border-0 shadow-sm mt-3 mb-0';
+                alertEl.innerHTML = '<i class="fas fa-info-circle me-1"></i> Nenhuma pessoa encontrada para o filtro selecionado.';
+                alertEl.classList.remove('d-none');
+            }
+            if (btnExec) btnExec.disabled = false;
+            return;
+        }
+
+        if (progBar) progBar.style.width = '60%';
+        if (progText) progText.textContent = `Gravando ${persons.length} cadastros no banco de dados...`;
+        if (progPerc) progPerc.textContent = '60%';
+
+        // Grava no Firestore em lotes de 400 (limite do Firestore batch é 500)
+        if (!window.db) throw new Error("Conexão com Firestore não inicializada.");
+
+        const CHUNK_SIZE = 400;
+        let salvos = 0;
+
+        for (let i = 0; i < persons.length; i += CHUNK_SIZE) {
+            const chunk = persons.slice(i, i + CHUNK_SIZE);
+            const batch = window.db.batch();
+
+            chunk.forEach(p => {
+                const docId = `vis_${p.codigo || p.rhidPersonId}`;
+                const ref = window.db.collection('visitantes').doc(docId);
+                batch.set(ref, {
+                    codigo: p.codigo,
+                    codigoRep: p.codigoRep || '',
+                    nome: p.nome,
+                    cpf: p.cpf || '',
+                    cpfLimpo: p.cpfLimpo || '',
+                    rhidPersonId: p.rhidPersonId,
+                    categoria: p.categoria || 'Cargo de Confiança / Gerência',
+                    horarioInicio: hIni,
+                    horarioFim: hFim,
+                    horarioPrevisto: `${hIni} às ${hFim}`,
+                    status: 'Ativo',
+                    empresa: p.empresa || 'Calçados Crival',
+                    setorVisitado: 'Geral',
+                    importadoRhidEm: firebase.firestore.FieldValue.serverTimestamp()
+                }, { merge: true });
+                salvos++;
+            });
+
+            await batch.commit();
+        }
+
+        if (progBar) progBar.style.width = '100%';
+        if (progText) progText.textContent = 'Importação e sincronização concluídas!';
+        if (progPerc) progPerc.textContent = '100%';
+
+        if (alertEl) {
+            alertEl.className = 'alert alert-success border-0 shadow-sm mt-3 mb-0';
+            alertEl.innerHTML = `
+                <i class="fas fa-check-circle me-1"></i>
+                <strong>Sucesso!</strong> Foram importados e cadastrados <strong>${salvos} colaboradores/gestores</strong> diretamente da nuvem RHiD!
+            `;
+            alertEl.classList.remove('d-none');
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`${salvos} cadastros importados do RHiD com sucesso!`, 'success');
+        }
+
+        // Recarrega lista e apuração
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+        setTimeout(() => {
+            const modalEl = document.getElementById('modal-rhid-importar-todos');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        }, 1800);
+
+    } catch (e) {
+        console.error("Erro na importação automática:", e);
+        if (alertEl) {
+            alertEl.className = 'alert alert-danger border-0 shadow-sm mt-3 mb-0';
+            alertEl.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Erro: ${e.message}`;
+            alertEl.classList.remove('d-none');
+        }
+    } finally {
+        if (btnExec) {
+            btnExec.disabled = false;
+            btnExec.innerHTML = '<i class="fas fa-cloud-download-alt me-1"></i> Iniciar Importação Automática';
+        }
     }
 }
