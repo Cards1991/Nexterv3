@@ -1929,11 +1929,14 @@ async function carregarListaVisitantesCadastrados() {
                     <td class="small text-muted">${v.empresa || 'Calçados Crival'} <span class="text-secondary opacity-75">(${v.setorVisitado || 'Geral'})</span></td>
                     <td class="text-center">${statusBadge}</td>
                     <td class="text-center">
-                        <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary" onclick="abrirModalNovoVisitante('${v.id}')" title="Editar Informações e Horário">
+                        <div class="d-flex justify-content-center align-items-center gap-1">
+                            <button class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm px-3 py-1" onclick="abrirEspelhoPontoGerente('${v.id}')" title="Apurar Espelho de Ponto Individual com Almoço Pré-assinalado (12:00 às 13:30)">
+                                <i class="fas fa-calendar-check me-1"></i> Espelho do Ponto
+                            </button>
+                            <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-1" onclick="abrirModalNovoVisitante('${v.id}')" title="Editar Informações e Horário">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-outline-danger" onclick="excluirVisitante('${v.id}', '${v.nome.replace(/'/g, "\\'")}')" title="Remover do Monitoramento">
+                            <button class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1" onclick="excluirVisitante('${v.id}', '${v.nome.replace(/'/g, "\\'")}')" title="Remover do Monitoramento">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -2386,7 +2389,10 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                         <td class="font-monospace fw-bold text-center">${permanenciaFormatada}</td>
                         <td class="text-center">${statusBadge}</td>
                         <td class="text-center">
-                            <div class="d-flex justify-content-center gap-1">
+                            <div class="d-flex justify-content-center align-items-center gap-1">
+                                <button class="btn btn-sm btn-primary rounded-pill px-2 py-0 fw-bold shadow-sm" onclick="abrirEspelhoPontoGerente('${pessoa.id || pessoa.codigo}')" title="Abrir Espelho de Ponto Individual com Almoço Pré-assinalado">
+                                    <i class="fas fa-calendar-check me-1"></i> Espelho
+                                </button>
                                 <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-semibold" onclick="verDetalhesBatidasVisitante('${cacheKey}')" title="Ver marcações detalhadas do leitor">
                                     <i class="fas fa-clock me-1"></i> Batidas (${batidasUnicas.length})
                                 </button>
@@ -2961,4 +2967,828 @@ function exportarRelatorioVisitantesCSV() {
     document.body.removeChild(link);
 
     if (typeof mostrarMensagem === 'function') mostrarMensagem('Relatório CSV exportado com sucesso!', 'success');
+}
+
+// ==========================================================================
+// MÓDULO: ESPELHO DE PONTO PARA GERENTES / CARGOS DE CONFIANÇA
+// Intervalo de Almoço Pré-assinalado (12:00 às 13:30) & Histórico Permanente
+// ==========================================================================
+
+window._gerenteEspelhoAtual = null;
+window._espelhoGerenteAtual = null;
+
+// Abre o espelho para o gestor selecionado no dropdown ou default
+function abrirEspelhoPontoGerenteSelecionado() {
+    const sel = document.getElementById('rhid-filtro-visitante');
+    const id = sel && sel.value ? sel.value : '17101991';
+    abrirEspelhoPontoGerente(id);
+}
+
+// Abre o espelho individual de ponto com intervalo pré-assinalado
+async function abrirEspelhoPontoGerente(gerenteId) {
+    if (!gerenteId) {
+        const sel = document.getElementById('rhid-filtro-visitante');
+        if (sel && sel.value) gerenteId = sel.value;
+    }
+
+    let gerente = null;
+    if (window._visitantesCadastradosCache && window._visitantesCadastradosCache.length > 0) {
+        gerente = window._visitantesCadastradosCache.find(v => 
+            v.id === gerenteId || 
+            String(v.codigo) === String(gerenteId) || 
+            (v.cpfLimpo && v.cpfLimpo === String(gerenteId).replace(/\D/g, ''))
+        );
+    }
+
+    if (!gerente && window.db) {
+        try {
+            const doc = await window.db.collection('visitantes').doc(gerenteId).get();
+            if (doc.exists) {
+                gerente = doc.data();
+                gerente.id = doc.id;
+            } else {
+                const snap = await window.db.collection('visitantes').where('codigo', '==', String(gerenteId)).limit(1).get();
+                if (!snap.empty) {
+                    gerente = snap.docs[0].data();
+                    gerente.id = snap.docs[0].id;
+                }
+            }
+        } catch (e) {
+            console.warn("Aviso ao consultar gerente no banco:", e);
+        }
+    }
+
+    // Se ainda não localizado, utiliza o cadastro padrão (Charles Augusto)
+    if (!gerente) {
+        gerente = {
+            id: 'vis_17101991',
+            codigo: '17101991',
+            codigoRep: '97608920907',
+            nome: 'CHARLES AUGUSTO RIBEIRO DOS SANTOS',
+            cpf: '081.946.399-05',
+            cpfLimpo: '08194639905',
+            categoria: 'Cargo de Confiança / Gerência',
+            empresa: 'Calçados Crival',
+            setorVisitado: 'Gerência Geral',
+            horarioInicio: '08:00',
+            horarioFim: '18:00',
+            horarioPrevisto: '08:00 às 18:00',
+            rhidPersonId: '1333'
+        };
+    }
+
+    window._gerenteEspelhoAtual = gerente;
+
+    // Atualiza cabeçalho com os dados do gerente
+    const elNome = document.getElementById('espelho-gerente-nome');
+    const elCat = document.getElementById('espelho-gerente-categoria');
+    const elCod = document.getElementById('espelho-gerente-codigo');
+    const elRep = document.getElementById('espelho-gerente-rep');
+    const elCpf = document.getElementById('espelho-gerente-cpf');
+
+    if (elNome) elNome.textContent = gerente.nome || 'Gerente';
+    if (elCat) elCat.textContent = gerente.categoria || 'Cargo de Confiança / Gerência';
+    if (elCod) elCod.textContent = gerente.codigo || '--';
+    if (elRep) elRep.textContent = gerente.codigoRep || gerente.pis || '97608920907';
+    if (elCpf) elCpf.textContent = gerente.cpf || '--';
+
+    // Intervalo de almoço padrão: 12:00 às 13:30 (1h30m)
+    const almocoInicioInput = document.getElementById('espelho-gerente-almoco-inicio');
+    const almocoFimInput = document.getElementById('espelho-gerente-almoco-fim');
+    if (almocoInicioInput) almocoInicioInput.value = '12:00';
+    if (almocoFimInput) almocoFimInput.value = '13:30';
+
+    // Período padrão: Mês atual completo
+    const dtInicioInput = document.getElementById('espelho-gerente-dt-inicio');
+    const dtFimInput = document.getElementById('espelho-gerente-dt-fim');
+    if (dtInicioInput && dtFimInput && (!dtInicioInput.value || !dtFimInput.value)) {
+        const hoje = new Date();
+        const y = hoje.getFullYear();
+        const m = String(hoje.getMonth() + 1).padStart(2, '0');
+        const ultimoDia = new Date(y, hoje.getMonth() + 1, 0).getDate();
+        dtInicioInput.value = `${y}-${m}-01`;
+        dtFimInput.value = `${y}-${m}-${String(ultimoDia).padStart(2, '0')}`;
+    }
+
+    // Abre o Modal do Espelho
+    const modalEl = document.getElementById('modal-rhid-espelho-gerente');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+
+    // Primeiro verifica se já existe histórico salvo no banco para o período
+    const temHistorico = await carregarHistoricoSalvoEspelhoGerente(gerente, dtInicioInput.value, dtFimInput.value);
+    if (!temHistorico) {
+        // Se ainda não foi salvo, processa automaticamente as batidas live dos relógios
+        await processarEspelhoPontoGerente(false);
+    }
+}
+
+// Atalhos rápidos para seleção de período
+async function definirPeriodoEspelho(tipo) {
+    const dtInicioInput = document.getElementById('espelho-gerente-dt-inicio');
+    const dtFimInput = document.getElementById('espelho-gerente-dt-fim');
+    if (!dtInicioInput || !dtFimInput) return;
+
+    const hoje = new Date();
+    const pad = (n) => String(n).padStart(2, '0');
+    const fmt = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+
+    if (tipo === 'mes_atual') {
+        const y = hoje.getFullYear();
+        const m = hoje.getMonth();
+        const primDia = new Date(y, m, 1);
+        const ultDia = new Date(y, m + 1, 0);
+        dtInicioInput.value = fmt(primDia);
+        dtFimInput.value = fmt(ultDia);
+    } else if (tipo === 'mes_anterior') {
+        const y = hoje.getFullYear();
+        const m = hoje.getMonth() - 1;
+        const primDia = new Date(y, m, 1);
+        const ultDia = new Date(y, m + 1, 0);
+        dtInicioInput.value = fmt(primDia);
+        dtFimInput.value = fmt(ultDia);
+    } else if (tipo === 'ultimos_15') {
+        const d15 = new Date(hoje);
+        d15.setDate(hoje.getDate() - 14);
+        dtInicioInput.value = fmt(d15);
+        dtFimInput.value = fmt(hoje);
+    } else if (tipo === 'hoje') {
+        dtInicioInput.value = fmt(hoje);
+        dtFimInput.value = fmt(hoje);
+    }
+
+    if (window._gerenteEspelhoAtual) {
+        const temHistorico = await carregarHistoricoSalvoEspelhoGerente(window._gerenteEspelhoAtual, dtInicioInput.value, dtFimInput.value);
+        if (!temHistorico) {
+            await processarEspelhoPontoGerente(false);
+        }
+    }
+}
+
+// Carrega o histórico previamente salvo no Firestore
+async function carregarHistoricoSalvoEspelhoGerente(gerente, dtInicio, dtFim) {
+    if (!window.db || !gerente || !dtInicio || !dtFim) return false;
+
+    const alertEl = document.getElementById('espelho-gerente-alert');
+
+    try {
+        const snap = await window.db.collection('espelhos_gerentes')
+            .where('codigo', '==', String(gerente.codigo))
+            .where('data', '>=', dtInicio)
+            .where('data', '<=', dtFim)
+            .get();
+
+        if (snap.empty) {
+            return false;
+        }
+
+        const diasSalvos = [];
+        snap.forEach(doc => {
+            diasSalvos.push(doc.data());
+        });
+
+        // Ordena por data crescente
+        diasSalvos.sort((a, b) => a.data.localeCompare(b.data));
+
+        const almocoIni = diasSalvos[0].almocoInicio || '12:00';
+        const almocoFim = diasSalvos[0].almocoFim || '13:30';
+
+        // Renderiza espelho a partir do histórico salvo no Firestore
+        renderizarTabelaEspelho(gerente, dtInicio, dtFim, diasSalvos, true, almocoIni, almocoFim);
+
+        if (alertEl) {
+            alertEl.className = 'alert alert-success border-0 shadow-sm d-flex align-items-center mb-3 py-2';
+            alertEl.innerHTML = `
+                <i class="fas fa-history fs-4 me-3 text-success"></i>
+                <div class="small">
+                    <strong>Histórico Salvo Carregado do Banco:</strong> Foram recuperados <strong>${diasSalvos.length} dia(s) arquivados</strong> para o período de <strong>${dtInicio}</strong> a <strong>${dtFim}</strong>.
+                    <br><span class="text-muted">Para buscar novas batidas recentes do relógio ou recalcular, clique em <strong>"Processar no RHiD / Leitor"</strong>.</span>
+                </div>
+            `;
+            alertEl.classList.remove('d-none');
+        }
+
+        return true;
+    } catch (e) {
+        console.warn("Aviso ao consultar histórico salvo:", e);
+        return false;
+    }
+}
+
+// Processa o espelho no período desejado via API RHiD e AFD dos relógios físicos
+async function processarEspelhoPontoGerente(isManualClick = true) {
+    const gerente = window._gerenteEspelhoAtual;
+    if (!gerente) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum gerente selecionado.', 'warning');
+        return;
+    }
+
+    const dtInicioInput = document.getElementById('espelho-gerente-dt-inicio');
+    const dtFimInput = document.getElementById('espelho-gerente-dt-fim');
+    const almocoInicioInput = document.getElementById('espelho-gerente-almoco-inicio');
+    const almocoFimInput = document.getElementById('espelho-gerente-almoco-fim');
+    const btnProcessar = document.getElementById('btn-processar-espelho-gerente');
+    const tbody = document.getElementById('espelho-gerente-tbody');
+    const alertEl = document.getElementById('espelho-gerente-alert');
+
+    const dtInicio = dtInicioInput ? dtInicioInput.value : '';
+    const dtFim = dtFimInput ? dtFimInput.value : '';
+    const almocoInicio = (almocoInicioInput && almocoInicioInput.value) ? almocoInicioInput.value : '12:00';
+    const almocoFim = (almocoFimInput && almocoFimInput.value) ? almocoFimInput.value : '13:30';
+
+    if (!dtInicio || !dtFim) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Selecione o período inicial e final.', 'warning');
+        return;
+    }
+
+    if (btnProcessar) {
+        btnProcessar.disabled = true;
+        btnProcessar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Processando...';
+    }
+
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="py-5 text-center text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                    Buscando batidas do relógio físico e da nuvem RHiD com almoço pré-assinalado (${almocoInicio} às ${almocoFim})...
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        // 1. Busca apuração na API RHiD (inclui live AFD de todos os 9 relógios)
+        let apuracaoList = [];
+        try {
+            const resp = await fetch(`/api/rhid?action=apuracao_ponto&dataIni=${dtInicio}&dataFinal=${dtFim}`);
+            if (resp.ok) {
+                const j = await resp.json();
+                apuracaoList = Array.isArray(j) ? j : (j.listApuracao || j.data || []);
+            }
+        } catch (apiErr) {
+            console.warn("Aviso na API RHiD:", apiErr);
+        }
+
+        // 2. Busca batidas locais / manuais no Firestore
+        let localPunches = [];
+        if (window.db) {
+            try {
+                const snapManual = await window.db.collection('visitantes_batidas_manuais')
+                    .where('data', '>=', dtInicio)
+                    .where('data', '<=', dtFim)
+                    .get();
+                snapManual.forEach(d => localPunches.push(d.data()));
+
+                const snapLocal = await window.db.collection('visitantes_batidas')
+                    .where('data', '>=', dtInicio)
+                    .where('data', '<=', dtFim)
+                    .get();
+                snapLocal.forEach(d => localPunches.push(d.data()));
+            } catch (fsErr) {
+                console.warn("Aviso ao ler batidas locais:", fsErr);
+            }
+        }
+
+        // 3. Monta todos os dias do período selecionado
+        const datasPeriodo = gerarIntervaloDeDatas(dtInicio, dtFim);
+        const diasSemanaNomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+        const hojeStr = new Date().toISOString().split('T')[0];
+
+        // Duração do intervalo de almoço em minutos
+        const [hAlmIni, mAlmIni] = almocoInicio.split(':').map(Number);
+        const [hAlmFim, mAlmFim] = almocoFim.split(':').map(Number);
+        const minAlmocoTotal = Math.max(0, (hAlmFim * 60 + mAlmFim) - (hAlmIni * 60 + mAlmIni)); // Ex: 90 min (1h30m)
+
+        const diasProcessados = [];
+
+        for (const dataDia of datasPeriodo) {
+            const partesData = dataDia.split('-');
+            const dateObj = new Date(Number(partesData[0]), Number(partesData[1]) - 1, Number(partesData[2]));
+            const diaSemanaNum = dateObj.getDay();
+            const diaSemanaNome = diasSemanaNomes[diaSemanaNum];
+
+            // Coleta batidas da nuvem RHiD e AFD para este dia e para este gerente
+            const batidas = [];
+            apuracaoList.forEach(it => {
+                const itDate = it.date ? it.date.split('T')[0] : (it.dateTimeStr || '');
+                const matchDate = !itDate || itDate === dataDia;
+                const matchId = gerente.rhidPersonId && String(it.idPerson) === String(gerente.rhidPersonId);
+                const matchPis = it.pis && gerente.codigoRep && String(it.pis).replace(/\D/g, '') === String(gerente.codigoRep).replace(/\D/g, '');
+                const matchCpf = it.cpf && gerente.cpfLimpo && String(it.cpf).replace(/\D/g, '') === String(gerente.cpfLimpo);
+                const matchReg = it.registration && gerente.codigo && String(it.registration).replace(/\D/g, '') === String(gerente.codigo).replace(/\D/g, '');
+
+                if (matchDate && (matchId || matchPis || matchCpf || matchReg)) {
+                    if (Array.isArray(it.listAfdtManutencao)) {
+                        it.listAfdtManutencao.forEach(b => {
+                            const hStr = formatarHoraRhid(b);
+                            if (hStr && hStr !== '--:--') {
+                                batidas.push({
+                                    hora: hStr,
+                                    idDevice: b.idDevice || b.idAfd || 'Relógio REP',
+                                    origem: 'RHiD Cloud / Relógio REP'
+                                });
+                            }
+                        });
+                    }
+                }
+            });
+
+            // Mescla batidas manuais e portaria
+            localPunches.forEach(mp => {
+                if (mp.data === dataDia) {
+                    const matchCod = mp.codigo && gerente.codigo && String(mp.codigo) === String(gerente.codigo);
+                    const matchRep = mp.codigoRep && gerente.codigoRep && String(mp.codigoRep) === String(gerente.codigoRep);
+                    const matchCpf = mp.cpfLimpo && gerente.cpfLimpo && mp.cpfLimpo === gerente.cpfLimpo;
+                    const matchNome = mp.nome && gerente.nome && mp.nome.trim().toLowerCase() === gerente.nome.trim().toLowerCase();
+
+                    if (matchCod || matchRep || matchCpf || matchNome) {
+                        const hStr = mp.hora ? mp.hora.substring(0, 5) : '';
+                        if (hStr) {
+                            batidas.push({
+                                hora: hStr,
+                                idDevice: mp.origem || 'Leitor / Portaria',
+                                origem: mp.origem || 'Leitor / Portaria'
+                            });
+                        }
+                    }
+                }
+            });
+
+            // Deduplica e ordena por horário
+            const batidasUnicas = [];
+            const horasSet = new Set();
+            batidas.forEach(b => {
+                if (!horasSet.has(b.hora)) {
+                    horasSet.add(b.hora);
+                    batidasUnicas.push(b);
+                }
+            });
+            batidasUnicas.sort((a, b) => a.hora.localeCompare(b.hora));
+
+            const nomesDispositivos = Array.from(new Set(batidasUnicas.map(b => b.idDevice || b.origem))).join(', ') || 'Relógio REP / RHiD';
+
+            let entrada1 = '--:--';
+            let saidaAlmoco = '--:--';
+            let retornoAlmoco = '--:--';
+            let saida2 = '--:--';
+            let horasTrabalhadasStr = '00h 00m';
+            let minutosTrabalhados = 0;
+            let status = 'Sem Registro';
+            let statusClass = 'text-muted';
+            let ehDiaUtil = (diaSemanaNum >= 1 && diaSemanaNum <= 5);
+
+            if (diaSemanaNum === 0) {
+                // Domingo: DSR
+                status = 'DSR';
+                statusClass = 'badge bg-secondary bg-opacity-25 text-dark';
+            } else if (diaSemanaNum === 6) {
+                // Sábado: Folga / Compensado
+                if (batidasUnicas.length > 0) {
+                    entrada1 = batidasUnicas[0].hora;
+                    saidaAlmoco = almocoInicio;
+                    retornoAlmoco = almocoFim;
+                    saida2 = batidasUnicas.length > 1 ? batidasUnicas[batidasUnicas.length - 1].hora : '--:--';
+                    status = 'Trabalho em Sábado';
+                    statusClass = 'badge bg-primary';
+                } else {
+                    status = 'Folga';
+                    statusClass = 'badge bg-secondary bg-opacity-25 text-dark';
+                }
+            } else {
+                // Segunda a Sexta (Dia Útil)
+                if (batidasUnicas.length > 0) {
+                    entrada1 = batidasUnicas[0].hora;
+                    // Intervalo de Almoço Pré-assinalado por Lei (Art. 74 CLT)
+                    saidaAlmoco = almocoInicio;
+                    retornoAlmoco = almocoFim;
+
+                    if (batidasUnicas.length >= 2) {
+                        saida2 = batidasUnicas[batidasUnicas.length - 1].hora;
+                        status = 'Presente';
+                        statusClass = 'badge bg-success';
+                    } else {
+                        // Apenas 1 batida (Ex: entrou agora de manhã)
+                        if (dataDia === hojeStr) {
+                            saida2 = '--:--';
+                            status = 'No Local (Em Aberto)';
+                            statusClass = 'badge bg-info text-dark';
+                        } else {
+                            saida2 = '--:--';
+                            status = 'Marcação Incompleta';
+                            statusClass = 'badge bg-warning text-dark';
+                        }
+                    }
+
+                    // Cálculo das Horas Trabalhadas deduzindo o intervalo de almoço pré-assinalado
+                    if (entrada1 !== '--:--' && saida2 !== '--:--') {
+                        const [he, me] = entrada1.split(':').map(Number);
+                        const [hs, ms] = saida2.split(':').map(Number);
+                        const minTotalBruto = Math.max(0, (hs * 60 + ms) - (he * 60 + me));
+
+                        // Desconta 90 minutos de almoço se o período engloba o almoço
+                        let minLiquido = minTotalBruto;
+                        if (minTotalBruto > minAlmocoTotal) {
+                            minLiquido = minTotalBruto - minAlmocoTotal;
+                        }
+                        minutosTrabalhados = minLiquido;
+                        const hCalc = Math.floor(minLiquido / 60);
+                        const mCalc = minLiquido % 60;
+                        horasTrabalhadasStr = `${String(hCalc).padStart(2, '0')}h ${String(mCalc).padStart(2, '0')}m`;
+                    }
+                } else {
+                    // Sem batidas no dia útil
+                    if (dataDia > hojeStr) {
+                        status = 'Aguardando';
+                        statusClass = 'badge bg-light text-muted border';
+                    } else if (dataDia === hojeStr) {
+                        status = 'Sem Marcação';
+                        statusClass = 'badge bg-warning text-dark';
+                    } else {
+                        status = 'Ausente / Falta';
+                        statusClass = 'badge bg-danger';
+                    }
+                }
+            }
+
+            diasProcessados.push({
+                data: dataDia,
+                diaSemana: diaSemanaNome,
+                diaSemanaNum: diaSemanaNum,
+                ehDiaUtil: ehDiaUtil,
+                entrada1: entrada1,
+                saidaAlmoco: saidaAlmoco,
+                retornoAlmoco: retornoAlmoco,
+                saida2: saida2,
+                horasTrabalhadasStr: horasTrabalhadasStr,
+                minutosTrabalhados: minutosTrabalhados,
+                status: status,
+                statusClass: statusClass,
+                origem: batidasUnicas.length > 0 ? nomesDispositivos : '--',
+                batidasQtd: batidasUnicas.length,
+                todasBatidas: batidasUnicas
+            });
+        }
+
+        // Renderiza na tela
+        renderizarTabelaEspelho(gerente, dtInicio, dtFim, diasProcessados, false, almocoInicio, almocoFim);
+
+        if (alertEl) {
+            alertEl.className = 'alert alert-info border-0 shadow-sm d-flex align-items-center mb-3 py-2';
+            alertEl.innerHTML = `
+                <i class="fas fa-check-circle fs-4 me-3 text-info"></i>
+                <div class="small">
+                    <strong>Apuração Atualizada do RHiD e Relógios Físicos:</strong> Espelho processado com intervalo de almoço pré-assinalado das <strong>${almocoInicio} às ${almocoFim}</strong>.
+                    Clique em <strong>"Salvar Histórico"</strong> para arquivar permanentemente este espelho no banco de dados.
+                </div>
+            `;
+            alertEl.classList.remove('d-none');
+        }
+
+        if (isManualClick && typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Espelho de ponto processado com sucesso!', 'success');
+        }
+
+    } catch (e) {
+        console.error("Erro ao processar espelho do gerente:", e);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="9" class="py-4 text-center text-danger">Falha ao processar espelho: ${e.message}</td></tr>`;
+        }
+    } finally {
+        if (btnProcessar) {
+            btnProcessar.disabled = false;
+            btnProcessar.innerHTML = '<i class="fas fa-bolt me-1"></i> Processar no RHiD / Leitor';
+        }
+    }
+}
+
+// Renderiza linhas e métricas consolidadas na tabela do espelho
+function renderizarTabelaEspelho(gerente, dtInicio, dtFim, dias, salvoEmBanco, almocoInicio = '12:00', almocoFim = '13:30') {
+    const tbody = document.getElementById('espelho-gerente-tbody');
+    const elTotDias = document.getElementById('espelho-metric-total-dias');
+    const elTrab = document.getElementById('espelho-metric-trabalhados');
+    const elFolgas = document.getElementById('espelho-metric-folgas');
+    const elTotHoras = document.getElementById('espelho-metric-total-horas');
+
+    let totalDias = dias.length;
+    let diasTrabalhados = 0;
+    let folgasDsr = 0;
+    let totalMinutos = 0;
+
+    let rowsHtml = '';
+
+    dias.forEach(d => {
+        if (d.status === 'Presente' || d.status === 'No Local (Em Aberto)' || d.status === 'Trabalho em Sábado' || (d.entrada1 && d.entrada1 !== '--:--')) {
+            diasTrabalhados++;
+        }
+        if (d.status === 'DSR' || d.status === 'Folga') {
+            folgasDsr++;
+        }
+        totalMinutos += (d.minutosTrabalhados || 0);
+
+        const dp = d.data.split('-');
+        const dataFmt = `${dp[2]}/${dp[1]}/${dp[0]}`;
+
+        const badgePre = `<span class="badge bg-warning bg-opacity-25 text-dark font-monospace px-2 py-1" title="Intervalo pré-assinalado Art. 74 CLT">`;
+
+        rowsHtml += `
+            <tr>
+                <td class="fw-bold text-dark font-monospace">${dataFmt}</td>
+                <td class="text-secondary">${d.diaSemana}</td>
+                <td class="font-monospace fw-bold text-success">${d.entrada1 || '--:--'}</td>
+                <td class="font-monospace text-dark">${d.saidaAlmoco !== '--:--' ? badgePre + d.saidaAlmoco + ' <small class="text-muted">(Pré)</small></span>' : '--:--'}</td>
+                <td class="font-monospace text-dark">${d.retornoAlmoco !== '--:--' ? badgePre + d.retornoAlmoco + ' <small class="text-muted">(Pré)</small></span>' : '--:--'}</td>
+                <td class="font-monospace fw-bold text-primary">${d.saida2 || '--:--'}</td>
+                <td class="font-monospace fw-bold text-dark">${d.horasTrabalhadasStr || '00h 00m'}</td>
+                <td><span class="${d.statusClass || 'badge bg-light text-dark border'}">${d.status}</span></td>
+                <td class="small text-muted text-truncate" style="max-width: 180px;" title="${d.origem || ''}">${d.origem || '--'}</td>
+            </tr>
+        `;
+    });
+
+    const totH = Math.floor(totalMinutos / 60);
+    const totM = totalMinutos % 60;
+    const totalHorasStr = `${String(totH).padStart(2, '0')}h ${String(totM).padStart(2, '0')}m`;
+
+    if (elTotDias) elTotDias.textContent = totalDias;
+    if (elTrab) elTrab.textContent = diasTrabalhados;
+    if (elFolgas) elFolgas.textContent = folgasDsr;
+    if (elTotHoras) elTotHoras.textContent = totalHorasStr;
+
+    if (tbody) {
+        tbody.innerHTML = rowsHtml || '<tr><td colspan="9" class="py-4 text-center text-muted">Nenhum dia para o período.</td></tr>';
+    }
+
+    // Armazena no estado global da aplicação
+    window._espelhoGerenteAtual = {
+        gerente: gerente,
+        dtInicio: dtInicio,
+        dtFim: dtFim,
+        almocoInicio: almocoInicio,
+        almocoFim: almocoFim,
+        salvoEmBanco: salvoEmBanco,
+        totais: {
+            totalDias: totalDias,
+            diasTrabalhados: diasTrabalhados,
+            folgasDsr: folgasDsr,
+            totalMinutos: totalMinutos,
+            totalHorasFormatado: totalHorasStr
+        },
+        dias: dias
+    };
+}
+
+// Salva o espelho permanentemente no Firestore mantendo o histórico de fechamentos
+async function salvarHistoricoEspelhoGerente() {
+    const espelho = window._espelhoGerenteAtual;
+    if (!espelho || !espelho.dias || espelho.dias.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Processe o espelho primeiro antes de salvar o histórico.', 'warning');
+        return;
+    }
+
+    const btnSalvar = document.getElementById('btn-salvar-espelho-gerente');
+    const alertEl = document.getElementById('espelho-gerente-alert');
+
+    if (btnSalvar) {
+        btnSalvar.disabled = true;
+        btnSalvar.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Gravando...';
+    }
+
+    try {
+        if (!window.db) throw new Error("Conexão com o banco de dados não disponível.");
+
+        const batch = window.db.batch();
+        const gerente = espelho.gerente;
+
+        // Grava cada dia individualmente em 'espelhos_gerentes'
+        espelho.dias.forEach(d => {
+            const docId = `esp_${gerente.codigo}_${d.data}`;
+            const ref = window.db.collection('espelhos_gerentes').doc(docId);
+            batch.set(ref, {
+                gerenteId: gerente.id || gerente.codigo,
+                codigo: String(gerente.codigo),
+                codigoRep: String(gerente.codigoRep || ''),
+                cpf: String(gerente.cpf || ''),
+                cpfLimpo: String(gerente.cpfLimpo || ''),
+                nome: gerente.nome,
+                data: d.data,
+                diaSemana: d.diaSemana,
+                diaSemanaNum: d.diaSemanaNum,
+                entrada1: d.entrada1,
+                saidaAlmoco: d.saidaAlmoco,
+                retornoAlmoco: d.retornoAlmoco,
+                saida2: d.saida2,
+                intervaloPreAssinalado: true,
+                almocoInicio: espelho.almocoInicio,
+                almocoFim: espelho.almocoFim,
+                horasTrabalhadasStr: d.horasTrabalhadasStr,
+                minutosTrabalhados: d.minutosTrabalhados,
+                status: d.status,
+                statusClass: d.statusClass,
+                origem: d.origem,
+                atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        });
+
+        // Grava também o resumo de fechamento do período
+        const fechamentoId = `fechamento_${gerente.codigo}_${espelho.dtInicio}_${espelho.dtFim}`;
+        const refFechamento = window.db.collection('espelhos_gerentes_fechamentos').doc(fechamentoId);
+        batch.set(refFechamento, {
+            gerenteId: gerente.id || gerente.codigo,
+            codigo: String(gerente.codigo),
+            nome: gerente.nome,
+            cpf: String(gerente.cpf || ''),
+            dtInicio: espelho.dtInicio,
+            dtFim: espelho.dtFim,
+            almocoInicio: espelho.almocoInicio,
+            almocoFim: espelho.almocoFim,
+            totais: espelho.totais,
+            totalDias: espelho.totais.totalDias,
+            diasTrabalhados: espelho.totais.diasTrabalhados,
+            folgasDsr: espelho.totais.folgasDsr,
+            totalHorasFormatado: espelho.totais.totalHorasFormatado,
+            atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
+            salvoPor: 'RH / Nexter'
+        }, { merge: true });
+
+        await batch.commit();
+
+        espelho.salvoEmBanco = true;
+
+        if (alertEl) {
+            alertEl.className = 'alert alert-success border-0 shadow-sm d-flex align-items-center mb-3 py-2';
+            alertEl.innerHTML = `
+                <i class="fas fa-check-double fs-4 me-3 text-success"></i>
+                <div class="small">
+                    <strong>Histórico Salvo com Sucesso!</strong> O espelho de ponto de <strong>${gerente.nome}</strong> para o período de <strong>${espelho.dtInicio}</strong> a <strong>${espelho.dtFim}</strong> foi gravado no banco de dados e ficará permanentemente acessível.
+                </div>
+            `;
+            alertEl.classList.remove('d-none');
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Histórico do espelho de ponto salvo com sucesso!', 'success');
+        }
+
+    } catch (e) {
+        console.error("Erro ao salvar histórico do espelho:", e);
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Erro ao salvar histórico: ' + e.message, 'error');
+        }
+    } finally {
+        if (btnSalvar) {
+            btnSalvar.disabled = false;
+            btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Histórico';
+        }
+    }
+}
+
+// Impressão oficial do Espelho de Ponto (com pré-assinalação legal Art. 74 CLT)
+function imprimirEspelhoGerente() {
+    const espelho = window._espelhoGerenteAtual;
+    if (!espelho || !espelho.dias || espelho.dias.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Processe ou carregue o espelho primeiro antes de imprimir.', 'warning');
+        return;
+    }
+
+    const g = espelho.gerente;
+    const dpIni = espelho.dtInicio.split('-');
+    const dpFim = espelho.dtFim.split('-');
+    const dtIniFmt = `${dpIni[2]}/${dpIni[1]}/${dpIni[0]}`;
+    const dtFimFmt = `${dpFim[2]}/${dpFim[1]}/${dpFim[0]}`;
+
+    let linhasHtml = '';
+    espelho.dias.forEach(d => {
+        const dp = d.data.split('-');
+        const dFmt = `${dp[2]}/${dp[1]}/${dp[0]}`;
+        linhasHtml += `
+            <tr>
+                <td style="text-align: center; font-weight: bold;">${dFmt}</td>
+                <td style="text-align: left;">${d.diaSemana}</td>
+                <td style="text-align: center; font-weight: bold;">${d.entrada1 || '--:--'}</td>
+                <td style="text-align: center;">${d.saidaAlmoco !== '--:--' ? d.saidaAlmoco + ' *' : '--:--'}</td>
+                <td style="text-align: center;">${d.retornoAlmoco !== '--:--' ? d.retornoAlmoco + ' *' : '--:--'}</td>
+                <td style="text-align: center; font-weight: bold;">${d.saida2 || '--:--'}</td>
+                <td style="text-align: center; font-weight: bold;">${d.horasTrabalhadasStr || '00h 00m'}</td>
+                <td style="text-align: center;">${d.status}</td>
+            </tr>
+        `;
+    });
+
+    const printHtml = `
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head>
+            <meta charset="UTF-8">
+            <title>Espelho de Ponto - ${g.nome} - ${dtIniFmt} a ${dtFimFmt}</title>
+            <style>
+                @page { size: A4 portrait; margin: 12mm 15mm; }
+                body { font-family: Arial, sans-serif; font-size: 11px; color: #222; margin: 0; padding: 0; }
+                .header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 12px; }
+                .empresa-nome { font-size: 16px; font-weight: bold; text-transform: uppercase; }
+                .doc-titulo { font-size: 13px; font-weight: bold; margin-top: 4px; text-transform: uppercase; color: #111; }
+                .info-box { border: 1px solid #999; border-radius: 4px; padding: 8px; margin-bottom: 12px; background: #fafafa; }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 11px; }
+                table { width: 100%; border-collapse: collapse; margin-bottom: 12px; font-size: 10px; }
+                th, td { border: 1px solid #777; padding: 4px 6px; }
+                th { background-color: #e9ecef; text-transform: uppercase; font-size: 9px; }
+                .totais-box { display: flex; justify-content: space-between; border: 1px solid #777; background: #f1f3f5; padding: 6px 12px; font-weight: bold; margin-bottom: 16px; border-radius: 4px; }
+                .declaracao { font-size: 9.5px; text-align: justify; border: 1px solid #ccc; padding: 8px; margin-bottom: 30px; line-height: 1.4; background: #fdfdfd; }
+                .assinaturas { display: flex; justify-content: space-around; margin-top: 40px; text-align: center; }
+                .assinatura-linha { width: 220px; border-top: 1px solid #222; padding-top: 4px; font-size: 10px; font-weight: bold; }
+                @media print {
+                    .no-print { display: none !important; }
+                    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                }
+            </style>
+        </head>
+        <body>
+            <div class="no-print" style="background: #e7f5ff; border: 1px solid #74c0fc; padding: 10px; margin-bottom: 15px; border-radius: 6px; text-align: right;">
+                <button onclick="window.print()" style="background: #1971c2; color: #fff; font-weight: bold; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                    IMPRIMIR DOCUMENTO (PDF)
+                </button>
+            </div>
+
+            <div class="header">
+                <div class="empresa-nome">CALÇADOS CRIVAL LTDA</div>
+                <div class="doc-titulo">ESPELHO DE PONTO ELETRÔNICO — CONTROLE DE FREQUÊNCIA</div>
+                <div style="font-size: 10px; color: #555;">Sistema Nexter v3 — Módulo Integração RHiD (Control iD)</div>
+            </div>
+
+            <div class="info-box">
+                <div class="info-grid">
+                    <div><strong>Colaborador / Gestor:</strong> ${g.nome}</div>
+                    <div><strong>Período de Apuração:</strong> ${dtIniFmt} a ${dtFimFmt}</div>
+                    <div><strong>Cargo / Perfil:</strong> ${g.categoria || 'Cargo de Confiança / Gerência'}</div>
+                    <div><strong>Matrícula / Código Crachá:</strong> ${g.codigo || '--'}</div>
+                    <div><strong>CPF:</strong> ${g.cpf || '--'}</div>
+                    <div><strong>PIS / Código REP:</strong> ${g.codigoRep || '97608920907'}</div>
+                    <div><strong>Jornada de Referência:</strong> 08:00 às 18:00</div>
+                    <div><strong>Intervalo Pré-assinalado:</strong> ${espelho.almocoInicio} às ${espelho.almocoFim} (1h30m)</div>
+                </div>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th style="width: 12%;">Data</th>
+                        <th style="width: 14%;">Dia da Semana</th>
+                        <th style="width: 12%;">Entrada 1</th>
+                        <th style="width: 13%;">Saída Almoço *</th>
+                        <th style="width: 13%;">Retorno Almoço *</th>
+                        <th style="width: 12%;">Saída 2</th>
+                        <th style="width: 12%;">Total Horas</th>
+                        <th style="width: 12%;">Ocorrência</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${linhasHtml}
+                </tbody>
+            </table>
+
+            <div class="totais-box">
+                <div>Dias no Período: ${espelho.totais.totalDias}</div>
+                <div>Dias Trabalhados: ${espelho.totais.diasTrabalhados}</div>
+                <div>Folgas / DSR: ${espelho.totais.folgasDsr}</div>
+                <div>Total de Horas Trabalhadas: ${espelho.totais.totalHorasFormatado}</div>
+            </div>
+
+            <div class="declaracao">
+                <strong>* INTERVALO INTRAJORNADA PRÉ-ASSINALADO:</strong> O intervalo para repouso e alimentação constante neste espelho (${espelho.almocoInicio} às ${espelho.almocoFim}) é pré-assinalado nos termos do <strong>Artigo 74, § 2º da Consolidação das Leis do Trabalho (CLT)</strong> e da <strong>Portaria MTP nº 671/2021</strong>.
+                Reconheço a exatidão das marcações de entrada e saída registradas neste documento, confirmando a regular fruição do intervalo intrajornada.
+            </div>
+
+            <div class="assinaturas">
+                <div>
+                    <div class="assinatura-linha">
+                        ${g.nome}<br>
+                        <span style="font-weight: normal; font-size: 9px;">Assinatura do Colaborador / Gestor</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="assinatura-linha">
+                        CALÇADOS CRIVAL LTDA<br>
+                        <span style="font-weight: normal; font-size: 9px;">Recursos Humanos / Gestão</span>
+                    </div>
+                </div>
+            </div>
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 400);
+                };
+            </script>
+        </body>
+        </html>
+    `;
+
+    const w = window.open('', '_blank');
+    if (w) {
+        w.document.open();
+        w.document.write(printHtml);
+        w.document.close();
+    } else {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Permita a abertura de pop-ups no seu navegador para imprimir.', 'warning');
+    }
 }
