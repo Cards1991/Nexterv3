@@ -2323,7 +2323,22 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
 
                     if (batidasUnicas.length >= 2) {
                         ultimaHora = `<span class="text-primary fw-bold"><i class="fas fa-sign-out-alt me-1"></i> ${batidasUnicas[batidasUnicas.length - 1].hora}</span>`;
-                        
+                    }
+
+                    // Se número ímpar de batidas (1, 3, 5...), a pessoa deu entrada e está dentro da empresa agora!
+                    const estaNoEstabelecimento = (batidasUnicas.length % 2 !== 0);
+
+                    if (estaNoEstabelecimento) {
+                        totalPresentesAgora++;
+                        statusBadge = '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold"><i class="fas fa-circle text-success me-1"></i> No Estabelecimento</span>';
+
+                        const ultimaEntrada = batidasUnicas[batidasUnicas.length - 1].hora;
+                        permanenciaFormatada = `<span class="text-success fw-bold">Desde ${ultimaEntrada}</span>`;
+                    } else {
+                        // Número par de batidas (2, 4, 6...): registrou saída, jornada ou permanência concluída
+                        totalVisitasConcluidas++;
+                        statusBadge = '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 fw-bold"><i class="fas fa-check-circle text-info me-1"></i> Presença Concluída</span>';
+
                         try {
                             const [h1, m1] = batidasUnicas[0].hora.split(':').map(Number);
                             const [h2, m2] = batidasUnicas[batidasUnicas.length - 1].hora.split(':').map(Number);
@@ -2332,30 +2347,6 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                             const m = diffMins % 60;
                             permanenciaFormatada = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
                         } catch (te) {}
-
-                        totalVisitasConcluidas++;
-                        statusBadge = '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1 fw-bold"><i class="fas fa-check-circle text-info me-1"></i> Presença Concluída</span>';
-                    } else {
-                        // Apenas 1 batida registrada: a pessoa está na empresa agora!
-                        totalPresentesAgora++;
-                        statusBadge = '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1 fw-bold"><i class="fas fa-circle text-success me-1"></i> No Estabelecimento</span>';
-
-                        try {
-                            const agora = new Date();
-                            const [hEnt, mEnt] = batidasUnicas[0].hora.split(':').map(Number);
-                            const minAgora = agora.getHours() * 60 + agora.getMinutes();
-                            const minEnt = hEnt * 60 + mEnt;
-                            if (minAgora >= minEnt) {
-                                const diff = minAgora - minEnt;
-                                const h = Math.floor(diff / 60);
-                                const m = diff % 60;
-                                permanenciaFormatada = `<span class="text-success fw-bold" title="Tempo decorrido no local">No local (${h}h ${m}m)</span>`;
-                            } else {
-                                permanenciaFormatada = `<span class="text-success fw-bold">Desde ${batidasUnicas[0].hora}</span>`;
-                            }
-                        } catch (te) {
-                            permanenciaFormatada = `<span class="text-success fw-bold">Desde ${batidasUnicas[0].hora}</span>`;
-                        }
                     }
                 }
 
