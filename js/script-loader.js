@@ -96,7 +96,8 @@ const ScriptLoader = {
         'compliance-denuncia': ['js/compliance-denuncia.js'],
         'gestao-denuncias': ['js/gestao-denuncias.js'],
         'recursos-humanos': ['js/recursos-humanos.js'],
-        'cadastro-terceirizados': ['js/terceirizados.js']
+        'cadastro-terceirizados': ['js/terceirizados.js'],
+        'vigilancia-gestao': ['js/vigilancia-gestao.js?v=1']
     },
 
     /**

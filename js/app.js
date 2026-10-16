@@ -17,7 +17,7 @@ const TODAS_SECOES = [
     'ponto-eletronico', 'estoque-epi', 'consumo-epi', 'epi-compras', 'cadastro-epis', 'entrega-epis', 'analise-epi', 'controle-disciplinar',
     'producao-gestao', 'producao-lancamento', 'producao-bonus', 'producao-produtos', 'producao-leitura',
     'dashboard-inicial', 'recrutamento', 'recursos-humanos', 'entrevista-desligamento', 'mbti-matriz',
-    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias', 'rhid-config', 'calculo-ferias'
+    'cadastro-terceirizados', 'iso-indicadores', 'iso-evidencias', 'rhid-config', 'calculo-ferias', 'vigilancia-gestao'
 ];
 
 let currentUserPermissions = {};
@@ -36,6 +36,9 @@ async function showSection(sectionName) {
     if (window.secaoAtual && window.secaoAtual !== sectionName) {
         try {
             switch (secaoAtual) {
+                case 'vigilancia-gestao':
+                    if (typeof window.limparVigilanciaGestao === 'function') window.limparVigilanciaGestao();
+                    break;
                 case 'controle-usuario-master':
                     if (typeof limparControleUsuarioMaster === 'function') limparControleUsuarioMaster();
                     break;
@@ -483,6 +486,9 @@ async function carregarDadosSecao(sectionName) {
                 break;
             case 'cadastro-terceirizados':
                 if (typeof inicializarTerceirizados === 'function') await inicializarTerceirizados();
+                break;
+            case 'vigilancia-gestao':
+                if (typeof window.inicializarVigilanciaGestao === 'function') await window.inicializarVigilanciaGestao();
                 break;
         }
     } catch (error) {

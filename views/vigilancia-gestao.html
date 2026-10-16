@@ -1,0 +1,605 @@
+<div class="vigilancia-container fade-in">
+    <!-- Cabeçalho -->
+    <div class="vigilancia-header">
+        <div>
+            <h2><i class="fas fa-shield-halved text-primary"></i> Central de Vigilância & Rondas</h2>
+            <p class="text-muted mb-0">Monitoramento patrimonial em tempo real, rastreamento GPS e gestão de rotas</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="window.atualizarDadosVigilancia(true)">
+                <i class="fas fa-sync-alt" id="icon-refresh-vigilancia"></i> Atualizar
+            </button>
+            <a href="vigia-mobile.html" target="_blank" class="btn btn-success">
+                <i class="fas fa-mobile-screen-button me-1"></i> Abrir Operação Vigia
+            </a>
+        </div>
+    </div>
+
+    <!-- Indicadores Principais (KPIs) -->
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="vigilancia-kpi-card">
+                <div class="vigilancia-kpi-icon bg-success">
+                    <i class="fas fa-person-walking"></i>
+                </div>
+                <div class="vigilancia-kpi-info">
+                    <h3 id="kpi-rondas-ativas">0</h3>
+                    <p>Rondas em Andamento</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="vigilancia-kpi-card">
+                <div class="vigilancia-kpi-icon bg-primary">
+                    <i class="fas fa-flag-checkered"></i>
+                </div>
+                <div class="vigilancia-kpi-info">
+                    <h3 id="kpi-rondas-concluidas">0</h3>
+                    <p>Concluídas (Hoje)</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="vigilancia-kpi-card">
+                <div class="vigilancia-kpi-icon bg-info">
+                    <i class="fas fa-location-dot"></i>
+                </div>
+                <div class="vigilancia-kpi-info">
+                    <h3 id="kpi-total-pontos">0</h3>
+                    <p>Pontos de Controle</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <div class="vigilancia-kpi-card">
+                <div class="vigilancia-kpi-icon bg-warning text-dark">
+                    <i class="fas fa-triangle-exclamation"></i>
+                </div>
+                <div class="vigilancia-kpi-info">
+                    <h3 id="kpi-total-ocorrencias">0</h3>
+                    <p>Ocorrências Registradas</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Abas de Navegação -->
+    <ul class="nav nav-tabs vigilancia-tabs mb-4" id="vigilanciaTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active" id="tab-aovivo-btn" data-bs-toggle="tab" data-bs-target="#tab-aovivo" type="button">
+                <i class="fas fa-satellite-dish text-success me-1"></i> Monitoramento Ao Vivo
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-rotas-btn" data-bs-toggle="tab" data-bs-target="#tab-rotas" type="button">
+                <i class="fas fa-route text-primary me-1"></i> Cadastro de Rotas
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-pontos-btn" data-bs-toggle="tab" data-bs-target="#tab-pontos" type="button">
+                <i class="fas fa-map-pin text-danger me-1"></i> Pontos de Controle
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-vigias-btn" data-bs-toggle="tab" data-bs-target="#tab-vigias" type="button">
+                <i class="fas fa-user-shield text-info me-1"></i> Vigias & Credenciais
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-ocorrencias-btn" data-bs-toggle="tab" data-bs-target="#tab-ocorrencias" type="button">
+                <i class="fas fa-exclamation-triangle text-warning me-1"></i> Ocorrências
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link" id="tab-historico-btn" data-bs-toggle="tab" data-bs-target="#tab-historico" type="button">
+                <i class="fas fa-clock-rotate-left me-1"></i> Histórico & Relatórios
+            </button>
+        </li>
+    </ul>
+
+    <!-- Conteúdo das Abas -->
+    <div class="tab-content" id="vigilanciaTabsContent">
+        
+        <!-- ABA 1: MONITORAMENTO AO VIVO -->
+        <div class="tab-pane fade show active" id="tab-aovivo" role="tabpanel">
+            <div class="row g-3">
+                <!-- Coluna do Mapa -->
+                <div class="col-12 col-lg-8">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                            <span class="fw-bold"><i class="fas fa-map text-primary me-2"></i> Mapa de Operações em Tempo Real</span>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-success-subtle text-success border border-success-subtle">
+                                    <i class="fas fa-circle fa-beat me-1"></i> Sincronização Ativa
+                                </span>
+                                <button class="btn btn-sm btn-outline-secondary" onclick="window.centralizarMapaVigilancia()" title="Centralizar Mapa">
+                                    <i class="fas fa-crosshairs"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0 position-relative">
+                            <div id="mapa-vigilancia-aovivo"></div>
+                            
+                            <!-- Legenda do Mapa Flutuante -->
+                            <div class="position-absolute bottom-0 start-0 m-3 p-2 bg-white bg-opacity-90 rounded shadow-sm border" style="z-index: 1000; font-size: 0.75rem;">
+                                <div class="fw-bold mb-1 text-muted">LEGENDA DO MAPA</div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span style="width: 12px; height: 12px; background: #3b82f6; border-radius: 50%; display:inline-block;"></span> Rota Planejada
+                                </div>
+                                <div class="d-flex align-items-center gap-2 mb-1">
+                                    <span style="width: 12px; height: 12px; background: #10b981; border-radius: 50%; display:inline-block;"></span> Trajeto Percorrido (Real)
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span style="width: 12px; height: 12px; background: #ef4444; border-radius: 50%; display:inline-block;"></span> Ponto de Controle Pendente
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Coluna Lateral de Rondas em Andamento -->
+                <div class="col-12 col-lg-4">
+                    <div class="card shadow-sm border-0 h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                            <span class="fw-bold"><i class="fas fa-walkie-talkie text-success me-2"></i> Rondas Ativas</span>
+                            <span class="badge bg-primary rounded-pill" id="badge-contador-aovivo">0</span>
+                        </div>
+                        <div class="card-body p-3" style="max-height: 520px; overflow-y: auto;" id="lista-rondas-aovivo">
+                            <!-- Preenchido dinamicamente via Firestore onSnapshot -->
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-satellite fa-3x mb-3 text-secondary opacity-50"></i>
+                                <p class="mb-0">Nenhuma ronda em andamento no momento.</p>
+                                <small class="text-muted">As rondas iniciadas pelos vigias aparecerão automaticamente aqui.</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 2: CADASTRO DE ROTAS -->
+        <div class="tab-pane fade" id="tab-rotas" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-route text-primary me-2"></i> Roteiros Cadastrados</h5>
+                    <button class="btn btn-primary" onclick="window.abrirModalRota()">
+                        <i class="fas fa-plus me-1"></i> Nova Rota
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome da Rota</th>
+                                    <th>Setor / Perímetro</th>
+                                    <th>Pontos Previstos</th>
+                                    <th>Duração Est.</th>
+                                    <th>Versão</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-rotas-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando rotas...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 3: PONTOS DE CONTROLE (CHECKPOINTS) -->
+        <div class="tab-pane fade" id="tab-pontos" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-map-pin text-danger me-2"></i> Pontos de Inspeção e Controle</h5>
+                    <button class="btn btn-danger" onclick="window.abrirModalPonto()">
+                        <i class="fas fa-plus me-1"></i> Novo Ponto de Controle
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Nome do Ponto</th>
+                                    <th>Setor / Local</th>
+                                    <th>Coordenadas GPS</th>
+                                    <th>Raio Tolerância</th>
+                                    <th>Tipo de Validação</th>
+                                    <th>Instruções</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-pontos-tbody">
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando pontos de controle...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 4: VIGIAS & CREDENCIAIS -->
+        <div class="tab-pane fade" id="tab-vigias" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <div>
+                        <h5 class="mb-0 fw-bold"><i class="fas fa-user-shield text-info me-2"></i> Vigias Autorizados</h5>
+                        <small class="text-muted">Acesso operacional via celular corporativo com Matrícula e PIN individual</small>
+                    </div>
+                    <button class="btn btn-info text-white" onclick="window.abrirModalVigia()">
+                        <i class="fas fa-user-plus me-1"></i> Cadastrar Vigia
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Matrícula</th>
+                                    <th>Nome do Vigia</th>
+                                    <th>Situação</th>
+                                    <th>Data Cadastro</th>
+                                    <th>Tentativas Incorretas</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-vigias-tbody">
+                                <tr>
+                                    <td colspan="6" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando equipe de vigilância...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 5: OCORRÊNCIAS -->
+        <div class="tab-pane fade" id="tab-ocorrencias" role="tabpanel">
+            <div class="card shadow-sm border-0">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-triangle-exclamation text-warning me-2"></i> Ocorrências Registradas</h5>
+                    <div class="d-flex gap-2">
+                        <select class="form-select form-select-sm" id="filtro-categoria-ocorrencia" onchange="window.filtrarOcorrenciasVigilancia()">
+                            <option value="">Todas as Categorias</option>
+                            <option value="Porta Aberta / Destrancada">Porta Aberta / Destrancada</option>
+                            <option value="Iluminação Apagada / Avariada">Iluminação Apagada / Avariada</option>
+                            <option value="Indivíduo Suspeito">Indivíduo Suspeito</option>
+                            <option value="Vazamento / Hidráulica">Vazamento / Hidráulica</option>
+                            <option value="Alarme Disparado">Alarme Disparado</option>
+                            <option value="Obstáculo na Rota">Obstáculo na Rota</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Data / Hora</th>
+                                    <th>Vigia Responsável</th>
+                                    <th>Ronda Associada</th>
+                                    <th>Categoria</th>
+                                    <th>Descrição do Fato</th>
+                                    <th>Evidência</th>
+                                    <th>Localização GPS</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-ocorrencias-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center py-4 text-muted">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando ocorrências...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 6: HISTÓRICO & RELATÓRIOS -->
+        <div class="tab-pane fade" id="tab-historico" role="tabpanel">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-header bg-white py-3">
+                    <h5 class="mb-0 fw-bold"><i class="fas fa-filter text-primary me-2"></i> Filtros de Auditoria e Histórico</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small fw-semibold">Data Início</label>
+                            <input type="date" class="form-control" id="hist-data-inicio">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small fw-semibold">Data Fim</label>
+                            <input type="date" class="form-control" id="hist-data-fim">
+                        </div>
+                        <div class="col-12 col-md-3">
+                            <label class="form-label small fw-semibold">Vigia</label>
+                            <select class="form-select" id="hist-filtro-vigia">
+                                <option value="">Todos os Vigias</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-3 d-flex gap-2">
+                            <button class="btn btn-primary flex-fill" onclick="window.consultarHistoricoRondas()">
+                                <i class="fas fa-search me-1"></i> Consultar
+                            </button>
+                            <button class="btn btn-outline-success" onclick="window.exportarRelatorioVigilanciaPDF()" title="Exportar PDF">
+                                <i class="fas fa-file-pdf"></i>
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="window.exportarRelatorioVigilanciaCSV()" title="Exportar CSV">
+                                <i class="fas fa-file-csv"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabela de Histórico -->
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover table-vigilancia align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID / Início</th>
+                                    <th>Vigia</th>
+                                    <th>Rota Executada</th>
+                                    <th>Duração</th>
+                                    <th>Distância</th>
+                                    <th>Pontos Cumpridos</th>
+                                    <th>Ocorrências</th>
+                                    <th>Status</th>
+                                    <th class="text-end">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-tbody">
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">
+                                        Selecione os filtros e clique em <b>Consultar</b> para visualizar o histórico de rondas.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAIS DO MÓDULO DE VIGILÂNCIA             -->
+<!-- ========================================== -->
+
+<!-- Modal: Cadastro / Edição de Ponto de Controle -->
+<div class="modal fade" id="modalPontoControle" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="modalPontoTitulo"><i class="fas fa-map-pin me-2"></i> Ponto de Controle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formPontoControle">
+                    <input type="hidden" id="ponto-id">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-8">
+                            <label class="form-label fw-bold">Nome do Ponto *</label>
+                            <input type="text" class="form-control" id="ponto-nome" required placeholder="Ex: Portaria Principal, Almoxarifado 02, etc.">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Setor / Área *</label>
+                            <input type="text" class="form-control" id="ponto-setor" required placeholder="Ex: Produção, Perímetro...">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Latitude *</label>
+                            <input type="number" step="any" class="form-control" id="ponto-lat" required placeholder="-27.000000">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Longitude *</label>
+                            <input type="number" step="any" class="form-control" id="ponto-lng" required placeholder="-49.000000">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Raio de Tolerância (metros) *</label>
+                            <input type="number" class="form-control" id="ponto-raio" value="25" min="5" max="200" required>
+                        </div>
+                    </div>
+
+                    <!-- Seletor Interativo de Coordenadas no Mapa -->
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <label class="form-label small fw-bold text-muted mb-0">CLIQUE NO MAPA PARA DEFINIR AS COORDENADAS OU CAPTURE O GPS</label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="window.capturarLocalizacaoAtualPonto()">
+                                <i class="fas fa-crosshairs me-1"></i> Usar Minha Localização Atual
+                            </button>
+                        </div>
+                        <div id="mapa-seletor-ponto"></div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold">Método de Confirmação *</label>
+                            <select class="form-select" id="ponto-tipo-confirmacao" onchange="window.toggleTipoConfirmacaoPonto()">
+                                <option value="GPS">Apenas GPS (Proximidade Geográfica)</option>
+                                <option value="QRCODE">QR Code Físico no Local (Alta Segurança)</option>
+                            </select>
+                        </div>
+                        <div class="col-12 col-md-6" id="wrapper-qrcode-key" style="display: none;">
+                            <label class="form-label fw-bold">Código do QR Code</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control font-monospace" id="ponto-qrcode-key" placeholder="NEXTER-PONTO-XXXX">
+                                <button class="btn btn-outline-secondary" type="button" onclick="window.gerarChaveQRCodePonto()">Gerar</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Instruções de Inspeção para o Vigia</label>
+                        <textarea class="form-control" id="ponto-instrucoes" rows="2" placeholder="Ex: Verificar se portão dos fundos está trancado e iluminação periférica acesa."></textarea>
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="ponto-ativo" checked>
+                        <label class="form-check-label fw-semibold" for="ponto-ativo">Ponto de Controle Ativo</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" onclick="window.salvarPontoControle()">
+                    <i class="fas fa-save me-1"></i> Salvar Ponto
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cadastro / Edição de Rota -->
+<div class="modal fade" id="modalRota" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalRotaTitulo"><i class="fas fa-route me-2"></i> Rota de Vigilância</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formRota">
+                    <input type="hidden" id="rota-id">
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-8">
+                            <label class="form-label fw-bold">Nome da Rota *</label>
+                            <input type="text" class="form-control" id="rota-nome" required placeholder="Ex: Ronda Noturna Fabril, Ronda Perimetral...">
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <label class="form-label fw-bold">Setor Principal *</label>
+                            <input type="text" class="form-control" id="rota-setor" required placeholder="Ex: Toda a Fábrica, Estacionamento...">
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold">Duração Estimada (minutos) *</label>
+                            <input type="number" class="form-control" id="rota-duracao" value="45" min="5" max="360" required>
+                        </div>
+                        <div class="col-12 col-md-6">
+                            <label class="form-label fw-bold">Descrição / Observações</label>
+                            <input type="text" class="form-control" id="rota-descricao" placeholder="Instruções gerais sobre o trajeto...">
+                        </div>
+                    </div>
+
+                    <!-- Seleção e Ordenação dos Pontos de Controle -->
+                    <div class="mb-3">
+                        <label class="form-label fw-bold d-flex justify-content-between align-items-center">
+                            <span>Pontos de Controle Integrantes da Rota *</span>
+                            <small class="text-muted">Marque os pontos que compõem este percurso</small>
+                        </label>
+                        <div id="lista-selecao-pontos-rota" class="border rounded p-3" style="max-height: 250px; overflow-y: auto;">
+                            <!-- Preenchido dinamicamente -->
+                            <p class="text-muted small mb-0">Carregando pontos disponíveis...</p>
+                        </div>
+                    </div>
+
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" id="rota-ativo" checked>
+                        <label class="form-check-label fw-semibold" for="rota-ativo">Rota Ativa e Disponível para Rondas</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="window.salvarRota()">
+                    <i class="fas fa-save me-1"></i> Salvar Rota
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Cadastro / Edição de Vigia -->
+<div class="modal fade" id="modalVigia" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalVigiaTitulo"><i class="fas fa-user-shield me-2"></i> Cadastro de Vigia</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formVigia">
+                    <input type="hidden" id="vigia-id">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nome Completo do Vigia *</label>
+                        <input type="text" class="form-control" id="vigia-nome" required placeholder="Nome do colaborador">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Matrícula Operacional *</label>
+                        <input type="text" class="form-control" id="vigia-matricula" required placeholder="Ex: 1042">
+                        <small class="text-muted">A matrícula deve ser única e será utilizada no celular compartilhado.</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">PIN de Identificação (4 a 6 dígitos) *</label>
+                        <input type="password" class="form-control text-center fs-4 font-monospace" id="vigia-pin" maxlength="6" pattern="[0-9]{4,6}" placeholder="••••">
+                        <small class="text-muted">O PIN é criptografado com SHA-256 e nunca exposto em texto puro.</small>
+                    </div>
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" id="vigia-ativo" checked>
+                        <label class="form-check-label fw-semibold" for="vigia-ativo">Vigia Ativo</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info text-white" onclick="window.salvarVigia()">
+                    <i class="fas fa-save me-1"></i> Salvar Vigia
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Detalhes da Ronda & Visualizador de Trajeto -->
+<div class="modal fade" id="modalDetalheRonda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="modalDetalheTitulo"><i class="fas fa-map-marked-alt me-2"></i> Auditoria de Ronda</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-3">
+                <div class="row g-3">
+                    <div class="col-12 col-lg-8">
+                        <div id="mapa-detalhe-ronda" style="height: 480px; width: 100%; border-radius: 8px;"></div>
+                    </div>
+                    <div class="col-12 col-lg-4">
+                        <div class="card h-100 border-0 bg-light">
+                            <div class="card-body" id="detalhe-ronda-info">
+                                <p class="text-muted">Carregando auditoria da ronda...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>

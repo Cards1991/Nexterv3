@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>NEXTER | Operação do Vigia</title>
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- CSS Frameworks -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Firebase SDK (v8) -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
+
+    <!-- Configuração do Firebase -->
+    <script src="js/env-loader.js"></script>
+    <script src="firebase-config-mobile.js"></script>
+
+    <!-- Leaflet & QR Code Scanner -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        :root {
+            --bg-body: #0b0f19;
+            --surface: #151d30;
+            --surface-card: #1e293b;
+            --surface-border: #334155;
+            --primary: #2563eb;
+            --primary-glow: rgba(37, 99, 235, 0.3);
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        h1, h2, h3, h4, .brand-title {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+        }
+
+        /* ===== TELA DE LOGIN / IDENTIFICAÇÃO DO VIGIA ===== */
+        #view-login {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 24px;
+            background: radial-gradient(circle at top, #1e293b, #0b0f19 75%);
+        }
+
+        .login-card {
+            width: 100%;
+            max-width: 380px;
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 24px;
+            padding: 28px 24px;
+            text-align: center;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        }
+
+        .login-icon-box {
+            width: 72px;
+            height: 72px;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #2563eb, #3b82f6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 16px;
+            font-size: 32px;
+            color: white;
+            box-shadow: 0 8px 20px var(--primary-glow);
+        }
+
+        .pin-display {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin: 20px 0;
+        }
+
+        .pin-dot {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            border: 2px solid var(--surface-border);
+            transition: all 0.2s;
+        }
+
+        .pin-dot.filled {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+            transform: scale(1.1);
+        }
+
+        /* Teclado Virtual Numérico */
+        .keypad-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 16px;
+        }
+
+        .btn-key {
+            height: 60px;
+            background: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: 16px;
+            color: white;
+            font-size: 24px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.1s active;
+        }
+
+        .btn-key:active {
+            background: #334155;
+            transform: scale(0.95);
+        }
+
+        .btn-key.action {
+            font-size: 18px;
+            color: var(--text-muted);
+        }
+
+        /* ===== TELA DE SELEÇÃO DE ROTA ===== */
+        #view-selecao-rota {
+            display: none;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .card-rota-item {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 18px;
+            padding: 18px;
+            margin-bottom: 14px;
+            transition: transform 0.2s;
+        }
+
+        .card-rota-item:active {
+            transform: scale(0.98);
+            border-color: var(--primary);
+        }
+
+        /* ===== TELA DA RONDA EM ANDAMENTO ===== */
+        #view-ronda-ativa {
+            display: none;
+            min-height: 100vh;
+            flex-direction: column;
+            padding-bottom: 90px;
+        }
+
+        .top-status-bar {
+            background: var(--surface);
+            border-bottom: 1px solid var(--surface-border);
+            padding: 14px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        #mapa-operacao-vigia {
+            width: 100%;
+            height: 240px;
+            border-bottom: 1px solid var(--surface-border);
+            z-index: 1;
+        }
+
+        .checkpoint-card {
+            background: var(--surface-card);
+            border: 1px solid var(--surface-border);
+            border-radius: 14px;
+            padding: 14px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .checkpoint-card.confirmado {
+            border-left: 5px solid var(--success);
+            background: rgba(16, 185, 129, 0.08);
+        }
+
+        .checkpoint-card.pendente {
+            border-left: 5px solid var(--warning);
+        }
+
+        /* Barra de Ações Fixa na Parte Inferior */
+        .bottom-actions-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-top: 1px solid var(--surface-border);
+            padding: 12px 18px;
+            display: flex;
+            gap: 10px;
+            z-index: 1000;
+            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+        }
+
+        .btn-action-big {
+            flex: 1;
+            padding: 14px;
+            border-radius: 14px;
+            font-weight: 700;
+            font-size: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: none;
+        }
+
+        /* Modal Scanner QR Code */
+        #qr-reader-container {
+            width: 100%;
+            height: 320px;
+            background: #000;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ============================================== -->
+    <!-- 1. TELA DE IDENTIFICAÇÃO (MATRÍCULA + PIN)     -->
+    <!-- ============================================== -->
+    <div id="view-login" class="fade-in">
+        <div class="login-card">
+            <div class="login-icon-box">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3 class="mb-1">NEXTER Vigilância</h3>
+            <p class="text-muted small mb-3">Identifique-se para iniciar seu turno</p>
+
+            <!-- Campo Matrícula -->
+            <div class="mb-3 text-start">
+                <label class="form-label small text-muted fw-semibold">MATRÍCULA INDIVIDUAL</label>
+                <div class="input-group">
+                    <span class="input-group-text bg-dark border-secondary text-light"><i class="fas fa-id-badge"></i></span>
+                    <input type="text" id="input-matricula" class="form-control bg-dark border-secondary text-light fs-5 fw-bold" placeholder="Digite sua matrícula" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Display do PIN -->
+            <label class="form-label small text-muted fw-semibold text-start w-100">PIN DE SEGURANÇA (4 A 6 DÍGITOS)</label>
+            <div class="pin-display" id="pin-display">
+                <div class="pin-dot" id="dot-0"></div>
+                <div class="pin-dot" id="dot-1"></div>
+                <div class="pin-dot" id="dot-2"></div>
+                <div class="pin-dot" id="dot-3"></div>
+                <div class="pin-dot" id="dot-4"></div>
+                <div class="pin-dot" id="dot-5"></div>
+            </div>
+
+            <!-- Teclado Numérico Touch -->
+            <div class="keypad-grid">
+                <button type="button" class="btn-key" onclick="window.teclarPin('1')">1</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('2')">2</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('3')">3</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('4')">4</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('5')">5</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('6')">6</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('7')">7</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('8')">8</button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('9')">9</button>
+                <button type="button" class="btn-key action" onclick="window.limparPin()"><i class="fas fa-times"></i></button>
+                <button type="button" class="btn-key" onclick="window.teclarPin('0')">0</button>
+                <button type="button" class="btn-key action" onclick="window.apagarPin()"><i class="fas fa-backspace"></i></button>
+            </div>
+
+            <button type="button" class="btn btn-primary w-100 mt-4 py-3 fw-bold rounded-4 fs-5" id="btn-entrar" onclick="window.autenticarVigia()">
+                <i class="fas fa-arrow-right-to-bracket me-2"></i> Identificar
+            </button>
+            <div id="login-feedback" class="mt-2 small text-danger fw-semibold"></div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 2. TELA DE SELEÇÃO DE ROTA                     -->
+    <!-- ============================================== -->
+    <div id="view-selecao-rota" class="fade-in">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-0 text-white" id="nome-vigia-topo">Vigia Conectado</h4>
+                <small class="text-muted" id="matricula-vigia-topo">Matrícula: --</small>
+            </div>
+            <button class="btn btn-outline-danger btn-sm" onclick="window.encerrarSessaoVigia()">
+                <i class="fas fa-power-off me-1"></i> Sair
+            </button>
+        </div>
+
+        <div class="alert alert-info border-0 rounded-4 py-3 mb-4" style="background: rgba(37,99,235,0.15);">
+            <i class="fas fa-satellite-dish me-2 text-primary"></i> <b>GPS Corporativo:</b> Certifique-se de que a localização do aparelho está ativada.
+        </div>
+
+        <h5 class="fw-bold mb-3 text-white"><i class="fas fa-route text-primary me-2"></i> Selecione a Rota da Ronda:</h5>
+        
+        <div id="lista-rotas-disponiveis">
+            <!-- Preenchido dinamicamente -->
+            <div class="text-center py-5 text-muted">
+                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
+                <p>Carregando rotas autorizadas...</p>
+            </div>
+        </div>
+
+        <!-- Opção de Ronda Livre sem Rota Fixa -->
+        <div class="card-rota-item mt-3" style="border-style: dashed; border-color: #64748b;" onclick="window.iniciarRondaLivre()">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="fw-bold mb-1 text-white"><i class="fas fa-compass text-info me-2"></i> Ronda Livre / Vigilância Geral</h6>
+                    <small class="text-muted">Ronda sem pontos pré-definidos (Rastreamento contínuo de trajeto)</small>
+                </div>
+                <i class="fas fa-chevron-right text-muted"></i>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- 3. TELA DE OPERAÇÃO DA RONDA EM ANDAMENTO      -->
+    <!-- ============================================== -->
+    <div id="view-ronda-ativa" class="fade-in">
+        <!-- Top Status Bar -->
+        <div class="top-status-bar">
+            <div>
+                <span class="badge bg-success py-1 px-2 mb-1" id="badge-tempo-ronda">
+                    <i class="fas fa-circle-play fa-beat me-1"></i> 00:00
+                </span>
+                <div class="fw-bold text-white small" id="ronda-nome-rota">Rota Selecionada</div>
+            </div>
+            <div class="text-end">
+                <div class="small fw-semibold" id="status-gps-badge">
+                    <i class="fas fa-satellite text-success me-1"></i> GPS Ativo (±<span id="gps-precisao">--</span>m)
+                </div>
+                <small class="text-muted" id="status-distancia-ronda">0 metros</small>
+            </div>
+        </div>
+
+        <!-- Mini Mapa do Percurso -->
+        <div id="mapa-operacao-vigia"></div>
+
+        <!-- Lista de Checkpoints / Pontos de Controle -->
+        <div class="p-3">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="fw-bold small text-muted text-uppercase">PONTOS DE CONTROLE</span>
+                <span class="badge bg-primary" id="contador-checkpoints">0 / 0</span>
+            </div>
+
+            <div id="lista-checkpoints-ronda">
+                <!-- Preenchido dinamicamente -->
+            </div>
+        </div>
+
+        <!-- Barra Inferior de Ações Operacionais -->
+        <div class="bottom-actions-bar">
+            <button class="btn-action-big btn-warning text-dark" onclick="window.abrirModalOcorrencia()">
+                <i class="fas fa-triangle-exclamation"></i> Ocorrência
+            </button>
+            <button class="btn-action-big btn-primary" onclick="window.abrirScannerQRCode()">
+                <i class="fas fa-qrcode"></i> Ler QR Code
+            </button>
+            <button class="btn-action-big btn-danger" onclick="window.confirmarFinalizacaoRonda()">
+                <i class="fas fa-flag-checkered"></i> Concluir
+            </button>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: REGISTRO DE OCORRÊNCIA NA RONDA         -->
+    <!-- ============================================== -->
+    <div class="modal fade" id="modalOcorrencia" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-dark border-secondary text-white">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title"><i class="fas fa-triangle-exclamation text-warning me-2"></i> Registrar Ocorrência</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Categoria da Ocorrência *</label>
+                        <select class="form-select bg-secondary text-white border-0" id="ocorrencia-categoria">
+                            <option value="Porta Aberta / Destrancada">Porta Aberta / Destrancada</option>
+                            <option value="Iluminação Apagada / Avariada">Iluminação Apagada / Avariada</option>
+                            <option value="Indivíduo Suspeito">Indivíduo Suspeito</option>
+                            <option value="Vazamento / Hidráulica">Vazamento / Hidráulica</option>
+                            <option value="Alarme Disparado">Alarme Disparado</option>
+                            <option value="Obstáculo na Rota">Obstáculo na Rota</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Descrição do Ocorrido *</label>
+                        <textarea class="form-control bg-secondary text-white border-0" id="ocorrencia-descricao" rows="3" placeholder="Descreva brevemente o que foi observado..."></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Foto / Evidência (Opcional)</label>
+                        <input type="file" accept="image/*" capture="environment" class="form-control bg-secondary text-white border-0" id="ocorrencia-foto">
+                    </div>
+                </div>
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-warning text-dark fw-bold" onclick="window.salvarOcorrenciaRonda()">
+                        <i class="fas fa-paper-plane me-1"></i> Gravar Ocorrência
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================== -->
+    <!-- MODAL: LEITOR QR CODE PARA CHECKPOINT          -->
+    <!-- ============================================== -->
+    <div class="modal fade" id="modalScanner" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content bg-black text-white">
+                <div class="modal-header border-0 pb-0">
+                    <h5 class="modal-title"><i class="fas fa-camera text-primary me-2"></i> Aponte para o QR Code</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="window.fecharScannerQRCode()"></button>
+                </div>
+                <div class="modal-body p-3">
+                    <div id="qr-reader-container"></div>
+                    <p class="text-center small text-muted mt-2 mb-0">Posicione o código físico da placa de inspeção dentro da área da câmera</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de Operação -->
+    <script src="js/vigilancia-operacao.js?v=1"></script>
+</body>
+
+</html>

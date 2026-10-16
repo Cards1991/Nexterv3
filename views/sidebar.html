@@ -322,6 +322,48 @@
                 </div>
             </li>
 
+            <!-- Módulo Central de Vigilância & Rondas -->
+            <li class="nav-item" id="menu-vigilancia">
+                <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"
+                    href="#vigilanciaSubmenu" data-bs-toggle="collapse" role="button" aria-expanded="false">
+                    <i class="fas fa-shield-halved text-warning"></i> Central de Vigilância
+                </a>
+                <div class="collapse" id="vigilanciaSubmenu">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link fw-semibold text-warning" href="#" data-target="vigilancia-gestao">
+                                <i class="fas fa-desktop me-2"></i> Painel do Gestor (Ao Vivo)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link text-success fw-bold" href="vigia-mobile.html" target="_blank" data-target="vigia-mobile">
+                                <i class="fas fa-mobile-screen-button me-2"></i> Operação do Vigia (Celular)
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link" href="#" data-target="vigilancia-gestao" onclick="setTimeout(() => { const b = document.getElementById('tab-rotas-btn'); if(b) b.click(); }, 350);">
+                                <i class="fas fa-route me-2"></i> Cadastro de Rotas
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link" href="#" data-target="vigilancia-gestao" onclick="setTimeout(() => { const b = document.getElementById('tab-pontos-btn'); if(b) b.click(); }, 350);">
+                                <i class="fas fa-map-pin me-2"></i> Pontos de Controle
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link" href="#" data-target="vigilancia-gestao" onclick="setTimeout(() => { const b = document.getElementById('tab-vigias-btn'); if(b) b.click(); }, 350);">
+                                <i class="fas fa-user-shield me-2"></i> Equipe de Vigias
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link submenu-link" href="#" data-target="vigilancia-gestao" onclick="setTimeout(() => { const b = document.getElementById('tab-historico-btn'); if(b) b.click(); }, 350);">
+                                <i class="fas fa-clock-rotate-left me-2"></i> Histórico & Relatórios
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </li>
+
             <!-- Módulo Jurídico -->
             <li class="nav-item">
                 <a class="nav-link collapsed d-flex align-items-center justify-content-start gap-2"

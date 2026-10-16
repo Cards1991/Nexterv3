@@ -1,0 +1,201 @@
+/* css/vigilancia.css - Estilos dedicados ao Módulo Central de Vigilância e Rondas */
+
+:root {
+    --vigia-dark: #0f172a;
+    --vigia-card: #1e293b;
+    --vigia-border: #334155;
+    --vigia-primary: #3b82f6;
+    --vigia-success: #10b981;
+    --vigia-warning: #f59e0b;
+    --vigia-danger: #ef4444;
+    --vigia-text: #f8fafc;
+    --vigia-muted: #94a3b8;
+}
+
+/* Central de Vigilância - Container Principal do Gestor */
+.vigilancia-container {
+    padding: 1.5rem;
+    color: #1e293b;
+}
+
+.vigilancia-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.vigilancia-header h2 {
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* Indicadores / Cards de Resumo */
+.vigilancia-kpi-card {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 1.25rem;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    border: 1px solid #e2e8f0;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+.vigilancia-kpi-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+}
+
+.vigilancia-kpi-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #ffffff;
+}
+
+.vigilancia-kpi-info h3 {
+    font-size: 1.75rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.2;
+}
+
+.vigilancia-kpi-info p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Abas de Navegação Gerencial */
+.vigilancia-tabs .nav-link {
+    font-weight: 600;
+    color: #64748b;
+    border: none;
+    border-bottom: 3px solid transparent;
+    padding: 0.75rem 1.25rem;
+    transition: all 0.2s;
+}
+
+.vigilancia-tabs .nav-link:hover {
+    color: #0d6efd;
+}
+
+.vigilancia-tabs .nav-link.active {
+    color: #0d6efd;
+    background: transparent;
+    border-bottom: 3px solid #0d6efd;
+}
+
+/* Mapa Leaflet - Monitoramento em Tempo Real */
+#mapa-vigilancia-aovivo {
+    width: 100%;
+    height: 560px;
+    border-radius: 12px;
+    border: 1px solid #cbd5e1;
+    z-index: 1;
+}
+
+#mapa-seletor-ponto {
+    width: 100%;
+    height: 380px;
+    border-radius: 8px;
+    border: 1px solid #cbd5e1;
+    z-index: 1;
+}
+
+/* Pulse Animation para Vigias Ao Vivo */
+@keyframes vigia-pulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+    }
+    70% {
+        box-shadow: 0 0 0 14px rgba(16, 185, 129, 0);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    }
+}
+
+.vigia-live-marker {
+    background: #10b981;
+    border: 2px solid #ffffff;
+    border-radius: 50%;
+    animation: vigia-pulse 2s infinite;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+}
+
+/* Cards das Rondas Ativas */
+.ronda-ativa-card {
+    border-left: 4px solid #10b981;
+    background: #ffffff;
+    border-radius: 8px;
+    padding: 1rem;
+    margin-bottom: 0.75rem;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.ronda-ativa-card:hover, .ronda-ativa-card.selected {
+    background: #f8fafc;
+    border-left-color: #0284c7;
+    box-shadow: 0 4px 12px rgba(2, 132, 199, 0.15);
+}
+
+.badge-status-aovivo {
+    background: #dcfce7;
+    color: #15803d;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.badge-status-desatualizado {
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+.badge-status-semgps {
+    background: #fee2e2;
+    color: #b91c1c;
+    font-weight: 600;
+    padding: 0.35rem 0.65rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+}
+
+/* Modal e Formulários */
+.table-vigilancia th {
+    background: #f8fafc;
+    font-weight: 600;
+    color: #475569;
+    border-bottom: 2px solid #e2e8f0;
+}
+
+.table-vigilancia td {
+    vertical-align: middle;
+}
