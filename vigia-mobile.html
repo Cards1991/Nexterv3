@@ -279,12 +279,28 @@
             <h3 class="mb-1">NEXTER Vigilância</h3>
             <p class="text-muted small mb-3">Identifique-se para iniciar seu turno</p>
 
-            <!-- Campo Matrícula -->
+            <!-- Seleção ou Digitação da Matrícula -->
             <div class="mb-3 text-start">
-                <label class="form-label small text-muted fw-semibold">MATRÍCULA INDIVIDUAL</label>
-                <div class="input-group">
-                    <span class="input-group-text bg-dark border-secondary text-light"><i class="fas fa-id-badge"></i></span>
-                    <input type="text" id="input-matricula" class="form-control bg-dark border-secondary text-light fs-5 fw-bold" placeholder="Digite sua matrícula" autocomplete="off">
+                <div class="d-flex justify-content-between align-items-center mb-1">
+                    <label class="form-label small text-muted fw-semibold mb-0">QUEM É VOCÊ?</label>
+                    <a href="javascript:void(0)" class="small text-info text-decoration-none" onclick="window.alternarModoMatricula()" id="link-alternar-modo">
+                        <i class="fas fa-keyboard me-1"></i> Digitar matrícula
+                    </a>
+                </div>
+
+                <!-- Modo 1: Seletor Inteligente com Nome e Matrícula -->
+                <div id="wrapper-select-vigia">
+                    <select id="select-vigia-mobile" class="form-select bg-dark border-secondary text-light fs-6 fw-bold py-2" onchange="window.aoSelecionarVigiaMobile()">
+                        <option value="">-- Toque para selecionar seu nome --</option>
+                    </select>
+                </div>
+
+                <!-- Modo 2: Digitação Manual de Matrícula -->
+                <div id="wrapper-input-matricula" style="display: none;">
+                    <div class="input-group">
+                        <span class="input-group-text bg-dark border-secondary text-light"><i class="fas fa-id-badge"></i></span>
+                        <input type="text" id="input-matricula" class="form-control bg-dark border-secondary text-light fs-5 fw-bold" placeholder="Digite sua matrícula" autocomplete="off">
+                    </div>
                 </div>
             </div>
 
@@ -472,7 +488,7 @@
     </div>
 
     <!-- Scripts de Operação -->
-    <script src="js/vigilancia-operacao.js?v=1"></script>
+    <script src="js/vigilancia-operacao.js?v=2"></script>
 </body>
 
 </html>

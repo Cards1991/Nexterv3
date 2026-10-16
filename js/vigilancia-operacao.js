@@ -50,7 +50,81 @@
     }
 
     // ==============================================
-    // 1. TECLADO VIRTUAL E AUTENTICAÇÃO DO VIGIA
+    // 1. CARREGAMENTO E SELEÇÃO DE VIGIA NO MOBILE
+    // ==============================================
+
+    let modoMatriculaManual = false;
+
+    window.carregarListaVigiasMobile = async function () {
+        const select = document.getElementById('select-vigia-mobile');
+        if (!select || !window.db) return;
+
+        try {
+            const snap = await window.db.collection('vigilancia_vigias')
+                .where('ativo', '==', true)
+                .get();
+
+            if (snap.empty) {
+                select.innerHTML = '<option value="">Nenhum vigia ativo cadastrado</option>';
+                return;
+            }
+
+            const ultMat = localStorage.getItem('ultimo_vigia_matricula') || '';
+
+            let html = '<option value="">-- Toque para selecionar seu nome --</option>';
+            snap.forEach(doc => {
+                const v = doc.data();
+                const sel = (v.matricula === ultMat) ? 'selected' : '';
+                html += `<option value="${v.matricula}" ${sel}>${v.nome} (Matrícula: ${v.matricula})</option>`;
+            });
+            select.innerHTML = html;
+
+            if (ultMat) {
+                const inputMat = document.getElementById('input-matricula');
+                if (inputMat) inputMat.value = ultMat;
+            }
+        } catch (e) {
+            console.warn("Erro ao carregar lista de vigias no mobile:", e);
+        }
+    };
+
+    window.aoSelecionarVigiaMobile = function () {
+        const select = document.getElementById('select-vigia-mobile');
+        const inputMat = document.getElementById('input-matricula');
+        const feedback = document.getElementById('login-feedback');
+        if (select && inputMat) {
+            inputMat.value = select.value;
+            if (select.value) {
+                localStorage.setItem('ultimo_vigia_matricula', select.value);
+                if (feedback) feedback.innerText = '';
+                select.classList.remove('border-danger');
+            }
+        }
+    };
+
+    window.alternarModoMatricula = function () {
+        modoMatriculaManual = !modoMatriculaManual;
+        const wSelect = document.getElementById('wrapper-select-vigia');
+        const wInput = document.getElementById('wrapper-input-matricula');
+        const link = document.getElementById('link-alternar-modo');
+
+        if (modoMatriculaManual) {
+            if (wSelect) wSelect.style.display = 'none';
+            if (wInput) {
+                wInput.style.display = 'block';
+                const input = document.getElementById('input-matricula');
+                if (input) input.focus();
+            }
+            if (link) link.innerHTML = '<i class="fas fa-list me-1"></i> Selecionar na lista';
+        } else {
+            if (wSelect) wSelect.style.display = 'block';
+            if (wInput) wInput.style.display = 'none';
+            if (link) link.innerHTML = '<i class="fas fa-keyboard me-1"></i> Digitar matrícula';
+        }
+    };
+
+    // ==============================================
+    // 2. TECLADO VIRTUAL E AUTENTICAÇÃO DO VIGIA
     // ==============================================
 
     window.teclarPin = function (digito) {
@@ -86,20 +160,34 @@
     }
 
     window.autenticarVigia = async function () {
+        const selectVigia = document.getElementById('select-vigia-mobile');
         const inputMatricula = document.getElementById('input-matricula');
         const feedback = document.getElementById('login-feedback');
-        const matricula = inputMatricula ? inputMatricula.value.trim() : '';
+
+        let matricula = '';
+        if (!modoMatriculaManual && selectVigia && selectVigia.value) {
+            matricula = selectVigia.value.trim();
+        } else if (inputMatricula && inputMatricula.value) {
+            matricula = inputMatricula.value.trim();
+        } else if (selectVigia && selectVigia.value) {
+            matricula = selectVigia.value.trim();
+        }
 
         if (!matricula) {
-            feedback.innerText = "Informe sua matrícula corporativa.";
+            feedback.innerHTML = '<i class="fas fa-exclamation-triangle me-1"></i> Por favor, <b>selecione seu nome</b> na lista acima.';
+            if (selectVigia && !modoMatriculaManual) {
+                selectVigia.classList.add('border-danger');
+                selectVigia.focus();
+            }
             return;
         }
 
         if (pinDigitado.length < 4) {
-            feedback.innerText = "Digite seu PIN completo (mínimo 4 dígitos).";
+            feedback.innerHTML = '<i class="fas fa-key me-1"></i> Digite seu PIN no teclado abaixo (mínimo 4 dígitos).';
             return;
         }
 
+        localStorage.setItem('ultimo_vigia_matricula', matricula);
         feedback.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Validando credenciais...';
 
         try {
@@ -801,5 +889,23 @@
             alert(`Erro ao finalizar ronda: ${e.message}`);
         }
     };
+
+    // Inicialização ao carregar a página mobile
+    document.addEventListener('DOMContentLoaded', () => {
+        window.carregarListaVigiasMobile();
+    });
+
+    document.addEventListener('firebaseMobileReady', () => {
+        window.carregarListaVigiasMobile();
+    });
+
+    // Se Firebase já estiver pronto
+    if (window.db) {
+        window.carregarListaVigiasMobile();
+    } else {
+        setTimeout(() => {
+            if (window.carregarListaVigiasMobile) window.carregarListaVigiasMobile();
+        }, 800);
+    }
 
 })();

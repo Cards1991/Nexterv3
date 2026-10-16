@@ -1203,7 +1203,7 @@
     };
 
     /**
-     * Atualização do KPI de Rondas Concluídas Hoje
+     * Atualização do KPI de Rondas Concluídas Hoje (Sem exigir índice composto no Firestore)
      */
     async function atualizarKpiHoje() {
         if (!window.db) return;
@@ -1211,13 +1211,23 @@
             const hoje = new Date();
             hoje.setHours(0, 0, 0, 0);
 
+            // Consulta por status com limite e calcula data em memória para dispensar índices manuais
             const snap = await window.db.collection('vigilancia_rondas')
                 .where('status', '==', 'CONCLUIDA')
-                .where('fim', '>=', hoje)
+                .limit(200)
                 .get();
 
+            let totalHoje = 0;
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (d.fim) {
+                    const dtFim = d.fim.toDate ? d.fim.toDate() : new Date(d.fim);
+                    if (dtFim >= hoje) totalHoje++;
+                }
+            });
+
             const kpi = document.getElementById('kpi-rondas-concluidas');
-            if (kpi) kpi.innerText = snap.size;
+            if (kpi) kpi.innerText = totalHoje;
         } catch (e) {
             console.warn("Erro ao buscar KPI hoje:", e);
         }
@@ -1237,7 +1247,7 @@
         tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4"><i class="fas fa-spinner fa-spin me-2"></i> Consultando histórico...</td></tr>';
 
         try {
-            let query = window.db.collection('vigilancia_rondas').where('status', '==', 'CONCLUIDA');
+            let query = window.db.collection('vigilancia_rondas');
 
             if (dtIni) {
                 const dIni = new Date(dtIni + 'T00:00:00');
@@ -1248,9 +1258,14 @@
                 query = query.where('inicio', '<=', dFim);
             }
 
-            const snap = await query.orderBy('inicio', 'desc').limit(50).get();
+            const snap = await query.orderBy('inicio', 'desc').limit(100).get();
             let rondas = [];
-            snap.forEach(doc => rondas.push({ id: doc.id, ...doc.data() }));
+            snap.forEach(doc => {
+                const d = doc.data();
+                if (d.status === 'CONCLUIDA') {
+                    rondas.push({ id: doc.id, ...d });
+                }
+            });
 
             if (vigiaId) {
                 rondas = rondas.filter(r => r.vigiaId === vigiaId);
