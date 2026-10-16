@@ -2240,7 +2240,12 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                 let batidas = [];
                 const cloudItem = apuracaoList.find(it => {
                     const itDate = it.date ? it.date.split('T')[0] : (it.dateTimeStr || '');
-                    return String(it.idPerson) === String(pessoa.rhidPersonId) && itDate === dataDia;
+                    const matchDate = !itDate || itDate === dataDia;
+                    const matchId = pessoa.rhidPersonId && String(it.idPerson) === String(pessoa.rhidPersonId);
+                    const matchPis = it.pis && pessoa.codigoRep && String(it.pis).replace(/\D/g, '') === String(pessoa.codigoRep).replace(/\D/g, '');
+                    const matchCpf = it.cpf && pessoa.cpfLimpo && String(it.cpf).replace(/\D/g, '') === String(pessoa.cpfLimpo);
+                    const matchReg = it.registration && pessoa.codigo && String(it.registration).replace(/\D/g, '') === String(pessoa.codigo).replace(/\D/g, '');
+                    return matchDate && (matchId || matchPis || matchCpf || matchReg);
                 });
 
                 if (cloudItem && Array.isArray(cloudItem.listAfdtManutencao)) {

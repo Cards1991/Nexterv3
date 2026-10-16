@@ -25,6 +25,8 @@ const saveStoredToken = (token) => {
 
 let cachedRhidToken = null;
 let tokenExpiresAt = 0;
+let cachedDevices = null;
+let devicesExpiresAt = 0;
 
 try { require('dotenv').config(); } catch (e) {}
 
@@ -300,6 +302,111 @@ module.exports = async function handler(req, res) {
                     
                     // results é um array de arrays (um array para cada pessoa). Vamos juntar tudo (flat)
                     apurDataComb = results.flat();
+
+                    // ENRIQUECIMENTO REAL-TIME: Se alguma pessoa (ex: Cargo de Confiança, Gerência ou Visitante sem escala CLT)
+                    // tiver listAfdtManutencao vazia, busca as marcações físicas diretamente no AFD dos relógios REP da Control iD
+                    const hasEmptyPunches = apurDataComb.some(item => !item.listAfdtManutencao || item.listAfdtManutencao.length === 0);
+                    if (hasEmptyPunches) {
+                        try {
+                            if (!cachedDevices || Date.now() > devicesExpiresAt) {
+                                const devRes = await fetch(`${RHID_API_BASE}/device?start=0&length=100`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (devRes.ok) {
+                                    const devData = await devRes.json();
+                                    cachedDevices = devData.records || [];
+                                    devicesExpiresAt = Date.now() + 30 * 60 * 1000;
+                                }
+                            }
+
+                            if (cachedDevices && cachedDevices.length > 0) {
+                                const parseAfd = (text, devName) => {
+                                    let clean = text;
+                                    if (clean.startsWith('"') && clean.endsWith('"')) {
+                                        try { clean = JSON.parse(clean); } catch(e) {}
+                                    }
+                                    const lines = clean.split(/\r?\n/);
+                                    const punches = [];
+                                    for (const line of lines) {
+                                        // Registro Tipo 3 Portaria 1510 / Portaria 671:
+                                        // 0-8: NSR | 9: Tipo '3' | 10-17: DDMMAAAA | 18-21: HHMM | 22-33: PIS
+                                        if (line.length >= 34 && line.charAt(9) === '3') {
+                                            const nsr = line.substring(0, 9);
+                                            const dia = line.substring(10, 12);
+                                            const mes = line.substring(12, 14);
+                                            const ano = line.substring(14, 18);
+                                            const hora = line.substring(18, 20);
+                                            const min = line.substring(20, 22);
+                                            const pis = line.substring(22, 34).replace(/^0+/, '');
+                                            punches.push({
+                                                nsr,
+                                                date: `${ano}-${mes}-${dia}`,
+                                                time: `${hora}:${min}`,
+                                                pis,
+                                                device: devName
+                                            });
+                                        }
+                                    }
+                                    return punches;
+                                };
+
+                                const afdPromises = cachedDevices.map(async (d) => {
+                                    try {
+                                        const url = `${RHID_API_BASE}/report/afd/download?idEquipamento=${d.id}&dataIni=${startDate}&dataFinal=${endDate}`;
+                                        const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                                        if (res.ok) {
+                                            const txt = await res.text();
+                                            return parseAfd(txt, d.name);
+                                        }
+                                    } catch(e) {}
+                                    return [];
+                                });
+
+                                const afdResults = await Promise.all(afdPromises);
+                                const allAfdPunches = afdResults.flat();
+
+                                for (const item of apurDataComb) {
+                                    if (!item.listAfdtManutencao || item.listAfdtManutencao.length === 0) {
+                                        const itemPis = String(item.pis || '').replace(/\D/g, '').replace(/^0+/, '');
+                                        const itemReg = String(item.registration || item.code || '').replace(/\D/g, '');
+
+                                        const matched = allAfdPunches.filter(p => {
+                                            const itemDate = item.date ? item.date.split('T')[0] : (item.dateTimeStr || '');
+                                            const dateMatches = !itemDate || p.date === itemDate;
+                                            const pisMatches = itemPis && p.pis === itemPis;
+                                            const regMatches = itemReg && p.pis.includes(itemReg);
+                                            return dateMatches && (pisMatches || regMatches);
+                                        });
+
+                                        // Deduplica marcações no mesmo minuto
+                                        const uniquePunches = [];
+                                        const seenTimes = new Set();
+                                        for (const p of matched) {
+                                            if (!seenTimes.has(p.time)) {
+                                                seenTimes.add(p.time);
+                                                uniquePunches.push(p);
+                                            }
+                                        }
+
+                                        if (uniquePunches.length > 0) {
+                                            item.listAfdtManutencao = uniquePunches.map(p => ({
+                                                hora: p.time,
+                                                strHora: p.time,
+                                                dateTime: `${p.date}T${p.time}:00`,
+                                                date: `${p.date}T00:00:00`,
+                                                idDevice: p.device,
+                                                origem: `Leitor REP (${p.device})`,
+                                                idAfd: parseInt(p.nsr, 10),
+                                                pis: p.pis
+                                            }));
+                                        }
+                                    }
+                                }
+                            }
+                        } catch (afdErr) {
+                            console.warn('[RHID API] Aviso ao enriquecer com AFD dos relógios:', afdErr.message);
+                        }
+                    }
 
                     return res.status(200).json({ 
                         success: true, 
