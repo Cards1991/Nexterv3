@@ -1817,31 +1817,6 @@ async function semearVisitantePadrao() {
     } else {
         await docRef.set(dadosPadrao, { merge: true });
     }
-
-    // 2. Registra a marcação física do leitor REP (16/10/2026 às 11:02) para exibição imediata
-    try {
-        const punchRef = window.db.collection('visitantes_batidas').doc('batida_17101991_20261016_1102');
-        const punchSnap = await punchRef.get();
-        if (!punchSnap.exists) {
-            await punchRef.set({
-                codigo: '17101991',
-                codigoRep: '97608920907',
-                nome: 'CHARLES AUGUSTO RIBEIRO DOS SANTOS',
-                cpf: '081.946.399-05',
-                cpfLimpo: '08194639905',
-                rhidPersonId: '1333',
-                data: '2026-10-16',
-                hora: '11:02',
-                tipo: 'ENTRADA',
-                origem: 'Leitor REP / Acesso',
-                observacao: 'Acesso registrado no relógio de ponto às 11:02',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
-            });
-            console.log("Batida física das 11:02 registrada com sucesso.");
-        }
-    } catch (pe) {
-        console.warn("Aviso ao semear batida física das 11:02:", pe);
-    }
 }
 
 // Atalhos de datas (Hoje, Ontem, 7 Dias)
@@ -2245,6 +2220,24 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
             }
         }
 
+        // 2.1. Busca batidas que foram excluídas / desconsideradas pelo usuário
+        let batidasExcluidasBanco = [];
+        if (window.db) {
+            try {
+                const excSnap = await window.db.collection('visitantes_batidas_excluidas')
+                    .where('data', '>=', dtInicio)
+                    .where('data', '<=', dtFim)
+                    .get();
+                excSnap.forEach(d => {
+                    const eb = d.data();
+                    eb.docId = d.id;
+                    batidasExcluidasBanco.push(eb);
+                });
+            } catch (ee) {
+                console.warn("Aviso ao carregar batidas excluídas:", ee);
+            }
+        }
+
         let totalPresentesAgora = 0;
         let totalVisitasConcluidas = 0;
         let totalBatidasGerais = 0;
@@ -2257,6 +2250,19 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
 
         for (const dataDia of datasPeriodo) {
             for (const pessoa of pessoasAlvos) {
+                // Identifica batidas que foram desconsideradas / excluídas para esta pessoa nesta data
+                const excluidasDestaPessoa = batidasExcluidasBanco.filter(eb => {
+                    if (eb.data !== dataDia) return false;
+                    const matchCod = eb.codigo && pessoa.codigo && String(eb.codigo) === String(pessoa.codigo);
+                    const matchRep = eb.codigoRep && pessoa.codigoRep && String(eb.codigoRep) === String(pessoa.codigoRep);
+                    const matchCpf = eb.cpfLimpo && pessoa.cpfLimpo && eb.cpfLimpo === pessoa.cpfLimpo;
+                    const matchNome = eb.nome && pessoa.nome && eb.nome.trim().toLowerCase() === pessoa.nome.trim().toLowerCase();
+                    const matchId = eb.rhidPersonId && pessoa.rhidPersonId && String(eb.rhidPersonId) === String(pessoa.rhidPersonId);
+                    return matchCod || matchRep || matchCpf || matchNome || matchId;
+                });
+
+                const horasExcluidasSet = new Set(excluidasDestaPessoa.map(eb => eb.hora));
+
                 // Batidas da nuvem RHiD para esta pessoa e nesta data
                 let batidas = [];
                 const cloudItem = apuracaoList.find(it => {
@@ -2273,6 +2279,7 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                     cloudItem.listAfdtManutencao.forEach(b => {
                         const hStr = formatarHoraRhid(b);
                         if (hStr && hStr !== '--:--') {
+                            if (horasExcluidasSet.has(hStr)) return; // Excluída pelo usuário
                             batidas.push({
                                 hora: hStr,
                                 strHora: hStr,
@@ -2296,7 +2303,9 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                 matchedLocal.forEach(mp => {
                     const hStr = mp.hora ? mp.hora.substring(0, 5) : '';
                     if (hStr) {
+                        if (horasExcluidasSet.has(hStr)) return; // Excluída pelo usuário
                         batidas.push({
+                            docId: mp.docId,
                             hora: hStr,
                             strHora: hStr,
                             tipo: mp.tipo || 'ENTRADA',
@@ -2336,6 +2345,7 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                     visitante: pessoa,
                     data: dataDia,
                     batidas: batidasUnicas,
+                    batidasExcluidas: excluidasDestaPessoa,
                     horarioPrevisto: horarioPrevistoStr
                 });
 
@@ -2411,10 +2421,13 @@ async function apurarVisitantesRhid(isManualClick = true, listaForcada = null) {
                                 <button class="btn btn-sm btn-primary rounded-pill px-2 py-0 fw-bold shadow-sm" onclick="abrirEspelhoPontoGerente('${pessoa.id || pessoa.codigo}')" title="Abrir Espelho de Ponto Individual com Almoço Pré-assinalado">
                                     <i class="fas fa-calendar-check me-1"></i> Espelho
                                 </button>
-                                <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-semibold" onclick="verDetalhesBatidasVisitante('${cacheKey}')" title="Ver marcações detalhadas do leitor">
+                                <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-semibold" onclick="verDetalhesBatidasVisitante('${cacheKey}')" title="Ver marcações detalhadas, excluir ou reimportar batidas">
                                     <i class="fas fa-clock me-1"></i> Batidas (${batidasUnicas.length})
                                 </button>
-                                <button class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 text-dark fw-semibold" onclick="abrirModalLancamentoBatidaManual('${pessoa.codigo || ''}', '${pessoa.nome.replace(/'/g, "\\'")}', '${dataDia}')" title="Lançar marcação ou saída de portaria">
+                                <button class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 text-dark fw-bold" onclick="reimportarBatidasVisitanteLinha('${cacheKey}')" title="Reimportar todas as batidas deste colaborador do RHiD">
+                                    <i class="fas fa-cloud-download-alt"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-secondary rounded-pill px-2 py-0 text-dark fw-semibold" onclick="abrirModalLancamentoBatidaManual('${pessoa.codigo || ''}', '${pessoa.nome.replace(/'/g, "\\'")}', '${dataDia}')" title="Lançar marcação ou saída de portaria">
                                     <i class="fas fa-plus"></i>
                                 </button>
                             </div>
@@ -2814,16 +2827,20 @@ async function excluirVisitante(docId, nome) {
     }
 }
 
-// Abre modal com a timeline de batidas do dia
+// Abre modal com a timeline de batidas do dia, permitindo excluir ou reimportar marcações
 function verDetalhesBatidasVisitante(cacheKey) {
     const data = window._visitantesApuracaoCache.get(cacheKey);
     if (!data) return;
+
+    window._modalBatidasCacheKeyAtual = cacheKey;
 
     const modalEl = document.getElementById('modal-rhid-batidas-visitante');
     const nomeEl = document.getElementById('modal-batidas-nome');
     const infoEl = document.getElementById('modal-batidas-info');
     const dataEl = document.getElementById('modal-batidas-data');
     const timelineEl = document.getElementById('modal-batidas-timeline');
+    const secExcluidas = document.getElementById('modal-batidas-excluidas-secao');
+    const listExcluidas = document.getElementById('modal-batidas-excluidas-list');
 
     nomeEl.textContent = data.visitante.nome || 'Pessoa Monitorada';
     infoEl.textContent = `Código: ${data.visitante.codigo || '--'} | REP/PIS: ${data.visitante.codigoRep || '--'} | CPF: ${data.visitante.cpf || '--'} | Horário Previsto: ${data.horarioPrevisto || '--'}`;
@@ -2840,7 +2857,7 @@ function verDetalhesBatidasVisitante(cacheKey) {
         timelineEl.innerHTML = `
             <div class="list-group-item text-center py-4 text-muted bg-white">
                 <i class="fas fa-calendar-times fs-2 mb-2 d-block text-secondary opacity-50"></i>
-                Nenhuma marcação física registrada no relógio de ponto para esta data.
+                Nenhuma marcação ativa registrada no relógio de ponto para esta data.
             </div>
         `;
     } else {
@@ -2854,21 +2871,28 @@ function verDetalhesBatidasVisitante(cacheKey) {
             const rawHora = b.hora || '';
             let horaFormatada = rawHora;
             if (rawHora.includes('T')) {
-                horaFormatada = rawHora.split('T')[1].substring(0, 8);
+                horaFormatada = rawHora.split('T')[1].substring(0, 5);
+            } else if (rawHora.length > 5) {
+                horaFormatada = rawHora.substring(0, 5);
             }
 
+            const docIdParam = b.docId ? `'${b.docId}'` : 'null';
+
             html += `
-                <div class="list-group-item d-flex justify-content-between align-items-center py-3 bg-white">
+                <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center py-3 bg-white">
                     <div class="d-flex align-items-center gap-3">
                         <span class="badge bg-secondary rounded-circle px-2 py-1">${idx + 1}</span>
                         <div>
-                            <div class="fw-bold fs-6 text-dark">${horaFormatada}</div>
+                            <div class="fw-bold fs-6 text-dark font-monospace">${horaFormatada}</div>
                             <small class="text-muted">Origem: ${b.idDevice || b.origem || 'Leitor de Ponto REP'}</small>
                             ${b.obs ? `<div class="small text-secondary">${b.obs}</div>` : ''}
                         </div>
                     </div>
-                    <div>
+                    <div class="d-flex align-items-center gap-2 mt-2 mt-sm-0">
                         ${badgeTipo}
+                        <button class="btn btn-outline-danger btn-sm rounded-pill px-3 py-1 fw-semibold shadow-sm" onclick="excluirBatidaVisitante('${cacheKey}', '${horaFormatada}', ${docIdParam})" title="Excluir ou desconsiderar esta batida">
+                            <i class="fas fa-trash-alt me-1"></i> Excluir
+                        </button>
                     </div>
                 </div>
             `;
@@ -2876,8 +2900,305 @@ function verDetalhesBatidasVisitante(cacheKey) {
         timelineEl.innerHTML = html;
     }
 
-    const modal = new bootstrap.Modal(modalEl);
+    // Renderiza seção de batidas excluídas com botão de reimportação
+    const excluidas = data.batidasExcluidas || [];
+    if (secExcluidas && listExcluidas) {
+        if (excluidas.length === 0) {
+            secExcluidas.classList.add('d-none');
+            listExcluidas.innerHTML = '';
+        } else {
+            secExcluidas.classList.remove('d-none');
+            let excHtml = '';
+            excluidas.forEach(eb => {
+                excHtml += `
+                    <div class="list-group-item d-flex flex-wrap justify-content-between align-items-center py-2 bg-light border-danger-subtle">
+                        <div class="d-flex align-items-center gap-2">
+                            <i class="fas fa-ban text-danger"></i>
+                            <div>
+                                <span class="text-decoration-line-through font-monospace fw-bold text-danger">${eb.hora}</span>
+                                <small class="text-muted ms-2">${eb.motivo || 'Desconsiderada manualmente'}</small>
+                            </div>
+                        </div>
+                        <div class="mt-2 mt-sm-0">
+                            <button class="btn btn-success btn-sm rounded-pill px-3 py-1 fw-bold shadow-sm" onclick="restaurarReimportarBatida('${cacheKey}', '${eb.hora}')" title="Restaurar e reimportar esta batida para o sistema">
+                                <i class="fas fa-undo me-1"></i> Reimportar Batida
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            listExcluidas.innerHTML = excHtml;
+        }
+    }
+
+    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
     modal.show();
+}
+
+// Exclui / desconsidera uma batida específica para o colaborador na data indicada
+async function excluirBatidaVisitante(cacheKey, hora, docId = null) {
+    const data = window._visitantesApuracaoCache.get(cacheKey);
+    if (!data) return;
+
+    const vis = data.visitante;
+    const dataDia = data.data;
+
+    let df = dataDia;
+    if (df && df.includes('-')) {
+        const parts = df.split('-');
+        df = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    if (!confirm(`Deseja realmente excluir/desconsiderar a batida das ${hora} do dia ${df} para ${vis.nome}?`)) {
+        return;
+    }
+
+    try {
+        if (!window.db) throw new Error("Conexão com Firestore não inicializada.");
+
+        const horaLimpa = hora.replace(/[^0-9]/g, '');
+        const idIdent = String(vis.codigo || vis.id || vis.rhidPersonId);
+        const excDocId = `exc_${idIdent}_${dataDia}_${horaLimpa}`;
+
+        // 1. Grava na coleção de batidas excluídas/desconsideradas
+        await window.db.collection('visitantes_batidas_excluidas').doc(excDocId).set({
+            codigo: String(vis.codigo || ''),
+            codigoRep: String(vis.codigoRep || ''),
+            cpfLimpo: String(vis.cpfLimpo || ''),
+            rhidPersonId: String(vis.rhidPersonId || ''),
+            nome: vis.nome || '',
+            data: dataDia,
+            hora: hora,
+            motivo: 'Desconsiderada manualmente pelo usuário',
+            excluidoEm: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 2. Se houver docId local/manual, remove do banco
+        if (docId) {
+            await window.db.collection('visitantes_batidas').doc(docId).delete().catch(() => {});
+            await window.db.collection('visitantes_batidas_manuais').doc(docId).delete().catch(() => {});
+        } else {
+            // Remove possíveis batidas locais correspondentes
+            try {
+                const snap = await window.db.collection('visitantes_batidas')
+                    .where('data', '==', dataDia)
+                    .where('hora', '==', hora)
+                    .get();
+                for (const d of snap.docs) {
+                    const mp = d.data();
+                    if (String(mp.codigo) === String(vis.codigo) || mp.cpfLimpo === vis.cpfLimpo) {
+                        await d.ref.delete().catch(() => {});
+                    }
+                }
+            } catch (eLocal) {}
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Batida das ${hora} desconsiderada com sucesso!`, 'success');
+        }
+
+        // 3. Re-apura presença para atualizar a tela
+        await apurarVisitantesRhid(false);
+
+        // Se o espelho de ponto estiver aberto, reprocessa também
+        if (window._gerenteEspelhoAtual && (String(window._gerenteEspelhoAtual.gerente?.codigo) === String(vis.codigo) || window._gerenteEspelhoAtual.gerente?.id === vis.id)) {
+            await processarEspelhoPontoGerente(false);
+        }
+
+        // Reabre a visualização atualizada de batidas
+        verDetalhesBatidasVisitante(cacheKey);
+
+    } catch (err) {
+        console.error("Erro ao excluir batida:", err);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao excluir batida: ' + err.message, 'error');
+    }
+}
+
+// Restaura e reimporta uma batida que havia sido desconsiderada
+async function restaurarReimportarBatida(cacheKey, hora) {
+    const data = window._visitantesApuracaoCache.get(cacheKey);
+    if (!data) return;
+
+    const vis = data.visitante;
+    const dataDia = data.data;
+
+    try {
+        if (!window.db) throw new Error("Conexão com Firestore não inicializada.");
+
+        const horaLimpa = hora.replace(/[^0-9]/g, '');
+        const idIdent = String(vis.codigo || vis.id || vis.rhidPersonId);
+        const excDocId = `exc_${idIdent}_${dataDia}_${horaLimpa}`;
+
+        // 1. Remove documento da coleção de batidas excluídas
+        await window.db.collection('visitantes_batidas_excluidas').doc(excDocId).delete().catch(() => {});
+
+        // Também remove caso tenha sido registrado com identificadores alternativos
+        const snap = await window.db.collection('visitantes_batidas_excluidas')
+            .where('data', '==', dataDia)
+            .where('hora', '==', hora)
+            .get();
+        for (const d of snap.docs) {
+            const eb = d.data();
+            const matchCod = eb.codigo && vis.codigo && String(eb.codigo) === String(vis.codigo);
+            const matchCpf = eb.cpfLimpo && vis.cpfLimpo && eb.cpfLimpo === vis.cpfLimpo;
+            const matchNome = eb.nome && vis.nome && eb.nome.trim().toLowerCase() === vis.nome.trim().toLowerCase();
+            if (matchCod || matchCpf || matchNome) {
+                await d.ref.delete().catch(() => {});
+            }
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Batida das ${hora} reimportada com sucesso do RHiD!`, 'success');
+        }
+
+        // 2. Re-apura presença para puxar novamente a batida do relógio/RHiD
+        await apurarVisitantesRhid(false);
+
+        if (window._gerenteEspelhoAtual && (String(window._gerenteEspelhoAtual.gerente?.codigo) === String(vis.codigo) || window._gerenteEspelhoAtual.gerente?.id === vis.id)) {
+            await processarEspelhoPontoGerente(false);
+        }
+
+        verDetalhesBatidasVisitante(cacheKey);
+
+    } catch (err) {
+        console.error("Erro ao reimportar batida:", err);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao reimportar batida: ' + err.message, 'error');
+    }
+}
+
+// Limpa exclusões e reimporta todas as batidas da pessoa para a data
+async function reimportarTodasBatidasDia(cacheKey) {
+    const data = window._visitantesApuracaoCache.get(cacheKey);
+    if (!data) return;
+
+    const vis = data.visitante;
+    const dataDia = data.data;
+
+    let df = dataDia;
+    if (df && df.includes('-')) {
+        const parts = df.split('-');
+        df = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+
+    if (!confirm(`Deseja restaurar e reimportar todas as batidas originais de ${df} diretamente do RHiD / REP para ${vis.nome}?`)) {
+        return;
+    }
+
+    try {
+        if (!window.db) throw new Error("Conexão com Firestore não inicializada.");
+
+        const snap = await window.db.collection('visitantes_batidas_excluidas')
+            .where('data', '==', dataDia)
+            .get();
+
+        for (const d of snap.docs) {
+            const eb = d.data();
+            const matchCod = eb.codigo && vis.codigo && String(eb.codigo) === String(vis.codigo);
+            const matchCpf = eb.cpfLimpo && vis.cpfLimpo && eb.cpfLimpo === vis.cpfLimpo;
+            const matchNome = eb.nome && vis.nome && eb.nome.trim().toLowerCase() === vis.nome.trim().toLowerCase();
+            if (matchCod || matchCpf || matchNome) {
+                await d.ref.delete().catch(() => {});
+            }
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Todas as batidas de ${df} foram reimportadas do RHiD!`, 'success');
+        }
+
+        await apurarVisitantesRhid(false);
+
+        if (window._gerenteEspelhoAtual && (String(window._gerenteEspelhoAtual.gerente?.codigo) === String(vis.codigo) || window._gerenteEspelhoAtual.gerente?.id === vis.id)) {
+            await processarEspelhoPontoGerente(false);
+        }
+
+        verDetalhesBatidasVisitante(cacheKey);
+
+    } catch (err) {
+        console.error("Erro ao reimportar batidas:", err);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao reimportar: ' + err.message, 'error');
+    }
+}
+
+function reimportarTodasBatidasModalAtual() {
+    if (window._modalBatidasCacheKeyAtual) {
+        reimportarTodasBatidasDia(window._modalBatidasCacheKeyAtual);
+    }
+}
+
+function reimportarTodasExcluidasModalAtual() {
+    if (window._modalBatidasCacheKeyAtual) {
+        reimportarTodasBatidasDia(window._modalBatidasCacheKeyAtual);
+    }
+}
+
+// Reimporta batidas a partir do botão da linha da tabela de apuração
+async function reimportarBatidasVisitanteLinha(cacheKey) {
+    await reimportarTodasBatidasDia(cacheKey);
+}
+
+// Abre o modal de batidas a partir de uma linha do espelho de ponto individual
+function abrirBatidasDiaEspelho(dataDia) {
+    const gerente = window._gerenteEspelhoAtual?.gerente || window._gerenteEspelhoAtual;
+    if (!gerente) return;
+    const cacheKey = `${gerente.codigo || gerente.id}_${dataDia}`;
+    verDetalhesBatidasVisitante(cacheKey);
+}
+
+// Reimporta batidas de um dia específico dentro do espelho de ponto individual
+async function reimportarDiaEspelhoRhid(dataDia) {
+    const gerente = window._gerenteEspelhoAtual?.gerente || window._gerenteEspelhoAtual;
+    if (!gerente) return;
+
+    const cacheKey = `${gerente.codigo || gerente.id}_${dataDia}`;
+    await reimportarTodasBatidasDia(cacheKey);
+}
+
+// Reimporta todas as batidas do período selecionado no espelho de ponto
+async function reimportarPeriodoEspelhoRhid() {
+    const gerente = window._gerenteEspelhoAtual?.gerente || window._gerenteEspelhoAtual;
+    if (!gerente) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum gerente selecionado no espelho.', 'warning');
+        return;
+    }
+
+    const dtInicioInput = document.getElementById('espelho-gerente-dt-inicio');
+    const dtFimInput = document.getElementById('espelho-gerente-dt-fim');
+    const dtInicio = dtInicioInput ? dtInicioInput.value : '';
+    const dtFim = dtFimInput ? dtFimInput.value : '';
+
+    if (!confirm(`Deseja limpar exclusões e reimportar todas as batidas do período de ${dtInicio} a ${dtFim} diretamente do RHiD para ${gerente.nome}?`)) {
+        return;
+    }
+
+    try {
+        if (window.db) {
+            const snap = await window.db.collection('visitantes_batidas_excluidas')
+                .where('data', '>=', dtInicio)
+                .where('data', '<=', dtFim)
+                .get();
+
+            for (const d of snap.docs) {
+                const eb = d.data();
+                const matchCod = eb.codigo && gerente.codigo && String(eb.codigo) === String(gerente.codigo);
+                const matchCpf = eb.cpfLimpo && gerente.cpfLimpo && eb.cpfLimpo === gerente.cpfLimpo;
+                const matchNome = eb.nome && gerente.nome && eb.nome.trim().toLowerCase() === gerente.nome.trim().toLowerCase();
+                if (matchCod || matchCpf || matchNome) {
+                    await d.ref.delete().catch(() => {});
+                }
+            }
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Exclusões limpas. Reprocessando batidas do RHiD...', 'info');
+        }
+
+        await processarEspelhoPontoGerente(true);
+        await apurarVisitantesRhid(false);
+
+    } catch (err) {
+        console.error("Erro ao reimportar período do RHiD:", err);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao reimportar período: ' + err.message, 'error');
+    }
 }
 
 // Sincronizar pessoas/visitantes da nuvem RHiD
@@ -3283,6 +3604,24 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
             }
         }
 
+        // 2.1. Busca batidas que foram excluídas / desconsideradas no Firestore
+        let batidasExcluidasBanco = [];
+        if (window.db) {
+            try {
+                const snapExc = await window.db.collection('visitantes_batidas_excluidas')
+                    .where('data', '>=', dtInicio)
+                    .where('data', '<=', dtFim)
+                    .get();
+                snapExc.forEach(d => {
+                    const eb = d.data();
+                    eb.docId = d.id;
+                    batidasExcluidasBanco.push(eb);
+                });
+            } catch (fsErr) {
+                console.warn("Aviso ao ler batidas excluídas para o espelho:", fsErr);
+            }
+        }
+
         // 3. Monta todos os dias do período selecionado
         const datasPeriodo = gerarIntervaloDeDatas(dtInicio, dtFim);
         const diasSemanaNomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
@@ -3301,6 +3640,18 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
             const diaSemanaNum = dateObj.getDay();
             const diaSemanaNome = diasSemanaNomes[diaSemanaNum];
 
+            // Identifica batidas excluídas para este colaborador nesta data
+            const excluidasDestaPessoa = batidasExcluidasBanco.filter(eb => {
+                if (eb.data !== dataDia) return false;
+                const matchCod = eb.codigo && gerente.codigo && String(eb.codigo) === String(gerente.codigo);
+                const matchRep = eb.codigoRep && gerente.codigoRep && String(eb.codigoRep) === String(gerente.codigoRep);
+                const matchCpf = eb.cpfLimpo && gerente.cpfLimpo && eb.cpfLimpo === gerente.cpfLimpo;
+                const matchNome = eb.nome && gerente.nome && eb.nome.trim().toLowerCase() === gerente.nome.trim().toLowerCase();
+                const matchId = eb.rhidPersonId && gerente.rhidPersonId && String(eb.rhidPersonId) === String(gerente.rhidPersonId);
+                return matchCod || matchRep || matchCpf || matchNome || matchId;
+            });
+            const horasExcluidasSet = new Set(excluidasDestaPessoa.map(eb => eb.hora));
+
             // Coleta batidas da nuvem RHiD e AFD para este dia e para este gerente
             const batidas = [];
             apuracaoList.forEach(it => {
@@ -3316,6 +3667,7 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
                         it.listAfdtManutencao.forEach(b => {
                             const hStr = formatarHoraRhid(b);
                             if (hStr && hStr !== '--:--') {
+                                if (horasExcluidasSet.has(hStr)) return; // Excluída pelo usuário
                                 batidas.push({
                                     hora: hStr,
                                     idDevice: b.idDevice || b.idAfd || 'Relógio REP',
@@ -3338,7 +3690,9 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
                     if (matchCod || matchRep || matchCpf || matchNome) {
                         const hStr = mp.hora ? mp.hora.substring(0, 5) : '';
                         if (hStr) {
+                            if (horasExcluidasSet.has(hStr)) return; // Excluída pelo usuário
                             batidas.push({
+                                docId: mp.docId,
                                 hora: hStr,
                                 idDevice: mp.origem || 'Leitor / Portaria',
                                 origem: mp.origem || 'Leitor / Portaria'
@@ -3358,6 +3712,16 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
                 }
             });
             batidasUnicas.sort((a, b) => a.hora.localeCompare(b.hora));
+
+            // Atualiza cache de apuração para este dia deste gerente (para permitir abrir modal de batidas a partir do espelho)
+            const cacheKeyDia = `${gerente.codigo || gerente.id}_${dataDia}`;
+            window._visitantesApuracaoCache.set(cacheKeyDia, {
+                visitante: gerente,
+                data: dataDia,
+                batidas: batidasUnicas,
+                batidasExcluidas: excluidasDestaPessoa,
+                horarioPrevisto: (gerente.horarioInicio && gerente.horarioFim) ? `${gerente.horarioInicio} às ${gerente.horarioFim}` : '08:00 às 18:00'
+            });
 
             const nomesDispositivos = Array.from(new Set(batidasUnicas.map(b => b.idDevice || b.origem))).join(', ') || 'Relógio REP / RHiD';
 
@@ -3459,7 +3823,8 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
                 statusClass: statusClass,
                 origem: batidasUnicas.length > 0 ? nomesDispositivos : '--',
                 batidasQtd: batidasUnicas.length,
-                todasBatidas: batidasUnicas
+                todasBatidas: batidasUnicas,
+                batidasExcluidas: excluidasDestaPessoa
             });
         }
 
@@ -3485,7 +3850,7 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
     } catch (e) {
         console.error("Erro ao processar espelho do gerente:", e);
         if (tbody) {
-            tbody.innerHTML = `<tr><td colspan="9" class="py-4 text-center text-danger">Falha ao processar espelho: ${e.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="10" class="py-4 text-center text-danger">Falha ao processar espelho: ${e.message}</td></tr>`;
         }
     } finally {
         if (btnProcessar) {
@@ -3534,7 +3899,17 @@ function renderizarTabelaEspelho(gerente, dtInicio, dtFim, dias, salvoEmBanco, a
                 <td class="font-monospace fw-bold text-primary">${d.saida2 || '--:--'}</td>
                 <td class="font-monospace fw-bold text-dark">${d.horasTrabalhadasStr || '00h 00m'}</td>
                 <td><span class="${d.statusClass || 'badge bg-light text-dark border'}">${d.status}</span></td>
-                <td class="small text-muted text-truncate" style="max-width: 180px;" title="${d.origem || ''}">${d.origem || '--'}</td>
+                <td class="small text-muted text-truncate" style="max-width: 140px;" title="${d.origem || ''}">${d.origem || '--'}</td>
+                <td class="text-center">
+                    <div class="d-flex justify-content-center align-items-center gap-1">
+                        <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-semibold" onclick="abrirBatidasDiaEspelho('${d.data}')" title="Ver marcações, excluir ou reimportar batidas deste dia">
+                            <i class="fas fa-clock me-1"></i> Batidas (${d.batidasQtd || 0})
+                        </button>
+                        <button class="btn btn-sm btn-outline-warning rounded-pill px-2 py-0 text-dark fw-bold" onclick="reimportarDiaEspelhoRhid('${d.data}')" title="Reimportar todas as batidas deste dia diretamente do RHiD">
+                            <i class="fas fa-cloud-download-alt"></i>
+                        </button>
+                    </div>
+                </td>
             </tr>
         `;
     });
@@ -3549,7 +3924,7 @@ function renderizarTabelaEspelho(gerente, dtInicio, dtFim, dias, salvoEmBanco, a
     if (elTotHoras) elTotHoras.textContent = totalHorasStr;
 
     if (tbody) {
-        tbody.innerHTML = rowsHtml || '<tr><td colspan="9" class="py-4 text-center text-muted">Nenhum dia para o período.</td></tr>';
+        tbody.innerHTML = rowsHtml || '<tr><td colspan="10" class="py-4 text-center text-muted">Nenhum dia para o período.</td></tr>';
     }
 
     // Armazena no estado global da aplicação
@@ -4012,4 +4387,13 @@ window.abrirModalLancamentoBatidaManual = abrirModalLancamentoBatidaManual;
 window.salvarBatidaManualVisitante = salvarBatidaManualVisitante;
 window.verDetalhesBatidasVisitante = verDetalhesBatidasVisitante;
 window.exportarRelatorioVisitantesCSV = exportarRelatorioVisitantesCSV;
+window.excluirBatidaVisitante = excluirBatidaVisitante;
+window.restaurarReimportarBatida = restaurarReimportarBatida;
+window.reimportarTodasBatidasDia = reimportarTodasBatidasDia;
+window.reimportarTodasBatidasModalAtual = reimportarTodasBatidasModalAtual;
+window.reimportarTodasExcluidasModalAtual = reimportarTodasExcluidasModalAtual;
+window.reimportarBatidasVisitanteLinha = reimportarBatidasVisitanteLinha;
+window.abrirBatidasDiaEspelho = abrirBatidasDiaEspelho;
+window.reimportarDiaEspelhoRhid = reimportarDiaEspelhoRhid;
+window.reimportarPeriodoEspelhoRhid = reimportarPeriodoEspelhoRhid;
 

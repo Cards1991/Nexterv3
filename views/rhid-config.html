@@ -708,16 +708,25 @@
 </div>
 
 <!-- ============================================================== -->
-<!-- MODAL: DETALHES DE BATIDAS DO VISITANTE (TIMELINE) -->
+<!-- MODAL: DETALHES DE BATIDAS DO VISITANTE (TIMELINE & EXCLUSÃO/REIMPORTAÇÃO) -->
 <!-- ============================================================== -->
 <div class="modal fade" id="modal-rhid-batidas-visitante" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
-            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4">
-                <h5 class="modal-title fw-bold">
-                    <i class="fas fa-clock text-warning me-2"></i> Marcações de Ponto do Visitante
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4 d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-warning text-dark p-2 rounded-circle"><i class="fas fa-clock fs-6"></i></span>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0">Marcações de Ponto do Colaborador / Gerente</h5>
+                        <small class="text-white-50">Auditoria, Exclusão de Marcação e Reimportação do RHiD</small>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button class="btn btn-warning text-dark btn-sm rounded-pill fw-bold shadow-sm" id="btn-reimportar-todas-modal" onclick="reimportarTodasBatidasModalAtual()" title="Reimportar todas as batidas desta data diretamente do RHiD">
+                        <i class="fas fa-cloud-download-alt me-1"></i> Reimportar do RHiD
+                    </button>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+                </div>
             </div>
             <div class="modal-body p-4 bg-light">
                 <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
@@ -733,12 +742,31 @@
                     </div>
                 </div>
 
-                <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-history me-1"></i> Linha do Tempo das Batidas no Leitor:</h6>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="fw-bold text-secondary mb-0"><i class="fas fa-history me-1"></i> Marcações Ativas no Sistema:</h6>
+                    <small class="text-muted">Clique em Excluir para desconsiderar</small>
+                </div>
                 <div id="modal-batidas-timeline" class="list-group list-group-flush shadow-sm rounded-3">
-                    <!-- Batidas injetadas dinamicamente -->
+                    <!-- Batidas injetadas dinamicamente com botão de exclusão -->
+                </div>
+
+                <!-- Seção de Batidas Excluídas / Desconsideradas -->
+                <div id="modal-batidas-excluidas-secao" class="d-none mt-4">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h6 class="fw-bold text-danger mb-0">
+                            <i class="fas fa-trash-alt me-1"></i> Batidas Excluídas / Desconsideradas:
+                        </h6>
+                        <button class="btn btn-sm btn-outline-success rounded-pill fw-bold" onclick="reimportarTodasExcluidasModalAtual()" title="Restaurar e reimportar todas as marcações desconsideradas">
+                            <i class="fas fa-undo me-1"></i> Reimportar Todas
+                        </button>
+                    </div>
+                    <div id="modal-batidas-excluidas-list" class="list-group list-group-flush shadow-sm rounded-3">
+                        <!-- Batidas excluídas com botão de reimportação -->
+                    </div>
                 </div>
             </div>
-            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4 d-flex justify-content-between">
+                <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Batidas excluídas podem ser reimportadas a qualquer momento.</small>
                 <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
@@ -880,12 +908,15 @@
                                 </label>
                                 <input type="time" id="espelho-gerente-almoco-fim" class="form-control form-control-sm border-0 shadow-sm bg-light text-primary fw-bold" value="13:30">
                             </div>
-                            <div class="col-md-4 col-12 d-flex gap-2">
+                            <div class="col-md-4 col-12 d-flex flex-wrap gap-2">
                                 <button class="btn btn-primary btn-sm fw-bold shadow-sm flex-grow-1" id="btn-processar-espelho-gerente" onclick="processarEspelhoPontoGerente(true)">
                                     <i class="fas fa-bolt me-1"></i> Processar no RHiD / Leitor
                                 </button>
+                                <button class="btn btn-warning text-dark btn-sm fw-bold shadow-sm" onclick="reimportarPeriodoEspelhoRhid()" title="Limpar exclusões e reimportar todas as batidas do período diretamente do RHiD">
+                                    <i class="fas fa-cloud-download-alt me-1"></i> Reimportar do RHiD
+                                </button>
                                 <button class="btn btn-success btn-sm fw-bold shadow-sm" id="btn-salvar-espelho-gerente" onclick="salvarHistoricoEspelhoGerente()" title="Salvar espelho permanentemente no histórico">
-                                    <i class="fas fa-save me-1"></i> Salvar Histórico
+                                    <i class="fas fa-save me-1"></i> Salvar
                                 </button>
                                 <button class="btn btn-outline-danger btn-sm fw-bold shadow-sm bg-white" onclick="imprimirEspelhoGerente()" title="Imprimir / Exportar Espelho de Ponto">
                                     <i class="fas fa-print me-1"></i> Imprimir
@@ -954,6 +985,7 @@
                                         <th style="width: 100px;">Horas Dia</th>
                                         <th style="width: 130px;">Ocorrência / Status</th>
                                         <th>Dispositivo / Origem</th>
+                                        <th style="width: 145px;">Ações</th>
                                     </tr>
                                 </thead>
                                 <tbody id="espelho-gerente-tbody">
@@ -1063,5 +1095,5 @@
     </div>
 </div>
 
-<script src="js/rhid-config.js?v=26"></script>
+<script src="js/rhid-config.js?v=27"></script>
 
