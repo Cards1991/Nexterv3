@@ -39,6 +39,25 @@
         return Array.from(array).map(b => b.toString(16).padStart(2, '0')).join('');
     }
 
+    // Codificação de exibição restrita ao painel do Gestor
+    function obfuscatePin(pin, salt) {
+        if (!pin) return '';
+        const key = (salt || 'nexter_salt').split('').reduce((acc, c) => acc + c.charCodeAt(0), 42);
+        const chars = pin.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ (key % 17 + 1)));
+        return btoa(chars.join(''));
+    }
+
+    function deobfuscatePin(encoded, salt) {
+        if (!encoded) return '';
+        try {
+            const key = (salt || 'nexter_salt').split('').reduce((acc, c) => acc + c.charCodeAt(0), 42);
+            const str = atob(encoded);
+            return str.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ (key % 17 + 1))).join('');
+        } catch (e) {
+            return '';
+        }
+    }
+
     /**
      * Inicialização Principal do Painel
      */
@@ -821,7 +840,7 @@
             if (!tbody) return;
 
             if (cacheVigias.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-muted">Nenhum vigia cadastrado. Clique em <b>Cadastrar Vigia</b>.</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-4 text-muted">Nenhum vigia cadastrado. Clique em <b>Cadastrar Vigia</b>.</td></tr>`;
                 return;
             }
 
@@ -842,15 +861,20 @@
                     ? '<span class="badge bg-danger">Bloqueado</span>'
                     : `<span class="badge bg-light text-dark">${erros}</span>`;
 
+                const pinBadge = (v.pinCode || v.pinHash)
+                    ? '<span class="badge bg-success-subtle text-success border border-success-subtle"><i class="fas fa-lock me-1"></i> Salvo (••••)</span>'
+                    : '<span class="badge bg-danger-subtle text-danger border border-danger-subtle"><i class="fas fa-times-circle me-1"></i> Não definido</span>';
+
                 html += `
                     <tr>
                         <td class="fw-bold font-monospace">${v.matricula}</td>
                         <td>${v.nome}</td>
+                        <td>${pinBadge}</td>
                         <td>${statusBadge}</td>
                         <td>${dataCadastro}</td>
                         <td>${errosBadge}</td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-primary me-1" onclick="window.editarVigia('${v.id}')" title="Editar / Alterar PIN">
+                            <button class="btn btn-sm btn-outline-primary me-1" onclick="window.editarVigia('${v.id}')" title="Editar Vigia / Ver PIN">
                                 <i class="fas fa-key"></i>
                             </button>
                             ${erros >= 5 ? `<button class="btn btn-sm btn-outline-warning me-1" onclick="window.desbloquearVigia('${v.id}')" title="Desbloquear Vigia"><i class="fas fa-unlock"></i></button>` : ''}
@@ -868,13 +892,57 @@
     }
 
     /**
+     * Alterna visualização do PIN (ocultar/mostrar)
+     */
+    window.toggleVerPinVigia = function () {
+        const pinInput = document.getElementById('vigia-pin');
+        const icon = document.getElementById('icon-ver-pin');
+        if (!pinInput) return;
+
+        if (pinInput.type === 'password') {
+            pinInput.type = 'text';
+            if (icon) {
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            }
+        } else {
+            pinInput.type = 'password';
+            if (icon) {
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+    };
+
+    /**
      * Modal de Vigia
      */
     window.abrirModalVigia = function () {
         document.getElementById('formVigia').reset();
         document.getElementById('vigia-id').value = '';
         document.getElementById('vigia-ativo').checked = true;
-        document.getElementById('vigia-pin').required = true;
+
+        const pinInput = document.getElementById('vigia-pin');
+        pinInput.type = 'password';
+        pinInput.value = '';
+        pinInput.required = true;
+        pinInput.placeholder = '••••';
+        delete pinInput.dataset.pinOriginal;
+
+        const badge = document.getElementById('badge-pin-vigia');
+        if (badge) {
+            badge.className = 'badge bg-warning text-dark';
+            badge.innerHTML = '<i class="fas fa-key me-1"></i> Obrigatório';
+        }
+        const hint = document.getElementById('vigia-pin-hint');
+        if (hint) {
+            hint.innerHTML = 'Defina um PIN numérico de 4 a 6 dígitos para o vigia.';
+        }
+        const icon = document.getElementById('icon-ver-pin');
+        if (icon) {
+            icon.className = 'fas fa-eye';
+        }
+
         document.getElementById('modalVigiaTitulo').innerHTML = '<i class="fas fa-user-shield me-2"></i> Cadastrar Vigia';
 
         const modalEl = document.getElementById('modalVigia');
@@ -889,12 +957,54 @@
         document.getElementById('vigia-id').value = vigia.id;
         document.getElementById('vigia-nome').value = vigia.nome || '';
         document.getElementById('vigia-matricula').value = vigia.matricula || '';
-        document.getElementById('vigia-pin').value = ''; // Não expõe hash
-        document.getElementById('vigia-pin').required = false;
-        document.getElementById('vigia-pin').placeholder = 'Deixe em branco para manter o PIN';
         document.getElementById('vigia-ativo').checked = vigia.ativo !== false;
 
-        document.getElementById('modalVigiaTitulo').innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Vigia';
+        const pinInput = document.getElementById('vigia-pin');
+        pinInput.type = 'password';
+        pinInput.required = false;
+
+        const badge = document.getElementById('badge-pin-vigia');
+        const hint = document.getElementById('vigia-pin-hint');
+        const icon = document.getElementById('icon-ver-pin');
+        if (icon) icon.className = 'fas fa-eye';
+
+        // Tenta recuperar o PIN original
+        const pinSalvo = vigia.pinCode ? deobfuscatePin(vigia.pinCode, vigia.pinSalt) : '';
+
+        if (pinSalvo) {
+            pinInput.value = pinSalvo;
+            pinInput.dataset.pinOriginal = pinSalvo;
+            if (badge) {
+                badge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+                badge.innerHTML = `<i class="fas fa-check-circle me-1"></i> Salvo (${pinSalvo.length} dígitos)`;
+            }
+            if (hint) {
+                hint.innerHTML = '<span class="text-success fw-semibold"><i class="fas fa-shield-halved me-1"></i> PIN salvo no banco. Clique no olho para visualizar ou digite novos números para alterar.</span>';
+            }
+        } else if (vigia.pinHash) {
+            // Caso já salvo com hash no primeiro teste do usuário
+            pinInput.value = '••••';
+            pinInput.dataset.pinOriginal = '••••';
+            if (badge) {
+                badge.className = 'badge bg-success-subtle text-success border border-success-subtle';
+                badge.innerHTML = '<i class="fas fa-shield-halved me-1"></i> PIN Salvo & Ativo';
+            }
+            if (hint) {
+                hint.innerHTML = '<span class="text-success fw-semibold"><i class="fas fa-check-circle me-1"></i> O PIN já está gravado e ativo no banco. Se quiser trocar, digite o novo PIN e salve.</span>';
+            }
+        } else {
+            pinInput.value = '';
+            delete pinInput.dataset.pinOriginal;
+            if (badge) {
+                badge.className = 'badge bg-danger';
+                badge.innerHTML = 'Não cadastrado';
+            }
+            if (hint) {
+                hint.innerHTML = 'Este vigia ainda não possui PIN cadastrado.';
+            }
+        }
+
+        document.getElementById('modalVigiaTitulo').innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Vigia & PIN';
 
         const modalEl = document.getElementById('modalVigia');
         const modal = new bootstrap.Modal(modalEl);
@@ -905,7 +1015,9 @@
         const id = document.getElementById('vigia-id').value;
         const nome = document.getElementById('vigia-nome').value.trim();
         const matricula = document.getElementById('vigia-matricula').value.trim();
-        const pin = document.getElementById('vigia-pin').value.trim();
+        const pinInput = document.getElementById('vigia-pin');
+        const pin = pinInput.value.trim();
+        const pinOriginal = pinInput.dataset.pinOriginal || '';
         const ativo = document.getElementById('vigia-ativo').checked;
 
         if (!nome || !matricula) {
@@ -913,7 +1025,7 @@
             return;
         }
 
-        if (!id && (!pin || pin.length < 4)) {
+        if (!id && (!pin || pin.length < 4 || pin === '••••')) {
             alert("O PIN é obrigatório no cadastro e deve ter de 4 a 6 dígitos numéricos.");
             return;
         }
@@ -932,14 +1044,25 @@
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         };
 
-        // Se informou novo PIN, gera hash seguro com salt aleatório
-        if (pin) {
+        // Se informou ou alterou o PIN (e não é a máscara '••••')
+        if (pin && pin !== '••••' && pin !== pinOriginal) {
+            if (pin.length < 4 || pin.length > 6 || !/^\d+$/.test(pin)) {
+                alert("O PIN deve conter de 4 a 6 dígitos numéricos (apenas números).");
+                return;
+            }
             const salt = gerarSalt();
             const hash = await hashPin(pin, salt);
             payload.pinHash = hash;
             payload.pinSalt = salt;
+            payload.pinCode = obfuscatePin(pin, salt);
             payload.tentativasIncorretas = 0;
             payload.bloqueadoAte = null;
+        } else if (pin && pin === pinOriginal && pin !== '••••') {
+            // Mantém o PIN existente e assegura pinCode se faltar
+            const vigiaAtual = cacheVigias.find(v => v.id === id);
+            if (vigiaAtual && !vigiaAtual.pinCode && vigiaAtual.pinSalt) {
+                payload.pinCode = obfuscatePin(pin, vigiaAtual.pinSalt);
+            }
         }
 
         try {
@@ -956,7 +1079,7 @@
             if (modal) modal.hide();
 
             await carregarVigias();
-            alert("Vigia salvo com sucesso!");
+            alert("Vigia e PIN salvos com sucesso!");
         } catch (e) {
             console.error("Erro ao salvar vigia:", e);
             alert(`Erro ao salvar vigia: ${e.message}`);
