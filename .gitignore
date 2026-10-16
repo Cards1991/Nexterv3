@@ -17,3 +17,5 @@ bkp/
 node_modules/
 .vercel
 .env*.local
+
+.rhid_session.json

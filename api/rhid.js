@@ -1,3 +1,31 @@
+const fs = require('fs');
+const path = require('path');
+const sessionFile = path.join(__dirname, '..', '.rhid_session.json');
+
+const getStoredToken = () => {
+    try {
+        if (fs.existsSync(sessionFile)) {
+            const data = JSON.parse(fs.readFileSync(sessionFile, 'utf8'));
+            if (data.token && data.expiresAt > Date.now()) {
+                return data.token;
+            }
+        }
+    } catch (e) {}
+    return null;
+};
+
+const saveStoredToken = (token) => {
+    try {
+        fs.writeFileSync(sessionFile, JSON.stringify({
+            token,
+            expiresAt: Date.now() + 60 * 60 * 1000
+        }), 'utf8');
+    } catch (e) {}
+};
+
+let cachedRhidToken = null;
+let tokenExpiresAt = 0;
+
 try { require('dotenv').config(); } catch (e) {}
 
 module.exports = async function handler(req, res) {
@@ -37,8 +65,19 @@ module.exports = async function handler(req, res) {
     const RHID_API_BASE = 'https://rhid.com.br/v2/api.svc';
 
     try {
-        // Função auxiliar para Login
-        const loginToRhid = async () => {
+        // Função auxiliar para Login com cache de sessão persistente para evitar Rate Limit (HTTP 429)
+        const loginToRhid = async (forceRefresh = false) => {
+            if (!forceRefresh) {
+                const stored = getStoredToken();
+                if (stored) {
+                    cachedRhidToken = stored;
+                    return stored;
+                }
+                if (cachedRhidToken && Date.now() < tokenExpiresAt) {
+                    return cachedRhidToken;
+                }
+            }
+
             const loginRes = await fetch(`${RHID_API_BASE}/login`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -52,6 +91,12 @@ module.exports = async function handler(req, res) {
 
             if (!loginRes.ok) {
                 const errText = await loginRes.text();
+                // Se der 429 e tivermos um token armazenado, tenta reutilizá-lo
+                const fallbackToken = getStoredToken() || cachedRhidToken;
+                if (fallbackToken && loginRes.status === 429) {
+                    console.warn('[RHID API] Usando token em cache após 429 do login.');
+                    return fallbackToken;
+                }
                 throw new Error(`Falha no login (HTTP ${loginRes.status}): ${errText}`);
             }
 
@@ -59,7 +104,11 @@ module.exports = async function handler(req, res) {
             if (!loginData.accessToken) {
                 throw new Error('Token não retornado pela API.');
             }
-            return loginData.accessToken;
+
+            cachedRhidToken = loginData.accessToken;
+            tokenExpiresAt = Date.now() + 60 * 60 * 1000;
+            saveStoredToken(cachedRhidToken);
+            return cachedRhidToken;
         };
 
         // Roteador de Ações

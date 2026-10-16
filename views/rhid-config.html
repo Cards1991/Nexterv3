@@ -19,8 +19,8 @@
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link fw-bold px-4 py-2 rounded-pill position-relative" id="tab-visitantes-btn" data-bs-toggle="pill" data-bs-target="#tab-visitantes" type="button" role="tab">
-                <i class="fas fa-id-badge me-2 text-warning"></i> Controle & Apuração de Visitantes
+            <button class="nav-link fw-bold px-4 py-2 rounded-pill position-relative" id="tab-visitantes-btn" data-bs-toggle="pill" data-bs-target="#tab-visitantes" type="button" role="tab" onclick="if(typeof inicializarModuloVisitantes === 'function') inicializarModuloVisitantes();">
+                <i class="fas fa-user-shield me-2 text-warning"></i> Presença & Acesso (Cargos de Confiança & Visitantes)
                 <span class="badge bg-danger rounded-pill ms-2" id="badge-visitantes-presentes">0 no local</span>
             </button>
         </li>
@@ -329,20 +329,20 @@
         </div>
 
         <!-- ============================================================== -->
-        <!-- ABA 2: CONTROLE & APURAÇÃO DE VISITANTES (NOVO MÓDULO EXPANDIDO) -->
+        <!-- ABA 2: CONTROLE DE PRESENÇA & ACESSO (CARGOS DE CONFIANÇA & VISITANTES) -->
         <!-- ============================================================== -->
         <div class="tab-pane fade" id="tab-visitantes" role="tabpanel">
-            <!-- Métricas dos Visitantes -->
+            <!-- Métricas de Presença e Acesso -->
             <div class="row g-3 mb-4">
                 <div class="col-md-3 col-sm-6">
                     <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-primary border-4">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <span class="text-muted small text-uppercase fw-semibold">Visitantes Cadastrados</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Pessoas Monitoradas</span>
                                 <h3 class="fw-bold mb-0 text-dark" id="rhid-metric-total-visitantes">0</h3>
                             </div>
                             <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
-                                <i class="fas fa-address-card fs-4"></i>
+                                <i class="fas fa-users-cog fs-4"></i>
                             </div>
                         </div>
                     </div>
@@ -366,7 +366,7 @@
                     <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-info border-4">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <span class="text-muted small text-uppercase fw-semibold">Visitas Concluídas</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Jornadas / Visitas Concluídas</span>
                                 <h3 class="fw-bold mb-0 text-info" id="rhid-metric-visitas-concluidas">0</h3>
                             </div>
                             <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
@@ -380,7 +380,7 @@
                     <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-warning border-4">
                         <div class="d-flex align-items-center justify-content-between">
                             <div>
-                                <span class="text-muted small text-uppercase fw-semibold">Visitante em Foco</span>
+                                <span class="text-muted small text-uppercase fw-semibold">Pessoa em Foco</span>
                                 <h6 class="fw-bold mb-0 text-dark text-truncate" style="max-width: 160px;" title="Cód: 17101991 - Charles Augusto">
                                     Cód: 17101991
                                 </h6>
@@ -394,12 +394,12 @@
                 </div>
             </div>
 
-            <!-- Barra de Ações & Filtros de Apuração de Visitantes -->
+            <!-- Barra de Ações & Filtros de Presença -->
             <div class="card shadow-sm border-0 mb-4 rounded-3">
                 <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
                     <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-primary p-2"><i class="fas fa-filter me-1"></i> Filtro de Apuração</span>
-                        <h5 class="mb-0 fw-bold text-dark">Consultar Batidas & Presença de Visitantes</h5>
+                        <span class="badge bg-primary p-2"><i class="fas fa-user-clock me-1"></i> Monitoramento de Presença</span>
+                        <h5 class="mb-0 fw-bold text-dark">Controle de Acesso (Cargos de Confiança, Gerência & Visitantes)</h5>
                     </div>
                     <div class="d-flex flex-wrap gap-2">
                         <button class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold" onclick="definirDataFiltroVisitante('hoje')">
@@ -418,7 +418,7 @@
                     <div class="row g-3 align-items-end mb-3">
                         <div class="col-md-5 col-sm-12">
                             <label class="form-label small fw-bold text-primary mb-1">
-                                <i class="fas fa-id-card me-1"></i> Buscar / Apurar por CPF ou Código Crachá
+                                <i class="fas fa-id-card me-1"></i> Buscar / Apurar por CPF, Matrícula ou Código
                             </label>
                             <div class="input-group shadow-sm">
                                 <span class="input-group-text bg-white border-0 text-primary"><i class="fas fa-search"></i></span>
@@ -434,7 +434,7 @@
                                 <i class="fas fa-user-check me-1"></i> Ou Selecionar Cadastrado
                             </label>
                             <select id="rhid-filtro-visitante" class="form-select border-0 shadow-sm">
-                                <option value="">Todos os Visitantes Cadastrados</option>
+                                <option value="">Todas as Pessoas Monitoradas</option>
                             </select>
                         </div>
 
@@ -457,7 +457,7 @@
                     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
                         <div class="d-flex flex-wrap gap-2">
                             <button class="btn btn-primary fw-bold shadow-sm rounded-3 px-4" id="btn-apurar-visitantes" onclick="apurarVisitantesRhid(true)">
-                                <i class="fas fa-bolt me-1"></i> APURAR NO RHID
+                                <i class="fas fa-bolt me-1"></i> APURAR NO RHID / LEITOR
                             </button>
                             <button class="btn btn-outline-warning text-dark fw-semibold shadow-sm rounded-3 px-3 bg-white" onclick="abrirModalLancamentoBatidaManual()">
                                 <i class="fas fa-clock text-warning me-1"></i> Lançar Batida Manual (Portaria)
@@ -468,8 +468,8 @@
                             <button class="btn btn-outline-success fw-bold shadow-sm rounded-3 px-3 bg-white" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
                                 <i class="fas fa-file-excel me-1"></i> Exportar
                             </button>
-                            <button class="btn btn-success fw-bold shadow-sm rounded-3 px-3" onclick="abrirModalNovoVisitante()" title="Cadastrar ou Vincular Visitante">
-                                <i class="fas fa-user-plus me-1"></i> Novo Visitante
+                            <button class="btn btn-success fw-bold shadow-sm rounded-3 px-3" onclick="abrirModalNovoVisitante()" title="Cadastrar Pessoa (Cargo de Confiança, Gerente ou Visitante)">
+                                <i class="fas fa-user-plus me-1"></i> Novo Cadastro
                             </button>
                         </div>
                     </div>
@@ -479,12 +479,15 @@
                 </div>
             </div>
 
-            <!-- Card de Apuração de Ponto / Batidas dos Visitantes -->
+            <!-- Card de Apuração de Ponto / Batidas -->
             <div class="card shadow border-0 mb-4 rounded-3">
                 <div class="card-header bg-dark text-white py-3 border-0 d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0 fw-bold">
-                        <i class="fas fa-list-check me-2 text-warning"></i> Registros de Entrada, Saída e Permanência
-                    </h5>
+                    <div>
+                        <h5 class="mb-0 fw-bold">
+                            <i class="fas fa-list-check me-2 text-warning"></i> Painel de Presença, Acessos e Permanência
+                        </h5>
+                        <small class="text-white-50">Controle gerencial de permanência física — não gera cálculo de horas extras ou descontos de folha.</small>
+                    </div>
                     <div class="d-flex align-items-center gap-2">
                         <button class="btn btn-sm btn-outline-light rounded-pill" onclick="sincronizarTodosVisitantesRhid()">
                             <i class="fas fa-sync-alt me-1"></i> Sincronizar Nuvem RHiD
@@ -498,21 +501,22 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>Código / Crachá</th>
-                                    <th class="text-start">Visitante</th>
+                                    <th class="text-start">Colaborador / Pessoa</th>
                                     <th>CPF</th>
                                     <th>Data</th>
+                                    <th>Horário Previsto</th>
                                     <th>Entrada (1ª Batida)</th>
                                     <th>Saída (Última)</th>
                                     <th>Permanência</th>
-                                    <th>Status no Local</th>
+                                    <th>Status de Presença</th>
                                     <th>Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="rhid-visitantes-apuracao-tbody">
                                 <tr>
-                                    <td colspan="9" class="text-center py-5 text-muted">
+                                    <td colspan="10" class="text-center py-5 text-muted">
                                         <div class="spinner-border spinner-border-sm text-primary me-2"></div>
-                                        Carregando apuração dos visitantes...
+                                        Carregando registros de presença e acesso...
                                     </td>
                                 </tr>
                             </tbody>
@@ -521,15 +525,15 @@
                 </div>
             </div>
 
-            <!-- Card Secundário: Gestão do Cadastro de Visitantes -->
+            <!-- Card Secundário: Gestão do Cadastro de Pessoas Monitoradas -->
             <div class="card shadow-sm border-0 mb-4 rounded-3">
                 <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-address-book text-primary me-2"></i> Base de Visitantes Cadastrados</h5>
-                        <small class="text-muted">Relação de crachás, códigos RHiD e documentos vinculados para controle de portaria/acesso.</small>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-address-book text-primary me-2"></i> Pessoas Monitoradas Cadastradas</h5>
+                        <small class="text-muted">Cargos de confiança, gerentes, coordenadores, prestadores e visitantes com jornada prevista no Nexter.</small>
                     </div>
                     <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold" onclick="abrirModalNovoVisitante()">
-                        <i class="fas fa-plus me-1"></i> Adicionar Visitante
+                        <i class="fas fa-plus me-1"></i> Adicionar Pessoa
                     </button>
                 </div>
                 <div class="card-body p-0">
@@ -539,17 +543,17 @@
                                 <tr>
                                     <th class="text-center">Código Crachá</th>
                                     <th>Nome Completo</th>
+                                    <th>Perfil / Categoria</th>
                                     <th>CPF</th>
-                                    <th>ID RHiD</th>
-                                    <th>Empresa / Finalidade</th>
-                                    <th>Setor / Responsável</th>
+                                    <th>Horário Previsto</th>
+                                    <th>Empresa / Setor</th>
                                     <th class="text-center">Status</th>
                                     <th class="text-center">Ações</th>
                                 </tr>
                             </thead>
                             <tbody id="rhid-visitantes-cadastrados-tbody">
                                 <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">Carregando lista de visitantes...</td>
+                                    <td colspan="8" class="text-center py-4 text-muted">Carregando lista de pessoas monitoradas...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -561,14 +565,14 @@
 </div>
 
 <!-- ============================================================== -->
-<!-- MODAL: CADASTRAR / VINCULAR VISITANTE NOVO -->
+<!-- MODAL: CADASTRAR / VINCULAR PESSOA MONITORADA -->
 <!-- ============================================================== -->
 <div class="modal fade" id="modal-rhid-novo-visitante" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg rounded-4">
             <div class="modal-header bg-primary text-white border-0 py-3 rounded-top-4">
                 <h5 class="modal-title fw-bold" id="modal-visitante-titulo">
-                    <i class="fas fa-user-plus me-2"></i> Cadastrar / Vincular Visitante
+                    <i class="fas fa-user-plus me-2"></i> Cadastrar / Editar Pessoa Monitorada
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
@@ -578,54 +582,93 @@
                 <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-3 py-2">
                     <i class="fas fa-info-circle fs-4 me-3 text-info"></i>
                     <div class="small">
-                        Você pode informar o <strong>Código do RHiD</strong> (ex: <code>17101991</code>) ou o <strong>CPF</strong> e clicar em <em>"Buscar no RHiD"</em> para preencher automaticamente os dados cadastrados na nuvem Control iD!
+                        Cadastre o <strong>Horário Previsto</strong> (ex: 08:00 às 18:00) para saber se o gerente ou visitante compareceu no dia. Este módulo <strong>não gera horas extras nem descontos</strong>.
                     </div>
                 </div>
 
                 <div class="row g-3">
-                    <div class="col-md-5">
-                        <label class="form-label fw-bold small text-secondary">Código no RHiD (Matrícula/Crachá) *</label>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-secondary">Perfil / Categoria *</label>
+                        <select id="visitante-form-categoria" class="form-select border-0 shadow-sm">
+                            <option value="Cargo de Confiança / Gerência" selected>Cargo de Confiança / Gerência</option>
+                            <option value="Visitante Externo">Visitante Externo</option>
+                            <option value="Prestador de Serviços / Terceiro">Prestador de Serviços / Terceiro</option>
+                            <option value="Diretoria / Gestão">Diretoria / Gestão</option>
+                            <option value="Outros">Outros</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-secondary">Matrícula / Código Crachá *</label>
                         <div class="input-group">
                             <input type="text" id="visitante-form-codigo" class="form-control" placeholder="Ex: 17101991" required>
                             <button class="btn btn-outline-primary" type="button" onclick="buscarVisitanteNaApiRhid()" title="Buscar na API do RHiD">
-                                <i class="fas fa-search me-1"></i> Buscar
+                                <i class="fas fa-search"></i>
                             </button>
                         </div>
                     </div>
 
                     <div class="col-md-4">
-                        <label class="form-label fw-bold small text-secondary">CPF do Visitante *</label>
+                        <label class="form-label fw-bold small text-secondary">CPF *</label>
                         <input type="text" id="visitante-form-cpf" class="form-control" placeholder="000.000.000-00" required>
                     </div>
 
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold small text-secondary">ID RHiD (Person ID)</label>
-                        <input type="text" id="visitante-form-rhid-id" class="form-control bg-white" placeholder="Ex: 1333">
-                    </div>
-
-                    <div class="col-md-12">
-                        <label class="form-label fw-bold small text-secondary">Nome Completo do Visitante *</label>
+                    <div class="col-md-8">
+                        <label class="form-label fw-bold small text-secondary">Nome Completo *</label>
                         <input type="text" id="visitante-form-nome" class="form-control" placeholder="Nome completo" required>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label fw-bold small text-secondary">Empresa de Origem / Órgão</label>
-                        <input type="text" id="visitante-form-empresa" class="form-control" placeholder="Ex: Visitante Externo, Fornecedor X...">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-secondary">Código no Leitor / PIS</label>
+                        <input type="text" id="visitante-form-codigo-rep" class="form-control" placeholder="Ex: 97608920907">
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-bold small text-secondary">Setor / Pessoa Visitada</label>
-                        <input type="text" id="visitante-form-setor" class="form-control" placeholder="Ex: Recursos Humanos / Diretoria">
+                        <label class="form-label fw-bold small text-secondary">Empresa / Unidade</label>
+                        <input type="text" id="visitante-form-empresa" class="form-control" placeholder="Ex: Calçados Crival, Fornecedor X...">
                     </div>
 
                     <div class="col-md-6">
-                        <label class="form-label fw-bold small text-secondary">Motivo da Visita</label>
-                        <input type="text" id="visitante-form-motivo" class="form-control" placeholder="Ex: Reunião, Auditoria, Serviço...">
+                        <label class="form-label fw-bold small text-secondary">Setor / Departamento</label>
+                        <input type="text" id="visitante-form-setor" class="form-control" placeholder="Ex: Gerência Geral, Recursos Humanos">
+                    </div>
+
+                    <!-- Configuração do Horário Previsto (Cadastrado no Nexter) -->
+                    <div class="col-12 mt-3">
+                        <div class="card border-0 bg-white p-3 rounded-3 shadow-sm border-start border-4 border-primary">
+                            <h6 class="fw-bold text-primary mb-2">
+                                <i class="fas fa-clock me-1"></i> Horário Previsto de Trabalho / Referência
+                            </h6>
+                            <p class="small text-muted mb-2">Defina o horário padrão para o Nexter analisar a presença e permanência:</p>
+                            <div class="row g-2">
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Horário Início</label>
+                                    <input type="time" id="visitante-form-horario-inicio" class="form-control form-control-sm" value="08:00">
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Horário Fim</label>
+                                    <input type="time" id="visitante-form-horario-fim" class="form-control form-control-sm" value="18:00">
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Vigência Início</label>
+                                    <input type="date" id="visitante-form-vigencia-inicio" class="form-control form-control-sm">
+                                </div>
+                                <div class="col-md-3 col-6">
+                                    <label class="form-label small fw-bold text-secondary mb-1">Vigência Fim</label>
+                                    <input type="date" id="visitante-form-vigencia-fim" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">Telefone / Celular</label>
+                        <input type="text" id="visitante-form-telefone" class="form-control" placeholder="(00) 00000-0000">
                     </div>
 
                     <div class="col-md-3">
-                        <label class="form-label fw-bold small text-secondary">Telefone / Celular</label>
-                        <input type="text" id="visitante-form-telefone" class="form-control" placeholder="(00) 00000-0000">
+                        <label class="form-label fw-bold small text-secondary">ID RHiD (Opcional)</label>
+                        <input type="text" id="visitante-form-rhid-id" class="form-control bg-white" placeholder="Ex: 1333">
                     </div>
 
                     <div class="col-md-3">
@@ -642,7 +685,7 @@
             <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
                 <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" id="btn-salvar-visitante" onclick="salvarVisitanteManual()">
-                    <i class="fas fa-check me-1"></i> Salvar Visitante
+                    <i class="fas fa-check me-1"></i> Salvar Cadastro
                 </button>
             </div>
         </div>
@@ -683,6 +726,9 @@
             <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
                 <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
             </div>
+        </div>
+    </div>
+</div>
 <!-- ============================================================== -->
 <!-- MODAL: LANÇAR BATIDA MANUAL DE VISITANTE (PORTARIA) -->
 <!-- ============================================================== -->
@@ -752,4 +798,4 @@
     </div>
 </div>
 
-<script src="js/rhid-config.js"></script>
+<script src="js/rhid-config.js?v=18"></script>
