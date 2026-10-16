@@ -492,9 +492,6 @@ async function carregarDadosSecao(sectionName) {
             case 'cadastro-terceirizados':
                 if (typeof inicializarTerceirizados === 'function') await inicializarTerceirizados();
                 break;
-            case 'vigilancia-gestao':
-                if (typeof window.inicializarVigilanciaGestao === 'function') await window.inicializarVigilanciaGestao();
-                break;
         }
     } catch (error) {
         console.error(`Erro ao carregar dados da seção ${sectionName}:`, error);
