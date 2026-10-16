@@ -567,7 +567,11 @@
                 alert(`Coordenadas capturadas com sucesso!\nPrecisão: ±${Math.round(pos.coords.accuracy)}m`);
             },
             (err) => {
-                alert(`Erro ao obter GPS: ${err.message}`);
+                if (err.code === 1) {
+                    alert("Acesso ao GPS bloqueado pelo navegador!\n\nComo permitir:\n1. Clique no ícone de configurações/cadeado ao lado da URL (barra de endereços);\n2. Em 'Localização', altere para 'Permitir';\n3. Recarregue a página (F5).");
+                } else {
+                    alert(`Erro ao obter GPS: ${err.message}`);
+                }
             },
             { enableHighAccuracy: true, timeout: 10000 }
         );
@@ -1165,7 +1169,11 @@
                 mapaSeletorPonto.setView(latlng, 18);
             }
         }, (err) => {
-            alert(`Falha ao obter localização: ${err.message}`);
+            if (err.code === 1) {
+                alert("Acesso ao GPS bloqueado pelo navegador!\n\nComo permitir:\n1. Clique no ícone de configurações/cadeado ao lado da URL (barra de endereços);\n2. Em 'Localização', altere para 'Permitir';\n3. Recarregue a página (F5).");
+            } else {
+                alert(`Falha ao obter localização: ${err.message}`);
+            }
         }, { enableHighAccuracy: true });
     };
 

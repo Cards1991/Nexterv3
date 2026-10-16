@@ -495,6 +495,16 @@
             return;
         }
 
+        // Verifica se a permissão foi bloqueada no navegador
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const pStatus = await navigator.permissions.query({ name: 'geolocation' });
+                if (pStatus.state === 'denied') {
+                    alert("Atenção: A permissão de GPS está bloqueada no navegador deste aparelho!\n\nPara que o trajeto da ronda seja registrado no mapa:\n1. Toque no ícone de ajustes/cadeado ao lado da URL (barra de endereços);\n2. Mude a permissão de 'Localização' para 'Permitir';\n3. Recarregue a página.");
+                }
+            } catch (pErr) {}
+        }
+
         // Tenta obter WakeLock para manter tela ligada durante a ronda
         try {
             if ('wakeLock' in navigator) {
@@ -595,7 +605,13 @@
             (err) => {
                 console.warn("GPS Warning:", err.message);
                 const badge = document.getElementById('status-gps-badge');
-                if (badge) badge.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> Sinal Fraco (${err.message})`;
+                if (badge) {
+                    if (err.code === 1) {
+                        badge.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i> GPS Bloqueado`;
+                    } else {
+                        badge.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> Sinal Fraco (${err.message})`;
+                    }
+                }
             },
             options
         );
