@@ -53,6 +53,30 @@
     // 1. CARREGAMENTO E SELEÇÃO DE VIGIA NO MOBILE
     // ==============================================
 
+    // Garante sessão autenticada do Firebase (anônima ou usuário existente)
+    async function garantirAutenticacao() {
+        if (!window.auth && typeof firebase !== 'undefined') {
+            window.auth = firebase.auth();
+        }
+        if (!window.auth) return null;
+
+        return new Promise((resolve) => {
+            const unsub = window.auth.onAuthStateChanged(user => {
+                unsub();
+                if (user) {
+                    resolve(user);
+                } else {
+                    window.auth.signInAnonymously()
+                        .then(cred => resolve(cred.user))
+                        .catch(err => {
+                            console.warn("Aviso Auth (signInAnonymously):", err.message);
+                            resolve(null);
+                        });
+                }
+            });
+        });
+    }
+
     let modoMatriculaManual = false;
 
     window.carregarListaVigiasMobile = async function () {
@@ -60,6 +84,8 @@
         if (!select || !window.db) return;
 
         try {
+            await garantirAutenticacao();
+
             const snap = await window.db.collection('vigilancia_vigias')
                 .where('ativo', '==', true)
                 .get();
@@ -214,6 +240,8 @@
         feedback.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i> Validando credenciais...';
 
         try {
+            await garantirAutenticacao();
+
             // Busca vigia ativo no Firestore
             const snap = await window.db.collection('vigilancia_vigias')
                 .where('matricula', '==', matricula)
