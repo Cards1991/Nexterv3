@@ -3967,3 +3967,26 @@ async function executarImportacaoRhidAutomatico() {
         }
     }
 }
+
+// Exposição explícita no window para garantir compatibilidade com onclick inline e ScriptLoader
+window.abrirModalImportarRhid = abrirModalImportarRhid;
+window.executarImportacaoRhidAutomatico = executarImportacaoRhidAutomatico;
+window.abrirEspelhoPontoGerente = abrirEspelhoPontoGerente;
+window.abrirEspelhoPontoGerenteSelecionado = abrirEspelhoPontoGerenteSelecionado;
+window.definirPeriodoEspelho = definirPeriodoEspelho;
+window.processarEspelhoPontoGerente = processarEspelhoPontoGerente;
+window.salvarHistoricoEspelhoGerente = salvarHistoricoEspelhoGerente;
+window.imprimirEspelhoGerente = imprimirEspelhoGerente;
+window.inicializarModuloVisitantes = inicializarModuloVisitantes;
+window.apurarVisitantesRhid = apurarVisitantesRhid;
+window.carregarListaVisitantesCadastrados = carregarListaVisitantesCadastrados;
+window.definirDataFiltroVisitante = definirDataFiltroVisitante;
+window.buscarVisitantePorCpfOuCodigo = buscarVisitantePorCpfOuCodigo;
+window.abrirModalNovoVisitante = abrirModalNovoVisitante;
+window.salvarVisitanteManual = salvarVisitanteManual;
+window.excluirVisitante = excluirVisitante;
+window.abrirModalLancamentoBatidaManual = abrirModalLancamentoBatidaManual;
+window.salvarBatidaManualVisitante = salvarBatidaManualVisitante;
+window.verDetalhesBatidasVisitante = verDetalhesBatidasVisitante;
+window.exportarRelatorioVisitantesCSV = exportarRelatorioVisitantesCSV;
+
