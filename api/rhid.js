@@ -156,21 +156,76 @@ module.exports = async function handler(req, res) {
 
             case 'syncApuration':
                 try {
-                    // Agora recebe um array de idPersons para processamento em lote (Batching)
-                    const { startDate, endDate, idPersons } = req.body;
+                    // Agora recebe um array de idPersons ou CPF/query direto
+                    let { startDate, endDate, idPersons, cpf, query } = req.body;
                     if (!startDate || !endDate) {
                         return res.status(400).json({ success: false, message: 'Data de início e fim são obrigatórias.' });
                     }
 
                     const token = await loginToRhid();
-                    let apurDataComb = [];
+
+                    // Se não passou idPersons mas passou CPF ou query, tenta resolver o ID automaticamente
+                    if ((!idPersons || !Array.isArray(idPersons) || idPersons.length === 0) && (cpf || query)) {
+                        const termoBusca = cpf || query;
+                        const personRes = await fetch(`${RHID_API_BASE}/person`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (personRes.ok) {
+                            const personData = await personRes.json();
+                            const list = personData.records || [];
+                            const qClean = String(termoBusca).replace(/\D/g, '');
+                            const qCleanPad = qClean ? qClean.padStart(11, '0') : '';
+                            const qCleanNoZeros = qClean ? qClean.replace(/^0+/, '') : '';
+                            const qLower = String(termoBusca).toLowerCase().trim();
+
+                            const matches = list.filter(p => {
+                                const cpfRaw = String(p.cpf || '').replace(/\D/g, '');
+                                const cpfPad = cpfRaw ? cpfRaw.padStart(11, '0') : '';
+                                const cpfNoZeros = cpfRaw ? cpfRaw.replace(/^0+/, '') : '';
+                                const reg = String(p.registration || '').replace(/\D/g, '');
+                                const code = String(p.code !== undefined ? p.code : '').replace(/\D/g, '');
+                                const name = String(p.name || '').toLowerCase();
+                                
+                                let matchCpf = false;
+                                if (qClean && cpfRaw) {
+                                    if (qClean.length >= 10) {
+                                        matchCpf = (cpfPad === qCleanPad || cpfNoZeros === qCleanNoZeros);
+                                    } else {
+                                        matchCpf = cpfRaw.includes(qClean) || cpfPad.includes(qClean);
+                                    }
+                                }
+
+                                let matchReg = false;
+                                if (qClean && reg) {
+                                    matchReg = (reg === qClean || reg.includes(qClean));
+                                }
+
+                                let matchCode = false;
+                                if (qClean && code) {
+                                    matchCode = (code === qClean || code.includes(qClean));
+                                }
+
+                                const matchName = qLower && name.includes(qLower);
+
+                                return matchCpf || matchReg || matchCode || matchName;
+                            });
+
+                            if (matches.length > 0) {
+                                idPersons = matches.map(m => m.id);
+                            }
+                        }
+                    }
                     
-                    // Se não passou array ou o array está vazio, retorna erro (evitar payload de 15MB sem filtro)
+                    // Se ainda não tiver idPersons, retorna erro amigável
                     if (!idPersons || !Array.isArray(idPersons) || idPersons.length === 0) {
-                        return res.status(400).json({ success: false, message: 'Lista de idPersons é obrigatória para evitar limite de payload.' });
+                        return res.status(400).json({ 
+                            success: false, 
+                            message: 'Nenhum funcionário ou visitante encontrado para apuração. Verifique o CPF ou selecione um visitante.' 
+                        });
                     }
 
                     // Faz chamadas concorrentes para o RHiD usando Promise.all
+                    let apurDataComb = [];
                     const fetchPromises = idPersons.map(async (idPerson) => {
                         const endpoint = `${RHID_API_BASE}/apuracao_ponto?dataIni=${startDate}&dataFinal=${endDate}&idPerson=${idPerson}`;
                         const apurRes = await fetch(endpoint, {
@@ -227,16 +282,50 @@ module.exports = async function handler(req, res) {
                     const list = personData.records || [];
                     
                     const qClean = String(query).replace(/\D/g, '');
+                    const qCleanPad = qClean ? qClean.padStart(11, '0') : '';
+                    const qCleanNoZeros = qClean ? qClean.replace(/^0+/, '') : '';
                     const qLower = String(query).toLowerCase().trim();
 
                     const matches = list.filter(p => {
-                        const cpf = String(p.cpf || '').replace(/\D/g, '');
+                        const cpfRaw = String(p.cpf || '').replace(/\D/g, '');
+                        const cpfPad = cpfRaw ? cpfRaw.padStart(11, '0') : '';
+                        const cpfNoZeros = cpfRaw ? cpfRaw.replace(/^0+/, '') : '';
                         const reg = String(p.registration || '').replace(/\D/g, '');
                         const code = String(p.code !== undefined ? p.code : '').replace(/\D/g, '');
                         const name = String(p.name || '').toLowerCase();
+                        const pis = String(p.pis || '').replace(/\D/g, '');
                         
-                        return (qClean && (cpf.includes(qClean) || reg.includes(qClean) || code.includes(qClean))) ||
-                               (qLower && name.includes(qLower));
+                        let matchCpf = false;
+                        if (qClean && cpfRaw) {
+                            if (qClean.length >= 10) {
+                                matchCpf = (cpfPad === qCleanPad || cpfNoZeros === qCleanNoZeros);
+                            } else {
+                                matchCpf = cpfRaw.includes(qClean) || cpfPad.includes(qClean);
+                            }
+                        }
+
+                        let matchReg = false;
+                        if (qClean && reg) {
+                            matchReg = (reg === qClean || reg.includes(qClean));
+                        }
+
+                        let matchCode = false;
+                        if (qClean && code) {
+                            matchCode = (code === qClean || code.includes(qClean));
+                        }
+
+                        const matchPis = qClean && pis && (pis === qClean || pis.includes(qClean));
+                        const matchName = qLower && name.includes(qLower);
+
+                        return matchCpf || matchReg || matchCode || matchPis || matchName;
+                    });
+
+                    // Adiciona formatação do CPF para conveniência do frontend
+                    matches.forEach(p => {
+                        if (p.cpf) {
+                            const cpfPad = String(p.cpf).replace(/\D/g, '').padStart(11, '0');
+                            p.cpfFormatted = cpfPad.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                        }
                     });
 
                     return res.status(200).json({

@@ -414,39 +414,68 @@
                     </div>
                 </div>
                 <div class="card-body bg-light">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-4 col-sm-12">
+                    <!-- Linha 1: Consulta Rápida por CPF ou Código e Seleção -->
+                    <div class="row g-3 align-items-end mb-3">
+                        <div class="col-md-5 col-sm-12">
+                            <label class="form-label small fw-bold text-primary mb-1">
+                                <i class="fas fa-id-card me-1"></i> Buscar / Apurar por CPF ou Código Crachá
+                            </label>
+                            <div class="input-group shadow-sm">
+                                <span class="input-group-text bg-white border-0 text-primary"><i class="fas fa-search"></i></span>
+                                <input type="text" id="rhid-busca-cpf" class="form-control border-0" placeholder="Ex: 081.946.399-05 ou 17101991" onkeydown="if(event.key === 'Enter') buscarVisitantePorCpfOuCodigo()">
+                                <button class="btn btn-primary fw-bold px-3" type="button" id="btn-buscar-visitante-cpf" onclick="buscarVisitantePorCpfOuCodigo()">
+                                    CONSULTAR CPF
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 col-sm-12">
                             <label class="form-label small fw-bold text-secondary mb-1">
-                                <i class="fas fa-user-check me-1"></i> Selecionar Visitante
+                                <i class="fas fa-user-check me-1"></i> Ou Selecionar Cadastrado
                             </label>
                             <select id="rhid-filtro-visitante" class="form-select border-0 shadow-sm">
                                 <option value="">Todos os Visitantes Cadastrados</option>
                             </select>
                         </div>
+
                         <div class="col-md-2 col-sm-6">
                             <label class="form-label small fw-bold text-secondary mb-1">
                                 <i class="fas fa-calendar-alt me-1"></i> Data Início
                             </label>
                             <input type="date" id="rhid-visitantes-dt-inicio" class="form-control border-0 shadow-sm">
                         </div>
+
                         <div class="col-md-2 col-sm-6">
                             <label class="form-label small fw-bold text-secondary mb-1">
                                 <i class="fas fa-calendar-alt me-1"></i> Data Fim
                             </label>
                             <input type="date" id="rhid-visitantes-dt-fim" class="form-control border-0 shadow-sm">
                         </div>
-                        <div class="col-md-4 col-sm-12 d-flex gap-2">
-                            <button class="btn btn-primary fw-bold flex-grow-1 shadow-sm rounded-3" id="btn-apurar-visitantes" onclick="apurarVisitantesRhid(true)">
+                    </div>
+
+                    <!-- Linha 2: Botões de Ação -->
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 pt-2 border-top">
+                        <div class="d-flex flex-wrap gap-2">
+                            <button class="btn btn-primary fw-bold shadow-sm rounded-3 px-4" id="btn-apurar-visitantes" onclick="apurarVisitantesRhid(true)">
                                 <i class="fas fa-bolt me-1"></i> APURAR NO RHID
                             </button>
-                            <button class="btn btn-outline-success fw-bold shadow-sm rounded-3" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
-                                <i class="fas fa-file-excel"></i>
+                            <button class="btn btn-outline-warning text-dark fw-semibold shadow-sm rounded-3 px-3 bg-white" onclick="abrirModalLancamentoBatidaManual()">
+                                <i class="fas fa-clock text-warning me-1"></i> Lançar Batida Manual (Portaria)
                             </button>
-                            <button class="btn btn-success fw-bold shadow-sm rounded-3" onclick="abrirModalNovoVisitante()" title="Cadastrar ou Vincular Visitante">
-                                <i class="fas fa-user-plus me-1"></i> NOVO
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button class="btn btn-outline-success fw-bold shadow-sm rounded-3 px-3 bg-white" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
+                                <i class="fas fa-file-excel me-1"></i> Exportar
+                            </button>
+                            <button class="btn btn-success fw-bold shadow-sm rounded-3 px-3" onclick="abrirModalNovoVisitante()" title="Cadastrar ou Vincular Visitante">
+                                <i class="fas fa-user-plus me-1"></i> Novo Visitante
                             </button>
                         </div>
                     </div>
+
+                    <!-- Banner de Feedback Dinâmico / Diagnóstico -->
+                    <div id="rhid-visitantes-status-banner" class="mt-3 d-none"></div>
                 </div>
             </div>
 
@@ -653,6 +682,71 @@
             </div>
             <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
                 <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
+            </div>
+<!-- ============================================================== -->
+<!-- MODAL: LANÇAR BATIDA MANUAL DE VISITANTE (PORTARIA) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-lancamento-batida" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-warning text-dark border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-clock text-dark me-2"></i> Lançar Marcação de Portaria (Visitante)
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info border-0 shadow-sm py-2 small mb-3">
+                    <i class="fas fa-info-circle me-1"></i>
+                    Utilize esta opção quando o crachá/visitante passou pela portaria e o relógio de ponto físico (REP) ainda não enviou as marcações para a nuvem.
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-secondary">Visitante</label>
+                    <select id="manual-batida-visitante-select" class="form-select border-0 shadow-sm">
+                        <!-- Carregado via JS -->
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary">Data</label>
+                        <input type="date" id="manual-batida-data" class="form-control border-0 shadow-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary">Hora (HH:mm)</label>
+                        <input type="time" id="manual-batida-hora" class="form-control border-0 shadow-sm">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold small text-secondary">Tipo de Marcação</label>
+                    <div class="d-flex gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="manual-batida-tipo" id="manual-tipo-entrada" value="ENTRADA" checked>
+                            <label class="form-check-label fw-semibold text-success" for="manual-tipo-entrada">
+                                <i class="fas fa-sign-in-alt me-1"></i> Entrada
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="manual-batida-tipo" id="manual-tipo-saida" value="SAIDA">
+                            <label class="form-check-label fw-semibold text-primary" for="manual-tipo-saida">
+                                <i class="fas fa-sign-out-alt me-1"></i> Saída
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-2">
+                    <label class="form-label fw-bold small text-secondary">Observação / Portaria (Opcional)</label>
+                    <input type="text" id="manual-batida-obs" class="form-control border-0 shadow-sm" placeholder="Ex: Portaria Principal, Acesso Liberado por RH">
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-warning text-dark px-4 fw-bold rounded-pill shadow-sm" id="btn-salvar-manual-batida" onclick="salvarBatidaManualVisitante()">
+                    <i class="fas fa-save me-1"></i> Gravar Batida
+                </button>
             </div>
         </div>
     </div>
