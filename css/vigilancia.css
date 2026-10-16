@@ -287,3 +287,113 @@
 .table-vigilancia td {
     vertical-align: middle;
 }
+
+/* ============================================== */
+/* GOOGLE PLACES SEARCH & CONTROLES DE MAPA */
+/* ============================================== */
+.map-search-bar {
+    position: absolute;
+    top: 14px;
+    left: 60px;
+    z-index: 1000;
+    width: 320px;
+    max-width: calc(100% - 240px);
+}
+
+@media (max-width: 768px) {
+    .map-search-bar {
+        position: relative;
+        top: 0;
+        left: 0;
+        width: 100%;
+        max-width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+.map-search-input-group {
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-radius: 10px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+    border: 1px solid #cbd5e1;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+}
+
+.map-search-input-group input {
+    border: none;
+    background: transparent;
+    font-size: 0.85rem;
+    padding: 7px 10px;
+    outline: none;
+    box-shadow: none !important;
+}
+
+.map-search-input-group .input-group-text {
+    background: transparent;
+    border: none;
+    padding-left: 12px;
+}
+
+.google-places-dropdown {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    max-height: 260px;
+    overflow-y: auto;
+    z-index: 2000;
+}
+
+.google-places-item {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-bottom: 1px solid #f1f5f9;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    transition: background 0.15s ease;
+}
+
+.google-places-item:last-child {
+    border-bottom: none;
+}
+
+.google-places-item:hover, .google-places-item.active {
+    background: #f0f7ff;
+}
+
+.google-places-item .place-icon {
+    color: #ea4335;
+    margin-top: 3px;
+    font-size: 0.9rem;
+}
+
+.google-places-item .place-title {
+    font-weight: 600;
+    color: #1e293b;
+    line-height: 1.2;
+}
+
+.google-places-item .place-sub {
+    font-size: 0.75rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.google-powered-badge {
+    padding: 4px 10px;
+    font-size: 0.7rem;
+    color: #94a3b8;
+    text-align: right;
+    background: #fafafa;
+    border-top: 1px solid #f1f5f9;
+}

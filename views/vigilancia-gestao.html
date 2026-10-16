@@ -141,20 +141,59 @@
                                 </button>
                             </div>
 
+                            <!-- Barra de Pesquisa Inteligente Google Places -->
+                            <div class="map-search-bar" id="wrapper-busca-google">
+                                <div class="map-search-input-group">
+                                    <span class="input-group-text"><i class="fab fa-google text-danger"></i></span>
+                                    <input type="text" id="input-busca-google-mapa" placeholder="Buscar endereço ou local no Google..." autocomplete="off">
+                                    <button class="btn btn-sm btn-link text-muted p-1 me-1" id="btn-limpar-busca-google" style="display:none;" onclick="window.limparBuscaGoogleMapa()" title="Limpar busca">
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                </div>
+                                <div id="dropdown-busca-google" class="google-places-dropdown" style="display: none;"></div>
+                            </div>
+
                             <!-- Barra de Ferramentas Flutuante sobre o Mapa -->
                             <div class="map-floating-toolbar">
                                 <button type="button" class="btn btn-light border text-dark" onclick="window.centralizarMapaVigilancia()" title="Centralizar na Empresa">
                                     <i class="fas fa-crosshairs text-primary"></i> <span class="d-none d-md-inline">Centralizar</span>
                                 </button>
                                 <button type="button" class="btn btn-light border text-dark" onclick="window.alternarCamadaSatélite()" id="btn-toggle-satelite" title="Alternar Satélite / Mapa Vetorial">
-                                    <i class="fas fa-satellite text-info"></i> <span id="label-camada-satelite" class="d-none d-md-inline">Satélite HD</span>
+                                    <i class="fas fa-satellite text-info"></i> <span id="label-camada-satelite" class="d-none d-md-inline">Google Híbrido HD</span>
                                 </button>
                                 <div class="dropdown d-inline-block">
                                     <button class="btn btn-light border text-dark dropdown-toggle" type="button" data-bs-toggle="dropdown">
                                         <i class="fas fa-layer-group text-secondary"></i> <span class="d-none d-md-inline">Camadas</span>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-sm p-2" style="min-width: 200px; font-size: 0.85rem;">
-                                        <li><h6 class="dropdown-header px-2 py-1">Exibir no Mapa</h6></li>
+                                    <ul class="dropdown-menu dropdown-menu-end shadow p-2" style="min-width: 240px; font-size: 0.85rem;">
+                                        <li><h6 class="dropdown-header px-2 py-1"><i class="fab fa-google text-danger me-1"></i> Mapa Base</h6></li>
+                                        <li>
+                                            <button class="dropdown-item d-flex align-items-center gap-2" type="button" onclick="window.selecionarProvedorMapa('GOOGLE_HYBRID')">
+                                                <i class="fas fa-satellite text-success"></i> <span>Google Satélite Híbrido</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item d-flex align-items-center gap-2" type="button" onclick="window.selecionarProvedorMapa('GOOGLE_SATELLITE')">
+                                                <i class="fas fa-globe-americas text-primary"></i> <span>Google Satélite Puro</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item d-flex align-items-center gap-2" type="button" onclick="window.selecionarProvedorMapa('GOOGLE_ROADMAP')">
+                                                <i class="fas fa-map text-warning"></i> <span>Google Maps (Ruas)</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item d-flex align-items-center gap-2" type="button" onclick="window.selecionarProvedorMapa('ESRI_SATELLITE')">
+                                                <i class="fas fa-satellite text-info"></i> <span>Esri Satélite</span>
+                                            </button>
+                                        </li>
+                                        <li>
+                                            <button class="dropdown-item d-flex align-items-center gap-2" type="button" onclick="window.selecionarProvedorMapa('OSM_STANDARD')">
+                                                <i class="fas fa-map-marked text-secondary"></i> <span>OpenStreetMap</span>
+                                            </button>
+                                        </li>
+                                        <li><hr class="dropdown-divider my-1"></li>
+                                        <li><h6 class="dropdown-header px-2 py-1"><i class="fas fa-eye text-primary me-1"></i> Sobreposições</h6></li>
                                         <li>
                                             <label class="dropdown-item d-flex align-items-center gap-2 cursor-pointer">
                                                 <input class="form-check-input mt-0" type="checkbox" id="check-camada-areas" checked onchange="window.toggleCamadaAreas(this.checked)">
@@ -550,6 +589,14 @@
                                 <i class="fas fa-crosshairs me-1"></i> Usar Minha Localização Atual
                             </button>
                         </div>
+                        <div class="position-relative mb-2">
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text bg-white"><i class="fab fa-google text-danger"></i></span>
+                                <input type="text" class="form-control" id="ponto-google-search" placeholder="Buscar endereço ou ponto no Google Maps..." autocomplete="off">
+                                <button class="btn btn-outline-secondary" type="button" onclick="window.pesquisarLocalPontoGoogle()">Buscar</button>
+                            </div>
+                            <div id="ponto-google-search-results" class="google-places-dropdown" style="display: none;"></div>
+                        </div>
                         <div id="mapa-seletor-ponto"></div>
                     </div>
 
@@ -746,7 +793,19 @@
                 <form id="formConfigMapa" onsubmit="event.preventDefault(); window.salvarConfiguracaoMapa();">
                     <div class="alert alert-info py-2 small d-flex align-items-center gap-2 mb-3">
                         <i class="fas fa-circle-info fs-5"></i>
-                        <span>Informe as coordenadas centrais da empresa. O mapa da Central e dos vigias carregará automaticamente na fábrica com imagens de satélite.</span>
+                        <span>Informe as coordenadas centrais da empresa ou busque pelo nome/endereço no Google Places. O mapa da Central e dos vigias carregará automaticamente na fábrica com imagens de satélite HD.</span>
+                    </div>
+
+                    <!-- Busca Google Places no Modal Config -->
+                    <div class="mb-3 position-relative">
+                        <label class="form-label fw-bold"><i class="fab fa-google text-danger me-1"></i> Localizar Empresa / Endereço no Google Places</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fas fa-search text-muted"></i></span>
+                            <input type="text" class="form-control" id="config-google-search" placeholder="Ex: Crival Calçados Imbituva, Rua João Strapassoni..." autocomplete="off">
+                            <button class="btn btn-outline-secondary" type="button" onclick="window.pesquisarEnderecoEmpresaGoogle()">Buscar</button>
+                        </div>
+                        <div id="config-google-search-results" class="google-places-dropdown" style="display: none;"></div>
+                        <small class="text-muted">Dica: Selecione a sugestão para preencher o nome da unidade e as coordenadas com precisão exata do Google.</small>
                     </div>
 
                     <div class="row g-3 mb-3">
@@ -762,6 +821,7 @@
                                 <option value="17" selected>17 - Padrão Fabril (Recomendado)</option>
                                 <option value="18">18 - Detalhe de Galpões e Vias</option>
                                 <option value="19">19 - Zoom Máximo de Portarias</option>
+                                <option value="20">20 - Ultra Detalhe (Google Satélite)</option>
                             </select>
                         </div>
                     </div>
@@ -769,11 +829,11 @@
                     <div class="row g-3 mb-3">
                         <div class="col-12 col-md-5">
                             <label class="form-label fw-bold">Latitude Central * (-90 a 90)</label>
-                            <input type="number" step="any" min="-90" max="90" class="form-control font-monospace" id="config-unidade-lat" required placeholder="-27.054300">
+                            <input type="number" step="any" min="-90" max="90" class="form-control font-monospace" id="config-unidade-lat" required placeholder="-25.194009">
                         </div>
                         <div class="col-12 col-md-5">
                             <label class="form-label fw-bold">Longitude Central * (-180 a 180)</label>
-                            <input type="number" step="any" min="-180" max="180" class="form-control font-monospace" id="config-unidade-lng" required placeholder="-48.983200">
+                            <input type="number" step="any" min="-180" max="180" class="form-control font-monospace" id="config-unidade-lng" required placeholder="-50.598688">
                         </div>
                         <div class="col-12 col-md-2 d-flex align-items-end">
                             <button type="button" class="btn btn-outline-primary w-100" onclick="window.capturarPosicaoEmpresa()" title="Capturar GPS do Dispositivo Atual">
@@ -786,15 +846,18 @@
                         <div class="col-12 col-md-6">
                             <label class="form-label fw-bold">Provedor Cartográfico Padrão *</label>
                             <select class="form-select" id="config-unidade-provedor">
-                                <option value="ESRI_SATELLITE" selected>🛰️ Esri World Imagery (Satélite de Alta Definição)</option>
-                                <option value="ESRI_HYBRID">🏙️ Satélite Híbrido (Satélite + Vias/Ruas)</option>
+                                <option value="GOOGLE_HYBRID" selected>🛰️ Google Satélite Híbrido HD (Recomendado - Satélite + Vias)</option>
+                                <option value="GOOGLE_SATELLITE">🛰️ Google Satélite Puro HD (Alta Definição até Zoom 21)</option>
+                                <option value="GOOGLE_ROADMAP">🗺️ Google Maps (Ruas e Rodovias)</option>
+                                <option value="ESRI_SATELLITE">🛰️ Esri World Imagery (Satélite Alternativo)</option>
+                                <option value="ESRI_HYBRID">🏙️ Esri Satélite Híbrido</option>
                                 <option value="OSM_STANDARD">🗺️ OpenStreetMap (Mapa Vetorial Convencional)</option>
                             </select>
                         </div>
                         <div class="col-12 col-md-6">
-                            <label class="form-label fw-bold">Chave de API Google Maps (Opcional)</label>
-                            <input type="password" class="form-control font-monospace" id="config-google-api-key" placeholder="Opcional - deixe em branco para usar Esri Satélite">
-                            <small class="text-muted">Utilizada apenas se a empresa optar por ativar a Google Maps Platform.</small>
+                            <label class="form-label fw-bold">Chave de API Google Maps Platform</label>
+                            <input type="password" class="form-control font-monospace" id="config-google-api-key" placeholder="AIzaSy...">
+                            <small class="text-muted">Chave de API para Google Maps JS e Google Places API (Autocompletação e Satélite HD).</small>
                         </div>
                     </div>
                 </form>

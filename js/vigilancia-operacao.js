@@ -789,9 +789,10 @@
     }
 
     let configEmpresaMobile = {
-        centroLat: -27.0543,
-        centroLng: -48.9832,
-        zoomInicial: 17
+        centroLat: -25.194009,
+        centroLng: -50.598688,
+        zoomInicial: 17,
+        provedorPadrao: 'GOOGLE_HYBRID'
     };
     let areasEmpresaMobile = [];
 
@@ -811,7 +812,7 @@
     }
 
     /**
-     * Inicializa o Mapa Móvel do Vigia com Satélite HD e Áreas Fabris
+     * Inicializa o Mapa Móvel do Vigia com Google Satélite HD e Áreas Fabris
      */
     async function initMapaVigia(pontosRota) {
         const container = document.getElementById('mapa-operacao-vigia');
@@ -824,18 +825,21 @@
 
         await carregarConfigEAreasMobile();
 
-        const centerLat = Number(configEmpresaMobile.centroLat) || -27.0543;
-        const centerLng = Number(configEmpresaMobile.centroLng) || -48.9832;
+        const centerLat = Number(configEmpresaMobile.centroLat) || -25.194009;
+        const centerLng = Number(configEmpresaMobile.centroLng) || -50.598688;
         const zoom = Number(configEmpresaMobile.zoomInicial) || 17;
 
         mapaVigia = L.map('mapa-operacao-vigia', {
             zoomControl: false,
-            attributionControl: false
+            attributionControl: false,
+            maxZoom: 21
         }).setView([centerLat, centerLng], zoom);
 
-        // Satélite HD de Alta Resolução + Etiquetas
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaVigia);
-        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaVigia);
+        // Satélite Google Híbrido HD (Ultra Definição com Vias e Galpões)
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            subdomains: ['0', '1', '2', '3']
+        }).addTo(mapaVigia);
 
         // Desenha polígonos das áreas da empresa
         if (areasEmpresaMobile && areasEmpresaMobile.length > 0) {

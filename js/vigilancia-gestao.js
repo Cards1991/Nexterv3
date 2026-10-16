@@ -13,26 +13,32 @@
     let markerSeletorPonto = null;
     let circuloSeletorRaio = null;
 
-    // Configuração Cartográfica da Unidade
+    const GOOGLE_API_KEY_DEFAULT = 'AIzaSyCLr3ogjIwFQP43lhhgr_zCoO3d1XOc9ag';
+
+    // Configuração Cartográfica da Unidade (Sede Imbituva - PR)
     let configuracaoEmpresa = {
-        nomeUnidade: 'Calçados Crival - Fábrica',
-        centroLat: -27.0543,
-        centroLng: -48.9832,
+        nomeUnidade: 'Calçados Crival - Fábrica Matriz',
+        centroLat: -25.194009,
+        centroLng: -50.598688,
         zoomInicial: 17,
-        provedorPadrao: 'ESRI_SATELLITE',
-        googleMapsApiKey: ''
+        provedorPadrao: 'GOOGLE_HYBRID',
+        googleMapsApiKey: 'AIzaSyCLr3ogjIwFQP43lhhgr_zCoO3d1XOc9ag'
     };
 
     // Camadas de Mapa e Grupos de Elementos
+    let tileLayerGoogleHybrid = null;
+    let tileLayerGoogleSatelite = null;
+    let tileLayerGoogleStreets = null;
     let tileLayerSatelite = null;
     let tileLayerHibridoLabels = null;
     let tileLayerOsm = null;
-    let camadaAtualSatelite = true;
+    let camadaAtualProvedor = 'GOOGLE_HYBRID';
 
     let layerGroupAreas = null;
     let layerGroupRotas = null;
     let layerGroupPontos = null;
     let layerGroupVigias = null;
+    let markerHighlightBusca = null;
 
     // Estado do Editor Visual de Áreas
     let modoEditorAreasAtivo = false;
@@ -142,7 +148,7 @@
     };
 
     /**
-     * Inicializa o Mapa Leaflet com Camadas de Satélite Esri HD e Geoman
+     * Inicializa o Mapa Leaflet com Camadas do Google Maps HD, Esri e Geoman
      */
     function initMapaAoVivo() {
         const container = document.getElementById('mapa-vigilancia-aovivo');
@@ -153,35 +159,37 @@
             mapaAoVivo = null;
         }
 
-        const lat = Number(configuracaoEmpresa.centroLat) || -27.0543;
-        const lng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const lat = Number(configuracaoEmpresa.centroLat) || -25.194009;
+        const lng = Number(configuracaoEmpresa.centroLng) || -50.598688;
         const zoom = Number(configuracaoEmpresa.zoomInicial) || 17;
 
         mapaAoVivo = L.map('mapa-vigilancia-aovivo', {
             zoomControl: true,
-            attributionControl: false
+            attributionControl: false,
+            maxZoom: 21
         }).setView([lat, lng], zoom);
 
-        // Camadas Base
-        tileLayerOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
+        // Camadas Oficiais Google Maps (Tiles HD com zoom até 21)
+        tileLayerGoogleHybrid = L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            subdomains: ['0', '1', '2', '3']
+        });
+        tileLayerGoogleSatelite = L.tileLayer('https://mt{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            subdomains: ['0', '1', '2', '3']
+        });
+        tileLayerGoogleStreets = L.tileLayer('https://mt{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            subdomains: ['0', '1', '2', '3']
+        });
+
+        // Camadas Esri e OpenStreetMap
         tileLayerSatelite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
         tileLayerHibridoLabels = L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 });
+        tileLayerOsm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 });
 
-        // Adiciona camada padrão com base na configuração
-        if (configuracaoEmpresa.provedorPadrao === 'OSM_STANDARD') {
-            tileLayerOsm.addTo(mapaAoVivo);
-            camadaAtualSatelite = false;
-            atualizarBotaoCamadaSatelite('Mapa Vetorial');
-        } else if (configuracaoEmpresa.provedorPadrao === 'ESRI_HYBRID') {
-            tileLayerSatelite.addTo(mapaAoVivo);
-            tileLayerHibridoLabels.addTo(mapaAoVivo);
-            camadaAtualSatelite = true;
-            atualizarBotaoCamadaSatelite('Satélite Híbrido');
-        } else {
-            tileLayerSatelite.addTo(mapaAoVivo);
-            camadaAtualSatelite = true;
-            atualizarBotaoCamadaSatelite('Satélite HD');
-        }
+        // Aplica o provedor padrão configurado
+        aplicarCamadaBase(configuracaoEmpresa.provedorPadrao || 'GOOGLE_HYBRID');
 
         // Grupos de Sobreposição (FeatureGroups)
         layerGroupAreas = L.featureGroup().addTo(mapaAoVivo);
@@ -191,6 +199,9 @@
 
         // Configura Geoman para Desenho de Áreas
         configurarGeomanEditor();
+
+        // Inicializa a barra de pesquisa Google Places do mapa
+        inicializarBuscaGoogleAoVivo();
 
         // Clique no mapa para marcar novo ponto quando ativado
         mapaAoVivo.on('click', (e) => {
@@ -208,6 +219,50 @@
             if (mapaAoVivo) mapaAoVivo.invalidateSize();
         }, 300);
     }
+
+    function aplicarCamadaBase(provedor) {
+        if (!mapaAoVivo) return;
+
+        // Remove camadas base anteriores
+        [tileLayerGoogleHybrid, tileLayerGoogleSatelite, tileLayerGoogleStreets, tileLayerSatelite, tileLayerHibridoLabels, tileLayerOsm].forEach(layer => {
+            if (layer && mapaAoVivo.hasLayer(layer)) mapaAoVivo.removeLayer(layer);
+        });
+
+        camadaAtualProvedor = provedor;
+
+        switch (provedor) {
+            case 'GOOGLE_SATELLITE':
+                if (tileLayerGoogleSatelite) tileLayerGoogleSatelite.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Google Satélite');
+                break;
+            case 'GOOGLE_ROADMAP':
+                if (tileLayerGoogleStreets) tileLayerGoogleStreets.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Google Ruas');
+                break;
+            case 'ESRI_SATELLITE':
+                if (tileLayerSatelite) tileLayerSatelite.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Esri Satélite');
+                break;
+            case 'ESRI_HYBRID':
+                if (tileLayerSatelite) tileLayerSatelite.addTo(mapaAoVivo);
+                if (tileLayerHibridoLabels) tileLayerHibridoLabels.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Esri Híbrido');
+                break;
+            case 'OSM_STANDARD':
+                if (tileLayerOsm) tileLayerOsm.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Mapa Vetorial');
+                break;
+            case 'GOOGLE_HYBRID':
+            default:
+                if (tileLayerGoogleHybrid) tileLayerGoogleHybrid.addTo(mapaAoVivo);
+                atualizarBotaoCamadaSatelite('Google Híbrido HD');
+                break;
+        }
+    }
+
+    window.selecionarProvedorMapa = function (provedor) {
+        aplicarCamadaBase(provedor);
+    };
 
     function atualizarBotaoCamadaSatelite(label) {
         const el = document.getElementById('label-camada-satelite');
@@ -542,13 +597,321 @@
     // CONFIGURAÇÃO DO MAPA & SATÉLITE DA EMPRESA
     // ==============================================
 
+    function obterGoogleApiKey() {
+        return configuracaoEmpresa.googleMapsApiKey || GOOGLE_API_KEY_DEFAULT;
+    }
+
+    // ==============================================
+    // INTEGRAÇÃO GOOGLE PLACES API (NEW)
+    // ==============================================
+    let timerBuscaGoogleAoVivo = null;
+
+    async function buscarSugestoesGooglePlaces(texto) {
+        if (!texto || texto.trim().length < 2) return [];
+        const apiKey = obterGoogleApiKey();
+        try {
+            const resp = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': apiKey
+                },
+                body: JSON.stringify({
+                    input: texto.trim(),
+                    languageCode: 'pt-BR',
+                    locationBias: {
+                        circle: {
+                            center: {
+                                latitude: Number(configuracaoEmpresa.centroLat) || -25.194009,
+                                longitude: Number(configuracaoEmpresa.centroLng) || -50.598688
+                            },
+                            radius: 100000.0
+                        }
+                    }
+                })
+            });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return (data.suggestions || []).map(s => s.placePrediction).filter(Boolean);
+        } catch (e) {
+            console.warn("Erro ao buscar no Google Places:", e);
+            return [];
+        }
+    }
+
+    async function obterDetalhesPlaceId(placeId) {
+        const apiKey = obterGoogleApiKey();
+        try {
+            const resp = await fetch(`https://places.googleapis.com/v1/places/${placeId}?fields=id,displayName,location,formattedAddress&key=${apiKey}`);
+            if (!resp.ok) return null;
+            return await resp.json();
+        } catch (e) {
+            console.error("Erro ao obter detalhes do lugar:", e);
+            return null;
+        }
+    }
+
+    async function buscarTextoDiretoGoogle(query) {
+        const apiKey = obterGoogleApiKey();
+        try {
+            const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': apiKey,
+                    'X-Goog-FieldMask': 'places.id,places.displayName,places.formattedAddress,places.location'
+                },
+                body: JSON.stringify({
+                    textQuery: query,
+                    languageCode: 'pt-BR'
+                })
+            });
+            if (!resp.ok) return [];
+            const data = await resp.json();
+            return data.places || [];
+        } catch (e) {
+            console.warn("Erro ao pesquisar texto no Google:", e);
+            return [];
+        }
+    }
+
+    function inicializarBuscaGoogleAoVivo() {
+        const input = document.getElementById('input-busca-google-mapa');
+        const dropdown = document.getElementById('dropdown-busca-google');
+        const btnClear = document.getElementById('btn-limpar-busca-google');
+        if (!input || !dropdown) return;
+
+        input.oninput = () => {
+            const val = input.value.trim();
+            if (btnClear) btnClear.style.display = val ? 'inline-block' : 'none';
+
+            clearTimeout(timerBuscaGoogleAoVivo);
+            if (val.length < 2) {
+                dropdown.style.display = 'none';
+                dropdown.innerHTML = '';
+                return;
+            }
+
+            timerBuscaGoogleAoVivo = setTimeout(async () => {
+                dropdown.innerHTML = '<div class="p-2 text-center text-muted small"><i class="fas fa-spinner fa-spin me-1"></i> Consultando Google Places...</div>';
+                dropdown.style.display = 'block';
+
+                const suggestions = await buscarSugestoesGooglePlaces(val);
+                if (suggestions.length === 0) {
+                    dropdown.innerHTML = '<div class="p-2 text-center text-muted small">Nenhum resultado. Pressione <b>Enter</b> para buscar em todo o Google.</div>';
+                    return;
+                }
+
+                let html = '';
+                suggestions.forEach(item => {
+                    const text = item.text ? item.text.text : '';
+                    const main = item.structuredFormat?.mainText?.text || text;
+                    const sub = item.structuredFormat?.secondaryText?.text || '';
+                    html += `
+                        <div class="google-places-item" onclick="window.selecionarLocalGoogleMapa('${item.placeId}', '${encodeURIComponent(main)}')">
+                            <i class="fas fa-map-marker-alt place-icon"></i>
+                            <div>
+                                <div class="place-title">${main}</div>
+                                <div class="place-sub">${sub}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                html += '<div class="google-powered-badge"><i class="fab fa-google me-1"></i> Powered by Google</div>';
+                dropdown.innerHTML = html;
+            }, 250);
+        };
+
+        input.onkeydown = async (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const query = input.value.trim();
+                if (!query) return;
+                dropdown.style.display = 'none';
+                const places = await buscarTextoDiretoGoogle(query);
+                if (places && places.length > 0) {
+                    const p = places[0];
+                    if (p.location) {
+                        const lat = p.location.latitude;
+                        const lng = p.location.longitude;
+                        const title = p.displayName?.text || query;
+                        window.focarCoordenadaComDestaque(lat, lng, title);
+                    }
+                }
+            }
+        };
+
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('#wrapper-busca-google')) {
+                dropdown.style.display = 'none';
+            }
+        });
+    }
+
+    window.limparBuscaGoogleMapa = function () {
+        const input = document.getElementById('input-busca-google-mapa');
+        const dropdown = document.getElementById('dropdown-busca-google');
+        const btnClear = document.getElementById('btn-limpar-busca-google');
+        if (input) input.value = '';
+        if (dropdown) { dropdown.style.display = 'none'; dropdown.innerHTML = ''; }
+        if (btnClear) btnClear.style.display = 'none';
+        if (markerHighlightBusca && mapaAoVivo) {
+            mapaAoVivo.removeLayer(markerHighlightBusca);
+            markerHighlightBusca = null;
+        }
+    };
+
+    window.selecionarLocalGoogleMapa = async function (placeId, mainEncoded) {
+        const dropdown = document.getElementById('dropdown-busca-google');
+        if (dropdown) dropdown.style.display = 'none';
+
+        const details = await obterDetalhesPlaceId(placeId);
+        if (!details || !details.location) {
+            alert("Não foi possível obter as coordenadas deste local.");
+            return;
+        }
+
+        const lat = details.location.latitude;
+        const lng = details.location.longitude;
+        const nome = details.displayName?.text || decodeURIComponent(mainEncoded);
+        window.focarCoordenadaComDestaque(lat, lng, nome);
+    };
+
+    window.focarCoordenadaComDestaque = function (lat, lng, titulo) {
+        if (!mapaAoVivo) return;
+        const latlng = [Number(lat), Number(lng)];
+        mapaAoVivo.flyTo(latlng, 19, { duration: 1.2 });
+
+        if (markerHighlightBusca) {
+            mapaAoVivo.removeLayer(markerHighlightBusca);
+        }
+
+        const icon = L.divIcon({
+            className: 'custom-pin-highlight',
+            html: `<div style="background: #ea4335; color: white; width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 16px; border: 3px solid white; box-shadow: 0 4px 14px rgba(234,67,53,0.7);"><i class="fas fa-location-dot"></i></div>`,
+            iconSize: [34, 34],
+            iconAnchor: [17, 34]
+        });
+
+        markerHighlightBusca = L.marker(latlng, { icon })
+            .bindPopup(`<b>${titulo}</b><br><small class="text-muted">Lat: ${Number(lat).toFixed(6)}, Lng: ${Number(lng).toFixed(6)}</small>`)
+            .addTo(mapaAoVivo);
+
+        setTimeout(() => {
+            if (markerHighlightBusca) markerHighlightBusca.openPopup();
+        }, 1200);
+    };
+
+    // Google Places Search no Modal Config Mapa
+    window.pesquisarEnderecoEmpresaGoogle = async function () {
+        const input = document.getElementById('config-google-search');
+        const dropdown = document.getElementById('config-google-search-results');
+        if (!input || !dropdown) return;
+
+        const val = input.value.trim();
+        if (!val) {
+            alert("Digite o nome da empresa ou o endereço para buscar.");
+            return;
+        }
+
+        dropdown.innerHTML = '<div class="p-2 text-center text-muted small"><i class="fas fa-spinner fa-spin me-1"></i> Buscando no Google Places...</div>';
+        dropdown.style.display = 'block';
+
+        const places = await buscarTextoDiretoGoogle(val);
+        if (places.length === 0) {
+            dropdown.innerHTML = '<div class="p-2 text-center text-muted small">Nenhum resultado encontrado no Google Places.</div>';
+            return;
+        }
+
+        let html = '';
+        places.forEach(p => {
+            const nome = p.displayName?.text || '';
+            const addr = p.formattedAddress || '';
+            const lat = p.location?.latitude || 0;
+            const lng = p.location?.longitude || 0;
+            html += `
+                <div class="google-places-item" onclick="window.aplicarEnderecoEmpresaSelecionado('${encodeURIComponent(nome)}', ${lat}, ${lng})">
+                    <i class="fas fa-building place-icon text-primary"></i>
+                    <div>
+                        <div class="place-title">${nome}</div>
+                        <div class="place-sub">${addr}</div>
+                    </div>
+                </div>
+            `;
+        });
+        dropdown.innerHTML = html;
+    };
+
+    window.aplicarEnderecoEmpresaSelecionado = function (nomeEnc, lat, lng) {
+        const nome = decodeURIComponent(nomeEnc);
+        document.getElementById('config-unidade-nome').value = nome;
+        document.getElementById('config-unidade-lat').value = Number(lat).toFixed(6);
+        document.getElementById('config-unidade-lng').value = Number(lng).toFixed(6);
+        document.getElementById('config-google-search-results').style.display = 'none';
+        alert(`Localização selecionada com sucesso!\n${nome}\nCoordenadas: ${Number(lat).toFixed(6)}, ${Number(lng).toFixed(6)}`);
+    };
+
+    // Google Places Search no Modal Ponto de Controle
+    window.pesquisarLocalPontoGoogle = async function () {
+        const input = document.getElementById('ponto-google-search');
+        const dropdown = document.getElementById('ponto-google-search-results');
+        if (!input || !dropdown) return;
+
+        const val = input.value.trim();
+        if (!val) return;
+
+        dropdown.innerHTML = '<div class="p-2 text-center text-muted small"><i class="fas fa-spinner fa-spin me-1"></i> Buscando no Google...</div>';
+        dropdown.style.display = 'block';
+
+        const places = await buscarTextoDiretoGoogle(val);
+        if (places.length === 0) {
+            dropdown.innerHTML = '<div class="p-2 text-center text-muted small">Nenhum local encontrado.</div>';
+            return;
+        }
+
+        let html = '';
+        places.forEach(p => {
+            const nome = p.displayName?.text || '';
+            const addr = p.formattedAddress || '';
+            const lat = p.location?.latitude || 0;
+            const lng = p.location?.longitude || 0;
+            html += `
+                <div class="google-places-item" onclick="window.aplicarLocalPontoSelecionado(${lat}, ${lng}, '${encodeURIComponent(nome)}')">
+                    <i class="fas fa-map-pin place-icon text-danger"></i>
+                    <div>
+                        <div class="place-title">${nome}</div>
+                        <div class="place-sub">${addr}</div>
+                    </div>
+                </div>
+            `;
+        });
+        dropdown.innerHTML = html;
+    };
+
+    window.aplicarLocalPontoSelecionado = function (lat, lng, nomeEnc) {
+        document.getElementById('ponto-lat').value = Number(lat).toFixed(6);
+        document.getElementById('ponto-lng').value = Number(lng).toFixed(6);
+        document.getElementById('ponto-google-search-results').style.display = 'none';
+
+        if (mapaSeletorPonto && markerSeletorPonto) {
+            const latlng = L.latLng(lat, lng);
+            markerSeletorPonto.setLatLng(latlng);
+            if (circuloSeletorRaio) circuloSeletorRaio.setLatLng(latlng);
+            mapaSeletorPonto.setView(latlng, 19);
+        }
+    };
+
+    // ==============================================
+    // CONFIGURAÇÃO DO MAPA & SATÉLITE DA EMPRESA
+    // ==============================================
+
     window.abrirModalConfigMapa = function () {
         document.getElementById('config-unidade-nome').value = configuracaoEmpresa.nomeUnidade || '';
-        document.getElementById('config-unidade-lat').value = configuracaoEmpresa.centroLat || -27.0543;
-        document.getElementById('config-unidade-lng').value = configuracaoEmpresa.centroLng || -48.9832;
+        document.getElementById('config-unidade-lat').value = configuracaoEmpresa.centroLat || -25.194009;
+        document.getElementById('config-unidade-lng').value = configuracaoEmpresa.centroLng || -50.598688;
         document.getElementById('config-unidade-zoom').value = configuracaoEmpresa.zoomInicial || 17;
-        document.getElementById('config-unidade-provedor').value = configuracaoEmpresa.provedorPadrao || 'ESRI_SATELLITE';
-        document.getElementById('config-google-api-key').value = configuracaoEmpresa.googleMapsApiKey || '';
+        document.getElementById('config-unidade-provedor').value = configuracaoEmpresa.provedorPadrao || 'GOOGLE_HYBRID';
+        document.getElementById('config-google-api-key').value = configuracaoEmpresa.googleMapsApiKey || GOOGLE_API_KEY_DEFAULT;
 
         const modalEl = document.getElementById('modalConfigMapa');
         const modal = new bootstrap.Modal(modalEl);
@@ -604,7 +967,7 @@
             centroLng: lng,
             zoomInicial: zoom,
             provedorPadrao: provedor,
-            googleMapsApiKey: googleKey,
+            googleMapsApiKey: googleKey || GOOGLE_API_KEY_DEFAULT,
             atualizadoEm: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -615,8 +978,9 @@
             const modal = bootstrap.Modal.getInstance(modalEl);
             if (modal) modal.hide();
 
-            alert("Configurações do mapa salvas com sucesso!");
+            aplicarCamadaBase(provedor);
             window.centralizarMapaVigilancia();
+            alert("Configurações do mapa salvas com sucesso!");
 
         } catch (e) {
             alert(`Erro ao salvar configurações do mapa: ${e.message}`);
@@ -625,29 +989,19 @@
 
     window.centralizarMapaVigilancia = function () {
         if (!mapaAoVivo) return;
-        const lat = Number(configuracaoEmpresa.centroLat) || -27.0543;
-        const lng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const lat = Number(configuracaoEmpresa.centroLat) || -25.194009;
+        const lng = Number(configuracaoEmpresa.centroLng) || -50.598688;
         const zoom = Number(configuracaoEmpresa.zoomInicial) || 17;
         mapaAoVivo.setView([lat, lng], zoom, { animate: true });
     };
 
     window.alternarCamadaSatélite = function () {
-        if (!mapaAoVivo || !tileLayerSatelite || !tileLayerOsm) return;
-
-        if (camadaAtualSatelite) {
-            if (mapaAoVivo.hasLayer(tileLayerSatelite)) mapaAoVivo.removeLayer(tileLayerSatelite);
-            if (tileLayerHibridoLabels && mapaAoVivo.hasLayer(tileLayerHibridoLabels)) mapaAoVivo.removeLayer(tileLayerHibridoLabels);
-            tileLayerOsm.addTo(mapaAoVivo);
-            camadaAtualSatelite = false;
-            atualizarBotaoCamadaSatelite('Mapa Vetorial');
+        if (camadaAtualProvedor === 'GOOGLE_HYBRID') {
+            aplicarCamadaBase('GOOGLE_ROADMAP');
+        } else if (camadaAtualProvedor === 'GOOGLE_ROADMAP') {
+            aplicarCamadaBase('GOOGLE_SATELLITE');
         } else {
-            if (mapaAoVivo.hasLayer(tileLayerOsm)) mapaAoVivo.removeLayer(tileLayerOsm);
-            tileLayerSatelite.addTo(mapaAoVivo);
-            if (configuracaoEmpresa.provedorPadrao === 'ESRI_HYBRID' && tileLayerHibridoLabels) {
-                tileLayerHibridoLabels.addTo(mapaAoVivo);
-            }
-            camadaAtualSatelite = true;
-            atualizarBotaoCamadaSatelite('Satélite HD');
+            aplicarCamadaBase('GOOGLE_HYBRID');
         }
     };
 
@@ -1047,8 +1401,8 @@
         document.getElementById('modalPontoTitulo').innerHTML = '<i class="fas fa-map-pin me-2"></i> Novo Ponto de Controle';
         window.toggleTipoConfirmacaoPonto();
 
-        const defLat = Number(configuracaoEmpresa.centroLat) || -27.0543;
-        const defLng = Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const defLat = Number(configuracaoEmpresa.centroLat) || -25.194009;
+        const defLng = Number(configuracaoEmpresa.centroLng) || -50.598688;
         document.getElementById('ponto-lat').value = defLat.toFixed(6);
         document.getElementById('ponto-lng').value = defLng.toFixed(6);
 
@@ -1097,16 +1451,19 @@
             mapaSeletorPonto = null;
         }
 
-        const centerLat = Number(lat) || Number(configuracaoEmpresa.centroLat) || -27.0543;
-        const centerLng = Number(lng) || Number(configuracaoEmpresa.centroLng) || -48.9832;
+        const centerLat = Number(lat) || Number(configuracaoEmpresa.centroLat) || -25.194009;
+        const centerLng = Number(lng) || Number(configuracaoEmpresa.centroLng) || -50.598688;
 
         mapaSeletorPonto = L.map('mapa-seletor-ponto', {
-            attributionControl: false
+            attributionControl: false,
+            maxZoom: 21
         }).setView([centerLat, centerLng], 18);
 
-        // Satélite HD de Alta Resolução + Etiquetas
-        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaSeletorPonto);
-        L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaSeletorPonto);
+        // Satélite Google Híbrido HD (Vias e Alta Definição)
+        L.tileLayer('https://mt{s}.google.com/vt/lyrs=y&x={x}&y={y}&z={z}', {
+            maxZoom: 21,
+            subdomains: ['0', '1', '2', '3']
+        }).addTo(mapaSeletorPonto);
 
         // Renderiza áreas da empresa delimitadas no mapa de seleção
         if (cacheAreas && cacheAreas.length > 0) {

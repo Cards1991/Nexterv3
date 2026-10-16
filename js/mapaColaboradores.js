@@ -65,19 +65,48 @@ async function buscarCep(cep) {
     }
 }
 
-// Geocodifica o endereço usando Nominatim (OpenStreetMap)
+// Geocodifica o endereço usando Google Places API (com fallback para Nominatim)
 async function geocodificarEndereco(enderecoObj) {
     if (!enderecoObj.logradouro || !enderecoObj.cidade) {
         console.warn("Endereço incompleto para geocodificação.");
         return null;
     }
 
-    // Monta a query de busca
     const query = `${enderecoObj.logradouro}, ${enderecoObj.numero || ''}, ${enderecoObj.bairro || ''}, ${enderecoObj.cidade}, ${enderecoObj.estado || ''}`;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+    const googleKey = 'AIzaSyCLr3ogjIwFQP43lhhgr_zCoO3d1XOc9ag';
 
+    // 1. Tenta com Google Places TextSearch API (Altíssima precisão no Brasil)
+    if (googleKey) {
+        try {
+            const resp = await fetch('https://places.googleapis.com/v1/places:searchText', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Goog-Api-Key': googleKey,
+                    'X-Goog-FieldMask': 'places.location'
+                },
+                body: JSON.stringify({
+                    textQuery: query,
+                    languageCode: 'pt-BR'
+                })
+            });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.places && data.places.length > 0 && data.places[0].location) {
+                    return {
+                        lat: data.places[0].location.latitude,
+                        lng: data.places[0].location.longitude
+                    };
+                }
+            }
+        } catch (gErr) {
+            console.warn("Fallback de geocodificação para Nominatim:", gErr);
+        }
+    }
+
+    // 2. Fallback Nominatim (OpenStreetMap)
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
     try {
-        // Adiciona cabeçalho para respeitar a política de uso do Nominatim
         const response = await fetch(url, {
             headers: {
                 'Accept-Language': 'pt-BR'
