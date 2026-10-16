@@ -1,278 +1,527 @@
 <div class="container-fluid pt-4">
     <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pb-2 mb-4 border-bottom">
-        <h1 class="h2"><i class="fas fa-plug text-primary me-2"></i> Integração RHiD</h1>
-    </div>
-
-    <div class="row">
-        <!-- Card 1: Status da Conexão -->
-        <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-4 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="mb-0"><i class="fas fa-link text-secondary me-2"></i> Status da Conexão</h5>
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <div class="d-flex align-items-center mb-4">
-                        <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-light" style="width: 60px; height: 60px;">
-                            <i class="fas fa-building text-secondary fs-4" id="rhid-status-icon"></i>
-                        </div>
-                        <div>
-                            <h6 class="mb-1 text-muted">Status Atual</h6>
-                            <h5 class="mb-0 fw-bold" id="rhid-status-text">Não verificado</h5>
-                        </div>
-                    </div>
-                    
-                    <p class="text-muted small mb-4 flex-grow-1">
-                        A integração com o RHiD (Control iD) permite sincronizar funcionários e buscar a apuração de ponto processada pelo sistema.
-                    </p>
-
-                    <div class="d-flex gap-2 mt-auto">
-                        <button class="btn btn-outline-primary" id="btn-test-rhid-connection" onclick="testarConexaoRhid()">
-                            <i class="fas fa-wifi me-2"></i> TESTAR CONEXÃO
-                        </button>
-                    </div>
-
-                    <div id="rhid-connection-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
-                </div>
-            </div>
+        <div>
+            <h1 class="h2 mb-1"><i class="fas fa-plug text-primary me-2"></i> Integração RHiD (Control iD)</h1>
+            <p class="text-muted small mb-0">Gestão integrada de ponto eletrônico, apuração de colaboradores e controle de acesso de visitantes.</p>
         </div>
-
-        <!-- Card 2: Sincronização de Pessoal -->
-        <div class="col-md-6">
-            <div class="card shadow-sm border-0 mb-4 h-100">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="mb-0"><i class="fas fa-users-sync text-primary me-2"></i> Sincronizar Funcionários</h5>
-                </div>
-                <div class="card-body d-flex flex-column">
-                    <p class="text-muted small mb-4">
-                        Baixa a lista atualizada de colaboradores do painel RHiD e sincroniza com o banco de dados do Nexter.
-                        O vínculo (matching) é realizado através do CPF.
-                    </p>
-
-                    <div class="alert alert-info border-0 bg-info bg-opacity-10 py-2 mb-4">
-                        <i class="fas fa-info-circle me-2"></i>
-                        <small>Os 34 Setores oficiais serão respeitados. Caso haja divergência, o funcionário ficará sem setor temporariamente.</small>
-                    </div>
-
-                    <div class="d-flex gap-2 mt-auto">
-                        <button class="btn btn-primary" id="btn-sync-rhid-employees" onclick="sincronizarFuncionariosRhid()">
-                            <i class="fas fa-cloud-download-alt me-2"></i> SINCRONIZAR AGORA
-                        </button>
-                    </div>
-
-                    <div id="rhid-sync-progress-container" class="mt-3 d-none">
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span id="rhid-sync-status-text">Buscando dados no RHiD...</span>
-                            <span id="rhid-sync-percentage">0%</span>
-                        </div>
-                        <div class="progress" style="height: 6px;">
-                            <div id="rhid-sync-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
-                        </div>
-                    </div>
-
-                    <div id="rhid-sync-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
-                </div>
-            </div>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            <span class="badge bg-light text-dark border p-2 d-flex align-items-center">
+                <i class="fas fa-server text-success me-2"></i> RHiD Cloud v2.0
+            </span>
         </div>
     </div>
 
-    <!-- Linha 2 -->
-    <div class="row">
-        <!-- Card 3: Apuração de Ponto -->
-        <div class="col-md-12">
-            <div class="card shadow-sm border-0 mb-4">
-                <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
-                    <h5 class="mb-0"><i class="fas fa-clock text-warning me-2"></i> Importar Apuração de Ponto</h5>
-                </div>
-                <div class="card-body">
-                    <p class="text-muted small mb-4">
-                        Busca as horas processadas (Trabalhadas, Faltas, Extras, Atrasos) do sistema RHiD e atrela aos funcionários cadastrados.
-                    </p>
+    <!-- Navegação por Abas (Colaboradores vs Visitantes) -->
+    <ul class="nav nav-pills mb-4 p-2 bg-white rounded-3 shadow-sm border" id="rhidTab" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active fw-bold px-4 py-2 rounded-pill" id="tab-colaboradores-btn" data-bs-toggle="pill" data-bs-target="#tab-colaboradores" type="button" role="tab">
+                <i class="fas fa-users me-2"></i> Colaboradores & Folha
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link fw-bold px-4 py-2 rounded-pill position-relative" id="tab-visitantes-btn" data-bs-toggle="pill" data-bs-target="#tab-visitantes" type="button" role="tab">
+                <i class="fas fa-id-badge me-2 text-warning"></i> Controle & Apuração de Visitantes
+                <span class="badge bg-danger rounded-pill ms-2" id="badge-visitantes-presentes">0 no local</span>
+            </button>
+        </li>
+    </ul>
 
-                    <div class="row g-2 mb-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label small text-muted">Funcionário (Opcional)</label>
-                            <select id="rhid-apuracao-funcionario" class="form-select">
-                                <option value="">Todos os Funcionários</option>
-                            </select>
+    <div class="tab-content" id="rhidTabContent">
+        <!-- ============================================================== -->
+        <!-- ABA 1: COLABORADORES (CONTEÚDO ORIGINAL PRESERVADO E APERFEIÇOADO) -->
+        <!-- ============================================================== -->
+        <div class="tab-pane fade show active" id="tab-colaboradores" role="tabpanel">
+            <div class="row">
+                <!-- Card 1: Status da Conexão -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm border-0 mb-4 h-100">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                            <h5 class="mb-0"><i class="fas fa-link text-secondary me-2"></i> Status da Conexão</h5>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted">Data Inicial</label>
-                            <input type="date" id="rhid-apuracao-inicio" class="form-control">
+                        <div class="card-body d-flex flex-column">
+                            <div class="d-flex align-items-center mb-4">
+                                <div class="rounded-circle me-3 d-flex align-items-center justify-content-center bg-light" style="width: 60px; height: 60px;">
+                                    <i class="fas fa-building text-secondary fs-4" id="rhid-status-icon"></i>
+                                </div>
+                                <div>
+                                    <h6 class="mb-1 text-muted">Status Atual</h6>
+                                    <h5 class="mb-0 fw-bold" id="rhid-status-text">Não verificado</h5>
+                                </div>
+                            </div>
+                            
+                            <p class="text-muted small mb-4 flex-grow-1">
+                                A integração com o RHiD (Control iD) permite sincronizar funcionários e buscar a apuração de ponto processada pelo sistema.
+                            </p>
+
+                            <div class="d-flex gap-2 mt-auto">
+                                <button class="btn btn-outline-primary" id="btn-test-rhid-connection" onclick="testarConexaoRhid()">
+                                    <i class="fas fa-wifi me-2"></i> TESTAR CONEXÃO
+                                </button>
+                            </div>
+
+                            <div id="rhid-connection-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
                         </div>
-                        <div class="col-md-3">
-                            <label class="form-label small text-muted">Data Final</label>
-                            <input type="date" id="rhid-apuracao-fim" class="form-control">
+                    </div>
+                </div>
+
+                <!-- Card 2: Sincronização de Pessoal -->
+                <div class="col-md-6">
+                    <div class="card shadow-sm border-0 mb-4 h-100">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                            <h5 class="mb-0"><i class="fas fa-users-sync text-primary me-2"></i> Sincronizar Funcionários</h5>
                         </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-warning w-100" id="btn-sync-rhid-apuracao" onclick="importarApuracaoRhid()">
-                                <i class="fas fa-file-import me-1"></i> IMPORTAR
+                        <div class="card-body d-flex flex-column">
+                            <p class="text-muted small mb-4">
+                                Baixa a lista atualizada de colaboradores do painel RHiD e sincroniza com o banco de dados do Nexter.
+                                O vínculo (matching) é realizado através do CPF.
+                            </p>
+
+                            <div class="alert alert-info border-0 bg-info bg-opacity-10 py-2 mb-4">
+                                <i class="fas fa-info-circle me-2"></i>
+                                <small>Os 34 Setores oficiais serão respeitados. Caso haja divergência, o funcionário ficará sem setor temporariamente.</small>
+                            </div>
+
+                            <div class="d-flex gap-2 mt-auto">
+                                <button class="btn btn-primary" id="btn-sync-rhid-employees" onclick="sincronizarFuncionariosRhid()">
+                                    <i class="fas fa-cloud-download-alt me-2"></i> SINCRONIZAR AGORA
+                                </button>
+                            </div>
+
+                            <div id="rhid-sync-progress-container" class="mt-3 d-none">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span id="rhid-sync-status-text">Buscando dados no RHiD...</span>
+                                    <span id="rhid-sync-percentage">0%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div id="rhid-sync-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div id="rhid-sync-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Linha 2 -->
+            <div class="row">
+                <!-- Card 3: Apuração de Ponto -->
+                <div class="col-md-12">
+                    <div class="card shadow-sm border-0 mb-4">
+                        <div class="card-header bg-white border-bottom-0 pt-4 pb-0">
+                            <h5 class="mb-0"><i class="fas fa-clock text-warning me-2"></i> Importar Apuração de Ponto</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="text-muted small mb-4">
+                                Busca as horas processadas (Trabalhadas, Faltas, Extras, Atrasos) do sistema RHiD e atrela aos funcionários cadastrados.
+                            </p>
+
+                            <div class="row g-2 mb-3 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label small text-muted">Funcionário (Opcional)</label>
+                                    <select id="rhid-apuracao-funcionario" class="form-select">
+                                        <option value="">Todos os Funcionários</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Data Inicial</label>
+                                    <input type="date" id="rhid-apuracao-inicio" class="form-control">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small text-muted">Data Final</label>
+                                    <input type="date" id="rhid-apuracao-fim" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-warning w-100" id="btn-sync-rhid-apuracao" onclick="importarApuracaoRhid()">
+                                        <i class="fas fa-file-import me-1"></i> IMPORTAR
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div id="rhid-apuracao-progress-container" class="mt-3 d-none">
+                                <div class="d-flex justify-content-between small mb-1">
+                                    <span id="rhid-apuracao-status-text">Iniciando importação...</span>
+                                    <span id="rhid-apuracao-percentage">0%</span>
+                                </div>
+                                <div class="progress" style="height: 6px;">
+                                    <div id="rhid-apuracao-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%"></div>
+                                </div>
+                            </div>
+
+                            <div id="rhid-apuracao-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Seção de Processamento e Relatórios -->
+            <div class="row mt-4 mb-4">
+                <div class="col-12">
+                    <h4 class="mb-3 text-secondary border-bottom pb-2"><i class="fas fa-chart-bar me-2"></i> Processamento de Horas & Relatórios</h4>
+                </div>
+
+                <!-- Sessão de Auditoria -->
+                <div class="col-12 mb-4">
+                    <div class="card shadow border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-primary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                            <h5 class="mb-0 fw-bold"><i class="fas fa-clipboard-check me-2"></i> Auditoria e Processamento Individual</h5>
+                        </div>
+                        <div class="card-body bg-light">
+                            <p class="text-muted small mb-3">Selecione um funcionário e o período para verificar as batidas do ponto dia a dia, justificar faltas e aprovar horas extras. Essas ações refletirão diretamente no cálculo da folha de pagamento.</p>
+                            <div class="row g-3 align-items-end">
+                                <div class="col-md-4">
+                                    <label class="form-label fw-bold">Funcionário</label>
+                                    <select id="rhid-auditoria-funcionario" class="form-select">
+                                        <option value="">Carregando...</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Data Início</label>
+                                    <input type="date" id="rhid-auditoria-inicio" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label fw-bold">Data Fim</label>
+                                    <input type="date" id="rhid-auditoria-fim" class="form-control">
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-primary w-100 fw-bold" id="btn-buscar-auditoria" onclick="buscarAuditoriaPonto()">
+                                        <i class="fas fa-search me-2"></i> Buscar
+                                    </button>
+                                </div>
+                                <div class="col-md-2">
+                                    <button class="btn btn-outline-danger w-100 fw-bold" id="btn-gerar-espelho-pdf" onclick="gerarEspelhoPDF()">
+                                        <i class="fas fa-file-pdf me-2"></i> Gerar PDF
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Container de Resultados da Auditoria -->
+                <div class="col-12 mb-4 d-none" id="rhid-auditoria-container">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="table table-hover align-middle mb-0 text-center">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Data</th>
+                                            <th>Batidas</th>
+                                            <th>Hrs Trabalhadas</th>
+                                            <th>Falta/Atraso (hrs)</th>
+                                            <th>Ação p/ Falta</th>
+                                            <th>Hrs Extras (hrs)</th>
+                                            <th>Ação p/ Extras</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rhid-auditoria-tbody">
+                                        <!-- Resultados da auditoria -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Verificação Rápida de Faltas (Hoje) -->
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
+                        <div class="card-body p-4 d-flex flex-column justify-content-between">
+                            <div>
+                                <h5 class="fw-bold text-danger"><i class="fas fa-user-times me-2"></i> Faltas Diárias</h5>
+                                <p class="text-muted small">
+                                    Faz uma consulta instantânea na nuvem RHiD e retorna quem ainda não teve batidas ou tem horas zeradas na data selecionada.
+                                </p>
+                                <div class="mt-2 mb-2">
+                                    <label class="form-label small text-muted mb-1">Data da Consulta</label>
+                                    <input type="date" id="rhid-faltas-data" class="form-control form-control-sm">
+                                </div>
+                            </div>
+                            <button class="btn btn-outline-danger w-100 mt-2 rounded-pill fw-semibold shadow-sm" id="btn-verificar-faltas-hoje" onclick="verificarFaltasHoje()">
+                                <i class="fas fa-search me-2"></i> VERIFICAR FALTAS
+                            </button>
+                            <div id="rhid-faltas-hoje-container" class="mt-4 d-none">
+                                <!-- Tabela de Faltas Hoje injetada aqui -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Apuração de Horas Extras -->
+                <div class="col-md-6 mb-3">
+                    <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
+                        <div class="card-body p-4 d-flex flex-column justify-content-between">
+                            <div>
+                                <h5 class="fw-bold text-success"><i class="fas fa-business-time me-2"></i> Relatório de Horas Extras</h5>
+                                <p class="text-muted small">
+                                    Gera um ranking e a soma das horas extras de todos os funcionários baseando-se no período de apuração importado.
+                                </p>
+                                
+                                <div class="row g-2 mb-3 mt-3">
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted mb-1">Início (Filtro Local)</label>
+                                        <input type="date" id="rhid-he-inicio" class="form-control form-control-sm">
+                                    </div>
+                                    <div class="col-6">
+                                        <label class="form-label small text-muted mb-1">Fim (Filtro Local)</label>
+                                        <input type="date" id="rhid-he-fim" class="form-control form-control-sm">
+                                    </div>
+                                </div>
+                            </div>
+                            <button class="btn btn-success w-100 rounded-pill fw-semibold shadow-sm" id="btn-apurar-he" onclick="apurarHorasExtrasPeriodo()">
+                                <i class="fas fa-calculator me-2"></i> APURAR HORAS EXTRAS
+                            </button>
+                            <button class="btn btn-outline-success w-100 rounded-pill fw-semibold shadow-sm mt-2" id="btn-exportar-he" onclick="exportarHorasExtrasCSV()">
+                                <i class="fas fa-file-excel me-2"></i> EXPORTAR LISTA (EXCEL)
+                            </button>
+                            <button class="btn btn-primary w-100 rounded-pill fw-semibold shadow-sm mt-2" id="btn-enviar-folha" onclick="enviarTudoFolhaPagamento()">
+                                <i class="fas fa-paper-plane me-2"></i> ENVIAR P/ FOLHA DE PAGAMENTO
                             </button>
                         </div>
                     </div>
-
-                    <div id="rhid-apuracao-progress-container" class="mt-3 d-none">
-                        <div class="d-flex justify-content-between small mb-1">
-                            <span id="rhid-apuracao-status-text">Iniciando importação...</span>
-                            <span id="rhid-apuracao-percentage">0%</span>
+                </div>
+                
+                <!-- Container para renderizar tabela de horas extras -->
+                <div class="col-12 mt-3 d-none" id="rhid-he-container">
+                    <div class="card shadow border-0" style="border-radius: 12px;">
+                        <div class="card-header bg-success text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
+                            <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i> Resultados: Horas Extras</h5>
                         </div>
-                        <div class="progress" style="height: 6px;">
-                            <div id="rhid-apuracao-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" style="width: 0%"></div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                                <table class="table table-hover table-striped mb-0">
+                                    <thead class="table-light sticky-top">
+                                        <tr>
+                                            <th>Rank</th>
+                                            <th>Nome</th>
+                                            <th>CPF</th>
+                                            <th class="text-center">Total (Horas)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="rhid-he-tbody">
+                                        <!-- Conteúdo gerado -->
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     </div>
+                </div>
+            </div>
 
-                    <div id="rhid-apuracao-alert" class="alert mt-3 d-none mb-0" role="alert"></div>
+            <!-- Informações do Ambiente -->
+            <div class="row mt-2">
+                <div class="col-12">
+                    <div class="card shadow-sm border-0 bg-light">
+                        <div class="card-body">
+                            <h6 class="text-muted mb-3"><i class="fas fa-server me-2"></i> Configurações de Ambiente (Servidor)</h6>
+                            <p class="small text-muted mb-2">Para que a conexão funcione, as seguintes variáveis de ambiente devem estar configuradas na Vercel (ou no arquivo .env local):</p>
+                            <ul class="small text-muted mb-0" style="font-family: monospace;">
+                                <li>RHID_EMAIL</li>
+                                <li>RHID_PASSWORD</li>
+                                <li>RHID_DOMAIN (Opcional, default: crival)</li>
+                                <li>RHID_SYSTEM (Opcional, default: rhid)</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Seção de Processamento e Relatórios -->
-    <div class="row mt-4 mb-4">
-        <div class="col-12">
-            <h4 class="mb-3 text-secondary border-bottom pb-2"><i class="fas fa-chart-bar me-2"></i> Processamento de Horas & Relatórios</h4>
-        </div>
+        <!-- ============================================================== -->
+        <!-- ABA 2: CONTROLE & APURAÇÃO DE VISITANTES (NOVO MÓDULO EXPANDIDO) -->
+        <!-- ============================================================== -->
+        <div class="tab-pane fade" id="tab-visitantes" role="tabpanel">
+            <!-- Métricas dos Visitantes -->
+            <div class="row g-3 mb-4">
+                <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-primary border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small text-uppercase fw-semibold">Visitantes Cadastrados</span>
+                                <h3 class="fw-bold mb-0 text-dark" id="rhid-metric-total-visitantes">0</h3>
+                            </div>
+                            <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary">
+                                <i class="fas fa-address-card fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Nova Sessão de Auditoria -->
-        <div class="col-12 mb-4">
-            <div class="card shadow border-0" style="border-radius: 12px;">
-                <div class="card-header bg-primary text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-clipboard-check me-2"></i> Auditoria e Processamento Individual</h5>
+                <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-success border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small text-uppercase fw-semibold">No Estabelecimento Agora</span>
+                                <h3 class="fw-bold mb-0 text-success" id="rhid-metric-visitantes-presentes">0</h3>
+                            </div>
+                            <div class="rounded-circle bg-success bg-opacity-10 p-3 text-success">
+                                <i class="fas fa-walking fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-info border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small text-uppercase fw-semibold">Visitas Concluídas</span>
+                                <h3 class="fw-bold mb-0 text-info" id="rhid-metric-visitas-concluidas">0</h3>
+                            </div>
+                            <div class="rounded-circle bg-info bg-opacity-10 p-3 text-info">
+                                <i class="fas fa-door-open fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3 col-sm-6">
+                    <div class="card border-0 shadow-sm rounded-3 p-3 bg-white border-start border-warning border-4">
+                        <div class="d-flex align-items-center justify-content-between">
+                            <div>
+                                <span class="text-muted small text-uppercase fw-semibold">Visitante em Foco</span>
+                                <h6 class="fw-bold mb-0 text-dark text-truncate" style="max-width: 160px;" title="Cód: 17101991 - Charles Augusto">
+                                    Cód: 17101991
+                                </h6>
+                                <small class="text-muted" style="font-size: 0.75rem;">CPF: 081.946.399-05</small>
+                            </div>
+                            <div class="rounded-circle bg-warning bg-opacity-10 p-3 text-warning">
+                                <i class="fas fa-user-shield fs-4"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Barra de Ações & Filtros de Apuração de Visitantes -->
+            <div class="card shadow-sm border-0 mb-4 rounded-3">
+                <div class="card-header bg-white py-3 border-bottom d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-2">
+                        <span class="badge bg-primary p-2"><i class="fas fa-filter me-1"></i> Filtro de Apuração</span>
+                        <h5 class="mb-0 fw-bold text-dark">Consultar Batidas & Presença de Visitantes</h5>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold" onclick="definirDataFiltroVisitante('hoje')">
+                            <i class="fas fa-calendar-day me-1"></i> Hoje
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold" onclick="definirDataFiltroVisitante('ontem')">
+                            <i class="fas fa-history me-1"></i> Ontem
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill fw-semibold" onclick="definirDataFiltroVisitante('7dias')">
+                            <i class="fas fa-calendar-week me-1"></i> 7 Dias
+                        </button>
+                    </div>
                 </div>
                 <div class="card-body bg-light">
-                    <p class="text-muted small mb-3">Selecione um funcionário e o período para verificar as batidas do ponto dia a dia, justificar faltas e aprovar horas extras. Essas ações refletirão diretamente no cálculo da folha de pagamento.</p>
                     <div class="row g-3 align-items-end">
-                        <div class="col-md-4">
-                            <label class="form-label fw-bold">Funcionário</label>
-                            <select id="rhid-auditoria-funcionario" class="form-select">
-                                <option value="">Carregando...</option>
+                        <div class="col-md-4 col-sm-12">
+                            <label class="form-label small fw-bold text-secondary mb-1">
+                                <i class="fas fa-user-check me-1"></i> Selecionar Visitante
+                            </label>
+                            <select id="rhid-filtro-visitante" class="form-select border-0 shadow-sm">
+                                <option value="">Todos os Visitantes Cadastrados</option>
                             </select>
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Data Início</label>
-                            <input type="date" id="rhid-auditoria-inicio" class="form-control">
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small fw-bold text-secondary mb-1">
+                                <i class="fas fa-calendar-alt me-1"></i> Data Início
+                            </label>
+                            <input type="date" id="rhid-visitantes-dt-inicio" class="form-control border-0 shadow-sm">
                         </div>
-                        <div class="col-md-2">
-                            <label class="form-label fw-bold">Data Fim</label>
-                            <input type="date" id="rhid-auditoria-fim" class="form-control">
+                        <div class="col-md-2 col-sm-6">
+                            <label class="form-label small fw-bold text-secondary mb-1">
+                                <i class="fas fa-calendar-alt me-1"></i> Data Fim
+                            </label>
+                            <input type="date" id="rhid-visitantes-dt-fim" class="form-control border-0 shadow-sm">
                         </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-primary w-100 fw-bold" id="btn-buscar-auditoria" onclick="buscarAuditoriaPonto()">
-                                <i class="fas fa-search me-2"></i> Buscar
+                        <div class="col-md-4 col-sm-12 d-flex gap-2">
+                            <button class="btn btn-primary fw-bold flex-grow-1 shadow-sm rounded-3" id="btn-apurar-visitantes" onclick="apurarVisitantesRhid(true)">
+                                <i class="fas fa-bolt me-1"></i> APURAR NO RHID
                             </button>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-outline-danger w-100 fw-bold" id="btn-gerar-espelho-pdf" onclick="gerarEspelhoPDF()">
-                                <i class="fas fa-file-pdf me-2"></i> Gerar PDF
+                            <button class="btn btn-outline-success fw-bold shadow-sm rounded-3" onclick="exportarRelatorioVisitantesCSV()" title="Exportar para Excel / CSV">
+                                <i class="fas fa-file-excel"></i>
+                            </button>
+                            <button class="btn btn-success fw-bold shadow-sm rounded-3" onclick="abrirModalNovoVisitante()" title="Cadastrar ou Vincular Visitante">
+                                <i class="fas fa-user-plus me-1"></i> NOVO
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Container de Resultados da Auditoria -->
-        <div class="col-12 mb-4 d-none" id="rhid-auditoria-container">
-            <div class="card shadow-sm border-0">
+
+            <!-- Card de Apuração de Ponto / Batidas dos Visitantes -->
+            <div class="card shadow border-0 mb-4 rounded-3">
+                <div class="card-header bg-dark text-white py-3 border-0 d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0 fw-bold">
+                        <i class="fas fa-list-check me-2 text-warning"></i> Registros de Entrada, Saída e Permanência
+                    </h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-light rounded-pill" onclick="sincronizarTodosVisitantesRhid()">
+                            <i class="fas fa-sync-alt me-1"></i> Sincronizar Nuvem RHiD
+                        </button>
+                    </div>
+                </div>
+
                 <div class="card-body p-0">
                     <div class="table-responsive">
                         <table class="table table-hover align-middle mb-0 text-center">
                             <thead class="table-light">
                                 <tr>
+                                    <th>Código / Crachá</th>
+                                    <th class="text-start">Visitante</th>
+                                    <th>CPF</th>
                                     <th>Data</th>
-                                    <th>Batidas</th>
-                                    <th>Hrs Trabalhadas</th>
-                                    <th>Falta/Atraso (hrs)</th>
-                                    <th>Ação p/ Falta</th>
-                                    <th>Hrs Extras (hrs)</th>
-                                    <th>Ação p/ Extras</th>
+                                    <th>Entrada (1ª Batida)</th>
+                                    <th>Saída (Última)</th>
+                                    <th>Permanência</th>
+                                    <th>Status no Local</th>
+                                    <th>Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="rhid-auditoria-tbody">
-                                <!-- Resultados da auditoria -->
+                            <tbody id="rhid-visitantes-apuracao-tbody">
+                                <tr>
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <div class="spinner-border spinner-border-sm text-primary me-2"></div>
+                                        Carregando apuração dos visitantes...
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- Verificação Rápida de Faltas (Hoje) -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
-                <div class="card-body p-4 d-flex flex-column justify-content-between">
+            <!-- Card Secundário: Gestão do Cadastro de Visitantes -->
+            <div class="card shadow-sm border-0 mb-4 rounded-3">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="fw-bold text-danger"><i class="fas fa-user-times me-2"></i> Faltas Diárias</h5>
-                        <p class="text-muted small">
-                            Faz uma consulta instantânea na nuvem RHiD e retorna quem ainda não teve batidas ou tem horas zeradas na data selecionada.
-                        </p>
-                        <div class="mt-2 mb-2">
-                            <label class="form-label small text-muted mb-1">Data da Consulta</label>
-                            <input type="date" id="rhid-faltas-data" class="form-control form-control-sm">
-                        </div>
+                        <h5 class="mb-0 fw-bold text-dark"><i class="fas fa-address-book text-primary me-2"></i> Base de Visitantes Cadastrados</h5>
+                        <small class="text-muted">Relação de crachás, códigos RHiD e documentos vinculados para controle de portaria/acesso.</small>
                     </div>
-                    <button class="btn btn-outline-danger w-100 mt-2 rounded-pill fw-semibold shadow-sm" id="btn-verificar-faltas-hoje" onclick="verificarFaltasHoje()">
-                        <i class="fas fa-search me-2"></i> VERIFICAR FALTAS
+                    <button class="btn btn-outline-primary btn-sm rounded-pill fw-semibold" onclick="abrirModalNovoVisitante()">
+                        <i class="fas fa-plus me-1"></i> Adicionar Visitante
                     </button>
-                    <div id="rhid-faltas-hoje-container" class="mt-4 d-none">
-                        <!-- Tabela de Faltas Hoje injetada aqui -->
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Apuração de Horas Extras -->
-        <div class="col-md-6 mb-3">
-            <div class="card shadow-sm border-0 h-100" style="border-radius: 12px; transition: transform 0.2s;">
-                <div class="card-body p-4 d-flex flex-column justify-content-between">
-                    <div>
-                        <h5 class="fw-bold text-success"><i class="fas fa-business-time me-2"></i> Relatório de Horas Extras</h5>
-                        <p class="text-muted small">
-                            Gera um ranking e a soma das horas extras de todos os funcionários baseando-se no período de apuração importado.
-                        </p>
-                        
-                        <div class="row g-2 mb-3 mt-3">
-                            <div class="col-6">
-                                <label class="form-label small text-muted mb-1">Início (Filtro Local)</label>
-                                <input type="date" id="rhid-he-inicio" class="form-control form-control-sm">
-                            </div>
-                            <div class="col-6">
-                                <label class="form-label small text-muted mb-1">Fim (Filtro Local)</label>
-                                <input type="date" id="rhid-he-fim" class="form-control form-control-sm">
-                            </div>
-                        </div>
-                    </div>
-                    <button class="btn btn-success w-100 rounded-pill fw-semibold shadow-sm" id="btn-apurar-he" onclick="apurarHorasExtrasPeriodo()">
-                        <i class="fas fa-calculator me-2"></i> APURAR HORAS EXTRAS
-                    </button>
-                    <button class="btn btn-outline-success w-100 rounded-pill fw-semibold shadow-sm mt-2" id="btn-exportar-he" onclick="exportarHorasExtrasCSV()">
-                        <i class="fas fa-file-excel me-2"></i> EXPORTAR LISTA (EXCEL)
-                    </button>
-                    <button class="btn btn-primary w-100 rounded-pill fw-semibold shadow-sm mt-2" id="btn-enviar-folha" onclick="enviarTudoFolhaPagamento()">
-                        <i class="fas fa-paper-plane me-2"></i> ENVIAR P/ FOLHA DE PAGAMENTO
-                    </button>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Container para renderizar tabela de horas extras -->
-        <div class="col-12 mt-3 d-none" id="rhid-he-container">
-            <div class="card shadow border-0" style="border-radius: 12px;">
-                <div class="card-header bg-success text-white py-3 border-0 d-flex justify-content-between align-items-center" style="border-radius: 12px 12px 0 0;">
-                    <h5 class="mb-0 fw-bold"><i class="fas fa-list me-2"></i> Resultados: Horas Extras</h5>
                 </div>
                 <div class="card-body p-0">
-                    <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
-                        <table class="table table-hover table-striped mb-0">
-                            <thead class="table-light sticky-top">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle mb-0">
+                            <thead class="table-light">
                                 <tr>
-                                    <th>Rank</th>
-                                    <th>Nome</th>
+                                    <th class="text-center">Código Crachá</th>
+                                    <th>Nome Completo</th>
                                     <th>CPF</th>
-                                    <th class="text-center">Total (Horas)</th>
+                                    <th>ID RHiD</th>
+                                    <th>Empresa / Finalidade</th>
+                                    <th>Setor / Responsável</th>
+                                    <th class="text-center">Status</th>
+                                    <th class="text-center">Ações</th>
                                 </tr>
                             </thead>
-                            <tbody id="rhid-he-tbody">
-                                <!-- Conteúdo gerado -->
+                            <tbody id="rhid-visitantes-cadastrados-tbody">
+                                <tr>
+                                    <td colspan="8" class="text-center py-4 text-muted">Carregando lista de visitantes...</td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -280,21 +529,130 @@
             </div>
         </div>
     </div>
+</div>
 
-    <!-- Informações do Ambiente -->
-    <div class="row mt-2">
-        <div class="col-12">
-            <div class="card shadow-sm border-0 bg-light">
-                <div class="card-body">
-                    <h6 class="text-muted mb-3"><i class="fas fa-server me-2"></i> Configurações de Ambiente (Servidor)</h6>
-                    <p class="small text-muted mb-2">Para que a conexão funcione, as seguintes variáveis de ambiente devem estar configuradas na Vercel (ou no arquivo .env local):</p>
-                    <ul class="small text-muted mb-0" style="font-family: monospace;">
-                        <li>RHID_EMAIL</li>
-                        <li>RHID_PASSWORD</li>
-                        <li>RHID_DOMAIN (Opcional, default: crival)</li>
-                        <li>RHID_SYSTEM (Opcional, default: rhid)</li>
-                    </ul>
+<!-- ============================================================== -->
+<!-- MODAL: CADASTRAR / VINCULAR VISITANTE NOVO -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-novo-visitante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold" id="modal-visitante-titulo">
+                    <i class="fas fa-user-plus me-2"></i> Cadastrar / Vincular Visitante
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="visitante-form-doc-id">
+                
+                <div class="alert alert-info border-0 shadow-sm d-flex align-items-center mb-3 py-2">
+                    <i class="fas fa-info-circle fs-4 me-3 text-info"></i>
+                    <div class="small">
+                        Você pode informar o <strong>Código do RHiD</strong> (ex: <code>17101991</code>) ou o <strong>CPF</strong> e clicar em <em>"Buscar no RHiD"</em> para preencher automaticamente os dados cadastrados na nuvem Control iD!
+                    </div>
                 </div>
+
+                <div class="row g-3">
+                    <div class="col-md-5">
+                        <label class="form-label fw-bold small text-secondary">Código no RHiD (Matrícula/Crachá) *</label>
+                        <div class="input-group">
+                            <input type="text" id="visitante-form-codigo" class="form-control" placeholder="Ex: 17101991" required>
+                            <button class="btn btn-outline-primary" type="button" onclick="buscarVisitanteNaApiRhid()" title="Buscar na API do RHiD">
+                                <i class="fas fa-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold small text-secondary">CPF do Visitante *</label>
+                        <input type="text" id="visitante-form-cpf" class="form-control" placeholder="000.000.000-00" required>
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">ID RHiD (Person ID)</label>
+                        <input type="text" id="visitante-form-rhid-id" class="form-control bg-white" placeholder="Ex: 1333">
+                    </div>
+
+                    <div class="col-md-12">
+                        <label class="form-label fw-bold small text-secondary">Nome Completo do Visitante *</label>
+                        <input type="text" id="visitante-form-nome" class="form-control" placeholder="Nome completo" required>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">Empresa de Origem / Órgão</label>
+                        <input type="text" id="visitante-form-empresa" class="form-control" placeholder="Ex: Visitante Externo, Fornecedor X...">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">Setor / Pessoa Visitada</label>
+                        <input type="text" id="visitante-form-setor" class="form-control" placeholder="Ex: Recursos Humanos / Diretoria">
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label fw-bold small text-secondary">Motivo da Visita</label>
+                        <input type="text" id="visitante-form-motivo" class="form-control" placeholder="Ex: Reunião, Auditoria, Serviço...">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">Telefone / Celular</label>
+                        <input type="text" id="visitante-form-telefone" class="form-control" placeholder="(00) 00000-0000">
+                    </div>
+
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-secondary">Status</label>
+                        <select id="visitante-form-status" class="form-select">
+                            <option value="Ativo" selected>Ativo</option>
+                            <option value="Inativo">Inativo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="visitante-form-feedback" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" id="btn-salvar-visitante" onclick="salvarVisitanteManual()">
+                    <i class="fas fa-check me-1"></i> Salvar Visitante
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: DETALHES DE BATIDAS DO VISITANTE (TIMELINE) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-batidas-visitante" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-clock text-warning me-2"></i> Marcações de Ponto do Visitante
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary me-3">
+                            <i class="fas fa-user-tag fs-3"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0" id="modal-batidas-nome">Nome do Visitante</h6>
+                            <div class="small text-muted" id="modal-batidas-info">Código: -- | CPF: --</div>
+                            <span class="badge bg-secondary mt-1" id="modal-batidas-data">Data: --</span>
+                        </div>
+                    </div>
+                </div>
+
+                <h6 class="fw-bold text-secondary mb-3"><i class="fas fa-history me-1"></i> Linha do Tempo das Batidas no Leitor:</h6>
+                <div id="modal-batidas-timeline" class="list-group list-group-flush shadow-sm rounded-3">
+                    <!-- Batidas injetadas dinamicamente -->
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>

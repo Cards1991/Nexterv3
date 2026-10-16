@@ -846,6 +846,9 @@ async function verificarFaltasHoje() {
 // Executa o carregamento assim que a tela for aberta pelo roteador do Nexter (app.js)
 window.inicializarRhidConfig = async function() {
     await carregarFuncionariosAuditoria();
+    if (typeof inicializarModuloVisitantes === 'function') {
+        await inicializarModuloVisitantes();
+    }
 };
 
 async function carregarFuncionariosAuditoria() {
@@ -1744,4 +1747,777 @@ window.salvarLoteFaltasRhid = async function() {
         console.error(e);
         if(typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao salvar lote: ' + e.message, 'error');
     }
+}
+
+
+// ==========================================
+// FASE 6: CONTROLE & APURAÇÃO DE VISITANTES (RHID)
+// ==========================================
+
+window._visitantesApuracaoCache = new Map();
+window._visitantesCadastradosCache = [];
+
+async function inicializarModuloVisitantes() {
+    console.log("Inicializando Módulo de Visitantes do RHiD...");
+    
+    // 1. Configurar datas padrão (Hoje)
+    const dtInicioInput = document.getElementById('rhid-visitantes-dt-inicio');
+    const dtFimInput = document.getElementById('rhid-visitantes-dt-fim');
+    const hoje = new Date().toISOString().split('T')[0];
+    if (dtInicioInput && !dtInicioInput.value) dtInicioInput.value = hoje;
+    if (dtFimInput && !dtFimInput.value) dtFimInput.value = hoje;
+
+    // 2. Garantir que o visitante padrão (Código: 17101991, CPF: 081.946.399-05) está semeado no Firestore
+    try {
+        await semearVisitantePadrao();
+    } catch (e) {
+        console.warn("Aviso ao verificar visitante padrão:", e);
+    }
+
+    // 3. Carregar lista de visitantes nos selects e tabela
+    await carregarListaVisitantesCadastrados();
+
+    // 4. Executar apuração inicial dos visitantes
+    await apurarVisitantesRhid(false);
+}
+
+// Garante o cadastro do visitante solicitado pelo usuário
+async function semearVisitantePadrao() {
+    if (!window.db) return;
+    
+    const docRef = window.db.collection('visitantes').doc('vis_17101991');
+    const snap = await docRef.get();
+    
+    const dadosPadrao = {
+        codigo: '17101991',
+        cpf: '081.946.399-05',
+        cpfLimpo: '08194639905',
+        nome: 'CHARLES AUGUSTO RIBEIRO DOS SANTOS',
+        rhidPersonId: '1333',
+        empresa: 'Visitante Externo / Gestão',
+        setorVisitado: 'Recursos Humanos / Geral',
+        motivo: 'Acompanhamento & Reunião',
+        telefone: '(42) 99119-0590',
+        status: 'Ativo',
+        tipo: 'Visitante',
+        dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (!snap.exists) {
+        dadosPadrao.dataCadastro = firebase.firestore.FieldValue.serverTimestamp();
+        await docRef.set(dadosPadrao);
+        console.log("Visitante padrão 17101991 semeado no Firestore com sucesso.");
+    } else {
+        await docRef.set(dadosPadrao, { merge: true });
+    }
+}
+
+// Atalhos de datas (Hoje, Ontem, 7 Dias)
+function definirDataFiltroVisitante(tipo) {
+    const dtInicioInput = document.getElementById('rhid-visitantes-dt-inicio');
+    const dtFimInput = document.getElementById('rhid-visitantes-dt-fim');
+    if (!dtInicioInput || !dtFimInput) return;
+
+    const hoje = new Date();
+    const format = (d) => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    if (tipo === 'hoje') {
+        const hStr = format(hoje);
+        dtInicioInput.value = hStr;
+        dtFimInput.value = hStr;
+    } else if (tipo === 'ontem') {
+        const ontem = new Date(hoje);
+        ontem.setDate(hoje.getDate() - 1);
+        const oStr = format(ontem);
+        dtInicioInput.value = oStr;
+        dtFimInput.value = oStr;
+    } else if (tipo === '7dias') {
+        const seteDias = new Date(hoje);
+        seteDias.setDate(hoje.getDate() - 6);
+        dtInicioInput.value = format(seteDias);
+        dtFimInput.value = format(hoje);
+    }
+
+    apurarVisitantesRhid(true);
+}
+
+// Carrega os visitantes cadastrados no Firestore
+async function carregarListaVisitantesCadastrados() {
+    const selectFiltro = document.getElementById('rhid-filtro-visitante');
+    const tbody = document.getElementById('rhid-visitantes-cadastrados-tbody');
+    const metricTotal = document.getElementById('rhid-metric-total-visitantes');
+
+    if (!window.db) return;
+
+    try {
+        const snap = await window.db.collection('visitantes').orderBy('nome').get();
+        const visitantes = [];
+
+        let optionsHtml = '<option value="">Todos os Visitantes Cadastrados</option>';
+        let tableHtml = '';
+
+        snap.forEach(doc => {
+            const v = doc.data();
+            v.id = doc.id;
+            visitantes.push(v);
+
+            optionsHtml += `<option value="${v.id}">${v.nome} (Cód: ${v.codigo || 'S/N'})</option>`;
+
+            const statusBadge = v.status === 'Ativo' 
+                ? '<span class="badge bg-success rounded-pill px-3">Ativo</span>'
+                : '<span class="badge bg-secondary rounded-pill px-3">Inativo</span>';
+
+            tableHtml += `
+                <tr>
+                    <td class="text-center font-monospace fw-bold text-primary">
+                        <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                            <i class="fas fa-id-card me-1"></i> ${v.codigo || 'N/I'}
+                        </span>
+                    </td>
+                    <td class="fw-semibold text-dark">${v.nome}</td>
+                    <td class="font-monospace text-muted small">${v.cpf || 'N/I'}</td>
+                    <td class="font-monospace small text-muted text-center">${v.rhidPersonId || '--'}</td>
+                    <td class="small text-muted">${v.empresa || v.motivo || 'Visitante Geral'}</td>
+                    <td class="small text-muted">${v.setorVisitado || 'Geral'}</td>
+                    <td class="text-center">${statusBadge}</td>
+                    <td class="text-center">
+                        <div class="btn-group btn-group-sm">
+                            <button class="btn btn-outline-primary" onclick="abrirModalNovoVisitante('${v.id}')" title="Editar Visitante">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-outline-danger" onclick="excluirVisitante('${v.id}', '${v.nome.replace(/'/g, "\\'")}')" title="Excluir">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        });
+
+        window._visitantesCadastradosCache = visitantes;
+
+        if (selectFiltro) selectFiltro.innerHTML = optionsHtml;
+        if (tbody) tbody.innerHTML = tableHtml || '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhum visitante cadastrado no momento.</td></tr>';
+        if (metricTotal) metricTotal.textContent = visitantes.length;
+
+    } catch (e) {
+        console.error("Erro ao carregar lista de visitantes:", e);
+    }
+}
+
+// Apuração do Ponto / Batidas dos Visitantes via API RHiD
+async function apurarVisitantesRhid(isManualClick = true) {
+    const btn = document.getElementById('btn-apurar-visitantes');
+    const tbody = document.getElementById('rhid-visitantes-apuracao-tbody');
+    const metricPresentes = document.getElementById('rhid-metric-visitantes-presentes');
+    const badgePresentes = document.getElementById('badge-visitantes-presentes');
+    const metricConcluidas = document.getElementById('rhid-metric-visitas-concluidas');
+
+    const dtInicioInput = document.getElementById('rhid-visitantes-dt-inicio');
+    const dtFimInput = document.getElementById('rhid-visitantes-dt-fim');
+    const filtroVisitanteSelect = document.getElementById('rhid-filtro-visitante');
+
+    const dtInicio = dtInicioInput ? dtInicioInput.value : '';
+    const dtFim = dtFimInput ? dtFimInput.value : '';
+    const selectedVisId = filtroVisitanteSelect ? filtroVisitanteSelect.value : '';
+
+    if (!dtInicio || !dtFim) {
+        if (isManualClick && typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Selecione a data inicial e final para apuração.', 'warning');
+        }
+        return;
+    }
+
+    if (btn && isManualClick) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Consultando RHiD...';
+    }
+
+    if (tbody) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" class="text-center py-5 text-muted">
+                    <span class="spinner-border spinner-border-sm text-primary me-2"></span>
+                    Comunicando com a nuvem RHiD e consultando batidas dos visitantes...
+                </td>
+            </tr>
+        `;
+    }
+
+    try {
+        let visitantesAlvos = window._visitantesCadastradosCache || [];
+        if (visitantesAlvos.length === 0 && window.db) {
+            const snap = await window.db.collection('visitantes').get();
+            visitantesAlvos = [];
+            snap.forEach(d => {
+                const data = d.data();
+                data.id = d.id;
+                visitantesAlvos.push(data);
+            });
+            window._visitantesCadastradosCache = visitantesAlvos;
+        }
+
+        if (selectedVisId) {
+            visitantesAlvos = visitantesAlvos.filter(v => v.id === selectedVisId);
+        }
+
+        if (visitantesAlvos.length === 0) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhum visitante cadastrado para apuração.</td></tr>';
+            return;
+        }
+
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        for (const v of visitantesAlvos) {
+            if (!v.rhidPersonId && (v.codigo || v.cpf)) {
+                try {
+                    const findRes = await fetch(`${apiBaseUrl}/rhid`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ action: 'findPerson', query: v.codigo || v.cpf })
+                    });
+                    const findData = await findRes.json();
+                    if (findData.success && findData.data && findData.data.length > 0) {
+                        v.rhidPersonId = String(findData.data[0].id);
+                        if (window.db) {
+                            await window.db.collection('visitantes').doc(v.id).update({ rhidPersonId: v.rhidPersonId });
+                        }
+                    }
+                } catch (fe) {
+                    console.warn(`Não foi possível autovincular ID para ${v.nome}:`, fe);
+                }
+            }
+        }
+
+        const idPersons = visitantesAlvos
+            .map(v => v.rhidPersonId)
+            .filter(id => id && String(id).trim().length > 0);
+
+        if (idPersons.length === 0) {
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-warning">Nenhum dos visitantes possui ID de integração com o RHiD vinculado. Clique em "Editar" para vincular o ID.</td></tr>';
+            return;
+        }
+
+        const response = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'syncApuration',
+                startDate: dtInicio,
+                endDate: dtFim,
+                idPersons: idPersons
+            })
+        });
+
+        const resData = await response.json();
+        if (!response.ok || !resData.success) {
+            throw new Error(resData.message || resData.details || 'Falha ao buscar apuração no RHiD.');
+        }
+
+        const apuracaoList = resData.data || [];
+        const visMapByRhidId = new Map();
+        visitantesAlvos.forEach(v => {
+            if (v.rhidPersonId) visMapByRhidId.set(String(v.rhidPersonId), v);
+        });
+
+        let totalPresentesAgora = 0;
+        let totalVisitasConcluidas = 0;
+        let linhasHtml = '';
+
+        window._visitantesApuracaoCache.clear();
+        apuracaoList.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+        apuracaoList.forEach(item => {
+            const vis = visMapByRhidId.get(String(item.idPerson));
+            if (!vis) return;
+
+            const dateStr = item.date ? item.date.split('T')[0] : (item.dateTimeStr || '');
+            const batidas = Array.isArray(item.listAfdtManutencao) ? item.listAfdtManutencao : [];
+            
+            batidas.sort((a, b) => (a.hora || '').localeCompare(b.hora || ''));
+
+            let primeiraHora = '--:--';
+            let ultimaHora = '--:--';
+            let statusBadge = '<span class="badge bg-light text-muted border px-2 py-1"><i class="fas fa-minus-circle me-1"></i> Sem Registro</span>';
+            let permanenciaFormatada = '--:--';
+
+            const cacheKey = `${vis.codigo || vis.id}_${dateStr}`;
+            window._visitantesApuracaoCache.set(cacheKey, {
+                visitante: vis,
+                data: dateStr,
+                batidas: batidas,
+                raw: item
+            });
+
+            if (batidas.length > 0) {
+                const rawPrimeira = batidas[0].hora;
+                if (rawPrimeira) {
+                    const parts = rawPrimeira.split('T');
+                    primeiraHora = (parts[1] || parts[0]).substring(0, 5);
+                }
+
+                if (batidas.length >= 2) {
+                    const rawUltima = batidas[batidas.length - 1].hora;
+                    if (rawUltima) {
+                        const parts = rawUltima.split('T');
+                        ultimaHora = (parts[1] || parts[0]).substring(0, 5);
+                    }
+                }
+
+                if (item.totalHorasTrabalhadas && item.totalHorasTrabalhadas > 0) {
+                    const h = Math.floor(item.totalHorasTrabalhadas / 60);
+                    const m = item.totalHorasTrabalhadas % 60;
+                    permanenciaFormatada = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+                } else if (batidas.length >= 2) {
+                    try {
+                        const t1 = new Date(batidas[0].hora).getTime();
+                        const t2 = new Date(batidas[batidas.length - 1].hora).getTime();
+                        const diffMins = Math.max(0, Math.floor((t2 - t1) / 60000));
+                        const h = Math.floor(diffMins / 60);
+                        const m = diffMins % 60;
+                        permanenciaFormatada = `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
+                    } catch (te) {}
+                }
+
+                if (batidas.length % 2 !== 0) {
+                    totalPresentesAgora++;
+                    statusBadge = '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i class="fas fa-circle text-success me-1"></i> No Estabelecimento</span>';
+                } else {
+                    totalVisitasConcluidas++;
+                    statusBadge = '<span class="badge bg-info bg-opacity-10 text-info border border-info border-opacity-25 px-2 py-1"><i class="fas fa-check-circle text-info me-1"></i> Visita Concluída</span>';
+                }
+            }
+
+            let dataFormatada = dateStr;
+            if (dateStr && dateStr.includes('-')) {
+                const dp = dateStr.split('-');
+                dataFormatada = `${dp[2]}/${dp[1]}/${dp[0]}`;
+            }
+
+            linhasHtml += `
+                <tr>
+                    <td class="text-center font-monospace">
+                        <span class="badge bg-dark px-2 py-1 shadow-sm">
+                            <i class="fas fa-id-badge text-warning me-1"></i> ${vis.codigo || '--'}
+                        </span>
+                    </td>
+                    <td class="text-start">
+                        <div class="fw-bold text-dark">${vis.nome}</div>
+                        <small class="text-muted">${vis.empresa || vis.motivo || 'Visitante'}</small>
+                    </td>
+                    <td class="font-monospace small text-muted">${vis.cpf || '--'}</td>
+                    <td class="fw-semibold text-secondary">${dataFormatada}</td>
+                    <td class="fw-bold ${primeiraHora !== '--:--' ? 'text-success' : 'text-muted'}">${primeiraHora}</td>
+                    <td class="fw-bold ${ultimaHora !== '--:--' ? 'text-primary' : 'text-muted'}">${ultimaHora}</td>
+                    <td class="font-monospace fw-bold text-dark">${permanenciaFormatada}</td>
+                    <td>${statusBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-dark rounded-pill px-2 py-0 fw-semibold" onclick="verDetalhesBatidasVisitante('${cacheKey}')" title="Ver marcações detalhadas">
+                            <i class="fas fa-clock me-1"></i> Batidas (${batidas.length})
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        if (tbody) {
+            tbody.innerHTML = linhasHtml || '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhum registro de apuração retornado pelo RHiD no período selecionado.</td></tr>';
+        }
+
+        if (metricPresentes) metricPresentes.textContent = totalPresentesAgora;
+        if (badgePresentes) badgePresentes.textContent = `${totalPresentesAgora} no local`;
+        if (metricConcluidas) metricConcluidas.textContent = totalVisitasConcluidas;
+
+        if (isManualClick && typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Apuração de visitantes concluída com sucesso! ${apuracaoList.length} registros processados.`, 'success');
+        }
+
+    } catch (err) {
+        console.error("Erro na apuração de visitantes:", err);
+        if (tbody) {
+            tbody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-danger"><strong>Falha na Apuração:</strong> ${err.message}</td></tr>`;
+        }
+        if (isManualClick && typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Erro ao apurar visitantes: ' + err.message, 'error');
+        }
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-bolt me-1"></i> APURAR NO RHID';
+        }
+    }
+}
+
+// Modal: Abre formulário de novo visitante ou edição
+function abrirModalNovoVisitante(docId = null) {
+    const modalEl = document.getElementById('modal-rhid-novo-visitante');
+    if (!modalEl) return;
+
+    const titulo = document.getElementById('modal-visitante-titulo');
+    const inputDocId = document.getElementById('visitante-form-doc-id');
+    const inputCodigo = document.getElementById('visitante-form-codigo');
+    const inputCpf = document.getElementById('visitante-form-cpf');
+    const inputRhidId = document.getElementById('visitante-form-rhid-id');
+    const inputNome = document.getElementById('visitante-form-nome');
+    const inputEmpresa = document.getElementById('visitante-form-empresa');
+    const inputSetor = document.getElementById('visitante-form-setor');
+    const inputMotivo = document.getElementById('visitante-form-motivo');
+    const inputTelefone = document.getElementById('visitante-form-telefone');
+    const inputStatus = document.getElementById('visitante-form-status');
+    const feedback = document.getElementById('visitante-form-feedback');
+
+    if (feedback) feedback.classList.add('d-none');
+
+    if (docId) {
+        const vis = (window._visitantesCadastradosCache || []).find(v => v.id === docId);
+        if (vis) {
+            titulo.innerHTML = '<i class="fas fa-user-edit me-2"></i> Editar Visitante';
+            inputDocId.value = vis.id;
+            inputCodigo.value = vis.codigo || '';
+            inputCpf.value = vis.cpf || '';
+            inputRhidId.value = vis.rhidPersonId || '';
+            inputNome.value = vis.nome || '';
+            inputEmpresa.value = vis.empresa || '';
+            inputSetor.value = vis.setorVisitado || '';
+            inputMotivo.value = vis.motivo || '';
+            inputTelefone.value = vis.telefone || '';
+            inputStatus.value = vis.status || 'Ativo';
+        }
+    } else {
+        titulo.innerHTML = '<i class="fas fa-user-plus me-2"></i> Cadastrar / Vincular Visitante';
+        inputDocId.value = '';
+        inputCodigo.value = '';
+        inputCpf.value = '';
+        inputRhidId.value = '';
+        inputNome.value = '';
+        inputEmpresa.value = '';
+        inputSetor.value = '';
+        inputMotivo.value = '';
+        inputTelefone.value = '';
+        inputStatus.value = 'Ativo';
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+// Busca dados na API RHiD ao preencher o código ou CPF no modal
+async function buscarVisitanteNaApiRhid() {
+    const inputCodigo = document.getElementById('visitante-form-codigo');
+    const inputCpf = document.getElementById('visitante-form-cpf');
+    const inputRhidId = document.getElementById('visitante-form-rhid-id');
+    const inputNome = document.getElementById('visitante-form-nome');
+    const feedback = document.getElementById('visitante-form-feedback');
+
+    const termo = (inputCodigo.value || inputCpf.value || '').trim();
+    if (!termo) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Informe o Código ou CPF para pesquisar no RHiD.', 'warning');
+        return;
+    }
+
+    if (feedback) {
+        feedback.className = 'alert alert-info py-2 small mb-0';
+        feedback.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Buscando na nuvem RHiD...';
+        feedback.classList.remove('d-none');
+    }
+
+    try {
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const res = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'findPerson', query: termo })
+        });
+
+        const data = await res.json();
+        if (data.success && data.data && data.data.length > 0) {
+            const p = data.data[0];
+            
+            if (p.name) inputNome.value = p.name;
+            if (p.id) inputRhidId.value = p.id;
+            if (p.registration && !inputCodigo.value) inputCodigo.value = p.registration;
+            
+            let cpfVal = p.cpf ? String(p.cpf).replace(/\D/g, '').padStart(11, '0') : '';
+            if (cpfVal && !inputCpf.value) {
+                inputCpf.value = cpfVal.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+            }
+
+            if (feedback) {
+                feedback.className = 'alert alert-success py-2 small mb-0';
+                feedback.innerHTML = `<i class="fas fa-check-circle me-1"></i> Registro localizado no RHiD: <strong>${p.name}</strong> (ID: ${p.id}, Matrícula: ${p.registration || 'S/N'}).`;
+            }
+        } else {
+            if (feedback) {
+                feedback.className = 'alert alert-warning py-2 small mb-0';
+                feedback.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> Nenhum registro correspondente foi encontrado no RHiD para o termo "${termo}". Você pode preencher os dados manualmente.`;
+            }
+        }
+    } catch (e) {
+        if (feedback) {
+            feedback.className = 'alert alert-danger py-2 small mb-0';
+            feedback.innerHTML = `<i class="fas fa-times-circle me-1"></i> Erro na pesquisa: ${e.message}`;
+        }
+    }
+}
+
+// Salvar / Atualizar Visitante
+async function salvarVisitanteManual() {
+    const inputDocId = document.getElementById('visitante-form-doc-id');
+    const inputCodigo = document.getElementById('visitante-form-codigo');
+    const inputCpf = document.getElementById('visitante-form-cpf');
+    const inputRhidId = document.getElementById('visitante-form-rhid-id');
+    const inputNome = document.getElementById('visitante-form-nome');
+    const inputEmpresa = document.getElementById('visitante-form-empresa');
+    const inputSetor = document.getElementById('visitante-form-setor');
+    const inputMotivo = document.getElementById('visitante-form-motivo');
+    const inputTelefone = document.getElementById('visitante-form-telefone');
+    const inputStatus = document.getElementById('visitante-form-status');
+    const btn = document.getElementById('btn-salvar-visitante');
+
+    const codigo = inputCodigo.value.trim();
+    const nome = inputNome.value.trim();
+    const cpf = inputCpf.value.trim();
+
+    if (!codigo || !nome) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Preencha pelo menos o Código e o Nome do visitante.', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Salvando...';
+
+    try {
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        const dados = {
+            codigo: codigo,
+            nome: nome,
+            cpf: cpf,
+            cpfLimpo: cpfLimpo,
+            rhidPersonId: inputRhidId.value.trim() || null,
+            empresa: inputEmpresa.value.trim() || 'Visitante Externo',
+            setorVisitado: inputSetor.value.trim() || 'Geral',
+            motivo: inputMotivo.value.trim() || '',
+            telefone: inputTelefone.value.trim() || '',
+            status: inputStatus.value || 'Ativo',
+            tipo: 'Visitante',
+            dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        const docId = inputDocId.value.trim() || `vis_${codigo}`;
+        
+        if (!inputDocId.value) {
+            dados.dataCadastro = firebase.firestore.FieldValue.serverTimestamp();
+        }
+
+        await window.db.collection('visitantes').doc(docId).set(dados, { merge: true });
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('Visitante salvo com sucesso!', 'success');
+        }
+
+        const modalEl = document.getElementById('modal-rhid-novo-visitante');
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+    } catch (e) {
+        console.error("Erro ao salvar visitante:", e);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao salvar: ' + e.message, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-check me-1"></i> Salvar Visitante';
+    }
+}
+
+// Excluir Visitante
+async function excluirVisitante(docId, nome) {
+    if (!confirm(`Deseja realmente remover o visitante "${nome}" do controle de apuração?`)) return;
+
+    try {
+        await window.db.collection('visitantes').doc(docId).delete();
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Visitante excluído com sucesso.', 'success');
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+    } catch (e) {
+        console.error("Erro ao excluir:", e);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao excluir: ' + e.message, 'error');
+    }
+}
+
+// Abre modal com a timeline de batidas do dia
+function verDetalhesBatidasVisitante(cacheKey) {
+    const data = window._visitantesApuracaoCache.get(cacheKey);
+    if (!data) return;
+
+    const modalEl = document.getElementById('modal-rhid-batidas-visitante');
+    const nomeEl = document.getElementById('modal-batidas-nome');
+    const infoEl = document.getElementById('modal-batidas-info');
+    const dataEl = document.getElementById('modal-batidas-data');
+    const timelineEl = document.getElementById('modal-batidas-timeline');
+
+    nomeEl.textContent = data.visitante.nome || 'Visitante';
+    infoEl.textContent = `Código: ${data.visitante.codigo || '--'} | CPF: ${data.visitante.cpf || '--'} | ID RHiD: ${data.visitante.rhidPersonId || '--'}`;
+    
+    let df = data.data;
+    if (df && df.includes('-')) {
+        const parts = df.split('-');
+        df = `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    dataEl.textContent = `Data: ${df}`;
+
+    const batidas = data.batidas || [];
+    if (batidas.length === 0) {
+        timelineEl.innerHTML = `
+            <div class="list-group-item text-center py-4 text-muted bg-white">
+                <i class="fas fa-calendar-times fs-2 mb-2 d-block text-secondary opacity-50"></i>
+                Nenhuma marcação de ponto registrada no REP para este visitante nesta data.
+            </div>
+        `;
+    } else {
+        let html = '';
+        batidas.forEach((b, idx) => {
+            const isEntrada = (idx % 2 === 0);
+            const badgeTipo = isEntrada 
+                ? '<span class="badge bg-success px-2 py-1"><i class="fas fa-sign-in-alt me-1"></i> ENTRADA</span>'
+                : '<span class="badge bg-primary px-2 py-1"><i class="fas fa-sign-out-alt me-1"></i> SAÍDA</span>';
+            
+            const rawHora = b.hora || '';
+            let horaFormatada = rawHora;
+            if (rawHora.includes('T')) {
+                horaFormatada = rawHora.split('T')[1].substring(0, 8);
+            }
+
+            html += `
+                <div class="list-group-item d-flex justify-content-between align-items-center py-3 bg-white">
+                    <div class="d-flex align-items-center gap-3">
+                        <span class="badge bg-secondary rounded-circle px-2 py-1">${idx + 1}</span>
+                        <div>
+                            <div class="fw-bold fs-6 text-dark">${horaFormatada}</div>
+                            <small class="text-muted">Equipamento REP: ${b.idDevice || b.idAfd || 'Relógio de Ponto RHiD'}</small>
+                        </div>
+                    </div>
+                    <div>
+                        ${badgeTipo}
+                    </div>
+                </div>
+            `;
+        });
+        timelineEl.innerHTML = html;
+    }
+
+    const modal = new bootstrap.Modal(modalEl);
+    modal.show();
+}
+
+// Sincronizar todos os visitantes da nuvem RHiD
+async function sincronizarTodosVisitantesRhid() {
+    if (!confirm('Deseja varrer a nuvem RHiD para localizar e sincronizar todos os cadastros de crachás/visitantes?')) return;
+
+    if (typeof mostrarMensagem === 'function') mostrarMensagem('Sincronizando visitantes com o RHiD...', 'info');
+
+    try {
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const res = await fetch(`${apiBaseUrl}/rhid`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'syncVisitors' })
+        });
+
+        const data = await res.json();
+        if (!data.success) throw new Error(data.message || 'Erro ao sincronizar.');
+
+        const visitors = data.data || [];
+        let novos = 0;
+
+        for (const v of visitors) {
+            const codigo = String(v.registration || v.code || v.id || '');
+            if (!codigo || codigo === '0') continue;
+
+            const docId = `vis_${codigo}`;
+            const cpfStr = v.cpf ? String(v.cpf).replace(/\D/g, '').padStart(11, '0') : '';
+            const cpfFormatado = cpfStr ? cpfStr.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4") : '';
+
+            await window.db.collection('visitantes').doc(docId).set({
+                codigo: codigo,
+                nome: v.name || 'Visitante',
+                cpf: cpfFormatado,
+                cpfLimpo: cpfStr,
+                rhidPersonId: String(v.id),
+                empresa: 'Visitante Externo',
+                setorVisitado: 'Geral',
+                status: 'Ativo',
+                tipo: 'Visitante',
+                ultimaAtualizacaoRhid: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+
+            novos++;
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Sincronização concluída! ${novos} registros de visitantes foram atualizados.`, 'success');
+        }
+
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+    } catch (e) {
+        console.error("Erro na sincronização:", e);
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Falha na sincronização: ' + e.message, 'error');
+    }
+}
+
+// Exportar Tabela para Excel / CSV
+function exportarRelatorioVisitantesCSV() {
+    const cache = Array.from(window._visitantesApuracaoCache.values());
+    if (cache.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Nenhum dado de apuração para exportar.', 'warning');
+        return;
+    }
+
+    let csv = "Código Crachá;Nome do Visitante;CPF;Empresa/Motivo;Data;Entrada;Saída;Permanência;Status\n";
+
+    cache.forEach(item => {
+        const v = item.visitante;
+        const batidas = item.batidas || [];
+        let ent = '--:--';
+        let sai = '--:--';
+        let status = 'Sem Registro';
+        let perm = '--:--';
+
+        if (batidas.length > 0) {
+            ent = (batidas[0].hora || '').substring(11, 16);
+            if (batidas.length >= 2) {
+                sai = (batidas[batidas.length - 1].hora || '').substring(11, 16);
+            }
+            status = (batidas.length % 2 !== 0) ? 'No Estabelecimento' : 'Visita Concluida';
+        }
+
+        csv += `"${v.codigo || ''}";"${v.nome || ''}";"${v.cpf || ''}";"${v.empresa || ''}";"${item.data || ''}";"${ent}";"${sai}";"${perm}";"${status}"\n`;
+    });
+
+    const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `apuracao_visitantes_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    if (typeof mostrarMensagem === 'function') mostrarMensagem('Relatório CSV exportado com sucesso!', 'success');
 }

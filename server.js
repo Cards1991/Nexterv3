@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const koffi = require('koffi');
 const odbc = require('odbc');
+require('dotenv').config();
+const rhidHandler = require('./api/rhid.js');
 
 const app = express();
 const PORT = 3000;
@@ -9,6 +11,9 @@ const PORT = 3000;
 // Habilita CORS para permitir que seu site na Vercel acesse este servidor local.
 app.use(cors());
 app.use(express.json());
+
+// Rota de integração do RHiD
+app.all('/api/rhid', (req, res) => rhidHandler(req, res));
 
 let controlID;
 let isDllLoaded = false;

@@ -1,3 +1,5 @@
+try { require('dotenv').config(); } catch (e) {}
+
 module.exports = async function handler(req, res) {
     // Configuração de CORS
     res.setHeader('Access-Control-Allow-Credentials', true);
@@ -209,6 +211,70 @@ module.exports = async function handler(req, res) {
                         message: 'Erro interno ao buscar apuração.', 
                         details: apurError.message 
                     });
+                }
+
+            case 'findPerson':
+                try {
+                    const { query } = req.body;
+                    if (!query) {
+                        return res.status(400).json({ success: false, message: 'Termo de busca obrigatório.' });
+                    }
+                    const token = await loginToRhid();
+                    const personRes = await fetch(`${RHID_API_BASE}/person`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    const personData = await personRes.json();
+                    const list = personData.records || [];
+                    
+                    const qClean = String(query).replace(/\D/g, '');
+                    const qLower = String(query).toLowerCase().trim();
+
+                    const matches = list.filter(p => {
+                        const cpf = String(p.cpf || '').replace(/\D/g, '');
+                        const reg = String(p.registration || '').replace(/\D/g, '');
+                        const code = String(p.code !== undefined ? p.code : '').replace(/\D/g, '');
+                        const name = String(p.name || '').toLowerCase();
+                        
+                        return (qClean && (cpf.includes(qClean) || reg.includes(qClean) || code.includes(qClean))) ||
+                               (qLower && name.includes(qLower));
+                    });
+
+                    return res.status(200).json({
+                        success: true,
+                        count: matches.length,
+                        data: matches
+                    });
+                } catch (findErr) {
+                    console.error('[RHID API] Erro ao buscar pessoa:', findErr);
+                    return res.status(500).json({ success: false, message: 'Erro na busca de pessoa.', details: findErr.message });
+                }
+
+            case 'syncVisitors':
+                try {
+                    const token = await loginToRhid();
+                    const personRes = await fetch(`${RHID_API_BASE}/person`, {
+                        headers: { 'Authorization': 'Bearer ' + token }
+                    });
+                    const personData = await personRes.json();
+                    const list = personData.records || [];
+
+                    // Visitantes são tipicamente pessoas com data de admissão nula, código/matrícula de crachá temporário, ou nome de visitante
+                    const visitors = list.filter(p => {
+                        const hasNoAdmission = !p.admissionDate;
+                        const hasRegistration = p.registration && String(p.registration).trim().length > 0;
+                        const nameHasVisitor = p.name && p.name.toUpperCase().includes('VISITANTE');
+                        const isKnownCode = p.registration === '17101991' || String(p.code) === '17101991';
+                        return isKnownCode || hasNoAdmission || hasRegistration || nameHasVisitor;
+                    });
+
+                    return res.status(200).json({
+                        success: true,
+                        count: visitors.length,
+                        data: visitors
+                    });
+                } catch (vErr) {
+                    console.error('[RHID API] Erro ao sincronizar visitantes:', vErr);
+                    return res.status(500).json({ success: false, message: 'Erro ao buscar visitantes.', details: vErr.message });
                 }
                 
             default:
