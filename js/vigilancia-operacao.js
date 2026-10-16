@@ -72,16 +72,28 @@
             const ultMat = localStorage.getItem('ultimo_vigia_matricula') || '';
 
             let html = '<option value="">-- Toque para selecionar seu nome --</option>';
+            let selecionadoDefinido = false;
+
             snap.forEach(doc => {
                 const v = doc.data();
                 const sel = (v.matricula === ultMat) ? 'selected' : '';
+                if (sel) selecionadoDefinido = true;
                 html += `<option value="${v.matricula}" ${sel}>${v.nome} (Matrícula: ${v.matricula})</option>`;
             });
             select.innerHTML = html;
 
-            if (ultMat) {
-                const inputMat = document.getElementById('input-matricula');
+            const inputMat = document.getElementById('input-matricula');
+
+            // Se o último vigia estava salvo e foi encontrado
+            if (ultMat && selecionadoDefinido) {
+                select.value = ultMat;
                 if (inputMat) inputMat.value = ultMat;
+            } else if (snap.size === 1) {
+                // Se existe apenas 1 vigia cadastrado no sistema, auto-seleciona para agilizar
+                const unico = snap.docs[0].data();
+                select.value = unico.matricula;
+                if (inputMat) inputMat.value = unico.matricula;
+                localStorage.setItem('ultimo_vigia_matricula', unico.matricula);
             }
         } catch (e) {
             console.warn("Erro ao carregar lista de vigias no mobile:", e);
@@ -171,6 +183,17 @@
             matricula = inputMatricula.value.trim();
         } else if (selectVigia && selectVigia.value) {
             matricula = selectVigia.value.trim();
+        }
+
+        // Se ainda não tem matrícula mas o select tem pelo menos uma opção válida
+        if (!matricula && selectVigia && selectVigia.options.length > 1) {
+            for (let i = 1; i < selectVigia.options.length; i++) {
+                if (selectVigia.options[i].value) {
+                    selectVigia.selectedIndex = i;
+                    matricula = selectVigia.value;
+                    break;
+                }
+            }
         }
 
         if (!matricula) {
@@ -263,8 +286,8 @@
                 userAgent: navigator.userAgent
             });
 
-            // Exibe tela de seleção de rota
-            abrirSelecaoRota();
+            // Exibe o Painel Principal do Aplicativo Mobile
+            await abrirDashboardVigia();
 
         } catch (e) {
             console.error("Erro na autenticação:", e);
@@ -284,63 +307,142 @@
         const inputMatricula = document.getElementById('input-matricula');
         if (inputMatricula) inputMatricula.value = '';
 
-        document.getElementById('view-selecao-rota').style.display = 'none';
-        document.getElementById('view-ronda-ativa').style.display = 'none';
-        document.getElementById('view-login').style.display = 'flex';
+        const viewDash = document.getElementById('view-dashboard-vigia');
+        const viewSelecao = document.getElementById('view-selecao-rota');
+        const viewRonda = document.getElementById('view-ronda-ativa');
+        const viewLogin = document.getElementById('view-login');
+
+        if (viewDash) viewDash.style.display = 'none';
+        if (viewSelecao) viewSelecao.style.display = 'none';
+        if (viewRonda) viewRonda.style.display = 'none';
+        if (viewLogin) viewLogin.style.display = 'flex';
     };
 
     // ==============================================
-    // 2. SELEÇÃO DE ROTA
+    // 3. PAINEL PRINCIPAL DO APP & SELEÇÃO DE ROTAS
     // ==============================================
 
-    async function abrirSelecaoRota() {
-        document.getElementById('view-login').style.display = 'none';
-        document.getElementById('view-ronda-ativa').style.display = 'none';
-        document.getElementById('view-selecao-rota').style.display = 'block';
+    window.abrirDashboardVigia = async function () {
+        const viewLogin = document.getElementById('view-login');
+        const viewRonda = document.getElementById('view-ronda-ativa');
+        const viewDash = document.getElementById('view-dashboard-vigia');
+        const viewSelecao = document.getElementById('view-selecao-rota');
 
-        document.getElementById('nome-vigia-topo').innerText = sessaoVigia.nome;
-        document.getElementById('matricula-vigia-topo').innerText = `Matrícula: ${sessaoVigia.matricula}`;
+        if (viewLogin) viewLogin.style.display = 'none';
+        if (viewRonda) viewRonda.style.display = 'none';
+        if (viewSelecao) viewSelecao.style.display = 'none';
+        if (viewDash) viewDash.style.display = 'block';
 
-        const container = document.getElementById('lista-rotas-disponiveis');
-        container.innerHTML = '<div class="text-center py-4 text-muted"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+        if (sessaoVigia) {
+            const elNome = document.getElementById('nome-vigia-topo');
+            const elMat = document.getElementById('matricula-vigia-topo');
+            if (elNome) elNome.innerText = sessaoVigia.nome;
+            if (elMat) elMat.innerText = `Matrícula: ${sessaoVigia.matricula}`;
+        }
+
+        // Carrega rotas ativas no seletor da Hero Card
+        await carregarRotasHeroSelect();
+
+        // Carrega métricas e estatísticas rápidas
+        await carregarStatsDashboard();
+    };
+
+    // Compatibilidade com chamadas legadas
+    window.abrirSelecaoRota = window.abrirDashboardVigia;
+
+    async function carregarRotasHeroSelect() {
+        const select = document.getElementById('select-rota-inicio');
+        const containerLista = document.getElementById('lista-rotas-disponiveis');
+        if (!window.db) return;
+
+        let optionsHtml = '<option value="LIVRE">⚡ Ronda Livre (Patrulhamento Geral)</option>';
+        let cardsHtml = '';
 
         try {
             const snap = await window.db.collection('vigilancia_rotas')
                 .where('ativo', '==', true)
                 .get();
 
-            if (snap.empty) {
-                container.innerHTML = '<p class="text-muted small">Nenhuma rota pré-configurada no momento. Você pode iniciar uma Ronda Livre abaixo.</p>';
-                return;
+            if (!snap.empty) {
+                snap.forEach(doc => {
+                    const r = doc.data();
+                    const qtdPontos = r.pontos ? r.pontos.length : 0;
+                    optionsHtml += `<option value="${doc.id}">📍 ${r.nome} (${qtdPontos} checkpoints - ${r.setor || 'Fábrica'})</option>`;
+                    cardsHtml += `
+                        <div class="card-rota-item mb-2 p-3 bg-dark border border-secondary rounded-4 text-white" onclick="window.iniciarRondaPlanejada('${doc.id}')" style="cursor: pointer;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h6 class="fw-bold mb-1">${r.nome}</h6>
+                                    <small class="text-muted"><i class="fas fa-location-dot me-1"></i> ${r.setor || 'Fábrica'} | <i class="fas fa-map-pin me-1"></i> ${qtdPontos} checkpoints</small>
+                                </div>
+                                <span class="badge bg-primary rounded-pill px-3 py-2"><i class="fas fa-play me-1"></i> Iniciar</span>
+                            </div>
+                        </div>
+                    `;
+                });
             }
 
-            let html = '';
-            snap.forEach(doc => {
-                const rota = doc.data();
-                const qtdPontos = rota.pontos ? rota.pontos.length : 0;
+            if (select) select.innerHTML = optionsHtml;
+            if (containerLista) {
+                containerLista.innerHTML = cardsHtml || '<p class="text-muted small">Nenhuma rota pré-configurada. Você pode iniciar a Ronda Livre acima.</p>';
+            }
+        } catch (e) {
+            console.warn("Erro ao buscar rotas ativas:", e);
+        }
+    }
 
-                html += `
-                    <div class="card-rota-item" onclick="window.iniciarRondaPlanejada('${doc.id}')">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <div>
-                                <h6 class="fw-bold mb-1 text-white">${rota.nome}</h6>
-                                <small class="text-muted"><i class="fas fa-location-dot me-1"></i> ${rota.setor || 'Fábrica'} | <i class="fas fa-map-pin me-1"></i> ${qtdPontos} checkpoints</small>
-                            </div>
-                            <span class="badge bg-primary rounded-pill px-3 py-2">Iniciar</span>
-                        </div>
-                    </div>
-                `;
+    async function carregarStatsDashboard() {
+        if (!sessaoVigia || !window.db) return;
+        const elRondas = document.getElementById('stat-rondas-feitas');
+        const elPontos = document.getElementById('stat-pontos-totais');
+
+        try {
+            const inicioHoje = new Date();
+            inicioHoje.setHours(0, 0, 0, 0);
+
+            // Consulta rondas do vigia sem exigir índice composto
+            const snapRondas = await window.db.collection('vigilancia_rondas')
+                .where('vigiaId', '==', sessaoVigia.id)
+                .where('status', '==', 'CONCLUIDA')
+                .get();
+
+            let rondasHoje = 0;
+            snapRondas.forEach(doc => {
+                const r = doc.data();
+                if (r.fim) {
+                    const dt = r.fim.toDate ? r.fim.toDate() : new Date(r.fim);
+                    if (dt >= inicioHoje) rondasHoje++;
+                }
             });
-            container.innerHTML = html;
+
+            if (elRondas) elRondas.innerText = rondasHoje;
+
+            // Total de checkpoints ativos cadastrados na empresa
+            const snapPontos = await window.db.collection('vigilancia_pontos')
+                .where('ativo', '==', true)
+                .get();
+
+            if (elPontos) elPontos.innerText = snapPontos.size;
 
         } catch (e) {
-            container.innerHTML = `<div class="alert alert-danger small">${e.message}</div>`;
+            console.warn("Erro ao carregar estatísticas do dashboard vigia:", e);
         }
     }
 
     // ==============================================
-    // 3. INÍCIO DA RONDA E EXECUÇÃO OPERACIONAL
+    // 4. INÍCIO DA RONDA E EXECUÇÃO OPERACIONAL
     // ==============================================
+
+    window.confirmarEIniciarRonda = async function () {
+        const select = document.getElementById('select-rota-inicio');
+        const rotaId = select ? select.value : 'LIVRE';
+
+        if (!rotaId || rotaId === 'LIVRE') {
+            await window.iniciarRondaLivre();
+        } else {
+            await window.iniciarRondaPlanejada(rotaId);
+        }
+    };
 
     window.iniciarRondaPlanejada = async function (rotaId) {
         try {
@@ -355,7 +457,7 @@
     };
 
     window.iniciarRondaLivre = async function () {
-        await prepararEIniciarRonda(null, 'Ronda Livre / Perimetral', [], 1);
+        await prepararEIniciarRonda(null, 'Ronda Livre / Patrulhamento Geral', [], 1);
     };
 
     async function prepararEIniciarRonda(rotaId, rotaNome, pontosRota, versao) {
@@ -432,9 +534,17 @@
         iniciarTimerRonda();
 
         // Alterna para tela da ronda ativa
-        document.getElementById('view-selecao-rota').style.display = 'none';
-        document.getElementById('view-ronda-ativa').style.display = 'flex';
-        document.getElementById('ronda-nome-rota').innerText = rotaNome;
+        const viewDash = document.getElementById('view-dashboard-vigia');
+        const viewSelecao = document.getElementById('view-selecao-rota');
+        const viewLogin = document.getElementById('view-login');
+        if (viewDash) viewDash.style.display = 'none';
+        if (viewSelecao) viewSelecao.style.display = 'none';
+        if (viewLogin) viewLogin.style.display = 'none';
+
+        const viewRonda = document.getElementById('view-ronda-ativa');
+        if (viewRonda) viewRonda.style.display = 'flex';
+        const elNomeRota = document.getElementById('ronda-nome-rota');
+        if (elNomeRota) elNomeRota.innerText = rotaNome;
 
         renderizarCheckpointsRonda();
         initMapaVigia(pontosRota);
@@ -880,10 +990,14 @@
                 distanciaMetros: Math.round(distanciaTotalAcumulada)
             });
 
-            alert(`Ronda finalizada com sucesso!\nDuração: ${duracaoMin} min | Distância: ${Math.round(distanciaTotalAcumulada)} metros`);
+            alert(`✅ Ronda finalizada com sucesso!\nDuração: ${duracaoMin} min | Distância: ${Math.round(distanciaTotalAcumulada)} metros`);
 
             rondaAtiva = null;
-            window.encerrarSessaoVigia();
+            const viewRonda = document.getElementById('view-ronda-ativa');
+            if (viewRonda) viewRonda.style.display = 'none';
+
+            // Retorna ao painel principal do aplicativo
+            await window.abrirDashboardVigia();
 
         } catch (e) {
             alert(`Erro ao finalizar ronda: ${e.message}`);

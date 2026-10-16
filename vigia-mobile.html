@@ -4,12 +4,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>NEXTER | Operação do Vigia</title>
+    
+    <!-- PWA & Native App Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="NEXTER Rondas">
+    <meta name="theme-color" content="#0b0f19">
+    <meta name="mobile-web-app-capable" content="yes">
+
+    <title>NEXTER | Operação de Rondas</title>
 
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- CSS Frameworks -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -37,15 +45,18 @@
         :root {
             --bg-body: #0b0f19;
             --surface: #151d30;
-            --surface-card: #1e293b;
-            --surface-border: #334155;
+            --surface-card: #1c2640;
+            --surface-border: #263554;
             --primary: #2563eb;
-            --primary-glow: rgba(37, 99, 235, 0.3);
+            --primary-glow: rgba(37, 99, 235, 0.35);
             --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.35);
             --warning: #f59e0b;
             --danger: #ef4444;
+            --danger-glow: rgba(239, 68, 68, 0.35);
             --text-main: #f8fafc;
             --text-muted: #94a3b8;
+            --safe-bottom: env(safe-area-inset-bottom, 0px);
         }
 
         * {
@@ -62,11 +73,61 @@
             min-height: 100vh;
             user-select: none;
             -webkit-user-select: none;
+            overflow-x: hidden;
         }
 
-        h1, h2, h3, h4, .brand-title {
+        h1, h2, h3, h4, h5, .brand-title {
             font-family: 'Outfit', sans-serif;
             font-weight: 700;
+        }
+
+        /* ===== NATIVE APP HEADER ===== */
+        .app-header {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--surface-border);
+            padding: 12px 18px;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .app-brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .app-brand-icon {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, #2563eb, #10b981);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+        }
+
+        .app-brand-text h1 {
+            font-size: 17px;
+            margin: 0;
+            line-height: 1.1;
+            color: #ffffff;
+        }
+
+        .app-brand-text span {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
         }
 
         /* ===== TELA DE LOGIN / IDENTIFICAÇÃO DO VIGIA ===== */
@@ -76,40 +137,40 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            padding: 24px;
-            background: radial-gradient(circle at top, #1e293b, #0b0f19 75%);
+            padding: 20px;
+            background: radial-gradient(circle at top, #1c2640, #0b0f19 80%);
         }
 
         .login-card {
             width: 100%;
-            max-width: 380px;
+            max-width: 400px;
             background: var(--surface);
             border: 1px solid var(--surface-border);
-            border-radius: 24px;
-            padding: 28px 24px;
+            border-radius: 26px;
+            padding: 30px 24px;
             text-align: center;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 20px 45px rgba(0, 0, 0, 0.6);
         }
 
         .login-icon-box {
-            width: 72px;
-            height: 72px;
-            border-radius: 20px;
+            width: 76px;
+            height: 76px;
+            border-radius: 22px;
             background: linear-gradient(135deg, #2563eb, #3b82f6);
             display: flex;
             align-items: center;
             justify-content: center;
             margin: 0 auto 16px;
-            font-size: 32px;
+            font-size: 34px;
             color: white;
-            box-shadow: 0 8px 20px var(--primary-glow);
+            box-shadow: 0 10px 25px var(--primary-glow);
         }
 
         .pin-display {
             display: flex;
             justify-content: center;
             gap: 12px;
-            margin: 20px 0;
+            margin: 18px 0;
         }
 
         .pin-dot {
@@ -117,41 +178,42 @@
             height: 18px;
             border-radius: 50%;
             border: 2px solid var(--surface-border);
-            transition: all 0.2s;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         .pin-dot.filled {
             background-color: var(--primary);
-            border-color: var(--primary);
-            box-shadow: 0 0 10px var(--primary-glow);
-            transform: scale(1.1);
+            border-color: #60a5fa;
+            box-shadow: 0 0 12px var(--primary-glow);
+            transform: scale(1.15);
         }
 
         /* Teclado Virtual Numérico */
         .keypad-grid {
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 12px;
-            margin-top: 16px;
+            gap: 10px;
+            margin-top: 14px;
         }
 
         .btn-key {
-            height: 60px;
+            height: 58px;
             background: var(--surface-card);
             border: 1px solid var(--surface-border);
             border-radius: 16px;
             color: white;
             font-size: 24px;
-            font-weight: 600;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.1s active;
+            transition: all 0.1s ease;
         }
 
         .btn-key:active {
-            background: #334155;
-            transform: scale(0.95);
+            background: #2563eb;
+            transform: scale(0.93);
+            border-color: #60a5fa;
         }
 
         .btn-key.action {
@@ -159,37 +221,129 @@
             color: var(--text-muted);
         }
 
-        /* ===== TELA DE SELEÇÃO DE ROTA ===== */
-        #view-selecao-rota {
+        /* ===== PAINEL PRINCIPAL DO APP (APÓS LOGIN) ===== */
+        #view-dashboard-vigia {
             display: none;
-            padding: 20px;
-            min-height: 100vh;
+            padding: 18px;
+            padding-bottom: calc(90px + var(--safe-bottom));
         }
 
-        .card-rota-item {
+        /* Card de Perfil do Vigia */
+        .profile-card {
+            background: var(--surface);
+            border: 1px solid var(--surface-border);
+            border-radius: 20px;
+            padding: 16px 18px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .profile-info {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .avatar-circle {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            color: white;
+            box-shadow: 0 4px 12px var(--success-glow);
+        }
+
+        /* HERO CARD: INICIAR RONDA AGORA */
+        .hero-ronda-card {
+            background: linear-gradient(145deg, #132238, #101a2c);
+            border: 2px solid #2563eb;
+            border-radius: 24px;
+            padding: 24px 20px;
+            margin-bottom: 24px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 12px 30px rgba(37, 99, 235, 0.2);
+        }
+
+        .hero-ronda-card::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 180px;
+            height: 180px;
+            background: radial-gradient(circle, rgba(37, 99, 235, 0.25), transparent 70%);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
+        .btn-iniciar-ronda-hero {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 18px;
+            padding: 18px 24px;
+            font-size: 18px;
+            font-weight: 800;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            box-shadow: 0 8px 24px var(--success-glow);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-iniciar-ronda-hero:active {
+            transform: scale(0.97);
+            filter: brightness(1.1);
+        }
+
+        /* Grid de Status Rápido */
+        .quick-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 14px;
+            margin-bottom: 24px;
+        }
+
+        .quick-stat-item {
             background: var(--surface);
             border: 1px solid var(--surface-border);
             border-radius: 18px;
-            padding: 18px;
-            margin-bottom: 14px;
-            transition: transform 0.2s;
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
-        .card-rota-item:active {
-            transform: scale(0.98);
-            border-color: var(--primary);
+        .stat-icon-wrapper {
+            width: 42px;
+            height: 42px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
         }
 
-        /* ===== TELA DA RONDA EM ANDAMENTO ===== */
+        /* ===== TELA DE OPERAÇÃO DA RONDA EM ANDAMENTO ===== */
         #view-ronda-ativa {
             display: none;
             min-height: 100vh;
             flex-direction: column;
-            padding-bottom: 90px;
+            padding-bottom: calc(100px + var(--safe-bottom));
         }
 
-        .top-status-bar {
-            background: var(--surface);
+        .live-status-bar {
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(10px);
             border-bottom: 1px solid var(--surface-border);
             padding: 14px 18px;
             display: flex;
@@ -197,25 +351,40 @@
             align-items: center;
             position: sticky;
             top: 0;
-            z-index: 100;
+            z-index: 900;
+        }
+
+        .live-pulse-badge {
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            color: #34d399;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 30px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
         }
 
         #mapa-operacao-vigia {
             width: 100%;
-            height: 240px;
+            height: 270px;
             border-bottom: 1px solid var(--surface-border);
             z-index: 1;
         }
 
+        /* Checkpoint Cards */
         .checkpoint-card {
             background: var(--surface-card);
             border: 1px solid var(--surface-border);
-            border-radius: 14px;
+            border-radius: 16px;
             padding: 14px 16px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            transition: all 0.2s;
         }
 
         .checkpoint-card.confirmado {
@@ -233,35 +402,71 @@
             bottom: 0;
             left: 0;
             right: 0;
-            background: var(--surface);
+            background: rgba(15, 23, 42, 0.96);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border-top: 1px solid var(--surface-border);
-            padding: 12px 18px;
+            padding: 12px 16px;
             display: flex;
             gap: 10px;
             z-index: 1000;
-            padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+            padding-bottom: calc(12px + var(--safe-bottom));
         }
 
         .btn-action-big {
             flex: 1;
-            padding: 14px;
-            border-radius: 14px;
-            font-weight: 700;
-            font-size: 15px;
+            padding: 15px 10px;
+            border-radius: 16px;
+            font-weight: 800;
+            font-size: 14px;
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
-            gap: 8px;
+            gap: 6px;
             border: none;
+            transition: transform 0.1s;
         }
 
-        /* Modal Scanner QR Code */
-        #qr-reader-container {
-            width: 100%;
-            height: 320px;
-            background: #000;
-            border-radius: 12px;
-            overflow: hidden;
+        .btn-action-big:active {
+            transform: scale(0.95);
+        }
+
+        /* Bottom App Navigation Dock (Quando não está em ronda) */
+        .bottom-nav-dock {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: rgba(15, 23, 42, 0.95);
+            backdrop-filter: blur(12px);
+            border-top: 1px solid var(--surface-border);
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+            padding-bottom: calc(10px + var(--safe-bottom));
+        }
+
+        .nav-dock-item {
+            color: var(--text-muted);
+            text-decoration: none;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .nav-dock-item.active, .nav-dock-item:hover {
+            color: #3b82f6;
+        }
+
+        .nav-dock-item i {
+            font-size: 20px;
         }
     </style>
 </head>
@@ -276,14 +481,14 @@
             <div class="login-icon-box">
                 <i class="fas fa-shield-halved"></i>
             </div>
-            <h3 class="mb-1">NEXTER Vigilância</h3>
-            <p class="text-muted small mb-3">Identifique-se para iniciar seu turno</p>
+            <h2 class="mb-1 text-white">NEXTER Vigilância</h2>
+            <p class="text-muted small mb-3">Identifique-se para assumir o turno</p>
 
             <!-- Seleção ou Digitação da Matrícula -->
             <div class="mb-3 text-start">
                 <div class="d-flex justify-content-between align-items-center mb-1">
-                    <label class="form-label small text-muted fw-semibold mb-0">QUEM É VOCÊ?</label>
-                    <a href="javascript:void(0)" class="small text-info text-decoration-none" onclick="window.alternarModoMatricula()" id="link-alternar-modo">
+                    <label class="form-label small text-muted fw-bold mb-0">QUEM É VOCÊ?</label>
+                    <a href="javascript:void(0)" class="small text-info text-decoration-none fw-semibold" onclick="window.alternarModoMatricula()" id="link-alternar-modo">
                         <i class="fas fa-keyboard me-1"></i> Digitar matrícula
                     </a>
                 </div>
@@ -305,7 +510,7 @@
             </div>
 
             <!-- Display do PIN -->
-            <label class="form-label small text-muted fw-semibold text-start w-100">PIN DE SEGURANÇA (4 A 6 DÍGITOS)</label>
+            <label class="form-label small text-muted fw-bold text-start w-100">PIN DE SEGURANÇA (4 A 6 DÍGITOS)</label>
             <div class="pin-display" id="pin-display">
                 <div class="pin-dot" id="dot-0"></div>
                 <div class="pin-dot" id="dot-1"></div>
@@ -331,7 +536,7 @@
                 <button type="button" class="btn-key action" onclick="window.apagarPin()"><i class="fas fa-backspace"></i></button>
             </div>
 
-            <button type="button" class="btn btn-primary w-100 mt-4 py-3 fw-bold rounded-4 fs-5" id="btn-entrar" onclick="window.autenticarVigia()">
+            <button type="button" class="btn btn-primary w-100 mt-4 py-3 fw-bold rounded-4 fs-5 shadow-lg" id="btn-entrar" onclick="window.autenticarVigia()">
                 <i class="fas fa-arrow-right-to-bracket me-2"></i> Identificar
             </button>
             <div id="login-feedback" class="mt-2 small text-danger fw-semibold"></div>
@@ -339,42 +544,98 @@
     </div>
 
     <!-- ============================================== -->
-    <!-- 2. TELA DE SELEÇÃO DE ROTA                     -->
+    <!-- 2. PAINEL PRINCIPAL DO APLICATIVO DO VIGIA     -->
     <!-- ============================================== -->
-    <div id="view-selecao-rota" class="fade-in">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h4 class="mb-0 text-white" id="nome-vigia-topo">Vigia Conectado</h4>
-                <small class="text-muted" id="matricula-vigia-topo">Matrícula: --</small>
+    <div id="view-dashboard-vigia" class="fade-in">
+        <!-- Header Nativo -->
+        <header class="app-header mb-3 rounded-4">
+            <div class="app-brand">
+                <div class="app-brand-icon">
+                    <i class="fas fa-shield-halved"></i>
+                </div>
+                <div class="app-brand-text">
+                    <h1>NEXTER Rondas</h1>
+                    <span>Patrulhamento Patrimonial</span>
+                </div>
             </div>
-            <button class="btn btn-outline-danger btn-sm" onclick="window.encerrarSessaoVigia()">
-                <i class="fas fa-power-off me-1"></i> Sair
+            <button class="btn btn-sm btn-outline-danger rounded-pill px-3" onclick="window.encerrarSessaoVigia()">
+                <i class="fas fa-arrow-right-from-bracket me-1"></i> Sair
+            </button>
+        </header>
+
+        <!-- Card de Perfil do Vigia -->
+        <div class="profile-card">
+            <div class="profile-info">
+                <div class="avatar-circle">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 text-white" id="nome-vigia-topo">Vigia Conectado</h5>
+                    <small class="text-muted" id="matricula-vigia-topo">Matrícula: --</small>
+                </div>
+            </div>
+            <span class="badge bg-success-subtle text-success border border-success-subtle px-3 py-2 rounded-pill">
+                <i class="fas fa-circle fa-beat me-1"></i> Em Turno
+            </span>
+        </div>
+
+        <!-- HERO ACTION: INICIAR RONDA AGORA -->
+        <div class="hero-ronda-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-primary px-3 py-2 rounded-pill fw-bold">
+                    <i class="fas fa-route me-1"></i> OPERAÇÃO DE PATRULHA
+                </span>
+                <span class="small text-muted" id="gps-status-ready">
+                    <i class="fas fa-satellite text-success me-1"></i> GPS Ativo
+                </span>
+            </div>
+
+            <h3 class="text-white mt-2 mb-1">Iniciar Ronda</h3>
+            <p class="text-muted small mb-3">Selecione o roteiro e inicie o patrulhamento com rastreamento GPS contínuo.</p>
+
+            <div class="mb-3">
+                <label class="form-label small fw-bold text-muted">SELECIONE A ROTA DA EMPRESA</label>
+                <select id="select-rota-inicio" class="form-select bg-dark border-secondary text-white fw-bold py-3 fs-6">
+                    <option value="LIVRE">⚡ Ronda Livre (Patrulhamento Geral)</option>
+                </select>
+            </div>
+
+            <button type="button" class="btn-iniciar-ronda-hero" onclick="window.confirmarEIniciarRonda()">
+                <i class="fas fa-play"></i> INICIAR RONDA AGORA
             </button>
         </div>
 
-        <div class="alert alert-info border-0 rounded-4 py-3 mb-4" style="background: rgba(37,99,235,0.15);">
-            <i class="fas fa-satellite-dish me-2 text-primary"></i> <b>GPS Corporativo:</b> Certifique-se de que a localização do aparelho está ativada.
-        </div>
-
-        <h5 class="fw-bold mb-3 text-white"><i class="fas fa-route text-primary me-2"></i> Selecione a Rota da Ronda:</h5>
-        
-        <div id="lista-rotas-disponiveis">
-            <!-- Preenchido dinamicamente -->
-            <div class="text-center py-5 text-muted">
-                <i class="fas fa-spinner fa-spin fa-2x mb-2"></i>
-                <p>Carregando rotas autorizadas...</p>
-            </div>
-        </div>
-
-        <!-- Opção de Ronda Livre sem Rota Fixa -->
-        <div class="card-rota-item mt-3" style="border-style: dashed; border-color: #64748b;" onclick="window.iniciarRondaLivre()">
-            <div class="d-flex justify-content-between align-items-center">
-                <div>
-                    <h6 class="fw-bold mb-1 text-white"><i class="fas fa-compass text-info me-2"></i> Ronda Livre / Vigilância Geral</h6>
-                    <small class="text-muted">Ronda sem pontos pré-definidos (Rastreamento contínuo de trajeto)</small>
+        <!-- Grid de Status Rápido -->
+        <div class="quick-stats-grid">
+            <div class="quick-stat-item">
+                <div class="stat-icon-wrapper bg-success-subtle text-success">
+                    <i class="fas fa-flag-checkered"></i>
                 </div>
-                <i class="fas fa-chevron-right text-muted"></i>
+                <div>
+                    <h5 class="mb-0 text-white" id="stat-rondas-feitas">0</h5>
+                    <small class="text-muted">Rondas Hoje</small>
+                </div>
             </div>
+            <div class="quick-stat-item">
+                <div class="stat-icon-wrapper bg-info-subtle text-info">
+                    <i class="fas fa-location-dot"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 text-white" id="stat-pontos-totais">0</h5>
+                    <small class="text-muted">Checkpoints</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Orientações do Turno -->
+        <div class="card bg-dark border-secondary rounded-4 p-3 mb-4">
+            <h6 class="fw-bold text-white mb-2"><i class="fas fa-circle-info text-info me-2"></i> Instruções Operacionais</h6>
+            <ul class="text-muted small mb-0 ps-3">
+                <li>Mantenha a tela do aparelho ativa durante a caminhada.</li>
+                <li>Ao aproximar-se dos pontos, a confirmação GPS ocorre automaticamente.</li>
+                <li>Para pontos com QR Code, utilize o leitor integrado da câmera.</li>
+                <li>Em caso de anormalidade (portas abertas, iluminação, suspeitos), registre ocorrência.</li>
+            </ul>
         </div>
     </div>
 
@@ -382,19 +643,19 @@
     <!-- 3. TELA DE OPERAÇÃO DA RONDA EM ANDAMENTO      -->
     <!-- ============================================== -->
     <div id="view-ronda-ativa" class="fade-in">
-        <!-- Top Status Bar -->
-        <div class="top-status-bar">
+        <!-- Live Status Bar -->
+        <div class="live-status-bar">
             <div>
-                <span class="badge bg-success py-1 px-2 mb-1" id="badge-tempo-ronda">
-                    <i class="fas fa-circle-play fa-beat me-1"></i> 00:00
+                <span class="live-pulse-badge mb-1" id="badge-tempo-ronda">
+                    <i class="fas fa-circle fa-beat"></i> 00:00
                 </span>
                 <div class="fw-bold text-white small" id="ronda-nome-rota">Rota Selecionada</div>
             </div>
             <div class="text-end">
-                <div class="small fw-semibold" id="status-gps-badge">
-                    <i class="fas fa-satellite text-success me-1"></i> GPS Ativo (±<span id="gps-precisao">--</span>m)
+                <div class="small fw-semibold text-white" id="status-gps-badge">
+                    <i class="fas fa-satellite text-success me-1"></i> ±<span id="gps-precisao">--</span>m
                 </div>
-                <small class="text-muted" id="status-distancia-ronda">0 metros</small>
+                <small class="text-muted" id="status-distancia-ronda">0 m percorridos</small>
             </div>
         </div>
 
@@ -404,8 +665,8 @@
         <!-- Lista de Checkpoints / Pontos de Controle -->
         <div class="p-3">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <span class="fw-bold small text-muted text-uppercase">PONTOS DE CONTROLE</span>
-                <span class="badge bg-primary" id="contador-checkpoints">0 / 0</span>
+                <span class="fw-bold small text-muted text-uppercase">CHECKPOINTS DA ROTA</span>
+                <span class="badge bg-primary px-3 py-2 rounded-pill" id="contador-checkpoints">0 / 0</span>
             </div>
 
             <div id="lista-checkpoints-ronda">
@@ -416,13 +677,16 @@
         <!-- Barra Inferior de Ações Operacionais -->
         <div class="bottom-actions-bar">
             <button class="btn-action-big btn-warning text-dark" onclick="window.abrirModalOcorrencia()">
-                <i class="fas fa-triangle-exclamation"></i> Ocorrência
+                <i class="fas fa-triangle-exclamation fs-5"></i>
+                <span>Ocorrência</span>
             </button>
             <button class="btn-action-big btn-primary" onclick="window.abrirScannerQRCode()">
-                <i class="fas fa-qrcode"></i> Ler QR Code
+                <i class="fas fa-qrcode fs-5"></i>
+                <span>Ler QR Code</span>
             </button>
             <button class="btn-action-big btn-danger" onclick="window.confirmarFinalizacaoRonda()">
-                <i class="fas fa-flag-checkered"></i> Concluir
+                <i class="fas fa-flag-checkered fs-5"></i>
+                <span>Concluir</span>
             </button>
         </div>
     </div>
@@ -432,7 +696,7 @@
     <!-- ============================================== -->
     <div class="modal fade" id="modalOcorrencia" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-dark border-secondary text-white">
+            <div class="modal-content bg-dark border-secondary text-white rounded-4">
                 <div class="modal-header border-secondary">
                     <h5 class="modal-title"><i class="fas fa-triangle-exclamation text-warning me-2"></i> Registrar Ocorrência</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
@@ -440,7 +704,7 @@
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label small fw-semibold">Categoria da Ocorrência *</label>
-                        <select class="form-select bg-secondary text-white border-0" id="ocorrencia-categoria">
+                        <select class="form-select bg-secondary text-white border-0 py-2 fw-semibold" id="ocorrencia-categoria">
                             <option value="Porta Aberta / Destrancada">Porta Aberta / Destrancada</option>
                             <option value="Iluminação Apagada / Avariada">Iluminação Apagada / Avariada</option>
                             <option value="Indivíduo Suspeito">Indivíduo Suspeito</option>
@@ -461,7 +725,7 @@
                 </div>
                 <div class="modal-footer border-secondary">
                     <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-warning text-dark fw-bold" onclick="window.salvarOcorrenciaRonda()">
+                    <button type="button" class="btn btn-warning text-dark fw-bold px-4" onclick="window.salvarOcorrenciaRonda()">
                         <i class="fas fa-paper-plane me-1"></i> Gravar Ocorrência
                     </button>
                 </div>
@@ -474,13 +738,13 @@
     <!-- ============================================== -->
     <div class="modal fade" id="modalScanner" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content bg-black text-white">
+            <div class="modal-content bg-black text-white rounded-4">
                 <div class="modal-header border-0 pb-0">
                     <h5 class="modal-title"><i class="fas fa-camera text-primary me-2"></i> Aponte para o QR Code</h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" onclick="window.fecharScannerQRCode()"></button>
                 </div>
                 <div class="modal-body p-3">
-                    <div id="qr-reader-container"></div>
+                    <div id="qr-reader-container" style="width: 100%; height: 320px; border-radius: 14px; overflow: hidden;"></div>
                     <p class="text-center small text-muted mt-2 mb-0">Posicione o código físico da placa de inspeção dentro da área da câmera</p>
                 </div>
             </div>
@@ -488,7 +752,7 @@
     </div>
 
     <!-- Scripts de Operação -->
-    <script src="js/vigilancia-operacao.js?v=2"></script>
+    <script src="js/vigilancia-operacao.js?v=4"></script>
 </body>
 
 </html>
