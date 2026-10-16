@@ -3221,12 +3221,30 @@ async function processarEspelhoPontoGerente(isManualClick = true) {
 
     try {
         // 1. Busca apuração na API RHiD (inclui live AFD de todos os 9 relógios)
+        const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+            ? 'http://localhost:3000/api'
+            : '/api';
+
+        const idPersons = gerente.rhidPersonId ? [gerente.rhidPersonId] : (gerente.id ? [gerente.id] : [1333]);
+
         let apuracaoList = [];
         try {
-            const resp = await fetch(`/api/rhid?action=apuracao_ponto&dataIni=${dtInicio}&dataFinal=${dtFim}`);
-            if (resp.ok) {
-                const j = await resp.json();
-                apuracaoList = Array.isArray(j) ? j : (j.listApuracao || j.data || []);
+            const resp = await fetch(`${apiBaseUrl}/rhid`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'syncApuration',
+                    startDate: dtInicio,
+                    endDate: dtFim,
+                    idPersons: idPersons,
+                    cpf: gerente.cpf || '',
+                    query: gerente.codigo || ''
+                })
+            });
+
+            const resData = await resp.json();
+            if (resp.ok && resData.success) {
+                apuracaoList = resData.data || [];
             }
         } catch (apiErr) {
             console.warn("Aviso na API RHiD:", apiErr);
