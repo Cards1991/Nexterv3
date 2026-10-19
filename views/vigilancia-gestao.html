@@ -781,34 +781,6 @@
     </div>
 </div>
 
-<!-- Modal: Detalhes da Ronda & Visualizador de Trajeto -->
-<div class="modal fade" id="modalDetalheRonda" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="modalDetalheTitulo"><i class="fas fa-map-marked-alt me-2"></i> Auditoria de Ronda</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body p-3">
-                <div class="row g-3">
-                    <div class="col-12 col-lg-8">
-                        <div id="mapa-detalhe-ronda" style="height: 480px; width: 100%; border-radius: 8px;"></div>
-                    </div>
-                    <div class="col-12 col-lg-4">
-                        <div class="card h-100 border-0 bg-light">
-                            <div class="card-body" id="detalhe-ronda-info">
-                                <p class="text-muted">Carregando auditoria da ronda...</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fechar</button>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ============================================== -->
 <!-- NOVO MODAL: CONFIGURAÇÃO DO MAPA & UNIDADE     -->
@@ -995,9 +967,55 @@
             </div>
             <div class="modal-body p-0">
                 <div class="row g-0">
-                    <!-- Mapa do Percurso -->
-                    <div class="col-12 col-lg-8 border-end">
-                        <div id="mapa-detalhe-ronda" style="height: 540px; width: 100%;"></div>
+                    <!-- Mapa do Percurso com Controles de Replay 3D -->
+                    <div class="col-12 col-lg-8 border-end position-relative">
+                        <!-- Barra Flutuante de Simulação 3D da Caminhada -->
+                        <div class="replay-3d-toolbar" id="toolbar-replay-3d" style="display: none;">
+                            <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-success fw-bold px-3 shadow-sm" id="btn-replay-play" onclick="window.toggleReplayRonda3D()">
+                                        <i class="fas fa-play me-1" id="btn-replay-play-icon"></i> <span id="btn-replay-play-text">Iniciar 3D</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-light border" onclick="window.reiniciarReplayRonda3D()" title="Reiniciar do Começo">
+                                        <i class="fas fa-rotate-left"></i>
+                                    </button>
+                                    <div class="btn-group btn-group-sm" role="group">
+                                        <button type="button" class="btn btn-outline-secondary replay-speed-btn active" onclick="window.setVelocidadeReplay(1, this)">1x</button>
+                                        <button type="button" class="btn btn-outline-secondary replay-speed-btn" onclick="window.setVelocidadeReplay(3, this)">3x</button>
+                                        <button type="button" class="btn btn-outline-secondary replay-speed-btn" onclick="window.setVelocidadeReplay(6, this)">6x</button>
+                                        <button type="button" class="btn btn-outline-secondary replay-speed-btn" onclick="window.setVelocidadeReplay(12, this)">12x</button>
+                                    </div>
+                                </div>
+                                <div class="d-flex align-items-center gap-2">
+                                    <button class="btn btn-sm btn-outline-dark" id="btn-toggle-lanterna-3d" onclick="window.alternarLanternaReplay3D()" title="Ligar/Desligar Lanterna Tática">
+                                        <i class="fas fa-flashlight text-warning me-1"></i> <span class="d-none d-sm-inline">Lanterna</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-primary" id="btn-toggle-perspectiva-3d" onclick="window.alternarPerspectivaMapa3D()" title="Alternar Visão 3D Inclinada">
+                                        <i class="fas fa-cube text-primary me-1"></i> <span id="label-perspectiva-3d">Visão 3D</span>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-success active" id="btn-toggle-camera-follow" onclick="window.alternarCameraFollow()" title="Seguir Vigia com a Câmera">
+                                        <i class="fas fa-crosshairs me-1"></i> <span class="d-none d-sm-inline">Câmera</span>
+                                    </button>
+                                </div>
+                            </div>
+                            <!-- Barra de Progresso e Timeline -->
+                            <div class="d-flex align-items-center gap-2 mt-2">
+                                <span class="small font-monospace fw-bold text-dark" id="replay-tempo-atual">00:00</span>
+                                <input type="range" class="form-range flex-fill custom-timeline-slider" id="replay-progresso-slider" min="0" max="1000" value="0" oninput="window.seekReplayRonda3D(this.value)">
+                                <span class="small font-monospace text-muted" id="replay-tempo-total">00:00</span>
+                            </div>
+                        </div>
+
+                        <!-- Toast Flutuante de Checkpoint Alcançado pelo Vigia 3D -->
+                        <div id="toast-checkpoint-3d" class="checkpoint-3d-toast animate__animated" style="display: none;">
+                            <i class="fas fa-circle-check text-success fs-5"></i>
+                            <div>
+                                <div class="fw-bold small" id="toast-cp-nome">Checkpoint Portaria 01</div>
+                                <small class="text-muted" id="toast-cp-status">Verificado às 08:34</small>
+                            </div>
+                        </div>
+
+                        <div id="mapa-detalhe-ronda" style="height: 560px; width: 100%;"></div>
                     </div>
                     <!-- Painel Lateral de Informações -->
                     <div class="col-12 col-lg-4 p-4 bg-light overflow-auto" style="max-height: 540px;">

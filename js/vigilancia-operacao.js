@@ -527,11 +527,173 @@
     /**
      * Visualização do trajeto de uma rota executada no próprio celular
      */
+    /**
+     * Motor de Simulação 3D do Vigia no Celular
+     */
+    let mobileReplayState = {
+        isPlaying: false,
+        animId: null,
+        marker: null,
+        coordenadas: [],
+        segments: [],
+        totalDist: 0,
+        distPercorrida: 0,
+        lastTimestamp: 0
+    };
+
+    function calcularDistanciaMetrosMob(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    function calcularRumoMob(lat1, lon1, lat2, lon2) {
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const lat1Rad = lat1 * Math.PI / 180;
+        const lat2Rad = lat2 * Math.PI / 180;
+        const y = Math.sin(dLon) * Math.cos(lat2Rad);
+        const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+        const brng = Math.atan2(y, x) * 180 / Math.PI;
+        return (brng + 360) % 360;
+    }
+
+    function criarHtmlVigia3DMob() {
+        return `
+            <div class="vigia-3d-container is-walking" id="vigia-3d-avatar-mob">
+                <div class="vigia-3d-shadow"></div>
+                <div class="vigia-3d-radar"></div>
+                <div class="vigia-3d-flashlight" id="vigia-3d-beam-mob"></div>
+                <div class="vigia-3d-character">
+                    <div class="vigia-3d-head">
+                        <div class="vigia-3d-cap-visor"></div>
+                        <div class="vigia-3d-cap-insignia"></div>
+                    </div>
+                    <div class="vigia-3d-torso">
+                        <div class="vigia-3d-stripe"></div>
+                        <div class="vigia-3d-badge"><i class="fas fa-shield"></i></div>
+                    </div>
+                    <div class="vigia-3d-arm left"></div>
+                    <div class="vigia-3d-arm right">
+                        <div class="vigia-3d-flashlight-device"></div>
+                    </div>
+                    <div class="vigia-3d-leg left">
+                        <div class="vigia-3d-boot"></div>
+                    </div>
+                    <div class="vigia-3d-leg right">
+                        <div class="vigia-3d-boot"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    window.pararSimulacaoMobile = function () {
+        mobileReplayState.isPlaying = false;
+        if (mobileReplayState.animId) {
+            cancelAnimationFrame(mobileReplayState.animId);
+            mobileReplayState.animId = null;
+        }
+        if (mobileReplayState.marker && mapaRotaFeitaMobileInstance) {
+            mapaRotaFeitaMobileInstance.removeLayer(mobileReplayState.marker);
+            mobileReplayState.marker = null;
+        }
+        const btnText = document.getElementById('btn-replay-mobile-text');
+        if (btnText) btnText.innerText = 'Simular Caminhada 3D do Vigia';
+    };
+
+    window.simularCaminhadaMobile = function () {
+        if (!mapaRotaFeitaMobileInstance || !mobileReplayState.coordenadas || mobileReplayState.coordenadas.length < 2) return;
+
+        if (mobileReplayState.isPlaying) {
+            window.pararSimulacaoMobile();
+            return;
+        }
+
+        const btnText = document.getElementById('btn-replay-mobile-text');
+        if (btnText) btnText.innerText = 'Pausar Simulação 3D';
+
+        if (!mobileReplayState.marker) {
+            const startPos = mobileReplayState.coordenadas[0];
+            const vigiaIcon = L.divIcon({
+                className: 'vigia-3d-leaflet-marker',
+                html: criarHtmlVigia3DMob(),
+                iconSize: [60, 60],
+                iconAnchor: [30, 30]
+            });
+            mobileReplayState.marker = L.marker(startPos, { icon: vigiaIcon, zIndexOffset: 1000 }).addTo(mapaRotaFeitaMobileInstance);
+        }
+
+        mobileReplayState.isPlaying = true;
+        mobileReplayState.distPercorrida = 0;
+        mobileReplayState.lastTimestamp = performance.now();
+
+        function loopMob(now) {
+            if (!mobileReplayState.isPlaying) return;
+            const dt = Math.min((now - mobileReplayState.lastTimestamp) / 1000, 0.1);
+            mobileReplayState.lastTimestamp = now;
+
+            const speed = 4; // 4x velocidade na tela do celular
+            mobileReplayState.distPercorrida += 1.4 * speed * dt;
+
+            if (mobileReplayState.distPercorrida >= mobileReplayState.totalDist) {
+                mobileReplayState.distPercorrida = mobileReplayState.totalDist;
+                atualizarFrameMob(mobileReplayState.distPercorrida);
+                window.pararSimulacaoMobile();
+                return;
+            }
+
+            atualizarFrameMob(mobileReplayState.distPercorrida);
+            mobileReplayState.animId = requestAnimationFrame(loopMob);
+        }
+
+        function atualizarFrameMob(dist) {
+            let currentSeg = mobileReplayState.segments[mobileReplayState.segments.length - 1];
+            let t = 1;
+            for (let i = 0; i < mobileReplayState.segments.length; i++) {
+                const seg = mobileReplayState.segments[i];
+                if (dist <= seg.endDist) {
+                    currentSeg = seg;
+                    t = seg.dist > 0 ? (dist - seg.startDist) / seg.dist : 0;
+                    break;
+                }
+            }
+            t = Math.max(0, Math.min(1, t));
+            const curLat = currentSeg.p1[0] + (currentSeg.p2[0] - currentSeg.p1[0]) * t;
+            const curLng = currentSeg.p1[1] + (currentSeg.p2[1] - currentSeg.p1[1]) * t;
+            const heading = currentSeg.heading;
+
+            if (mobileReplayState.marker) {
+                mobileReplayState.marker.setLatLng([curLat, curLng]);
+            }
+            const avatar = document.getElementById('vigia-3d-avatar-mob');
+            if (avatar) {
+                avatar.style.transform = `rotate(${heading}deg)`;
+            }
+            if (mapaRotaFeitaMobileInstance) {
+                mapaRotaFeitaMobileInstance.panTo([curLat, curLng], { animate: false });
+            }
+        }
+
+        mobileReplayState.animId = requestAnimationFrame(loopMob);
+    };
+
     window.visualizarRotaFeitaMobile = async function (rondaId) {
         const modalEl = document.getElementById('modalVisualizarRotaMobile');
         if (!modalEl) return;
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
+
+        if (!modalEl._cleanupAttached) {
+            modalEl.addEventListener('hidden.bs.modal', () => {
+                window.pararSimulacaoMobile();
+            });
+            modalEl._cleanupAttached = true;
+        }
 
         const tituloEl = document.getElementById('mobile-rota-feita-titulo');
         const subEl = document.getElementById('mobile-rota-feita-subtitulo');
@@ -570,6 +732,37 @@
                 coordenadas = ronda.trajetoRecente.filter(p => p.lat && p.lng).map(p => [Number(p.lat), Number(p.lng)]);
             }
 
+            // Prepara segmentos para Simulação 3D Mobile
+            let segments = [];
+            let totalDist = 0;
+            for (let i = 0; i < coordenadas.length - 1; i++) {
+                const p1 = coordenadas[i];
+                const p2 = coordenadas[i + 1];
+                const d = calcularDistanciaMetrosMob(p1[0], p1[1], p2[0], p2[1]);
+                const heading = calcularRumoMob(p1[0], p1[1], p2[0], p2[1]);
+                segments.push({
+                    p1,
+                    p2,
+                    dist: d,
+                    startDist: totalDist,
+                    endDist: totalDist + d,
+                    heading
+                });
+                totalDist += d;
+            }
+
+            window.pararSimulacaoMobile();
+            mobileReplayState = {
+                isPlaying: false,
+                animId: null,
+                marker: null,
+                coordenadas: coordenadas,
+                segments: segments,
+                totalDist: Math.max(1, totalDist),
+                distPercorrida: 0,
+                lastTimestamp: 0
+            };
+
             let dtInicio = ronda.inicio ? (ronda.inicio.toDate ? ronda.inicio.toDate() : new Date(ronda.inicio)).toLocaleTimeString('pt-BR') : '-';
             let dtFim = ronda.fim ? (ronda.fim.toDate ? ronda.fim.toDate() : new Date(ronda.fim)).toLocaleTimeString('pt-BR') : '-';
 
@@ -600,7 +793,7 @@
                         <div class="col-4">
                             <div class="bg-secondary bg-opacity-25 p-2 rounded-3">
                                 <small class="text-muted d-block">Distância</small>
-                                <b class="text-white">${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : '0 m'}</b>
+                                <b class="text-white">${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : (totalDist / 1000).toFixed(2) + ' km'}</b>
                             </div>
                         </div>
                         <div class="col-4">
@@ -610,6 +803,13 @@
                             </div>
                         </div>
                     </div>
+
+                    ${coordenadas.length > 1 ? `
+                        <button class="btn btn-primary btn-sm w-100 fw-bold py-2 my-2 shadow-sm d-flex align-items-center justify-content-center gap-2" id="btn-replay-mobile" onclick="window.simularCaminhadaMobile()">
+                            <i class="fas fa-person-walking fs-5"></i> <span id="btn-replay-mobile-text">Simular Caminhada 3D do Vigia</span>
+                        </button>
+                    ` : ''}
+
                     <div class="small text-muted">
                         <div><i class="fas fa-clock me-1 text-primary"></i> <b>Horário:</b> ${dtInicio} até ${dtFim}</div>
                         <div><i class="fas fa-triangle-exclamation me-1 text-warning"></i> <b>Ocorrências:</b> ${ronda.qtdOcorrencias || 0}</div>
@@ -665,6 +865,7 @@
             if (detalhesEl) detalhesEl.innerHTML = `<div class="alert alert-danger py-2 small">${e.message}</div>`;
         }
     };
+
 
     // ==============================================
     // 4. INÍCIO DA RONDA E EXECUÇÃO OPERACIONAL

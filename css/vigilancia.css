@@ -397,3 +397,353 @@
     background: #fafafa;
     border-top: 1px solid #f1f5f9;
 }
+
+/* =====================================================
+   ANIMAÇÃO 3D DO VIGIA CAMINHANDO (SIMULAÇÃO DE TRAJETO)
+   ===================================================== */
+
+/* Toolbar Flutuante do Replay 3D */
+.replay-3d-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    right: 12px;
+    background: rgba(255, 255, 255, 0.94);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: 14px;
+    padding: 10px 14px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.custom-timeline-slider {
+    cursor: pointer;
+    accent-color: #2563eb;
+    height: 6px;
+}
+
+.replay-speed-btn {
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 2px 8px;
+}
+
+/* Toast de Notificação de Checkpoint no 3D */
+.checkpoint-3d-toast {
+    position: absolute;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(15, 23, 42, 0.95);
+    color: white;
+    backdrop-filter: blur(8px);
+    border: 1px solid #10b981;
+    border-radius: 30px;
+    padding: 8px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+    z-index: 1050;
+    pointer-events: none;
+    transition: all 0.3s ease;
+}
+
+/* Efeito Perspectiva 3D no Mapa Leaflet */
+.mapa-perspectiva-3d {
+    perspective: 1200px !important;
+    perspective-origin: center 80% !important;
+    overflow: hidden !important;
+}
+
+.mapa-perspectiva-3d .leaflet-pane {
+    transform: rotateX(32deg) translateZ(0) !important;
+    transform-style: preserve-3d !important;
+    transition: transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+}
+
+/* =====================================================
+   BONECO 3D ESTILIZADO DO VIGIA (CSS 3D / SVG HÍBRIDO)
+   ===================================================== */
+.vigia-3d-container {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    pointer-events: none;
+    transform-origin: center center;
+    transition: transform 0.1s linear;
+}
+
+/* Cone Luminoso da Lanterna Tática Projetado no Chão */
+.vigia-3d-flashlight {
+    position: absolute;
+    top: -55px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 70px;
+    height: 80px;
+    background: radial-gradient(ellipse at 50% 100%, rgba(255, 255, 200, 0.7) 0%, rgba(255, 255, 180, 0.35) 45%, rgba(255, 255, 150, 0.08) 75%, transparent 100%);
+    clip-path: polygon(35% 100%, 65% 100%, 100% 0%, 0% 0%);
+    pointer-events: none;
+    opacity: 0.95;
+    filter: drop-shadow(0 0 10px rgba(255, 255, 200, 0.5));
+    animation: flashlightBeamFlicker 2s infinite ease-in-out;
+    transition: opacity 0.3s ease;
+    z-index: 1;
+}
+
+.vigia-3d-flashlight.off {
+    opacity: 0 !important;
+}
+
+/* Sombra 3D Sob os Pés do Vigia */
+.vigia-3d-shadow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 20px;
+    background: rgba(0, 0, 0, 0.45);
+    border-radius: 50%;
+    filter: blur(2px);
+    z-index: 2;
+    transition: all 0.2s ease;
+}
+
+/* Radar Sonar de Patrulhamento */
+.vigia-3d-radar {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border: 1.5px solid rgba(16, 185, 129, 0.6);
+    border-radius: 50%;
+    animation: radarPulse 2s infinite ease-out;
+    z-index: 2;
+    pointer-events: none;
+}
+
+/* Personagem 3D */
+.vigia-3d-character {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 36px;
+    height: 36px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Pernas com Coturnos */
+.vigia-3d-leg {
+    position: absolute;
+    width: 7px;
+    height: 16px;
+    background: #1e293b;
+    border-radius: 4px;
+    bottom: -6px;
+    z-index: 3;
+}
+
+.vigia-3d-leg.left {
+    left: 8px;
+}
+
+.vigia-3d-leg.right {
+    right: 8px;
+}
+
+.vigia-3d-boot {
+    position: absolute;
+    bottom: 0;
+    left: -1px;
+    width: 9px;
+    height: 6px;
+    background: #090d16;
+    border-radius: 3px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.6);
+}
+
+/* Tronco e Colete com Faixas Fluorescentes */
+.vigia-3d-torso {
+    position: absolute;
+    top: 8px;
+    left: 5px;
+    width: 26px;
+    height: 20px;
+    background: #0f172a;
+    border-radius: 6px;
+    z-index: 6;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #334155;
+}
+
+.vigia-3d-stripe {
+    width: 100%;
+    height: 4px;
+    background: linear-gradient(90deg, #eab308, #84cc16, #eab308);
+    box-shadow: 0 0 4px #84cc16;
+    margin: 1px 0;
+}
+
+.vigia-3d-badge {
+    position: absolute;
+    top: 3px;
+    right: 4px;
+    font-size: 6px;
+    color: #facc15;
+}
+
+/* Braços */
+.vigia-3d-arm {
+    position: absolute;
+    width: 6px;
+    height: 14px;
+    background: #1e293b;
+    border-radius: 3px;
+    top: 9px;
+    z-index: 4;
+}
+
+.vigia-3d-arm.left {
+    left: 0;
+    transform-origin: top center;
+}
+
+.vigia-3d-arm.right {
+    right: 0;
+    transform-origin: top center;
+}
+
+.vigia-3d-flashlight-device {
+    position: absolute;
+    bottom: -4px;
+    left: -1px;
+    width: 8px;
+    height: 11px;
+    background: #334155;
+    border-radius: 2px;
+    border: 1px solid #94a3b8;
+    box-shadow: 0 0 5px #fef08a;
+}
+
+/* Cabeça e Quepe de Vigilância */
+.vigia-3d-head {
+    position: absolute;
+    top: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 16px;
+    height: 16px;
+    background: #0f172a;
+    border-radius: 50%;
+    z-index: 8;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    border: 1px solid #1e293b;
+}
+
+.vigia-3d-cap-visor {
+    position: absolute;
+    top: -3px;
+    left: 2px;
+    right: 2px;
+    height: 5px;
+    background: #020617;
+    border-radius: 4px 4px 0 0;
+    border-top: 1px solid #475569;
+}
+
+.vigia-3d-cap-insignia {
+    position: absolute;
+    top: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 5px;
+    height: 5px;
+    background: #eab308;
+    border-radius: 50%;
+    box-shadow: 0 0 3px #eab308;
+}
+
+/* Animações de Passos quando "is-walking" está ativo */
+.vigia-3d-container.is-walking .vigia-3d-leg.left {
+    animation: vigiaLegWalkLeft 0.5s infinite ease-in-out;
+}
+
+.vigia-3d-container.is-walking .vigia-3d-leg.right {
+    animation: vigiaLegWalkRight 0.5s infinite ease-in-out;
+}
+
+.vigia-3d-container.is-walking .vigia-3d-arm.left {
+    animation: vigiaArmWalkLeft 0.5s infinite ease-in-out;
+}
+
+.vigia-3d-container.is-walking .vigia-3d-arm.right {
+    animation: vigiaArmWalkRight 0.5s infinite ease-in-out;
+}
+
+.vigia-3d-container.is-walking .vigia-3d-torso {
+    animation: vigiaTorsoBob 0.25s infinite ease-in-out;
+}
+
+.vigia-3d-container.is-walking .vigia-3d-shadow {
+    animation: vigiaShadowPulse 0.25s infinite ease-in-out;
+}
+
+/* Keyframes de Caminhada Articulada */
+@keyframes vigiaLegWalkLeft {
+    0% { transform: translateY(-7px); }
+    50% { transform: translateY(7px); }
+    100% { transform: translateY(-7px); }
+}
+
+@keyframes vigiaLegWalkRight {
+    0% { transform: translateY(7px); }
+    50% { transform: translateY(-7px); }
+    100% { transform: translateY(7px); }
+}
+
+@keyframes vigiaArmWalkLeft {
+    0% { transform: rotate(24deg) translateY(2px); }
+    50% { transform: rotate(-24deg) translateY(-2px); }
+    100% { transform: rotate(24deg) translateY(2px); }
+}
+
+@keyframes vigiaArmWalkRight {
+    0% { transform: rotate(-14deg) translateY(-2px); }
+    50% { transform: rotate(10deg) translateY(2px); }
+    100% { transform: rotate(-14deg) translateY(-2px); }
+}
+
+@keyframes vigiaTorsoBob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-2.5px); }
+}
+
+@keyframes vigiaShadowPulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+    50% { transform: translate(-50%, -50%) scale(0.85); opacity: 0.35; }
+}
+
+@keyframes flashlightBeamFlicker {
+    0%, 100% { opacity: 0.9; }
+    50% { opacity: 1; filter: drop-shadow(0 0 12px rgba(255, 255, 210, 0.7)); }
+}
+
+@keyframes radarPulse {
+    0% { transform: translate(-50%, -50%) scale(0.6); opacity: 0.8; }
+    100% { transform: translate(-50%, -50%) scale(1.6); opacity: 0; }
+}

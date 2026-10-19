@@ -2456,6 +2456,406 @@
     };
 
     /**
+     * ========================================================
+     * MOTOR DE SIMULAÇÃO E REPLAY 3D DO VIGIA EM PATRULHAMENTO
+     * ========================================================
+     */
+    let replayState = {
+        isPlaying: false,
+        speed: 1,
+        distPercorrida: 0,
+        totalDist: 0,
+        coordenadas: [],
+        segments: [],
+        checkpoints: [],
+        marker: null,
+        polyPercorrida: null,
+        basePolyline: null,
+        is3D: false,
+        lanternaOn: true,
+        followCamera: true,
+        animFrameId: null,
+        lastTimestamp: 0
+    };
+
+    function calcularDistanciaMetros(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
+    }
+
+    function calcularRumo(lat1, lon1, lat2, lon2) {
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const lat1Rad = lat1 * Math.PI / 180;
+        const lat2Rad = lat2 * Math.PI / 180;
+        const y = Math.sin(dLon) * Math.cos(lat2Rad);
+        const x = Math.cos(lat1Rad) * Math.sin(lat2Rad) - Math.sin(lat1Rad) * Math.cos(lat2Rad) * Math.cos(dLon);
+        const brng = Math.atan2(y, x) * 180 / Math.PI;
+        return (brng + 360) % 360;
+    }
+
+    function formatarTempoMinSeg(segundos) {
+        const s = Math.max(0, Math.floor(segundos || 0));
+        const m = Math.floor(s / 60);
+        const r = s % 60;
+        return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
+    }
+
+    function criarHtmlVigia3D() {
+        return `
+            <div class="vigia-3d-container" id="vigia-3d-avatar">
+                <div class="vigia-3d-shadow"></div>
+                <div class="vigia-3d-radar"></div>
+                <div class="vigia-3d-flashlight ${replayState.lanternaOn ? '' : 'off'}" id="vigia-3d-beam"></div>
+                <div class="vigia-3d-character">
+                    <div class="vigia-3d-head">
+                        <div class="vigia-3d-cap-visor"></div>
+                        <div class="vigia-3d-cap-insignia"></div>
+                    </div>
+                    <div class="vigia-3d-torso">
+                        <div class="vigia-3d-stripe"></div>
+                        <div class="vigia-3d-badge"><i class="fas fa-shield"></i></div>
+                    </div>
+                    <div class="vigia-3d-arm left"></div>
+                    <div class="vigia-3d-arm right">
+                        <div class="vigia-3d-flashlight-device"></div>
+                    </div>
+                    <div class="vigia-3d-leg left">
+                        <div class="vigia-3d-boot"></div>
+                    </div>
+                    <div class="vigia-3d-leg right">
+                        <div class="vigia-3d-boot"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    function garantirMarker3D() {
+        if (!mapaDetalhe || !replayState.coordenadas || replayState.coordenadas.length === 0) return;
+        if (!replayState.marker) {
+            const startPos = replayState.coordenadas[0];
+            const vigia3DIcon = L.divIcon({
+                className: 'vigia-3d-leaflet-marker',
+                html: criarHtmlVigia3D(),
+                iconSize: [60, 60],
+                iconAnchor: [30, 30]
+            });
+            replayState.marker = L.marker(startPos, {
+                icon: vigia3DIcon,
+                zIndexOffset: 1000
+            }).addTo(mapaDetalhe);
+        }
+    }
+
+    function mostrarToastCheckpoint(nome, status, horario) {
+        const toast = document.getElementById('toast-checkpoint-3d');
+        if (!toast) return;
+        const nomeEl = document.getElementById('toast-cp-nome');
+        const statusEl = document.getElementById('toast-cp-status');
+        if (nomeEl) nomeEl.innerText = nome || 'Checkpoint';
+        const isOk = status === 'CONFIRMADO';
+        if (statusEl) {
+            statusEl.innerHTML = `<span class="${isOk ? 'text-success' : 'text-danger'} fw-bold">${isOk ? '✓ Validado' : 'Não verificado'}</span> ${horario ? 'às ' + new Date(horario).toLocaleTimeString('pt-BR') : ''}`;
+        }
+        toast.style.display = 'flex';
+        clearTimeout(toast._timeout);
+        toast._timeout = setTimeout(() => {
+            toast.style.display = 'none';
+        }, 3200);
+    }
+
+    function atualizarFrameReplay(dist) {
+        if (!replayState.segments || replayState.segments.length === 0 || !mapaDetalhe) return;
+
+        garantirMarker3D();
+
+        let currentSegment = replayState.segments[replayState.segments.length - 1];
+        let t = 1;
+        for (let i = 0; i < replayState.segments.length; i++) {
+            const seg = replayState.segments[i];
+            if (dist <= seg.endDist) {
+                currentSegment = seg;
+                t = seg.dist > 0 ? (dist - seg.startDist) / seg.dist : 0;
+                break;
+            }
+        }
+
+        t = Math.max(0, Math.min(1, t));
+        const curLat = currentSegment.p1[0] + (currentSegment.p2[0] - currentSegment.p1[0]) * t;
+        const curLng = currentSegment.p1[1] + (currentSegment.p2[1] - currentSegment.p1[1]) * t;
+        const heading = currentSegment.heading;
+
+        if (replayState.marker) {
+            replayState.marker.setLatLng([curLat, curLng]);
+        }
+
+        const avatar = document.getElementById('vigia-3d-avatar');
+        if (avatar) {
+            avatar.style.transform = `rotate(${heading}deg)`;
+        }
+
+        const pontosPercorridos = [];
+        for (let i = 0; i < replayState.segments.length; i++) {
+            const seg = replayState.segments[i];
+            if (dist >= seg.endDist) {
+                if (pontosPercorridos.length === 0) pontosPercorridos.push(seg.p1);
+                pontosPercorridos.push(seg.p2);
+            } else if (dist >= seg.startDist) {
+                if (pontosPercorridos.length === 0) pontosPercorridos.push(seg.p1);
+                pontosPercorridos.push([curLat, curLng]);
+                break;
+            }
+        }
+
+        if (!replayState.polyPercorrida && mapaDetalhe) {
+            replayState.polyPercorrida = L.polyline([], {
+                color: '#06b6d4',
+                weight: 6,
+                opacity: 0.95,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(mapaDetalhe);
+        }
+        if (replayState.polyPercorrida) {
+            replayState.polyPercorrida.setLatLngs(pontosPercorridos);
+        }
+
+        if (replayState.followCamera && mapaDetalhe) {
+            mapaDetalhe.panTo([curLat, curLng], { animate: false });
+        }
+
+        const progressFrac = replayState.totalDist > 0 ? (dist / replayState.totalDist) : 0;
+        const slider = document.getElementById('replay-progresso-slider');
+        if (slider && document.activeElement !== slider) {
+            slider.value = Math.round(progressFrac * 1000);
+        }
+
+        const totalSegundos = Math.max(1, Math.round(replayState.totalDist / 1.4));
+        const atualSegundos = Math.round(progressFrac * totalSegundos);
+        const tempoAtualEl = document.getElementById('replay-tempo-atual');
+        const tempoTotalEl = document.getElementById('replay-tempo-total');
+        if (tempoAtualEl) tempoAtualEl.innerText = formatarTempoMinSeg(atualSegundos);
+        if (tempoTotalEl) tempoTotalEl.innerText = formatarTempoMinSeg(totalSegundos);
+
+        if (replayState.checkpoints) {
+            replayState.checkpoints.forEach(cp => {
+                if (!cp.latitude || !cp.longitude) return;
+                const d = calcularDistanciaMetros(curLat, curLng, cp.latitude, cp.longitude);
+                if (d <= 25 && !cp.alerted) {
+                    cp.alerted = true;
+                    mostrarToastCheckpoint(cp.nome, cp.status, cp.horario);
+                }
+            });
+        }
+    }
+
+    window.toggleReplayRonda3D = function () {
+        if (!replayState.coordenadas || replayState.coordenadas.length < 2) {
+            alert("Não há pontos de GPS suficientes gravados nesta rota para simular a caminhada.");
+            return;
+        }
+        if (replayState.isPlaying) {
+            window.pausarReplay3D();
+        } else {
+            window.iniciarReplayLoop();
+        }
+    };
+
+    window.iniciarReplayLoop = function () {
+        if (!replayState.coordenadas || replayState.coordenadas.length < 2) return;
+
+        if (replayState.distPercorrida >= replayState.totalDist - 0.5) {
+            replayState.distPercorrida = 0;
+            if (replayState.checkpoints) {
+                replayState.checkpoints.forEach(cp => cp.alerted = false);
+            }
+        }
+
+        garantirMarker3D();
+
+        replayState.isPlaying = true;
+        replayState.lastTimestamp = performance.now();
+
+        const btnIcon = document.getElementById('btn-replay-play-icon');
+        const btnText = document.getElementById('btn-replay-play-text');
+        const btnPlay = document.getElementById('btn-replay-play');
+        if (btnIcon) btnIcon.className = 'fas fa-pause me-1';
+        if (btnText) btnText.innerText = 'Pausar';
+        if (btnPlay) {
+            btnPlay.classList.remove('btn-success');
+            btnPlay.classList.add('btn-warning');
+        }
+
+        const avatar = document.getElementById('vigia-3d-avatar');
+        if (avatar) avatar.classList.add('is-walking');
+
+        if (replayState.animFrameId) cancelAnimationFrame(replayState.animFrameId);
+
+        function loop(now) {
+            if (!replayState.isPlaying) return;
+            const dt = Math.min((now - replayState.lastTimestamp) / 1000, 0.1);
+            replayState.lastTimestamp = now;
+
+            const baseSpeed = 1.4;
+            replayState.distPercorrida += baseSpeed * replayState.speed * dt;
+
+            if (replayState.distPercorrida >= replayState.totalDist) {
+                replayState.distPercorrida = replayState.totalDist;
+                atualizarFrameReplay(replayState.distPercorrida);
+                window.pausarReplay3D();
+
+                const toast = document.getElementById('toast-checkpoint-3d');
+                if (toast) {
+                    const nomeEl = document.getElementById('toast-cp-nome');
+                    const statusEl = document.getElementById('toast-cp-status');
+                    if (nomeEl) nomeEl.innerHTML = '<i class="fas fa-flag-checkered text-warning me-1"></i> Trajeto Concluído';
+                    if (statusEl) statusEl.innerText = 'O vigia finalizou o percurso da rota.';
+                    toast.style.display = 'flex';
+                    setTimeout(() => { if (toast) toast.style.display = 'none'; }, 4000);
+                }
+                return;
+            }
+
+            atualizarFrameReplay(replayState.distPercorrida);
+            replayState.animFrameId = requestAnimationFrame(loop);
+        }
+
+        replayState.animFrameId = requestAnimationFrame(loop);
+    };
+
+    window.pausarReplay3D = function () {
+        replayState.isPlaying = false;
+        if (replayState.animFrameId) {
+            cancelAnimationFrame(replayState.animFrameId);
+            replayState.animFrameId = null;
+        }
+        const btnIcon = document.getElementById('btn-replay-play-icon');
+        const btnText = document.getElementById('btn-replay-play-text');
+        const btnPlay = document.getElementById('btn-replay-play');
+        if (btnIcon) btnIcon.className = 'fas fa-play me-1';
+        if (btnText) btnText.innerText = (replayState.distPercorrida > 0 && replayState.distPercorrida < replayState.totalDist) ? 'Continuar 3D' : 'Iniciar 3D';
+        if (btnPlay) {
+            btnPlay.classList.remove('btn-warning');
+            btnPlay.classList.add('btn-success');
+        }
+
+        const avatar = document.getElementById('vigia-3d-avatar');
+        if (avatar) avatar.classList.remove('is-walking');
+    };
+
+    window.reiniciarReplayRonda3D = function () {
+        replayState.distPercorrida = 0;
+        if (replayState.checkpoints) {
+            replayState.checkpoints.forEach(cp => cp.alerted = false);
+        }
+        atualizarFrameReplay(0);
+        const slider = document.getElementById('replay-progresso-slider');
+        if (slider) slider.value = 0;
+        if (!replayState.isPlaying) {
+            window.toggleReplayRonda3D();
+        }
+    };
+
+    window.setVelocidadeReplay = function (speed, btnEl) {
+        replayState.speed = Number(speed) || 1;
+        document.querySelectorAll('.replay-speed-btn').forEach(b => b.classList.remove('active'));
+        if (btnEl) btnEl.classList.add('active');
+    };
+
+    window.alternarLanternaReplay3D = function () {
+        const beam = document.getElementById('vigia-3d-beam');
+        const btn = document.getElementById('btn-toggle-lanterna-3d');
+        replayState.lanternaOn = !replayState.lanternaOn;
+        if (beam) {
+            if (replayState.lanternaOn) {
+                beam.classList.remove('off');
+            } else {
+                beam.classList.add('off');
+            }
+        }
+        if (btn) {
+            if (replayState.lanternaOn) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    };
+
+    window.alternarPerspectivaMapa3D = function () {
+        const container = document.getElementById('mapa-detalhe-ronda');
+        const label = document.getElementById('label-perspectiva-3d');
+        const btn = document.getElementById('btn-toggle-perspectiva-3d');
+        if (!container) return;
+
+        replayState.is3D = !replayState.is3D;
+        if (replayState.is3D) {
+            container.classList.add('mapa-perspectiva-3d');
+            if (label) label.innerText = 'Visão 2D';
+            if (btn) btn.classList.add('active');
+        } else {
+            container.classList.remove('mapa-perspectiva-3d');
+            if (label) label.innerText = 'Visão 3D';
+            if (btn) btn.classList.remove('active');
+        }
+        if (mapaDetalhe) {
+            setTimeout(() => mapaDetalhe.invalidateSize(), 300);
+        }
+    };
+
+    window.alternarCameraFollow = function () {
+        const btn = document.getElementById('btn-toggle-camera-follow');
+        replayState.followCamera = !replayState.followCamera;
+        if (btn) {
+            if (replayState.followCamera) {
+                btn.classList.add('active');
+            } else {
+                btn.classList.remove('active');
+            }
+        }
+    };
+
+    window.seekReplayRonda3D = function (val) {
+        if (!replayState.totalDist) return;
+        const progress = Number(val) / 1000;
+        replayState.distPercorrida = progress * replayState.totalDist;
+
+        if (replayState.checkpoints) {
+            replayState.checkpoints.forEach(cp => {
+                cp.alerted = false;
+            });
+        }
+
+        atualizarFrameReplay(replayState.distPercorrida);
+    };
+
+    window.limparReplay3D = function () {
+        window.pausarReplay3D();
+        if (replayState.marker && mapaDetalhe) {
+            mapaDetalhe.removeLayer(replayState.marker);
+            replayState.marker = null;
+        }
+        if (replayState.polyPercorrida && mapaDetalhe) {
+            mapaDetalhe.removeLayer(replayState.polyPercorrida);
+            replayState.polyPercorrida = null;
+        }
+        const container = document.getElementById('mapa-detalhe-ronda');
+        if (container) container.classList.remove('mapa-perspectiva-3d');
+        replayState.is3D = false;
+        replayState.distPercorrida = 0;
+        const label = document.getElementById('label-perspectiva-3d');
+        if (label) label.innerText = 'Visão 3D';
+        const btn3D = document.getElementById('btn-toggle-perspectiva-3d');
+        if (btn3D) btn3D.classList.remove('active');
+    };
+
+    /**
      * Modal de Auditoria e Trajeto da Ronda
      */
     window.abrirDetalhesRonda = async function (rondaId) {
@@ -2466,6 +2866,13 @@
         }
         const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
+
+        if (!modalEl._replayCleanupAttached) {
+            modalEl.addEventListener('hidden.bs.modal', () => {
+                window.limparReplay3D();
+            });
+            modalEl._replayCleanupAttached = true;
+        }
 
         const infoDiv = document.getElementById('detalhe-ronda-info');
         infoDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Carregando detalhes do trajeto...</p></div>';
@@ -2499,6 +2906,76 @@
                 coordenadas = ronda.trajetoRecente.filter(p => p.lat && p.lng).map(p => [Number(p.lat), Number(p.lng)]);
             }
 
+            // Prepara segmentos e motor para Replay 3D
+            let segments = [];
+            let totalDist = 0;
+            for (let i = 0; i < coordenadas.length - 1; i++) {
+                const p1 = coordenadas[i];
+                const p2 = coordenadas[i + 1];
+                const d = calcularDistanciaMetros(p1[0], p1[1], p2[0], p2[1]);
+                const heading = calcularRumo(p1[0], p1[1], p2[0], p2[1]);
+                segments.push({
+                    p1,
+                    p2,
+                    dist: d,
+                    startDist: totalDist,
+                    endDist: totalDist + d,
+                    heading
+                });
+                totalDist += d;
+            }
+
+            const checkpointsAudit = (ronda.checkpointsStatus || []).map(cp => ({
+                ...cp,
+                latitude: Number(cp.latitude) || 0,
+                longitude: Number(cp.longitude) || 0,
+                alerted: false
+            }));
+
+            window.limparReplay3D();
+
+            replayState = {
+                isPlaying: false,
+                speed: 1,
+                distPercorrida: 0,
+                totalDist: Math.max(1, totalDist),
+                coordenadas: coordenadas,
+                segments: segments,
+                checkpoints: checkpointsAudit,
+                marker: null,
+                polyPercorrida: null,
+                basePolyline: null,
+                is3D: false,
+                lanternaOn: true,
+                followCamera: true,
+                animFrameId: null,
+                lastTimestamp: 0
+            };
+
+            const toolbar3D = document.getElementById('toolbar-replay-3d');
+            if (toolbar3D) {
+                toolbar3D.style.display = coordenadas.length > 1 ? 'block' : 'none';
+            }
+
+            const slider = document.getElementById('replay-progresso-slider');
+            if (slider) slider.value = 0;
+
+            const totalSegundos = Math.max(1, Math.round(totalDist / 1.4));
+            const tempoAtualEl = document.getElementById('replay-tempo-atual');
+            const tempoTotalEl = document.getElementById('replay-tempo-total');
+            if (tempoAtualEl) tempoAtualEl.innerText = "00:00";
+            if (tempoTotalEl) tempoTotalEl.innerText = formatarTempoMinSeg(totalSegundos);
+
+            const btnPlayIcon = document.getElementById('btn-replay-play-icon');
+            const btnPlayText = document.getElementById('btn-replay-play-text');
+            const btnPlay = document.getElementById('btn-replay-play');
+            if (btnPlayIcon) btnPlayIcon.className = 'fas fa-play me-1';
+            if (btnPlayText) btnPlayText.innerText = 'Iniciar 3D';
+            if (btnPlay) {
+                btnPlay.classList.remove('btn-warning');
+                btnPlay.classList.add('btn-success');
+            }
+
             // Preenche painel informativo lateral
             let dtInicio = ronda.inicio ? (ronda.inicio.toDate ? ronda.inicio.toDate() : new Date(ronda.inicio)).toLocaleString('pt-BR') : '-';
             let dtFim = ronda.fim ? (ronda.fim.toDate ? ronda.fim.toDate() : new Date(ronda.fim)).toLocaleString('pt-BR') : '-';
@@ -2525,11 +3002,18 @@
                 </div>
                 <h5 class="fw-bold text-dark mb-1">${ronda.rotaNome || 'Ronda Livre'}</h5>
                 <p class="small text-muted mb-3"><i class="fas fa-user-shield me-1 text-primary"></i> <b>Vigia:</b> ${ronda.vigiaNome || '-'} (${ronda.vigiaMatricula || '-'})</p>
+
+                ${coordenadas.length > 1 ? `
+                    <button class="btn btn-primary w-100 fw-bold py-2 shadow-sm mb-3 d-flex align-items-center justify-content-center gap-2" onclick="window.toggleReplayRonda3D()">
+                        <i class="fas fa-person-walking fs-5"></i> <span>Simular Caminhada 3D do Vigia</span>
+                    </button>
+                ` : ''}
+
                 <div class="card p-3 border border-secondary-subtle bg-white rounded-3 small mb-3">
                     <div class="mb-1"><b><i class="fas fa-clock text-primary me-1"></i> Início:</b> ${dtInicio}</div>
                     <div class="mb-1"><b><i class="fas fa-flag-checkered text-danger me-1"></i> Término:</b> ${dtFim}</div>
                     <div class="mb-1"><b><i class="fas fa-stopwatch text-warning me-1"></i> Duração:</b> ${ronda.duracaoMinutos || '-'} minutos</div>
-                    <div class="mb-1"><b><i class="fas fa-person-walking text-info me-1"></i> Distância Percorrida:</b> ${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : '-'}</div>
+                    <div class="mb-1"><b><i class="fas fa-person-walking text-info me-1"></i> Distância Percorrida:</b> ${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : (totalDist / 1000).toFixed(2) + ' km'}</div>
                     <div><b><i class="fas fa-triangle-exclamation text-warning me-1"></i> Ocorrências:</b> ${ronda.qtdOcorrencias || 0}</div>
                 </div>
                 ${checkpointsHtml}
@@ -2585,7 +3069,8 @@
                 }
 
                 if (coordenadas.length > 0) {
-                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 5, opacity: 0.95 }).addTo(mapaDetalhe);
+                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 4, opacity: 0.45, dashArray: '6, 6' }).addTo(mapaDetalhe);
+                    replayState.basePolyline = poly;
 
                     // Marcador de Início
                     const iconInicio = L.divIcon({
@@ -2606,6 +3091,10 @@
                     L.marker(coordenadas[coordenadas.length - 1], { icon: iconFim }).addTo(mapaDetalhe).bindPopup("<b>Término da Ronda</b>");
 
                     mapaDetalhe.fitBounds(poly.getBounds(), { padding: [50, 50] });
+
+                    // Inicializa o vigia 3D no primeiro ponto
+                    garantirMarker3D();
+                    atualizarFrameReplay(0);
                 } else {
                     L.popup()
                         .setLatLng([centroAuditLat, centroAuditLng])
@@ -2623,6 +3112,7 @@
             infoDiv.innerHTML = `<div class="alert alert-danger">${e.message}</div>`;
         }
     };
+
 
     /**
      * Exportações PDF e CSV
@@ -2669,6 +3159,9 @@
 
     // Cleanup ao sair da tela
     window.limparVigilanciaGestao = function () {
+        if (typeof window.limparReplay3D === 'function') {
+            window.limparReplay3D();
+        }
         if (unsubscribeRondasAtivas) {
             unsubscribeRondasAtivas();
             unsubscribeRondasAtivas = null;
