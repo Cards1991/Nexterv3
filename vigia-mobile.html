@@ -652,7 +652,7 @@
                 <div class="fw-bold text-white small" id="ronda-nome-rota">Rota Selecionada</div>
             </div>
             <div class="text-end">
-                <div class="small fw-semibold text-white" id="status-gps-badge">
+                <div class="small fw-semibold text-white" id="status-gps-badge" style="cursor: pointer; user-select: none;" onclick="window.diagnosticarOuReconectarGps()" title="Toque para testar ou reconectar o GPS">
                     <i class="fas fa-satellite text-success me-1"></i> ±<span id="gps-precisao">--</span>m
                 </div>
                 <small class="text-muted" id="status-distancia-ronda">0 m percorridos</small>
@@ -751,8 +751,11 @@
         </div>
     </div>
 
+    <!-- Bootstrap 5 Bundle JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
     <!-- Scripts de Operação -->
-    <script src="js/vigilancia-operacao.js?v=5"></script>
+    <script src="js/vigilancia-operacao.js?v=6"></script>
 </body>
 
 </html>

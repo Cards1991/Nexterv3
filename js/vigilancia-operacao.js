@@ -491,16 +491,21 @@
     async function prepararEIniciarRonda(rotaId, rotaNome, pontosRota, versao) {
         // Solicita permissão de geolocalização se ainda não concedida
         if (!navigator.geolocation) {
-            alert("Aparelho incompatível: Geolocation API não encontrada.");
+            alert("Aparelho incompatível: Geolocation API não encontrada neste dispositivo.");
             return;
         }
 
-        // Verifica se a permissão foi bloqueada no navegador
+        // 1. Alerta se não estiver em contexto seguro (HTTPS) - o Chrome/Safari móvel bloqueia o GPS no HTTP
+        if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+            alert("⚠️ Atenção: Conexão Não Segura (HTTP) Detectada!\n\nOs navegadores de celular (Google Chrome e Safari) bloqueiam o GPS obrigatoriamente por segurança quando o site não é acessado por HTTPS.\n\nPara que o trajeto da ronda funcione, acesse o sistema através de um endereço HTTPS seguro.");
+        }
+
+        // 2. Verifica se a permissão foi bloqueada no navegador ou nas configurações do celular
         if (navigator.permissions && navigator.permissions.query) {
             try {
                 const pStatus = await navigator.permissions.query({ name: 'geolocation' });
                 if (pStatus.state === 'denied') {
-                    alert("Atenção: A permissão de GPS está bloqueada no navegador deste aparelho!\n\nPara que o trajeto da ronda seja registrado no mapa:\n1. Toque no ícone de ajustes/cadeado ao lado da URL (barra de endereços);\n2. Mude a permissão de 'Localização' para 'Permitir';\n3. Recarregue a página.");
+                    alert("⚠️ Atenção: O GPS consta como bloqueado neste aparelho!\n\nMesmo que você já tenha permitido no navegador, verifique:\n1. Se o botão 'Local / Localização' está ligado na barra de notificações do celular;\n2. Se o app do Chrome tem permissão de Localização concedida nas Configurações do Android (Configurações > Apps > Chrome > Permissões);\n3. Se o site está permitido no ícone de ajustes/cadeado ao lado da URL.");
                 }
             } catch (pErr) {}
         }
@@ -589,33 +594,114 @@
     }
 
     /**
-     * Captura contínua de GPS em alta precisão
+     * Captura contínua de GPS em alta precisão com fallback inteligente
      */
-    function iniciarRastreamentoGps() {
+    function iniciarRastreamentoGps(usarAltaPrecisao = true) {
         if (!navigator.geolocation) return;
 
         const options = {
-            enableHighAccuracy: true,
-            timeout: 10000,
+            enableHighAccuracy: usarAltaPrecisao,
+            timeout: usarAltaPrecisao ? 20000 : 15000,
             maximumAge: 5000
         };
+
+        if (watchGpsId !== null) {
+            try {
+                navigator.geolocation.clearWatch(watchGpsId);
+            } catch (wErr) {}
+            watchGpsId = null;
+        }
 
         watchGpsId = navigator.geolocation.watchPosition(
             (pos) => processarPosicaoGps(pos),
             (err) => {
-                console.warn("GPS Warning:", err.message);
+                console.warn(`GPS Warning (altaPrecisao=${usarAltaPrecisao}):`, err.code, err.message);
                 const badge = document.getElementById('status-gps-badge');
                 if (badge) {
-                    if (err.code === 1) {
-                        badge.innerHTML = `<i class="fas fa-exclamation-triangle text-warning me-1"></i> GPS Bloqueado`;
+                    if (err.code === 1) { // PERMISSION_DENIED
+                        badge.className = "small fw-semibold text-warning";
+                        badge.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> GPS Bloqueado`;
+                        badge.title = "Permissão negada ou GPS do celular desativado. Toque para diagnosticar.";
+                    } else if (err.code === 2) { // POSITION_UNAVAILABLE
+                        if (usarAltaPrecisao) {
+                            console.log("Fallback: Tentando GPS sem alta precisão...");
+                            iniciarRastreamentoGps(false);
+                            return;
+                        }
+                        badge.className = "small fw-semibold text-danger";
+                        badge.innerHTML = `<i class="fas fa-satellite-dish me-1"></i> Sem Sinal GPS`;
+                    } else if (err.code === 3) { // TIMEOUT
+                        if (usarAltaPrecisao) {
+                            console.log("Timeout GPS: Tentando fallback para precisão de rede...");
+                            iniciarRastreamentoGps(false);
+                            return;
+                        }
+                        badge.className = "small fw-semibold text-warning";
+                        badge.innerHTML = `<i class="fas fa-satellite-dish me-1"></i> Buscando Satélites...`;
                     } else {
-                        badge.innerHTML = `<i class="fas fa-satellite-dish text-danger me-1"></i> Sinal Fraco (${err.message})`;
+                        badge.className = "small fw-semibold text-danger";
+                        badge.innerHTML = `<i class="fas fa-satellite-dish me-1"></i> Sinal Fraco (${err.message})`;
                     }
                 }
             },
             options
         );
     }
+
+    /**
+     * Diagnóstico e Reconexão manual de GPS (ao tocar no badge de status)
+     */
+    window.diagnosticarOuReconectarGps = function () {
+        if (!navigator.geolocation) {
+            alert("Geolocalização não é suportada neste aparelho.");
+            return;
+        }
+
+        const badge = document.getElementById('status-gps-badge');
+        if (badge) {
+            badge.className = "small fw-semibold text-info";
+            badge.innerHTML = `<i class="fas fa-spinner fa-spin me-1"></i> Testando GPS...`;
+        }
+
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                processarPosicaoGps(pos);
+                iniciarRastreamentoGps(true);
+                alert(`✅ GPS Conectado com sucesso!\n\nPrecisão: ±${Math.round(pos.coords.accuracy)} metros.\nSinal operacional e trajeto ativo.`);
+            },
+            (err) => {
+                console.warn("Diagnóstico GPS Erro:", err.code, err.message);
+                if (badge) {
+                    if (err.code === 1) {
+                        badge.className = "small fw-semibold text-warning";
+                        badge.innerHTML = `<i class="fas fa-exclamation-triangle me-1"></i> GPS Bloqueado`;
+                    } else {
+                        badge.className = "small fw-semibold text-danger";
+                        badge.innerHTML = `<i class="fas fa-satellite-dish me-1"></i> Sem Sinal GPS`;
+                    }
+                }
+
+                let explicacao = "";
+                if (err.code === 1) {
+                    explicacao = "O GPS está bloqueado pelo celular ou pelo navegador.\n\n" +
+                        "PASSO A PASSO PARA LIBERAR:\n" +
+                        "1. Puxe a barra de notificações de cima para baixo e LIGUE o botão 'Local / Localização';\n" +
+                        "2. Abra as Configurações do Android > Aplicativos > Chrome > Permissões > Localização > Marque 'Permitir durante o uso do app' e 'Localização precisa';\n" +
+                        "3. Toque no ícone de ajustes/cadeado na barra de endereços do Chrome e mude 'Localização' para Permitir.";
+                    if (!window.isSecureContext) {
+                        explicacao += "\n\n⚠️ Conexão Não Segura (HTTP): O Chrome do celular exige HTTPS para liberar o GPS.";
+                    }
+                } else if (err.code === 2) {
+                    explicacao = "O aparelho não conseguiu obter a posição dos satélites (Ambiente fechado ou guarita sem visada do céu). Vá até uma área externa e tente novamente.";
+                } else if (err.code === 3) {
+                    explicacao = "Tempo esgotado ao buscar satélites. O sinal pode estar fraco. O sistema continuará tentando em segundo plano.";
+                }
+
+                alert(`⚠️ Diagnóstico de GPS (Erro ${err.code}):\n\n${explicacao}`);
+            },
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+    };
 
     /**
      * Processamento de cada ponto GPS recebido
@@ -628,9 +714,13 @@
         const precisao = pos.coords.accuracy;
         const agora = new Date();
 
-        // Atualiza indicadores de tela
-        const elPrecisao = document.getElementById('gps-precisao');
-        if (elPrecisao) elPrecisao.innerText = Math.round(precisao);
+        // Atualiza indicadores de tela e SEMPRE restaura o badge caso estivesse com erro
+        const badge = document.getElementById('status-gps-badge');
+        if (badge) {
+            badge.className = "small fw-semibold text-white";
+            badge.innerHTML = `<i class="fas fa-satellite text-success me-1"></i> ±<span id="gps-precisao">${Math.round(precisao)}</span>m`;
+            badge.title = "GPS Operacional. Toque para testar conexão.";
+        }
 
         // Se tiver ponto anterior, calcula distância percorrida
         if (ultimaPosicaoRegistrada) {
