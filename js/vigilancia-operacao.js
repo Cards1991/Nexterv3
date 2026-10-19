@@ -435,15 +435,23 @@
                 .get();
 
             let rondasHoje = 0;
+            let rondasHojeList = [];
             snapRondas.forEach(doc => {
                 const r = doc.data();
                 if (r.fim) {
                     const dt = r.fim.toDate ? r.fim.toDate() : new Date(r.fim);
-                    if (dt >= inicioHoje) rondasHoje++;
+                    if (dt >= inicioHoje) {
+                        rondasHoje++;
+                        rondasHojeList.push({ id: doc.id, ...r, _dtFim: dt });
+                    }
                 }
             });
 
             if (elRondas) elRondas.innerText = rondasHoje;
+
+            // Ordena as mais recentes primeiro e renderiza na lista de rotas feitas
+            rondasHojeList.sort((a, b) => b._dtFim - a._dtFim);
+            renderizarRondasFeitasMobile(rondasHojeList);
 
             // Total de checkpoints ativos cadastrados na empresa
             const snapPontos = await window.db.collection('vigilancia_pontos')
@@ -456,6 +464,207 @@
             console.warn("Erro ao carregar estatísticas do dashboard vigia:", e);
         }
     }
+
+    window.carregarStatsDashboard = carregarStatsDashboard;
+
+    /**
+     * Renderiza a lista de rotas realizadas hoje no aplicativo do vigia
+     */
+    function renderizarRondasFeitasMobile(rondas) {
+        const container = document.getElementById('lista-rondas-feitas-mobile');
+        if (!container) return;
+
+        if (!rondas || rondas.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-3 text-muted small">
+                    <i class="fas fa-clock-rotate-left mb-1"></i>
+                    <div>Nenhuma rota concluída hoje ainda.</div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        rondas.forEach(r => {
+            let dtInicio = '-';
+            let dtFim = '-';
+            if (r.inicio) {
+                const d1 = r.inicio.toDate ? r.inicio.toDate() : new Date(r.inicio);
+                dtInicio = d1.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            }
+            if (r.fim) {
+                const d2 = r.fim.toDate ? r.fim.toDate() : new Date(r.fim);
+                dtFim = d2.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const duracao = r.duracaoMinutos ? `${r.duracaoMinutos} min` : '-';
+            const distancia = r.distanciaMetros ? `${(r.distanciaMetros / 1000).toFixed(2)} km` : '-';
+            const cumpridos = r.checkpointsStatus ? `${r.checkpointsStatus.filter(c => c.status === 'CONFIRMADO').length}/${r.checkpointsStatus.length}` : '-';
+
+            html += `
+                <div class="p-3 mb-2 rounded-4 bg-dark border border-secondary text-white shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="fw-bold fs-6 text-white">${r.rotaNome || 'Ronda Livre'}</span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle rounded-pill px-2 py-1 small">
+                            <i class="fas fa-check me-1"></i> Concluída
+                        </span>
+                    </div>
+                    <div class="small text-muted mb-3">
+                        <div><i class="fas fa-clock me-1 text-primary"></i> ${dtInicio} às ${dtFim} (${duracao})</div>
+                        <div><i class="fas fa-person-walking me-1 text-info"></i> Distância: <b>${distancia}</b> | Checkpoints: <b>${cumpridos}</b></div>
+                    </div>
+                    <button class="btn btn-sm btn-outline-primary w-100 fw-bold py-2 rounded-3" onclick="window.visualizarRotaFeitaMobile('${r.id}')">
+                        <i class="fas fa-map-location-dot me-1"></i> Ver Trajeto no Mapa
+                    </button>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
+    }
+
+    let mapaRotaFeitaMobileInstance = null;
+
+    /**
+     * Visualização do trajeto de uma rota executada no próprio celular
+     */
+    window.visualizarRotaFeitaMobile = async function (rondaId) {
+        const modalEl = document.getElementById('modalVisualizarRotaMobile');
+        if (!modalEl) return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+
+        const tituloEl = document.getElementById('mobile-rota-feita-titulo');
+        const subEl = document.getElementById('mobile-rota-feita-subtitulo');
+        const detalhesEl = document.getElementById('detalhes-rota-feita-mobile');
+
+        if (detalhesEl) {
+            detalhesEl.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted small">Carregando percurso da rota...</p></div>';
+        }
+
+        try {
+            const doc = await window.db.collection('vigilancia_rondas').doc(rondaId).get();
+            if (!doc.exists) {
+                if (detalhesEl) detalhesEl.innerHTML = '<div class="alert alert-danger py-2 small">Rota não encontrada.</div>';
+                return;
+            }
+            const ronda = doc.data();
+
+            if (tituloEl) tituloEl.innerText = ronda.rotaNome || 'Ronda Realizada';
+            if (subEl) subEl.innerText = `Vigia: ${ronda.vigiaNome || '-'} | Matrícula: ${ronda.vigiaMatricula || '-'}`;
+
+            // Busca pontos GPS
+            let coordenadas = [];
+            try {
+                const trajetoSnap = await window.db.collection('vigilancia_rondas').doc(rondaId)
+                    .collection('trajeto')
+                    .orderBy('timestamp', 'asc')
+                    .get();
+
+                trajetoSnap.forEach(tDoc => {
+                    const t = tDoc.data();
+                    if (t.lat && t.lng) coordenadas.push([Number(t.lat), Number(t.lng)]);
+                });
+            } catch (tErr) {}
+
+            if (coordenadas.length === 0 && ronda.trajetoRecente && Array.isArray(ronda.trajetoRecente)) {
+                coordenadas = ronda.trajetoRecente.filter(p => p.lat && p.lng).map(p => [Number(p.lat), Number(p.lng)]);
+            }
+
+            let dtInicio = ronda.inicio ? (ronda.inicio.toDate ? ronda.inicio.toDate() : new Date(ronda.inicio)).toLocaleTimeString('pt-BR') : '-';
+            let dtFim = ronda.fim ? (ronda.fim.toDate ? ronda.fim.toDate() : new Date(ronda.fim)).toLocaleTimeString('pt-BR') : '-';
+
+            let cpListHtml = '';
+            if (ronda.checkpointsStatus && Array.isArray(ronda.checkpointsStatus) && ronda.checkpointsStatus.length > 0) {
+                cpListHtml = '<div class="mt-3"><div class="fw-bold small text-muted text-uppercase mb-2">Checkpoints Verificados:</div>';
+                ronda.checkpointsStatus.forEach(cp => {
+                    const ok = cp.status === 'CONFIRMADO';
+                    cpListHtml += `
+                        <div class="d-flex justify-content-between align-items-center py-1 border-bottom border-secondary small">
+                            <span><i class="fas fa-${ok ? 'check text-success' : 'times text-danger'} me-1"></i> ${cp.nome}</span>
+                            <span class="badge ${ok ? 'bg-success' : 'bg-danger'}">${cp.status}</span>
+                        </div>
+                    `;
+                });
+                cpListHtml += '</div>';
+            }
+
+            if (detalhesEl) {
+                detalhesEl.innerHTML = `
+                    <div class="row g-2 mb-2 text-center">
+                        <div class="col-4">
+                            <div class="bg-secondary bg-opacity-25 p-2 rounded-3">
+                                <small class="text-muted d-block">Duração</small>
+                                <b class="text-white">${ronda.duracaoMinutos || 0} min</b>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-secondary bg-opacity-25 p-2 rounded-3">
+                                <small class="text-muted d-block">Distância</small>
+                                <b class="text-white">${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : '0 m'}</b>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-secondary bg-opacity-25 p-2 rounded-3">
+                                <small class="text-muted d-block">Pontos GPS</small>
+                                <b class="text-white">${coordenadas.length}</b>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="small text-muted">
+                        <div><i class="fas fa-clock me-1 text-primary"></i> <b>Horário:</b> ${dtInicio} até ${dtFim}</div>
+                        <div><i class="fas fa-triangle-exclamation me-1 text-warning"></i> <b>Ocorrências:</b> ${ronda.qtdOcorrencias || 0}</div>
+                    </div>
+                    ${cpListHtml}
+                `;
+            }
+
+            // Renderiza mapa
+            setTimeout(() => {
+                const mapContainer = document.getElementById('mapa-rota-feita-mobile');
+                if (!mapContainer) return;
+
+                if (mapaRotaFeitaMobileInstance) {
+                    mapaRotaFeitaMobileInstance.remove();
+                    mapaRotaFeitaMobileInstance = null;
+                }
+
+                const defaultLat = coordenadas.length > 0 ? coordenadas[0][0] : -25.1940;
+                const defaultLng = coordenadas.length > 0 ? coordenadas[0][1] : -50.5986;
+
+                mapaRotaFeitaMobileInstance = L.map(mapContainer, { attributionControl: false }).setView([defaultLat, defaultLng], 17);
+
+                L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaRotaFeitaMobileInstance);
+                L.tileLayer('https://services.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(mapaRotaFeitaMobileInstance);
+
+                if (ronda.checkpointsStatus && Array.isArray(ronda.checkpointsStatus)) {
+                    ronda.checkpointsStatus.forEach(cp => {
+                        if (!cp.latitude || !cp.longitude) return;
+                        const ok = cp.status === 'CONFIRMADO';
+                        const cor = ok ? '#10b981' : '#ef4444';
+                        const htmlIcon = `<div style="background:${cor}; color:white; width:22px; height:22px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:11px; border:2px solid white;"><i class="fas fa-${ok ? 'check' : 'times'}"></i></div>`;
+                        L.marker([Number(cp.latitude), Number(cp.longitude)], {
+                            icon: L.divIcon({ className: 'cp-icon-mob', html: htmlIcon, iconSize: [22, 22], iconAnchor: [11, 11] })
+                        }).addTo(mapaRotaFeitaMobileInstance).bindPopup(`<b>${cp.nome}</b><br>${cp.status}`);
+                    });
+                }
+
+                if (coordenadas.length > 0) {
+                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 4, opacity: 0.95 }).addTo(mapaRotaFeitaMobileInstance);
+                    L.marker(coordenadas[0]).addTo(mapaRotaFeitaMobileInstance).bindPopup("<b>Início</b>");
+                    L.marker(coordenadas[coordenadas.length - 1]).addTo(mapaRotaFeitaMobileInstance).bindPopup("<b>Fim</b>");
+                    mapaRotaFeitaMobileInstance.fitBounds(poly.getBounds(), { padding: [30, 30] });
+                }
+
+                setTimeout(() => {
+                    if (mapaRotaFeitaMobileInstance) mapaRotaFeitaMobileInstance.invalidateSize();
+                }, 300);
+            }, 350);
+
+        } catch (e) {
+            console.error("Erro ao carregar detalhes mobile:", e);
+            if (detalhesEl) detalhesEl.innerHTML = `<div class="alert alert-danger py-2 small">${e.message}</div>`;
+        }
+    };
 
     // ==============================================
     // 4. INÍCIO DA RONDA E EXECUÇÃO OPERACIONAL

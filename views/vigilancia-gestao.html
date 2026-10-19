@@ -6,6 +6,9 @@
             <p class="text-muted mb-0">Monitoramento patrimonial em tempo real, rastreamento GPS e gestão de rotas</p>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            <button class="btn btn-outline-primary fw-semibold" onclick="window.navegarParaHistoricoRondas()" title="Visualizar histórico completo de rotas e rondas executadas">
+                <i class="fas fa-clock-rotate-left me-1"></i> Rotas Realizadas
+            </button>
             <button class="btn btn-outline-dark" onclick="window.abrirModalConfigMapa()" title="Configurar Localização da Empresa e Provedor Cartográfico">
                 <i class="fas fa-sliders me-1"></i> Configurar Mapa
             </button>
@@ -244,19 +247,47 @@
                     </div>
                 </div>
 
-                <!-- Coluna Lateral de Rondas em Andamento -->
+                <!-- Coluna Lateral: Rondas em Andamento & Rondas Concluídas Hoje -->
                 <div class="col-12 col-lg-4">
                     <div class="card shadow-sm border-0 h-100">
-                        <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
-                            <span class="fw-bold"><i class="fas fa-walkie-talkie text-success me-2"></i> Rondas Ativas</span>
-                            <span class="badge bg-primary rounded-pill" id="badge-contador-aovivo">0</span>
+                        <div class="card-header bg-white py-2 px-3 border-bottom">
+                            <ul class="nav nav-pills nav-fill" id="pills-rondas-painel" role="tablist">
+                                <li class="nav-item">
+                                    <button class="nav-link active py-2 px-3 small fw-bold" id="pill-rondas-ativas-tab" data-bs-toggle="pill" data-bs-target="#pill-rondas-ativas" type="button">
+                                        <i class="fas fa-walkie-talkie text-success me-1"></i> Ativas (<span id="badge-contador-aovivo">0</span>)
+                                    </button>
+                                </li>
+                                <li class="nav-item">
+                                    <button class="nav-link py-2 px-3 small fw-bold" id="pill-rondas-concluidas-tab" data-bs-toggle="pill" data-bs-target="#pill-rondas-concluidas" type="button" onclick="window.carregarRondasConcluidasHojeAoVivo()">
+                                        <i class="fas fa-flag-checkered text-primary me-1"></i> Feitas Hoje (<span id="badge-contador-concluidas-hoje">0</span>)
+                                    </button>
+                                </li>
+                            </ul>
                         </div>
-                        <div class="card-body p-3" style="max-height: 520px; overflow-y: auto;" id="lista-rondas-aovivo">
-                            <!-- Preenchido dinamicamente via Firestore onSnapshot -->
-                            <div class="text-center py-5 text-muted">
-                                <i class="fas fa-satellite fa-3x mb-3 text-secondary opacity-50"></i>
-                                <p class="mb-0">Nenhuma ronda em andamento no momento.</p>
-                                <small class="text-muted">As rondas iniciadas pelos vigias aparecerão automaticamente aqui.</small>
+                        <div class="tab-content" id="pills-rondasContent">
+                            <!-- Aba de Rondas em Andamento -->
+                            <div class="tab-pane fade show active p-3" id="pill-rondas-ativas" style="max-height: 520px; overflow-y: auto;">
+                                <div id="lista-rondas-aovivo">
+                                    <div class="text-center py-5 text-muted">
+                                        <i class="fas fa-satellite fa-3x mb-3 text-secondary opacity-50"></i>
+                                        <p class="mb-0">Nenhuma ronda em andamento no momento.</p>
+                                        <small class="text-muted">As rondas iniciadas pelos vigias aparecerão automaticamente aqui.</small>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Aba de Rondas Concluídas Hoje -->
+                            <div class="tab-pane fade p-3" id="pill-rondas-concluidas" style="max-height: 520px; overflow-y: auto;">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <small class="fw-bold text-muted text-uppercase">Rotas Realizadas no Dia</small>
+                                    <button class="btn btn-sm btn-link text-decoration-none p-0" onclick="window.carregarRondasConcluidasHojeAoVivo()">
+                                        <i class="fas fa-sync-alt me-1"></i> Atualizar
+                                    </button>
+                                </div>
+                                <div id="lista-rondas-concluidas-hoje">
+                                    <div class="text-center py-4 text-muted small">
+                                        <i class="fas fa-spinner fa-spin me-2"></i> Carregando rotas concluídas...
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -941,6 +972,44 @@
                 <button type="button" class="btn btn-primary fw-bold px-4" onclick="window.salvarAreaEmpresa()">
                     <i class="fas fa-save me-1"></i> Salvar Área
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================== -->
+<!-- MODAL: AUDITORIA E VISUALIZAÇÃO DE ROTA FEITA  -->
+<!-- ============================================== -->
+<div class="modal fade" id="modalDetalheRonda" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content shadow-lg border-0 rounded-4 overflow-hidden">
+            <div class="modal-header bg-dark text-white py-3 px-4 border-0">
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-primary p-2 rounded-3"><i class="fas fa-route fs-5"></i></span>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-0" id="modalDetalheTitulo">Auditoria de Rota / Trajeto Realizado</h5>
+                        <small class="text-muted">Visualização do percurso GPS, checkpoints cumpridos e ocorrências</small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <!-- Mapa do Percurso -->
+                    <div class="col-12 col-lg-8 border-end">
+                        <div id="mapa-detalhe-ronda" style="height: 540px; width: 100%;"></div>
+                    </div>
+                    <!-- Painel Lateral de Informações -->
+                    <div class="col-12 col-lg-4 p-4 bg-light overflow-auto" style="max-height: 540px;">
+                        <div id="detalhe-ronda-info">
+                            <!-- Preenchido dinamicamente via JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-white border-top py-2 px-4 justify-content-between">
+                <span class="small text-muted"><i class="fas fa-info-circle me-1 text-primary"></i> Trajeto real percorrido em verde, início e fim indicados com marcadores.</span>
+                <button type="button" class="btn btn-secondary px-4 fw-semibold" data-bs-dismiss="modal">Fechar</button>
             </div>
         </div>
     </div>

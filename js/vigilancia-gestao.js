@@ -145,6 +145,14 @@
                 if (mapaAoVivo) mapaAoVivo.invalidateSize();
             });
         }
+
+        // Listener para consultar histórico automaticamente ao clicar na aba
+        const tabHistEl = document.getElementById('tab-historico-btn');
+        if (tabHistEl) {
+            tabHistEl.addEventListener('shown.bs.tab', () => {
+                window.consultarHistoricoRondas();
+            });
+        }
     };
 
     /**
@@ -2241,8 +2249,10 @@
         }
     };
 
+    let cacheRondasConcluidasHoje = [];
+
     /**
-     * Atualização do KPI de Rondas Concluídas Hoje (Sem exigir índice composto no Firestore)
+     * Atualização do KPI de Rondas Concluídas Hoje e sincronização da aba de rotas realizadas
      */
     async function atualizarKpiHoje() {
         if (!window.db) return;
@@ -2257,19 +2267,112 @@
                 .get();
 
             let totalHoje = 0;
+            let concluidasHoje = [];
             snap.forEach(doc => {
                 const d = doc.data();
                 if (d.fim) {
                     const dtFim = d.fim.toDate ? d.fim.toDate() : new Date(d.fim);
-                    if (dtFim >= hoje) totalHoje++;
+                    if (dtFim >= hoje) {
+                        totalHoje++;
+                        concluidasHoje.push({ id: doc.id, ...d, _dtFim: dtFim });
+                    }
                 }
             });
 
+            // Ordena as mais recentes primeiro
+            concluidasHoje.sort((a, b) => b._dtFim - a._dtFim);
+            cacheRondasConcluidasHoje = concluidasHoje;
+
             const kpi = document.getElementById('kpi-rondas-concluidas');
             if (kpi) kpi.innerText = totalHoje;
+
+            const badgeSide = document.getElementById('badge-contador-concluidas-hoje');
+            if (badgeSide) badgeSide.innerText = totalHoje;
+
+            renderizarRondasConcluidasHojeSide(concluidasHoje);
         } catch (e) {
             console.warn("Erro ao buscar KPI hoje:", e);
         }
+    }
+
+    /**
+     * Navegação direta para a aba de Histórico de Rotas Realizadas
+     */
+    window.navegarParaHistoricoRondas = function () {
+        const tabBtn = document.getElementById('tab-historico-btn');
+        if (tabBtn) {
+            const tab = bootstrap.Tab.getOrCreateInstance(tabBtn);
+            tab.show();
+            window.consultarHistoricoRondas();
+        }
+    };
+
+    /**
+     * Atualização manual da lista de rondas concluídas hoje no painel lateral
+     */
+    window.carregarRondasConcluidasHojeAoVivo = async function () {
+        await atualizarKpiHoje();
+    };
+
+    /**
+     * Renderiza o painel lateral de rotas concluídas hoje
+     */
+    function renderizarRondasConcluidasHojeSide(rondas) {
+        const container = document.getElementById('lista-rondas-concluidas-hoje');
+        if (!container) return;
+
+        if (!rondas || rondas.length === 0) {
+            container.innerHTML = `
+                <div class="text-center py-4 text-muted small">
+                    <i class="fas fa-flag-checkered fa-2x mb-2 text-secondary opacity-50"></i>
+                    <div>Nenhuma rota concluída hoje ainda.</div>
+                    <small class="text-muted">Assim que os vigias finalizarem uma rota, o trajeto aparecerá aqui.</small>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        rondas.forEach(r => {
+            let dtInicio = '-';
+            let dtFim = '-';
+            if (r.inicio) {
+                const d1 = r.inicio.toDate ? r.inicio.toDate() : new Date(r.inicio);
+                dtInicio = d1.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            }
+            if (r.fim) {
+                const d2 = r.fim.toDate ? r.fim.toDate() : new Date(r.fim);
+                dtFim = d2.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+            }
+
+            const duracao = r.duracaoMinutos ? `${r.duracaoMinutos} min` : '-';
+            const distancia = r.distanciaMetros ? `${(r.distanciaMetros / 1000).toFixed(2)} km` : '-';
+            const cumpridos = r.checkpointsStatus ? `${r.checkpointsStatus.filter(c => c.status === 'CONFIRMADO').length}/${r.checkpointsStatus.length}` : '-';
+
+            html += `
+                <div class="card border border-secondary-subtle rounded-3 mb-2 p-3 shadow-sm bg-white">
+                    <div class="d-flex justify-content-between align-items-start mb-1">
+                        <span class="fw-bold text-dark small">
+                            <i class="fas fa-user-shield text-primary me-1"></i> ${r.vigiaNome || 'Vigia'}
+                        </span>
+                        <span class="badge bg-success-subtle text-success border border-success-subtle small">
+                            <i class="fas fa-check me-1"></i> Concluída
+                        </span>
+                    </div>
+                    <div class="small text-muted mb-2">
+                        <div class="fw-semibold text-dark"><i class="fas fa-route me-1 text-primary"></i> ${r.rotaNome || 'Ronda Livre'}</div>
+                        <div><i class="fas fa-clock me-1"></i> ${dtInicio} às ${dtFim} (${duracao})</div>
+                        <div><i class="fas fa-person-walking me-1"></i> Distância: <b>${distancia}</b> | Checkpoints: <b>${cumpridos}</b></div>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-sm btn-primary flex-fill py-1 small fw-bold" onclick="window.abrirDetalhesRonda('${r.id}')">
+                            <i class="fas fa-map-location-dot me-1"></i> Ver Trajeto no Mapa
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+        container.innerHTML = html;
     }
 
     /**
@@ -2311,7 +2414,7 @@
             }
 
             if (rondas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhuma ronda encontrada para o período e filtros selecionados.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhuma rota ou ronda encontrada para o período e filtros selecionados.</td></tr>';
                 return;
             }
 
@@ -2331,15 +2434,15 @@
                     <tr>
                         <td class="small fw-semibold">${inicioStr}</td>
                         <td>${r.vigiaNome || 'Vigia'}</td>
-                        <td>${r.rotaNome || 'Ronda Livre'}</td>
+                        <td class="fw-bold">${r.rotaNome || 'Ronda Livre'}</td>
                         <td>${duracao}</td>
                         <td>${distancia}</td>
                         <td><span class="badge bg-light text-dark border">${cumpridos}</span></td>
                         <td><span class="badge bg-warning-subtle text-dark">${r.qtdOcorrencias || 0}</span></td>
                         <td><span class="badge bg-success">Concluída</span></td>
                         <td class="text-end">
-                            <button class="btn btn-sm btn-outline-primary" onclick="window.abrirDetalhesRonda('${r.id}')" title="Ver Auditoria do Trajeto">
-                                <i class="fas fa-eye me-1"></i> Auditoria
+                            <button class="btn btn-sm btn-primary" onclick="window.abrirDetalhesRonda('${r.id}')" title="Ver Trajeto no Mapa">
+                                <i class="fas fa-map-location-dot me-1"></i> Ver Trajeto
                             </button>
                         </td>
                     </tr>
@@ -2353,15 +2456,19 @@
     };
 
     /**
-     * Modal de Auditoria da Ronda (Trajeto + Checkpoints)
+     * Modal de Auditoria e Trajeto da Ronda
      */
     window.abrirDetalhesRonda = async function (rondaId) {
         const modalEl = document.getElementById('modalDetalheRonda');
-        const modal = new bootstrap.Modal(modalEl);
+        if (!modalEl) {
+            console.error("modalDetalheRonda não encontrado no DOM");
+            return;
+        }
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
         modal.show();
 
         const infoDiv = document.getElementById('detalhe-ronda-info');
-        infoDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x"></i><p class="mt-2">Carregando detalhes do trajeto...</p></div>';
+        infoDiv.innerHTML = '<div class="text-center py-4"><i class="fas fa-spinner fa-spin fa-2x text-primary"></i><p class="mt-2 text-muted">Carregando detalhes do trajeto...</p></div>';
 
         try {
             const doc = await window.db.collection('vigilancia_rondas').doc(rondaId).get();
@@ -2372,16 +2479,25 @@
             const ronda = doc.data();
 
             // Busca os pontos detalhados de GPS gravados
-            const trajetoSnap = await window.db.collection('vigilancia_rondas').doc(rondaId)
-                .collection('trajeto')
-                .orderBy('timestamp', 'asc')
-                .get();
+            let coordenadas = [];
+            try {
+                const trajetoSnap = await window.db.collection('vigilancia_rondas').doc(rondaId)
+                    .collection('trajeto')
+                    .orderBy('timestamp', 'asc')
+                    .get();
 
-            const coordenadas = [];
-            trajetoSnap.forEach(tDoc => {
-                const t = tDoc.data();
-                if (t.lat && t.lng) coordenadas.push([Number(t.lat), Number(t.lng)]);
-            });
+                trajetoSnap.forEach(tDoc => {
+                    const t = tDoc.data();
+                    if (t.lat && t.lng) coordenadas.push([Number(t.lat), Number(t.lng)]);
+                });
+            } catch (tErr) {
+                console.warn("Aviso ao buscar subcoleção trajeto:", tErr);
+            }
+
+            // Fallback se a subcoleção não tiver pontos mas houver trajetoRecente
+            if (coordenadas.length === 0 && ronda.trajetoRecente && Array.isArray(ronda.trajetoRecente)) {
+                coordenadas = ronda.trajetoRecente.filter(p => p.lat && p.lng).map(p => [Number(p.lat), Number(p.lng)]);
+            }
 
             // Preenche painel informativo lateral
             let dtInicio = ronda.inicio ? (ronda.inicio.toDate ? ronda.inicio.toDate() : new Date(ronda.inicio)).toLocaleString('pt-BR') : '-';
@@ -2389,7 +2505,7 @@
 
             let checkpointsHtml = '';
             if (ronda.checkpointsStatus && ronda.checkpointsStatus.length > 0) {
-                checkpointsHtml = '<h6 class="fw-bold mt-3 mb-2">Pontos de Controle:</h6><ul class="list-group list-group-flush small">';
+                checkpointsHtml = '<h6 class="fw-bold mt-3 mb-2 text-dark"><i class="fas fa-map-pin text-primary me-1"></i> Checkpoints da Rota:</h6><ul class="list-group list-group-flush small">';
                 ronda.checkpointsStatus.forEach(cp => {
                     const ok = cp.status === 'CONFIRMADO';
                     checkpointsHtml += `
@@ -2403,15 +2519,18 @@
             }
 
             infoDiv.innerHTML = `
-                <h5 class="fw-bold text-primary mb-2">${ronda.rotaNome || 'Ronda Realizada'}</h5>
-                <p class="small text-muted mb-3"><i class="fas fa-user-shield me-1"></i> <b>Vigia:</b> ${ronda.vigiaNome || '-'} (${ronda.vigiaMatricula || '-'})</p>
-                <div class="small">
-                    <div><b>Início:</b> ${dtInicio}</div>
-                    <div><b>Término:</b> ${dtFim}</div>
-                    <div><b>Duração:</b> ${ronda.duracaoMinutos || '-'} minutos</div>
-                    <div><b>Distância:</b> ${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : '-'}</div>
-                    <div><b>Pontos de GPS:</b> ${coordenadas.length} registros</div>
-                    <div><b>Ocorrências:</b> ${ronda.qtdOcorrencias || 0}</div>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <span class="badge bg-success-subtle text-success border border-success-subtle px-2 py-1">Rota Concluída</span>
+                    <span class="badge bg-light text-dark border px-2 py-1"><i class="fas fa-satellite me-1"></i> ${coordenadas.length} pontos GPS</span>
+                </div>
+                <h5 class="fw-bold text-dark mb-1">${ronda.rotaNome || 'Ronda Livre'}</h5>
+                <p class="small text-muted mb-3"><i class="fas fa-user-shield me-1 text-primary"></i> <b>Vigia:</b> ${ronda.vigiaNome || '-'} (${ronda.vigiaMatricula || '-'})</p>
+                <div class="card p-3 border border-secondary-subtle bg-white rounded-3 small mb-3">
+                    <div class="mb-1"><b><i class="fas fa-clock text-primary me-1"></i> Início:</b> ${dtInicio}</div>
+                    <div class="mb-1"><b><i class="fas fa-flag-checkered text-danger me-1"></i> Término:</b> ${dtFim}</div>
+                    <div class="mb-1"><b><i class="fas fa-stopwatch text-warning me-1"></i> Duração:</b> ${ronda.duracaoMinutos || '-'} minutos</div>
+                    <div class="mb-1"><b><i class="fas fa-person-walking text-info me-1"></i> Distância Percorrida:</b> ${ronda.distanciaMetros ? (ronda.distanciaMetros / 1000).toFixed(2) + ' km' : '-'}</div>
+                    <div><b><i class="fas fa-triangle-exclamation text-warning me-1"></i> Ocorrências:</b> ${ronda.qtdOcorrencias || 0}</div>
                 </div>
                 ${checkpointsHtml}
             `;
@@ -2419,6 +2538,7 @@
             // Desenha no mapa do modal
             setTimeout(() => {
                 const containerMapa = document.getElementById('mapa-detalhe-ronda');
+                if (!containerMapa) return;
                 if (mapaDetalhe) {
                     mapaDetalhe.remove();
                     mapaDetalhe = null;
@@ -2453,22 +2573,44 @@
                         const ok = cp.status === 'CONFIRMADO';
                         const corCp = ok ? '#10b981' : '#ef4444';
                         const iconHtml = `
-                            <div style="background: ${corCp}; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.4);">
+                            <div style="background: ${corCp}; color: white; width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; border: 2px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.5);">
                                 <i class="fas fa-${ok ? 'check' : 'times'}"></i>
                             </div>
                         `;
                         const mCp = L.marker([Number(cp.latitude), Number(cp.longitude)], {
-                            icon: L.divIcon({ className: 'audit-cp-icon', html: iconHtml, iconSize: [24, 24], iconAnchor: [12, 12] })
+                            icon: L.divIcon({ className: 'audit-cp-icon', html: iconHtml, iconSize: [26, 26], iconAnchor: [13, 13] })
                         }).addTo(mapaDetalhe);
-                        mCp.bindPopup(`<b>${cp.nome}</b><br>Status: <span style="color:${corCp}; font-weight:bold;">${cp.status}</span><br>${cp.horario ? 'Horário: ' + new Date(cp.horario).toLocaleTimeString('pt-BR') : 'Não visitado'}`);
+                        mCp.bindPopup(`<b>${cp.nome}</b><br>Setor: ${cp.setor || '-'}<br>Status: <span style="color:${corCp}; font-weight:bold;">${cp.status}</span><br>${cp.horario ? 'Horário: ' + new Date(cp.horario).toLocaleTimeString('pt-BR') : 'Não visitado'}`);
                     });
                 }
 
                 if (coordenadas.length > 0) {
-                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 4, opacity: 0.9 }).addTo(mapaDetalhe);
-                    L.marker(coordenadas[0]).addTo(mapaDetalhe).bindPopup("<b>Início da Ronda</b>").openPopup();
-                    L.marker(coordenadas[coordenadas.length - 1]).addTo(mapaDetalhe).bindPopup("<b>Fim da Ronda</b>");
-                    mapaDetalhe.fitBounds(poly.getBounds(), { padding: [40, 40] });
+                    const poly = L.polyline(coordenadas, { color: '#10b981', weight: 5, opacity: 0.95 }).addTo(mapaDetalhe);
+
+                    // Marcador de Início
+                    const iconInicio = L.divIcon({
+                        className: 'start-marker-icon',
+                        html: '<div style="background:#10b981; color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; border:3px solid white; box-shadow:0 3px 8px rgba(0,0,0,0.4);"><i class="fas fa-play"></i></div>',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    L.marker(coordenadas[0], { icon: iconInicio }).addTo(mapaDetalhe).bindPopup("<b>Início da Ronda</b>").openPopup();
+
+                    // Marcador de Fim
+                    const iconFim = L.divIcon({
+                        className: 'end-marker-icon',
+                        html: '<div style="background:#ef4444; color:white; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:14px; border:3px solid white; box-shadow:0 3px 8px rgba(0,0,0,0.4);"><i class="fas fa-flag-checkered"></i></div>',
+                        iconSize: [30, 30],
+                        iconAnchor: [15, 15]
+                    });
+                    L.marker(coordenadas[coordenadas.length - 1], { icon: iconFim }).addTo(mapaDetalhe).bindPopup("<b>Término da Ronda</b>");
+
+                    mapaDetalhe.fitBounds(poly.getBounds(), { padding: [50, 50] });
+                } else {
+                    L.popup()
+                        .setLatLng([centroAuditLat, centroAuditLng])
+                        .setContent("<b>Sem pontos de GPS gravados nesta rota.</b><br>O aparelho pode ter operado sem visada de satélite.")
+                        .openOn(mapaDetalhe);
                 }
 
                 setTimeout(() => {
