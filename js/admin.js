@@ -409,6 +409,12 @@ async function resetarSenhaUsuario(email) {
 }
 
 async function excluirUsuario(uid, email) {
+    const currentUser = firebase.auth().currentUser;
+    if (currentUser && currentUser.uid === uid) {
+        mostrarMensagem("Você não pode excluir o seu próprio usuário logado.", "warning");
+        return;
+    }
+
     if (!confirm(`ATENÇÃO!\n\nTem certeza que deseja excluir o usuário ${email}?\n\nEsta ação removerá todos os acessos e permissões do usuário do sistema.`)) {
         return;
     }
@@ -424,6 +430,14 @@ async function excluirUsuario(uid, email) {
 
     } catch (error) {
         console.error("Erro ao excluir usuário:", error);
-        mostrarMensagem(`Erro ao excluir usuário: ${error.message}`, "error");
+        if (error.code === 'permission-denied' || error.message?.toLowerCase().includes('permissions')) {
+            mostrarMensagem(
+                "Permissão insuficiente no Firestore para excluir o usuário.\n\n" +
+                "Certifique-se de que sua conta possui 'permissoes.isAdmin: true' e que a regra atualizada de exclusão para a coleção 'usuarios' foi publicada no Firebase Console.",
+                "error"
+            );
+        } else {
+            mostrarMensagem(`Erro ao excluir usuário: ${error.message}`, "error");
+        }
     }
 }

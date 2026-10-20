@@ -7,14 +7,21 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Função auxiliar para verificar se o documento do usuário atual existe
+    function currentUserExists() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/usuarios/$(request.auth.uid));
+    }
+
     // Função auxiliar para obter as permissões do usuário logado
     function getPermissions() {
-      return get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permissoes;
+      return currentUserExists() ? get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permissoes : {};
     }
 
     // Função auxiliar para verificar se o usuário é administrador
     function isAdmin() {
-      return isAuthenticated() && getPermissions().isAdmin == true;
+      return currentUserExists() && 
+             ('permissoes' in get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data) &&
+             get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.permissoes.isAdmin == true;
     }
 
     // Função auxiliar para verificar se o usuário tem acesso a uma seção específica
@@ -29,12 +36,14 @@ service cloud.firestore {
 
     // Regras para a coleção 'usuarios'
     match /usuarios/{userId} {
-      // Usuário pode ler seus próprios dados
+      // Administrador possui controle total (ler, criar, listar, atualizar e excluir)
+      allow read, write: if isAdmin();
+
+      // Usuário autenticado pode ler seus próprios dados
       allow read: if isAuthenticated() && request.auth.uid == userId;
-      // Usuário pode atualizar seus próprios dados (ex: nome), mas não permissões
+
+      // Usuário pode atualizar seus próprios dados básicos (ex: nome), mas não permissões
       allow update: if isAuthenticated() && request.auth.uid == userId && request.resource.data.keys().hasOnly(['nome', 'email']);
-      // Apenas administradores podem criar ou listar outros usuários
-      allow create, list: if isAdmin();
     }
 
     // Regras para a coleção 'empresas'

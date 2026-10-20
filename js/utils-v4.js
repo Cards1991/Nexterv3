@@ -1,35 +1,38 @@
 // ✅ NEW: Toggle sidebar mechanic menu + roles
 function toggleRoleElements() {
     const currentUserPermissions = window.currentUserPermissions || {};
+    const isAdmin = !!currentUserPermissions.isAdmin;
+    const isMecanicoAdmin = !!currentUserPermissions.isMecanicoAdmin;
+    const isMecanico = !!currentUserPermissions.isMecanico;
     
     // Admin-only
     const adminOnly = document.querySelectorAll('.admin-only');
     adminOnly.forEach(el => {
-        el.style.display = currentUserPermissions.isAdmin ? 'block' : 'none';
+        el.style.display = isAdmin ? 'block' : 'none';
     });
 
-    // Mecânico Admin-only (Full ISO)
+    // Mecânico Admin-only (Full ISO) -> Master Admin também tem acesso total
     const mecanicoAdminOnly = document.querySelectorAll('.mecanico-admin-only');
     mecanicoAdminOnly.forEach(el => {
-        el.style.display = currentUserPermissions.isMecanicoAdmin ? 'block' : 'none';
+        el.style.display = (isMecanicoAdmin || isAdmin) ? 'block' : 'none';
     });
 
-    // Mecânico normal-only (read-only)
+    // Mecânico normal-only (read-only) -> Apenas mecânicos sem perfil de gerente nem admin master
     const mecanicoNormalOnly = document.querySelectorAll('.mecanico-normal-only');
     mecanicoNormalOnly.forEach(el => {
-        el.style.display = currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin ? 'block' : 'none';
+        el.style.display = (isMecanico && !isMecanicoAdmin && !isAdmin) ? 'block' : 'none';
     });
 
     // Mecânico-any
     const mecanicoAny = document.querySelectorAll('.mecanico-any');
     mecanicoAny.forEach(el => {
-        el.style.display = currentUserPermissions.isMecanico ? 'block' : 'none';
+        el.style.display = (isMecanico || isAdmin) ? 'block' : 'none';
     });
 
     // ISO-access (all authenticated users + admins)
     const isoAccess = document.querySelectorAll('.iso-access');
     isoAccess.forEach(el => {
-        el.style.display = (currentUserPermissions.isAdmin || currentUserPermissions.isMecanico || currentUserPermissions.hasIsoAccess !== false) ? 'block' : 'none';
+        el.style.display = (isAdmin || isMecanico || currentUserPermissions.hasIsoAccess !== false) ? 'block' : 'none';
     });
 }
 

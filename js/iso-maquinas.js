@@ -18,7 +18,8 @@ function inicializarModuloMaquinas(dbInstance) {
 
 async function inicializarMaquinas() {
     const currentUserPermissions = window.currentUserPermissions || {};
-    if (!currentUserPermissions.isMecanicoAdmin) {
+    const temPermissao = currentUserPermissions.isAdmin || currentUserPermissions.isMecanicoAdmin;
+    if (!temPermissao) {
         mostrarMensagem("❌ Acesso restrito a gerentes de manutenção.", "warning");
         // Show button but disabled instead of remove
         const btnNova = document.getElementById('btn-nova-maquina');
@@ -30,10 +31,12 @@ async function inicializarMaquinas() {
         return;
     }
     
-    // ✅ Show button for admin
+    // ✅ Show button for admin / gerente
     const btnNova = document.getElementById('btn-nova-maquina');
     if (btnNova) {
         btnNova.style.display = 'block';
+        btnNova.disabled = false;
+        btnNova.title = 'Adicionar nova máquina';
     }
     
     try {

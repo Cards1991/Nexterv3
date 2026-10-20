@@ -24,8 +24,8 @@ if (typeof db === 'undefined') {
 async function inicializarManutencao() {
     const currentUserPermissions = window.currentUserPermissions || {};
     
-    // 🔒 LOCK: Normal mechanics get read-only view
-    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+    // 🔒 LOCK: Normal mechanics get read-only view (somente se não for gerente nem admin master)
+    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin && !currentUserPermissions.isAdmin) {
         mostrarMensagem("👷 Modo Mecânico: Visualização read-only dos chamados", "info");
         document.body.classList.add('mecanico-readonly');
         // Mechanics can still filter/view but NO create/edit
@@ -47,7 +47,7 @@ async function inicializarManutencao() {
         const btnNovo = document.getElementById('btn-novo-chamado-manutencao');
         const btnFiltrar = document.getElementById('btn-filtrar-manutencao');
 
-        if (btnNovo && !btnNovo.hasAttribute('data-listener-bound') && currentUserPermissions.isMecanicoAdmin) {
+        if (btnNovo && !btnNovo.hasAttribute('data-listener-bound') && (currentUserPermissions.isMecanicoAdmin || currentUserPermissions.isAdmin)) {
             btnNovo.addEventListener('click', () => abrirModalChamado(null));
             btnNovo.setAttribute('data-listener-bound', 'true');
         }
@@ -64,8 +64,8 @@ async function inicializarManutencao() {
         // Carregar chamados
         await carregarChamadosManutencao();
 
-        // Adicionar botão de configurações WhatsApp (IMEDIATO + retry) → Manager only
-        if (currentUserPermissions.isMecanicoAdmin) {
+        // Adicionar botão de configurações WhatsApp (IMEDIATO + retry) → Manager / Admin only
+        if (currentUserPermissions.isMecanicoAdmin || currentUserPermissions.isAdmin) {
             adicionarBotaoConfigWhatsApp();
             setTimeout(adicionarBotaoConfigWhatsApp, 500);
             setTimeout(adicionarBotaoConfigWhatsApp, 1500);
@@ -758,7 +758,7 @@ async function carregarChamadosManutencao() {
             console.warn('[ISO-DEBUG] erro debug:', e);
         }
 
-        if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+        if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin && !currentUserPermissions.isAdmin) {
             const user = firebase.auth().currentUser;
             const funcionarioId = currentUserPermissions.funcionarioId;
             const idParaBusca = funcionarioId || user?.uid;
@@ -862,7 +862,7 @@ __unsubscribe_manutencao = query.onSnapshot((snap) => {
 let prioridadeConteudo;
                 const currentUserPermissions = window.currentUserPermissions || {};
                 if (chamado.status === 'Aberto' || chamado.status === 'Em Andamento') {
-                    if (currentUserPermissions.isMecanicoAdmin) {
+                    if (currentUserPermissions.isMecanicoAdmin || currentUserPermissions.isAdmin) {
                         prioridadeConteudo = `
                             <select class="form-select form-select-sm w-auto d-inline-block priority-admin-only ${prioridadeBadgeClass}" onchange="atualizarPrioridade('${chamado.id}', this.value)">
                                 <option value="Normal" ${chamado.prioridade === 'Normal' ? 'selected' : ''}>Normal</option>
@@ -1068,7 +1068,7 @@ function renderizarMetricasManutencao(chamados) {
 // ============ MODAL NOVO CHAMADO ============
 async function abrirModalChamado(chamadoId = null) {
     const currentUserPermissions = window.currentUserPermissions || {};
-    if (!currentUserPermissions.isMecanicoAdmin) {
+    if (!currentUserPermissions.isMecanicoAdmin && !currentUserPermissions.isAdmin) {
         mostrarMensagem("❌ Mecânicos não podem criar novos chamados. Contate o gerente.", "warning");
         return;
     }
@@ -1563,7 +1563,7 @@ async function iniciarAtendimento(chamadoId) {
  */
 async function confirmarInicioAtendimentoISO() {
     const currentUserPermissions = window.currentUserPermissions || {};
-    if (!currentUserPermissions.isMecanicoAdmin) {
+    if (!currentUserPermissions.isMecanicoAdmin && !currentUserPermissions.isAdmin) {
         mostrarMensagem("❌ Mecânicos não podem atribuir chamados. Contate o gerente.", "warning");
         return;
     }
@@ -1643,8 +1643,8 @@ async function abrirModalFinalizar(chamadoId) {
     const currentUserPermissions = window.currentUserPermissions || {};
     const chamado = __chamados_cache.find(c => c.id === chamadoId);
     
-    // 🔒 Mechanics can ONLY finalize OWN assigned chamados
-    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin) {
+    // 🔒 Mechanics can ONLY finalize OWN assigned chamados (não afeta administradores nem gerentes)
+    if (currentUserPermissions.isMecanico && !currentUserPermissions.isMecanicoAdmin && !currentUserPermissions.isAdmin) {
         if (!chamado || chamado.mecanicoResponsavelId !== firebase.auth().currentUser.uid) {
             mostrarMensagem("❌ Você só pode finalizar chamados atribuídos a você.", "warning");
             return;
