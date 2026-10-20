@@ -166,41 +166,48 @@ async function carregarPainelDemitidos() {
 
             // Verifica se já tem custo lançado
             const custoLancado = custosMap[doc.id];
+            const nomeEscapado = (f.nome || '').replace(/'/g, "\\'");
             
             let btnAcao = '';
             let btnCancelar = '';
             let btnEditar = '';
+            let btnExcluir = '';
 
             if (custoLancado !== undefined) {
                 btnAcao = `
-                    <button class="btn btn-sm btn-info text-white" onclick="visualizarCustoRescisao('${f.nome}', ${custoLancado})" title="Visualizar Valor Lançado">
+                    <button class="btn btn-sm btn-info text-white text-nowrap" onclick="visualizarCustoRescisao('${nomeEscapado}', ${custoLancado})" title="Visualizar Valor Lançado">
                         <i class="fas fa-eye"></i> Ver Custo
                     </button>
                 `;
-                // Se o custo já foi lançado, não pode cancelar a demissão, então o botão fica desabilitado
                 btnCancelar = `
-                    <button class="btn btn-sm btn-outline-warning me-2" disabled title="Não é possível cancelar uma demissão com custo já lançado.">
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="cancelarDemissao('${doc.id}', '${nomeEscapado}')" title="Reativar Colaborador (Cancelar Demissão)">
                         <i class="fas fa-undo"></i>
                     </button>
                 `;
             } else {
                 btnAcao = `
-                    <button class="btn btn-sm btn-outline-success" onclick="abrirModalCustoRescisao('${doc.id}', '${f.nome}', '${dataDemissaoISO}')" title="Lançar Custo Rescisório">
+                    <button class="btn btn-sm btn-outline-success text-nowrap" onclick="abrirModalCustoRescisao('${doc.id}', '${nomeEscapado}', '${dataDemissaoISO}')" title="Lançar Custo Rescisório">
                         <i class="fas fa-dollar-sign"></i> Lançar Custo
                     </button>
                 `;
                 btnCancelar = `
-                    <button class="btn btn-sm btn-outline-warning me-2" onclick="cancelarDemissao('${doc.id}', '${f.nome}')" title="Cancelar Demissão">
+                    <button class="btn btn-sm btn-outline-warning me-1" onclick="cancelarDemissao('${doc.id}', '${nomeEscapado}')" title="Cancelar Demissão">
                         <i class="fas fa-undo"></i>
                     </button>
                 `;
             }
+
             btnEditar = `
-                <button class="btn btn-sm btn-outline-primary me-2" onclick="abrirModalEditarDemissao('${doc.id}', '${f.nome}')" title="Editar Demissão">
+                <button class="btn btn-sm btn-outline-primary me-1" onclick="abrirModalEditarDemissao('${doc.id}', '${nomeEscapado}')" title="Editar Demissão">
                     <i class="fas fa-edit"></i>
                 </button>
             `;
-            
+
+            btnExcluir = `
+                <button class="btn btn-sm btn-outline-danger me-1" onclick="excluirDemissao('${doc.id}', '${nomeEscapado}', ${f.registroLivre === true})" title="Excluir Demissão">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            `;
 
             html += `
                 <tr>
@@ -213,9 +220,12 @@ async function carregarPainelDemitidos() {
                     <td>${dataDemissao}</td>
                     <td>${tipoDemissao}</td>
                     <td class="text-end">
-                        ${btnEditar}
-                        ${btnCancelar}
-                        ${btnAcao}
+                        <div class="d-inline-flex align-items-center justify-content-end">
+                            ${btnEditar}
+                            ${btnCancelar}
+                            ${btnExcluir}
+                            ${btnAcao}
+                        </div>
                     </td>
                 </tr>
             `;
@@ -227,6 +237,115 @@ async function carregarPainelDemitidos() {
         console.error("Erro ao carregar demitidos:", error);
         tbody.innerHTML = '<tr><td colspan="6" class="text-center text-danger">Erro ao carregar dados.</td></tr>';
     }
+}
+
+async function excluirDemissao(id, nome, isRegistroLivre = false) {
+    const msg = isRegistroLivre 
+        ? `Tem certeza que deseja EXCLUIR o registro de demissão de ${nome}?\n\nEste registro livre será excluído do sistema.`
+        : `ATENÇÃO!\n\nTem certeza que deseja EXCLUIR a demissão de ${nome}?\n\n• O colaborador retornará ao status 'Ativo'.\n• O registro de desligamento e histórico de movimentação serão removidos.\n• Eventuais custos rescisórios e reposições vinculados a esta demissão serão cancelados.`;
+
+    if (!confirm(msg)) {
+        return;
+    }
+
+    try {
+        const batch = db.batch();
+        const funcRef = db.collection('funcionarios').doc(id);
+
+        if (isRegistroLivre) {
+            batch.delete(funcRef);
+        } else {
+            batch.update(funcRef, {
+                status: 'Ativo',
+                dataDesligamento: firebase.firestore.FieldValue.delete(),
+                dataDemissao: firebase.firestore.FieldValue.delete(),
+                motivoDesligamento: firebase.firestore.FieldValue.delete(),
+                tipoDemissao: firebase.firestore.FieldValue.delete(),
+                ultimaMovimentacao: firebase.firestore.FieldValue.delete(),
+                observacoesHistorico: firebase.firestore.FieldValue.delete(),
+                necessitaReposicao: firebase.firestore.FieldValue.delete(),
+                bloquearReadmissao: firebase.firestore.FieldValue.delete()
+            });
+        }
+
+        // 1. Remover movimentações de demissão vinculadas
+        const movimentacaoQuery = await db.collection('movimentacoes')
+            .where('funcionarioId', '==', id)
+            .where('tipo', '==', 'demissao')
+            .get();
+        
+        movimentacaoQuery.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // 2. Remover lançamentos financeiros de rescisão vinculados
+        const financeirosQuery = await db.collection('lancamentos_financeiros')
+            .where('funcionarioId', '==', id)
+            .where('subdivisao', '==', 'Rescisões')
+            .get();
+
+        financeirosQuery.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        // 3. Remover reposições pendentes geradas pela demissão
+        const reposicoesQuery = await db.collection('reposicoes')
+            .where('funcionarioId', '==', id)
+            .where('status', '==', 'pendente')
+            .get();
+
+        reposicoesQuery.docs.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        // Fechar modal de edição caso esteja aberto
+        const modalEl = document.getElementById('modalEditarDemissao');
+        if (modalEl) {
+            const modalInst = bootstrap.Modal.getInstance(modalEl);
+            if (modalInst) modalInst.hide();
+        }
+
+        const msgSucesso = isRegistroLivre 
+            ? `Registro de demissão de ${nome} excluído com sucesso!`
+            : `Demissão de ${nome} excluída com sucesso! Colaborador reativado.`;
+
+        if (typeof window.mostrarMensagem === 'function') {
+            window.mostrarMensagem(msgSucesso, 'success');
+        } else {
+            alert(msgSucesso);
+        }
+
+        await carregarPainelDemitidos();
+
+    } catch (error) {
+        console.error("Erro ao excluir demissão:", error);
+        const msgErro = `Erro ao excluir demissão: ${error.message}`;
+        if (typeof window.mostrarMensagem === 'function') {
+            window.mostrarMensagem(msgErro, 'error');
+        } else {
+            alert(msgErro);
+        }
+    }
+}
+
+async function excluirDemissaoDoModal() {
+    const funcId = document.getElementById('edit-demissao-func-id')?.value;
+    const nome = document.getElementById('edit-demissao-nome')?.value || 'este colaborador';
+    if (!funcId) return;
+
+    let isRegistroLivre = false;
+    try {
+        const funcDoc = await db.collection('funcionarios').doc(funcId).get();
+        if (funcDoc.exists && funcDoc.data().registroLivre) {
+            isRegistroLivre = true;
+        }
+    } catch (e) {
+        console.warn("Aviso ao checar registro livre:", e);
+    }
+
+    await excluirDemissao(funcId, nome, isRegistroLivre);
 }
 
 async function cancelarDemissao(id, nome) {
@@ -245,7 +364,7 @@ async function cancelarDemissao(id, nome) {
             tipoDemissao: firebase.firestore.FieldValue.delete()
         });
 
-        // Opcional: Remover a movimentação de demissão correspondente
+        // Remover a movimentação de demissão correspondente
         const movimentacaoQuery = await db.collection('movimentacoes')
             .where('funcionarioId', '==', id)
             .where('tipo', '==', 'demissao')
@@ -259,8 +378,12 @@ async function cancelarDemissao(id, nome) {
             await batch.commit();
         }
 
-        alert(`${nome} foi reativado(a) com sucesso!`);
-        carregarPainelDemitidos();
+        if (typeof window.mostrarMensagem === 'function') {
+            window.mostrarMensagem(`${nome} foi reativado(a) com sucesso!`, 'success');
+        } else {
+            alert(`${nome} foi reativado(a) com sucesso!`);
+        }
+        await carregarPainelDemitidos();
 
     } catch (error) {
         console.error("Erro ao cancelar demissão:", error);
@@ -823,3 +946,9 @@ window.salvarRegistroLivre = async function() {
         btnSalvar.innerHTML = '<i class="fas fa-save me-1"></i> Salvar Registro Livre';
     }
 }
+
+// Exportações globais
+window.excluirDemissao = excluirDemissao;
+window.excluirDemissaoDoModal = excluirDemissaoDoModal;
+window.cancelarDemissao = cancelarDemissao;
+window.carregarPainelDemitidos = carregarPainelDemitidos;

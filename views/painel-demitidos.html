@@ -65,7 +65,7 @@
                 </thead>
                 <tbody id="tabela-demitidos-container">
                     <tr>
-                        <td colspan="5" class="text-center">Carregando demitidos...</td>
+                        <td colspan="6" class="text-center">Carregando demitidos...</td>
                     </tr>
                     <!-- Exemplo de linha:
                     <tr>
@@ -193,9 +193,14 @@
                 </form>
             </div>
 
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarEdicaoDemissao()">Salvar Alterações</button>
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-danger" onclick="excluirDemissaoDoModal()">
+                    <i class="fas fa-trash-alt me-1"></i> Excluir Demissão
+                </button>
+                <div>
+                    <button type="button" class="btn btn-secondary me-2" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarEdicaoDemissao()">Salvar Alterações</button>
+                </div>
             </div>
         </div>
     </div>
