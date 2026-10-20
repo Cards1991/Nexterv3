@@ -45,7 +45,19 @@ module.exports = async function handler(req, res) {
         return;
     }
 
-    const { action } = req.method === 'POST' ? req.body : req.query;
+    if (typeof req.body === 'string') {
+        try { req.body = JSON.parse(req.body); } catch(e) {}
+    }
+    const reqBody = req.body || {};
+    const reqQuery = req.query || {};
+
+    let action = (req.method === 'POST' ? reqBody.action : (reqQuery.action || reqBody.action));
+    if (!action) {
+        if (req.method === 'DELETE') action = 'deletePerson';
+        else if (req.method === 'PATCH') action = 'patchPerson';
+        else if (reqBody.action) action = reqBody.action;
+        else if (reqQuery.action) action = reqQuery.action;
+    }
 
     if (!action) {
         return res.status(400).json({ success: false, message: 'Ação não especificada.' });
@@ -602,7 +614,335 @@ module.exports = async function handler(req, res) {
                     console.error('[RHID API] Erro ao importar pessoas do RHiD:', impErr);
                     return res.status(500).json({ success: false, message: 'Erro ao importar cadastros do RHiD.', details: impErr.message });
                 }
-                
+
+            case 'deletePerson':
+                try {
+                    let { id, idPerson, rhidPersonId, ids, idPersons, cpf, registration, code, query } = reqBody;
+                    if (!id && !idPerson && !rhidPersonId && !cpf && !query && reqQuery) {
+                        id = reqQuery.id || reqQuery.idPerson || reqQuery.rhidPersonId;
+                        cpf = reqQuery.cpf;
+                        query = reqQuery.query;
+                    }
+
+                    const token = await loginToRhid();
+
+                    // 1. Coleta lista de IDs alvos
+                    let targetIds = [];
+                    if (Array.isArray(ids) && ids.length > 0) targetIds.push(...ids);
+                    if (Array.isArray(idPersons) && idPersons.length > 0) targetIds.push(...idPersons);
+                    
+                    const singleId = id || idPerson || rhidPersonId;
+                    if (singleId && !targetIds.includes(singleId)) {
+                        targetIds.push(singleId);
+                    }
+
+                    // 2. Se nenhum ID direto foi informado, usa a lógica de busca/matching por CPF, matrícula ou query
+                    if (targetIds.length === 0 && (cpf || registration || code || query)) {
+                        const termoBusca = cpf || registration || code || query;
+                        const personRes = await fetch(`${RHID_API_BASE}/person`, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        if (personRes.ok) {
+                            const personData = await personRes.json();
+                            const list = personData.records || [];
+                            const qClean = String(termoBusca).replace(/\D/g, '');
+                            const qCleanPad = qClean ? qClean.padStart(11, '0') : '';
+                            const qCleanNoZeros = qClean ? qClean.replace(/^0+/, '') : '';
+                            const qLower = String(termoBusca).toLowerCase().trim();
+
+                            const matches = list.filter(p => {
+                                const cpfRaw = String(p.cpf || '').replace(/\D/g, '');
+                                const cpfPad = cpfRaw ? cpfRaw.padStart(11, '0') : '';
+                                const cpfNoZeros = cpfRaw ? cpfRaw.replace(/^0+/, '') : '';
+                                const reg = String(p.registration || '').replace(/\D/g, '');
+                                const cd = String(p.code !== undefined ? p.code : '').replace(/\D/g, '');
+                                const name = String(p.name || '').toLowerCase();
+                                
+                                let matchCpf = false;
+                                if (qClean && cpfRaw) {
+                                    if (qClean.length >= 10) {
+                                        matchCpf = (cpfPad === qCleanPad || cpfNoZeros === qCleanNoZeros);
+                                    } else {
+                                        matchCpf = cpfRaw.includes(qClean) || cpfPad.includes(qClean);
+                                    }
+                                }
+                                const matchReg = qClean && reg && (reg === qClean || reg.includes(qClean));
+                                const matchCode = qClean && cd && (cd === qClean || cd.includes(qClean));
+                                const matchName = qLower && name.includes(qLower);
+
+                                return matchCpf || matchReg || matchCode || matchName;
+                            });
+
+                            if (matches.length > 0) {
+                                targetIds = matches.map(m => m.id);
+                            }
+                        }
+                    }
+
+                    if (targetIds.length === 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Nenhum ID de colaborador ou identificador válido (CPF/matrícula) encontrado para exclusão.'
+                        });
+                    }
+
+                    // 3. Executa a exclusão de cada ID no endpoint DELETE /person/{id}
+                    const deleteResults = [];
+                    for (const rawId of targetIds) {
+                        const personId = parseInt(rawId, 10);
+                        if (isNaN(personId)) {
+                            deleteResults.push({ id: rawId, success: false, message: 'ID numérico inválido' });
+                            continue;
+                        }
+
+                        const delRes = await fetch(`${RHID_API_BASE}/person/${personId}`, {
+                            method: 'DELETE',
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+
+                        const resText = await delRes.text();
+                        if (delRes.ok || delRes.status === 200 || delRes.status === 204) {
+                            deleteResults.push({ id: personId, success: true, message: 'Excluído com sucesso da nuvem RHiD' });
+                        } else {
+                            deleteResults.push({ 
+                                id: personId, 
+                                success: false, 
+                                status: delRes.status, 
+                                message: resText || 'Erro ao excluir da nuvem RHiD' 
+                            });
+                        }
+                    }
+
+                    const anySuccess = deleteResults.some(r => r.success);
+                    const totalSucesso = deleteResults.filter(r => r.success).length;
+
+                    return res.status(anySuccess ? 200 : 400).json({
+                        success: anySuccess,
+                        message: anySuccess 
+                            ? `Exclusão processada no RHiD com sucesso (${totalSucesso}/${deleteResults.length} excluído(s)).` 
+                            : 'Não foi possível excluir o colaborador na nuvem RHiD.',
+                        totalSucesso,
+                        totalSolicitado: deleteResults.length,
+                        results: deleteResults
+                    });
+
+                } catch (delErr) {
+                    console.error('[RHID API] Erro ao excluir pessoa:', delErr);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Erro interno ao excluir pessoa no RHiD.',
+                        details: delErr.message
+                    });
+                }
+
+            case 'patchPerson':
+                try {
+                    let { listPerson, person } = reqBody;
+                    const token = await loginToRhid();
+
+                    // Se enviou person individual em vez de listPerson
+                    let itemsToPatch = [];
+                    if (Array.isArray(listPerson)) {
+                        itemsToPatch = [...listPerson];
+                    } else if (person && typeof person === 'object') {
+                        itemsToPatch = [person];
+                    } else if (reqBody && (reqBody.id || reqBody.rhidPersonId || reqBody.cpf || reqBody.nome || reqBody.name)) {
+                        itemsToPatch = [{ ...reqBody }];
+                    }
+
+                    if (itemsToPatch.length === 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Nenhum dado de pessoa informado para atualização (PATCH).'
+                        });
+                    }
+
+                    // Se algum item não tiver ID numérico mas tiver CPF ou matrícula, auto-resolve usando a mesma busca
+                    let fullPersonListCache = null;
+                    for (const item of itemsToPatch) {
+                        if (!item.id && (item.rhidPersonId || item.idPerson)) {
+                            item.id = parseInt(item.rhidPersonId || item.idPerson, 10);
+                        }
+
+                        if (!item.id && (item.cpf || item.registration || item.code || item.query || item.nome)) {
+                            if (!fullPersonListCache) {
+                                const pRes = await fetch(`${RHID_API_BASE}/person`, {
+                                    headers: { 'Authorization': `Bearer ${token}` }
+                                });
+                                if (pRes.ok) {
+                                    const pData = await pRes.json();
+                                    fullPersonListCache = pData.records || [];
+                                } else {
+                                    fullPersonListCache = [];
+                                }
+                            }
+
+                            const termo = item.cpf || item.registration || item.code || item.query || item.nome;
+                            const qClean = String(termo).replace(/\D/g, '');
+                            const qCleanPad = qClean ? qClean.padStart(11, '0') : '';
+                            const qCleanNoZeros = qClean ? qClean.replace(/^0+/, '') : '';
+                            const qLower = String(termo).toLowerCase().trim();
+
+                            const match = fullPersonListCache.find(p => {
+                                const cpfRaw = String(p.cpf || '').replace(/\D/g, '');
+                                const cpfPad = cpfRaw ? cpfRaw.padStart(11, '0') : '';
+                                const cpfNoZeros = cpfRaw ? cpfRaw.replace(/^0+/, '') : '';
+                                const reg = String(p.registration || '').replace(/\D/g, '');
+                                const cd = String(p.code !== undefined ? p.code : '').replace(/\D/g, '');
+                                const name = String(p.name || '').toLowerCase();
+
+                                let matchCpf = false;
+                                if (qClean && cpfRaw) {
+                                    if (qClean.length >= 10) {
+                                        matchCpf = (cpfPad === qCleanPad || cpfNoZeros === qCleanNoZeros);
+                                    } else {
+                                        matchCpf = cpfRaw.includes(qClean) || cpfPad.includes(qClean);
+                                    }
+                                }
+                                const matchReg = qClean && reg && (reg === qClean || reg.includes(qClean));
+                                const matchCode = qClean && cd && (cd === qClean || cd.includes(qClean));
+                                const matchName = qLower && name.includes(qLower);
+
+                                return matchCpf || matchReg || matchCode || matchName;
+                            });
+
+                            if (match) {
+                                item.id = match.id;
+                            }
+                        }
+                    }
+
+                    // Sanitização e formatação estrita conforme PersonDTO da API RHiD
+                    const sanitizedList = itemsToPatch
+                        .filter(item => item && item.id && !isNaN(parseInt(item.id, 10)))
+                        .map(item => {
+                            const dto = {
+                                id: parseInt(item.id, 10)
+                            };
+
+                            if (item.name !== undefined && item.name !== null) {
+                                dto.name = String(item.name).trim();
+                            } else if (item.nome !== undefined && item.nome !== null) {
+                                dto.name = String(item.nome).trim();
+                            }
+
+                            if (item.cpf !== undefined && item.cpf !== null && item.cpf !== '') {
+                                const cpfDigits = String(item.cpf).replace(/\D/g, '');
+                                if (cpfDigits) dto.cpf = parseInt(cpfDigits, 10);
+                            }
+
+                            if (item.pis !== undefined && item.pis !== null && item.pis !== '') {
+                                const pisDigits = String(item.pis).replace(/\D/g, '');
+                                if (pisDigits) dto.pis = parseInt(pisDigits, 10);
+                            } else if (item.codigoRep !== undefined && item.codigoRep !== null && item.codigoRep !== '') {
+                                const pisDigits = String(item.codigoRep).replace(/\D/g, '');
+                                if (pisDigits) dto.pis = parseInt(pisDigits, 10);
+                            }
+
+                            if (item.registration !== undefined && item.registration !== null) {
+                                dto.registration = String(item.registration).trim();
+                            } else if (item.codigo !== undefined && item.codigo !== null) {
+                                dto.registration = String(item.codigo).trim();
+                            }
+
+                            if (item.code !== undefined && item.code !== null && item.code !== '') {
+                                const cdNum = parseInt(String(item.code).replace(/\D/g, ''), 10);
+                                if (!isNaN(cdNum)) dto.code = cdNum;
+                            }
+
+                            if (item.status !== undefined && item.status !== null) {
+                                if (typeof item.status === 'string') {
+                                    dto.status = (item.status.toLowerCase() === 'ativo' || item.status.toLowerCase() === 'active') ? 0 : 1;
+                                } else {
+                                    dto.status = parseInt(item.status, 10);
+                                }
+                            }
+
+                            if (item.admissionDate !== undefined) {
+                                dto.admissionDate = item.admissionDate || null;
+                            }
+
+                            if (item.idDepartment !== undefined && item.idDepartment !== null) {
+                                dto.idDepartment = parseInt(item.idDepartment, 10);
+                            }
+
+                            if (item.idCompany !== undefined && item.idCompany !== null) {
+                                dto.idCompany = parseInt(item.idCompany, 10);
+                            }
+
+                            if (item.rfid !== undefined && item.rfid !== null) {
+                                dto.rfid = parseInt(item.rfid, 10);
+                            }
+
+                            if (item.barCode !== undefined && item.barCode !== null) {
+                                dto.barCode = parseInt(item.barCode, 10);
+                            }
+
+                            if (item.isAdmin !== undefined && item.isAdmin !== null) {
+                                dto.isAdmin = !!item.isAdmin;
+                            }
+
+                            if (item.photo !== undefined) {
+                                dto.photo = item.photo;
+                            }
+
+                            return dto;
+                        });
+
+                    if (sanitizedList.length === 0) {
+                        return res.status(400).json({
+                            success: false,
+                            message: 'Nenhum registro continha um ID válido após resolução para envio do PATCH no RHiD.'
+                        });
+                    }
+
+                    // A API do RHiD permite até 100 itens por lote no PATCH /person
+                    const CHUNK_SIZE = 100;
+                    const patchResponses = [];
+
+                    for (let i = 0; i < sanitizedList.length; i += CHUNK_SIZE) {
+                        const chunk = sanitizedList.slice(i, i + CHUNK_SIZE);
+                        const patchRes = await fetch(`${RHID_API_BASE}/person`, {
+                            method: 'PATCH',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token}`
+                            },
+                            body: JSON.stringify(chunk)
+                        });
+
+                        const patchText = await patchRes.text();
+                        if (patchRes.ok || patchRes.status === 200) {
+                            patchResponses.push({ success: true, count: chunk.length, chunk });
+                        } else {
+                            patchResponses.push({ success: false, status: patchRes.status, message: patchText, chunk });
+                        }
+                    }
+
+                    const anySuccess = patchResponses.some(r => r.success);
+                    const totalUpdated = patchResponses.filter(r => r.success).reduce((acc, r) => acc + r.count, 0);
+
+                    return res.status(anySuccess ? 200 : 400).json({
+                        success: anySuccess,
+                        message: anySuccess 
+                            ? `Pessoa(s) atualizada(s) com sucesso no RHiD (${totalUpdated} alterada(s)).` 
+                            : 'Falha ao atualizar pessoa(s) no RHiD.',
+                        totalUpdated,
+                        data: sanitizedList,
+                        details: patchResponses
+                    });
+
+                } catch (patchErr) {
+                    console.error('[RHID API] Erro no PATCH person:', patchErr);
+                    return res.status(500).json({
+                        success: false,
+                        message: 'Erro interno ao processar PATCH de pessoa(s) no RHiD.',
+                        details: patchErr.message
+                    });
+                }
+
             default:
                 return res.status(404).json({ success: false, message: 'Ação desconhecida.' });
         }

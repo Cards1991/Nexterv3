@@ -1891,6 +1891,9 @@ async function carregarListaVisitantesCadastrados() {
 
             tableHtml += `
                 <tr>
+                    <td class="text-center">
+                        <input type="checkbox" class="form-check-input check-visitante-item" value="${v.id}" data-rhid="${v.rhidPersonId || ''}" data-nome="${(v.nome || '').replace(/"/g, '&quot;')}" data-cpf="${v.cpf || ''}" data-codigo="${v.codigo || ''}" onchange="if(typeof atualizarContadorSelecionadosLote === 'function') atualizarContadorSelecionadosLote();">
+                    </td>
                     <td class="text-center font-monospace fw-bold text-primary">
                         <span class="badge bg-dark text-white px-2 py-1 shadow-sm">
                             <i class="fas fa-id-card me-1 text-warning"></i> ${v.codigo || 'N/I'}
@@ -1905,13 +1908,16 @@ async function carregarListaVisitantesCadastrados() {
                     <td class="text-center">${statusBadge}</td>
                     <td class="text-center">
                         <div class="d-flex justify-content-center align-items-center gap-1">
-                            <button class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm px-3 py-1" onclick="abrirEspelhoPontoGerente('${v.id}')" title="Apurar Espelho de Ponto Individual com Almoço Pré-assinalado (12:00 às 13:30)">
-                                <i class="fas fa-calendar-check me-1"></i> Espelho do Ponto
+                            <button class="btn btn-primary btn-sm rounded-pill fw-bold shadow-sm px-2 py-1" onclick="abrirEspelhoPontoGerente('${v.id}')" title="Apurar Espelho de Ponto Individual com Almoço Pré-assinalado (12:00 às 13:30)">
+                                <i class="fas fa-calendar-check me-1"></i> Espelho
+                            </button>
+                            <button class="btn btn-outline-info btn-sm rounded-pill px-2 py-1" onclick="abrirModalPatchPersonRapido('${v.id}')" title="Aplicar PATCH no RHiD (Atualizar Cadastro / Status / Matrícula / PIS)">
+                                <i class="fas fa-cloud-upload-alt me-1"></i> Patch
                             </button>
                             <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 py-1" onclick="abrirModalNovoVisitante('${v.id}')" title="Editar Informações e Horário">
                                 <i class="fas fa-edit"></i>
                             </button>
-                            <button class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1" onclick="excluirVisitante('${v.id}', '${v.nome.replace(/'/g, "\\'")}')" title="Remover do Monitoramento">
+                            <button class="btn btn-outline-danger btn-sm rounded-pill px-2 py-1" onclick="excluirVisitante('${v.id}', '${v.nome.replace(/'/g, "\\'")}', '${v.rhidPersonId || ''}', '${v.cpf || ''}')" title="Excluir Colaborador (Nexter ou Nuvem RHiD)">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -1923,7 +1929,7 @@ async function carregarListaVisitantesCadastrados() {
         window._visitantesCadastradosCache = pessoas;
 
         if (selectFiltro) selectFiltro.innerHTML = optionsHtml;
-        if (tbody) tbody.innerHTML = tableHtml || '<tr><td colspan="8" class="text-center py-4 text-muted">Nenhuma pessoa cadastrada para monitoramento de presença.</td></tr>';
+        if (tbody) tbody.innerHTML = tableHtml || '<tr><td colspan="9" class="text-center py-4 text-muted">Nenhuma pessoa cadastrada para monitoramento de presença.</td></tr>';
         if (metricTotal) metricTotal.textContent = pessoas.length;
 
         const badgeCad = document.getElementById('badge-total-cadastrados');
@@ -2636,6 +2642,14 @@ function abrirModalNovoVisitante(docId = null) {
             if (inputVigenciaFim) inputVigenciaFim.value = vis.vigenciaFim || '';
             inputTelefone.value = vis.telefone || '';
             inputStatus.value = vis.status || 'Ativo';
+
+            const btnDel = document.getElementById('btn-delete-rhid-modal');
+            if (btnDel) {
+                if (vis.rhidPersonId || vis.cpf) btnDel.classList.remove('d-none');
+                else btnDel.classList.add('d-none');
+            }
+            const syncSwitch = document.getElementById('visitante-form-sync-rhid');
+            if (syncSwitch) syncSwitch.checked = true;
         }
     } else {
         titulo.innerHTML = '<i class="fas fa-user-plus me-2"></i> Cadastrar Pessoa Monitorada & Horário Previsto';
@@ -2658,6 +2672,11 @@ function abrirModalNovoVisitante(docId = null) {
         }
         inputTelefone.value = '';
         inputStatus.value = 'Ativo';
+
+        const btnDel = document.getElementById('btn-delete-rhid-modal');
+        if (btnDel) btnDel.classList.add('d-none');
+        const syncSwitch = document.getElementById('visitante-form-sync-rhid');
+        if (syncSwitch) syncSwitch.checked = true;
     }
 
     const modal = new bootstrap.Modal(modalEl);
@@ -2792,8 +2811,36 @@ async function salvarVisitanteManual() {
 
         await window.db.collection('visitantes').doc(docId).set(dados, { merge: true });
 
+        // Lógica de Sincronização com Nuvem RHiD (PATCH Person)
+        const syncRhid = document.getElementById('visitante-form-sync-rhid')?.checked ?? true;
+        let patchMsg = '';
+        if (syncRhid && (inputRhidId?.value || cpfLimpo || codigo)) {
+            try {
+                const patchData = {
+                    id: inputRhidId ? inputRhidId.value.trim() : null,
+                    cpf: cpfLimpo,
+                    registration: codigo,
+                    code: codigo,
+                    name: nome,
+                    pis: inputCodigoRep ? inputCodigoRep.value.trim() : null,
+                    status: inputStatus ? (inputStatus.value === 'Ativo' ? 0 : 1) : 0
+                };
+                const patchRes = await patchPersonRhid(patchData);
+                if (patchRes && patchRes.success) {
+                    patchMsg = ' e atualizado no RHiD (PATCH Person)';
+                    if (patchRes.data && patchRes.data[0] && patchRes.data[0].id && !inputRhidId?.value) {
+                        await window.db.collection('visitantes').doc(docId).set({
+                            rhidPersonId: String(patchRes.data[0].id)
+                        }, { merge: true });
+                    }
+                }
+            } catch (errPatch) {
+                console.warn("Aviso ao sincronizar no RHiD via PATCH:", errPatch);
+            }
+        }
+
         if (typeof mostrarMensagem === 'function') {
-            mostrarMensagem('Cadastro e Horário Previsto salvos com sucesso!', 'success');
+            mostrarMensagem(`Cadastro e Horário Previsto salvos com sucesso${patchMsg}!`, 'success');
         }
 
         const modalEl = document.getElementById('modal-rhid-novo-visitante');
@@ -2812,10 +2859,166 @@ async function salvarVisitanteManual() {
     }
 }
 
-// Excluir Cadastro
-async function excluirVisitante(docId, nome) {
-    if (!confirm(`Deseja realmente remover "${nome}" do controle de presença?`)) return;
+// Comunicação Central: PATCH Person na API RHiD
+async function patchPersonRhid(personOrList) {
+    const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000/api'
+        : '/api';
 
+    const payload = Array.isArray(personOrList) 
+        ? { action: 'patchPerson', listPerson: personOrList }
+        : { action: 'patchPerson', person: personOrList };
+
+    const res = await fetch(`${apiBaseUrl}/rhid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    return data;
+}
+
+// Comunicação Central: DELETE Person na API RHiD
+async function excluirPersonRhid(idOrObj) {
+    const apiBaseUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' 
+        ? 'http://localhost:3000/api'
+        : '/api';
+
+    let payload = { action: 'deletePerson' };
+    if (typeof idOrObj === 'object' && idOrObj !== null) {
+        payload = { action: 'deletePerson', ...idOrObj };
+    } else {
+        payload = { action: 'deletePerson', id: idOrObj };
+    }
+
+    const res = await fetch(`${apiBaseUrl}/rhid`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    return data;
+}
+
+// Executa PATCH Person diretamente a partir do modal de novo/edição
+async function executarPatchPersonModal() {
+    const inputRhidId = document.getElementById('visitante-form-rhid-id');
+    const inputCodigo = document.getElementById('visitante-form-codigo');
+    const inputCodigoRep = document.getElementById('visitante-form-codigo-rep');
+    const inputCpf = document.getElementById('visitante-form-cpf');
+    const inputNome = document.getElementById('visitante-form-nome');
+    const inputStatus = document.getElementById('visitante-form-status');
+    const feedback = document.getElementById('visitante-form-feedback');
+    const btn = document.getElementById('btn-patch-rhid-modal');
+
+    const codigo = inputCodigo ? inputCodigo.value.trim() : '';
+    const nome = inputNome ? inputNome.value.trim() : '';
+    const cpf = inputCpf ? inputCpf.value.trim() : '';
+
+    if (!codigo || !nome) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Preencha pelo menos Matrícula e Nome para o PATCH.', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Enviando...';
+    }
+
+    if (feedback) {
+        feedback.className = 'alert alert-info py-2 small mb-0';
+        feedback.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando atualização para a nuvem RHiD...';
+        feedback.classList.remove('d-none');
+    }
+
+    try {
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        const patchData = {
+            id: inputRhidId ? inputRhidId.value.trim() : null,
+            cpf: cpfLimpo,
+            registration: codigo,
+            code: codigo,
+            name: nome,
+            pis: inputCodigoRep ? inputCodigoRep.value.trim() : null,
+            status: inputStatus ? (inputStatus.value === 'Ativo' ? 0 : 1) : 0
+        };
+
+        const res = await patchPersonRhid(patchData);
+        if (!res || !res.success) {
+            throw new Error(res?.message || 'Falha ao aplicar PATCH no RHiD.');
+        }
+
+        if (res.data && res.data[0] && res.data[0].id && inputRhidId) {
+            inputRhidId.value = String(res.data[0].id);
+        }
+
+        if (feedback) {
+            feedback.className = 'alert alert-success py-2 small mb-0';
+            feedback.innerHTML = `<i class="fas fa-check-circle me-1"></i> Sucesso! Cadastro de <strong>${nome}</strong> atualizado via PATCH no RHiD.`;
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('PATCH Person aplicado com sucesso no RHiD!', 'success');
+        }
+
+    } catch (e) {
+        console.error("Erro no PATCH do modal:", e);
+        if (feedback) {
+            feedback.className = 'alert alert-danger py-2 small mb-0';
+            feedback.innerHTML = `<i class="fas fa-times-circle me-1"></i> Erro: ${e.message}`;
+        }
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro no PATCH: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-upload-alt me-1"></i> Patch RHiD';
+        }
+    }
+}
+
+// Abre modal de exclusão a partir do modal de novo/edição
+function confirmarExclusaoRhidModal() {
+    const docId = document.getElementById('visitante-form-doc-id')?.value;
+    const rhidId = document.getElementById('visitante-form-rhid-id')?.value;
+    const nome = document.getElementById('visitante-form-nome')?.value;
+    const cpf = document.getElementById('visitante-form-cpf')?.value;
+
+    const modalNovoEl = document.getElementById('modal-rhid-novo-visitante');
+    if (modalNovoEl && typeof bootstrap !== 'undefined') {
+        const m = bootstrap.Modal.getInstance(modalNovoEl);
+        if (m) m.hide();
+    }
+
+    excluirVisitante(docId, nome, rhidId, cpf);
+}
+
+// Excluir Cadastro (com opções de Nexter local ou RHiD Cloud DELETE Person)
+async function excluirVisitante(docId, nome, rhidPersonId = '', cpf = '') {
+    const modalEl = document.getElementById('modal-rhid-confirmar-exclusao');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const inpDocId = document.getElementById('exclusao-form-doc-id');
+        const inpRhidId = document.getElementById('exclusao-form-rhid-id');
+        const inpNome = document.getElementById('exclusao-form-nome');
+        const dispNome = document.getElementById('exclusao-display-nome');
+        const dispInfo = document.getElementById('exclusao-display-info');
+        const fb = document.getElementById('exclusao-form-feedback');
+
+        if (inpDocId) inpDocId.value = docId || '';
+        if (inpRhidId) inpRhidId.value = rhidPersonId || '';
+        if (inpNome) inpNome.value = nome || '';
+        if (dispNome) dispNome.textContent = nome || 'Colaborador';
+        if (dispInfo) dispInfo.textContent = `Doc ID: ${docId || '--'} | ID RHiD: ${rhidPersonId || 'Auto-localizar'} | CPF: ${cpf || '--'}`;
+        if (fb) fb.classList.add('d-none');
+
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+        return;
+    }
+
+    // Fallback caso modal não esteja presente
+    if (!confirm(`Deseja remover "${nome}" do monitoramento de presença?`)) return;
     try {
         await window.db.collection('visitantes').doc(docId).delete();
         if (typeof mostrarMensagem === 'function') mostrarMensagem('Registro removido com sucesso.', 'success');
@@ -2824,6 +3027,358 @@ async function excluirVisitante(docId, nome) {
     } catch (e) {
         console.error("Erro ao excluir:", e);
         if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro ao excluir: ' + e.message, 'error');
+    }
+}
+
+// Executa a confirmação da exclusão (Nexter ou Nexter + DELETE Person no RHiD)
+async function executarConfirmacaoExclusao(excluirDoRhid = false) {
+    const docId = document.getElementById('exclusao-form-doc-id')?.value;
+    const rhidId = document.getElementById('exclusao-form-rhid-id')?.value;
+    const nome = document.getElementById('exclusao-form-nome')?.value || 'Colaborador';
+    const fb = document.getElementById('exclusao-form-feedback');
+
+    if (!docId && !rhidId) return;
+
+    if (fb) {
+        fb.className = 'alert alert-info py-2 small mb-0 mt-3';
+        fb.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Processando exclusão...';
+        fb.classList.remove('d-none');
+    }
+
+    try {
+        let msgRhid = '';
+        if (excluirDoRhid) {
+            const vis = (window._visitantesCadastradosCache || []).find(v => v.id === docId);
+            const delRes = await excluirPersonRhid({
+                id: rhidId || (vis ? vis.rhidPersonId : null),
+                cpf: vis ? vis.cpf : null,
+                registration: vis ? vis.codigo : null
+            });
+
+            if (delRes && delRes.success) {
+                msgRhid = ' e definitivamente da nuvem RHiD (DELETE Person)';
+            } else {
+                throw new Error(delRes?.message || 'Falha ao excluir na nuvem RHiD.');
+            }
+        }
+
+        if (docId && window.db) {
+            await window.db.collection('visitantes').doc(docId).delete();
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem(`Cadastro de "${nome}" excluído com sucesso do Nexter${msgRhid}!`, 'success');
+        }
+
+        const modalEl = document.getElementById('modal-rhid-confirmar-exclusao');
+        if (modalEl && typeof bootstrap !== 'undefined') {
+            const modal = bootstrap.Modal.getInstance(modalEl);
+            if (modal) modal.hide();
+        }
+
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+    } catch (e) {
+        console.error("Erro ao excluir:", e);
+        if (fb) {
+            fb.className = 'alert alert-danger py-2 small mb-0 mt-3';
+            fb.innerHTML = `<i class="fas fa-times-circle me-1"></i> Erro: ${e.message}`;
+            fb.classList.remove('d-none');
+        }
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro na exclusão: ' + e.message, 'error');
+    }
+}
+
+// Abre modal de PATCH Rápido para um colaborador
+function abrirModalPatchPersonRapido(docId) {
+    const vis = (window._visitantesCadastradosCache || []).find(v => v.id === docId);
+    if (!vis) return;
+
+    const modalEl = document.getElementById('modal-rhid-patch-rapido');
+    const inpDocId = document.getElementById('patch-form-doc-id');
+    const inpRhidId = document.getElementById('patch-form-rhid-id');
+    const dispNome = document.getElementById('patch-display-nome');
+    const dispInfo = document.getElementById('patch-display-info');
+    const inpNome = document.getElementById('patch-form-nome');
+    const inpCodigo = document.getElementById('patch-form-codigo');
+    const inpPis = document.getElementById('patch-form-pis');
+    const inpCpf = document.getElementById('patch-form-cpf');
+    const selStatus = document.getElementById('patch-form-status');
+    const fb = document.getElementById('patch-form-feedback');
+
+    if (inpDocId) inpDocId.value = vis.id;
+    if (inpRhidId) inpRhidId.value = vis.rhidPersonId || '';
+    if (dispNome) dispNome.textContent = vis.nome || 'Colaborador';
+    if (dispInfo) dispInfo.textContent = `ID RHiD: ${vis.rhidPersonId || 'Auto-localizar'} | Matrícula: ${vis.codigo || '--'} | CPF: ${vis.cpf || '--'}`;
+    if (inpNome) inpNome.value = vis.nome || '';
+    if (inpCodigo) inpCodigo.value = vis.codigo || '';
+    if (inpPis) inpPis.value = vis.codigoRep || '';
+    if (inpCpf) inpCpf.value = vis.cpf || '';
+    if (selStatus) selStatus.value = (vis.status === 'Inativo' || vis.statusRhid === 1) ? '1' : '0';
+    if (fb) fb.classList.add('d-none');
+
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+// Executa PATCH no RHiD e salva no Firestore
+async function salvarPatchPersonRapido() {
+    const docId = document.getElementById('patch-form-doc-id')?.value;
+    const rhidId = document.getElementById('patch-form-rhid-id')?.value;
+    const nome = document.getElementById('patch-form-nome')?.value.trim();
+    const codigo = document.getElementById('patch-form-codigo')?.value.trim();
+    const pis = document.getElementById('patch-form-pis')?.value.trim();
+    const cpf = document.getElementById('patch-form-cpf')?.value.trim();
+    const statusVal = parseInt(document.getElementById('patch-form-status')?.value || '0', 10);
+    const fb = document.getElementById('patch-form-feedback');
+    const btn = document.getElementById('btn-executar-patch-rapido');
+
+    if (!nome && !cpf && !codigo) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Preencha os dados da pessoa para o PATCH.', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Enviando PATCH...';
+    }
+
+    if (fb) {
+        fb.className = 'alert alert-info py-2 small mb-0';
+        fb.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span> Comunicando com a nuvem RHiD...';
+        fb.classList.remove('d-none');
+    }
+
+    try {
+        const cpfLimpo = cpf.replace(/\D/g, '');
+        const patchData = {
+            id: rhidId || null,
+            cpf: cpfLimpo,
+            registration: codigo,
+            code: codigo,
+            name: nome,
+            pis: pis,
+            status: statusVal
+        };
+
+        const res = await patchPersonRhid(patchData);
+        if (!res || !res.success) {
+            throw new Error(res?.message || 'Erro ao aplicar PATCH no RHiD.');
+        }
+
+        const resolvedId = res.data && res.data[0] && res.data[0].id ? String(res.data[0].id) : rhidId;
+
+        if (docId && window.db) {
+            await window.db.collection('visitantes').doc(docId).set({
+                nome: nome,
+                codigo: codigo,
+                codigoRep: pis,
+                cpf: cpf,
+                cpfLimpo: cpfLimpo,
+                status: statusVal === 0 ? 'Ativo' : 'Inativo',
+                statusRhid: statusVal,
+                rhidPersonId: resolvedId || null,
+                dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+            }, { merge: true });
+        }
+
+        if (fb) {
+            fb.className = 'alert alert-success py-2 small mb-0';
+            fb.innerHTML = '<i class="fas fa-check-circle me-1"></i> <strong>Sucesso!</strong> Cadastro atualizado via PATCH no RHiD e sincronizado no Nexter.';
+        }
+
+        if (typeof mostrarMensagem === 'function') {
+            mostrarMensagem('PATCH Person aplicado com sucesso no RHiD!', 'success');
+        }
+
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+        setTimeout(() => {
+            const modalEl = document.getElementById('modal-rhid-patch-rapido');
+            if (modalEl && typeof bootstrap !== 'undefined') {
+                const modal = bootstrap.Modal.getInstance(modalEl);
+                if (modal) modal.hide();
+            }
+        }, 1200);
+
+    } catch (e) {
+        console.error("Erro no PATCH rápido:", e);
+        if (fb) {
+            fb.className = 'alert alert-danger py-2 small mb-0';
+            fb.innerHTML = `<i class="fas fa-times-circle me-1"></i> Erro: ${e.message}`;
+        }
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro no PATCH: ' + e.message, 'error');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-paper-plane me-1"></i> Aplicar PATCH no RHiD';
+        }
+    }
+}
+
+// Marca / desmarca todos os checkboxes na tabela
+function toggleSelecionarTodosVisitantes(checked) {
+    const checks = document.querySelectorAll('.check-visitante-item');
+    checks.forEach(c => c.checked = checked);
+    atualizarContadorSelecionadosLote();
+}
+
+// Atualiza o contador de selecionados
+function atualizarContadorSelecionadosLote() {
+    const selecionados = document.querySelectorAll('.check-visitante-item:checked');
+    const badge = document.getElementById('lote-total-selecionados');
+    if (badge) badge.textContent = selecionados.length;
+}
+
+// Abre o modal de ações em lote
+function abrirModalGerenciamentoRhidLote() {
+    const selecionados = document.querySelectorAll('.check-visitante-item:checked');
+    const badge = document.getElementById('lote-total-selecionados');
+    if (badge) badge.textContent = selecionados.length;
+
+    const fb = document.getElementById('lote-form-feedback');
+    const prog = document.getElementById('lote-form-progress');
+    if (fb) fb.classList.add('d-none');
+    if (prog) prog.classList.add('d-none');
+
+    const modalEl = document.getElementById('modal-rhid-acoes-lote');
+    if (modalEl && typeof bootstrap !== 'undefined') {
+        const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+        modal.show();
+    }
+}
+
+// Executa ação em lote (ativar, inativar ou excluir)
+async function executarAcaoEmLoteRhid(acao) {
+    const checks = Array.from(document.querySelectorAll('.check-visitante-item:checked'));
+    if (checks.length === 0) {
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Selecione pelo menos um colaborador na tabela.', 'warning');
+        return;
+    }
+
+    const fb = document.getElementById('lote-form-feedback');
+    const prog = document.getElementById('lote-form-progress');
+    const pBar = document.getElementById('lote-progress-bar');
+    const pText = document.getElementById('lote-progress-text');
+
+    if (acao === 'excluir') {
+        if (!confirm(`ATENÇÃO: Deseja realmente EXCLUIR DEFINITIVAMENTE ${checks.length} colaborador(es) da nuvem RHiD (DELETE Person) e do Nexter? Esta ação não pode ser desfeita.`)) {
+            return;
+        }
+    }
+
+    if (prog) prog.classList.remove('d-none');
+    if (fb) fb.classList.add('d-none');
+
+    try {
+        const cache = window._visitantesCadastradosCache || [];
+        const items = checks.map(c => {
+            const docId = c.value;
+            const vis = cache.find(v => v.id === docId);
+            return {
+                docId,
+                rhidId: c.dataset.rhid || (vis ? vis.rhidPersonId : null),
+                cpf: c.dataset.cpf || (vis ? vis.cpf : null),
+                codigo: c.dataset.codigo || (vis ? vis.codigo : null),
+                nome: c.dataset.nome || (vis ? vis.nome : null)
+            };
+        });
+
+        if (acao === 'ativar' || acao === 'inativar') {
+            const statusTarget = acao === 'ativar' ? 0 : 1;
+            const statusLabel = acao === 'ativar' ? 'Ativo' : 'Inativo';
+
+            if (pBar) pBar.style.width = '30%';
+            if (pText) pText.textContent = `Preparando ${items.length} pessoas para PATCH...`;
+
+            const listPerson = items.map(it => ({
+                id: it.rhidId || null,
+                cpf: it.cpf ? it.cpf.replace(/\D/g, '') : null,
+                registration: it.codigo,
+                name: it.nome,
+                status: statusTarget
+            }));
+
+            const patchRes = await patchPersonRhid(listPerson);
+            if (!patchRes || !patchRes.success) {
+                throw new Error(patchRes?.message || 'Falha no PATCH em lote no RHiD.');
+            }
+
+            if (pBar) pBar.style.width = '70%';
+            if (pText) pText.textContent = 'Atualizando banco de dados local...';
+
+            if (window.db) {
+                const batch = window.db.batch();
+                items.forEach(it => {
+                    const ref = window.db.collection('visitantes').doc(it.docId);
+                    batch.set(ref, {
+                        status: statusLabel,
+                        statusRhid: statusTarget,
+                        dataAtualizacao: firebase.firestore.FieldValue.serverTimestamp()
+                    }, { merge: true });
+                });
+                await batch.commit();
+            }
+
+            if (pBar) pBar.style.width = '100%';
+            if (pText) pText.textContent = 'Concluído com sucesso!';
+
+            if (fb) {
+                fb.className = 'alert alert-success py-2 small mb-0 mt-3';
+                fb.innerHTML = `<i class="fas fa-check-circle me-1"></i> Sucesso! <strong>${items.length} pessoas</strong> tiveram seu status atualizado para <strong>${statusLabel}</strong> via PATCH no RHiD.`;
+                fb.classList.remove('d-none');
+            }
+
+            if (typeof mostrarMensagem === 'function') mostrarMensagem(`PATCH em lote concluído para ${items.length} pessoas!`, 'success');
+
+        } else if (acao === 'excluir') {
+            if (pBar) pBar.style.width = '30%';
+            if (pText) pText.textContent = `Excluindo ${items.length} pessoas da nuvem RHiD...`;
+
+            const idsParaExcluir = items.map(it => it.rhidId || it.cpf).filter(Boolean);
+            const delRes = await excluirPersonRhid({
+                ids: idsParaExcluir
+            });
+
+            if (pBar) pBar.style.width = '70%';
+            if (pText) pText.textContent = 'Removendo do banco de dados local...';
+
+            if (window.db) {
+                const batch = window.db.batch();
+                items.forEach(it => {
+                    const ref = window.db.collection('visitantes').doc(it.docId);
+                    batch.delete(ref);
+                });
+                await batch.commit();
+            }
+
+            if (pBar) pBar.style.width = '100%';
+            if (pText) pText.textContent = 'Exclusão em lote concluída!';
+
+            if (fb) {
+                fb.className = 'alert alert-success py-2 small mb-0 mt-3';
+                fb.innerHTML = `<i class="fas fa-check-circle me-1"></i> Sucesso! <strong>${items.length} pessoas</strong> foram excluídas definitivamente da nuvem RHiD e do Nexter.`;
+                fb.classList.remove('d-none');
+            }
+
+            if (typeof mostrarMensagem === 'function') mostrarMensagem(`Exclusão em lote de ${items.length} cadastros concluída!`, 'success');
+        }
+
+        await carregarListaVisitantesCadastrados();
+        await apurarVisitantesRhid(true);
+
+    } catch (e) {
+        console.error("Erro na ação em lote:", e);
+        if (fb) {
+            fb.className = 'alert alert-danger py-2 small mb-0 mt-3';
+            fb.innerHTML = `<i class="fas fa-times-circle me-1"></i> Erro: ${e.message}`;
+            fb.classList.remove('d-none');
+        }
+        if (typeof mostrarMensagem === 'function') mostrarMensagem('Erro na ação em lote: ' + e.message, 'error');
     }
 }
 
@@ -4396,4 +4951,17 @@ window.reimportarBatidasVisitanteLinha = reimportarBatidasVisitanteLinha;
 window.abrirBatidasDiaEspelho = abrirBatidasDiaEspelho;
 window.reimportarDiaEspelhoRhid = reimportarDiaEspelhoRhid;
 window.reimportarPeriodoEspelhoRhid = reimportarPeriodoEspelhoRhid;
+
+// Exportações das operações de PATCH Person e DELETE Person
+window.patchPersonRhid = patchPersonRhid;
+window.excluirPersonRhid = excluirPersonRhid;
+window.executarPatchPersonModal = executarPatchPersonModal;
+window.confirmarExclusaoRhidModal = confirmarExclusaoRhidModal;
+window.executarConfirmacaoExclusao = executarConfirmacaoExclusao;
+window.abrirModalPatchPersonRapido = abrirModalPatchPersonRapido;
+window.salvarPatchPersonRapido = salvarPatchPersonRapido;
+window.toggleSelecionarTodosVisitantes = toggleSelecionarTodosVisitantes;
+window.atualizarContadorSelecionadosLote = atualizarContadorSelecionadosLote;
+window.abrirModalGerenciamentoRhidLote = abrirModalGerenciamentoRhidLote;
+window.executarAcaoEmLoteRhid = executarAcaoEmLoteRhid;
 

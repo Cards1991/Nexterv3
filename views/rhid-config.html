@@ -543,6 +543,9 @@
                             <span class="input-group-text bg-light border-end-0"><i class="fas fa-search text-muted"></i></span>
                             <input type="text" id="filtro-busca-cadastrados" class="form-control border-start-0" placeholder="Buscar nome ou código..." oninput="window.filtrarTabelaCadastrados(this.value)">
                         </div>
+                        <button class="btn btn-dark btn-sm rounded-pill fw-bold shadow-sm" onclick="abrirModalGerenciamentoRhidLote()" id="btn-lote-rhid-cadastros" title="Ações em Lote no RHiD (PATCH e DELETE)">
+                            <i class="fas fa-tasks me-1 text-warning"></i> Lote RHiD (PATCH/DELETE)
+                        </button>
                         <button class="btn btn-warning text-dark btn-sm rounded-pill fw-bold shadow-sm" onclick="abrirModalImportarRhid()" id="btn-importar-rhid-cadastros" title="Importar cadastros da nuvem RHiD e salvar automaticamente">
                             <i class="fas fa-cloud-download-alt me-1"></i> Importar do RHiD
                         </button>
@@ -556,6 +559,9 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
+                                    <th class="text-center" style="width: 38px;">
+                                        <input type="checkbox" class="form-check-input" id="check-todos-visitantes" onclick="toggleSelecionarTodosVisitantes(this.checked)" title="Selecionar Todos">
+                                    </th>
                                     <th class="text-center">Código Crachá</th>
                                     <th>Nome Completo</th>
                                     <th>Perfil / Categoria</th>
@@ -568,7 +574,7 @@
                             </thead>
                             <tbody id="rhid-visitantes-cadastrados-tbody">
                                 <tr>
-                                    <td colspan="8" class="text-center py-4 text-muted">Carregando lista de pessoas monitoradas...</td>
+                                    <td colspan="9" class="text-center py-4 text-muted">Carregando lista de pessoas monitoradas...</td>
                                 </tr>
                             </tbody>
                         </table>
@@ -693,15 +699,37 @@
                             <option value="Inativo">Inativo</option>
                         </select>
                     </div>
+
+                    <div class="col-12 mt-2">
+                        <div class="form-check form-switch p-3 bg-white rounded-3 border d-flex align-items-center justify-content-between shadow-sm">
+                            <div>
+                                <label class="form-check-label fw-bold text-primary mb-0" for="visitante-form-sync-rhid" style="cursor: pointer;">
+                                    <i class="fas fa-cloud-upload-alt me-1 text-primary"></i> Sincronizar alterações com a Nuvem RHiD (PATCH Person)
+                                </label>
+                                <div class="small text-muted">Ao salvar, atualiza os dados cadastrais (Nome, CPF, Matrícula, PIS e Status) diretamente na nuvem Control iD RHiD.</div>
+                            </div>
+                            <input class="form-check-input ms-2 fs-5" type="checkbox" id="visitante-form-sync-rhid" checked>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="visitante-form-feedback" class="mt-3 d-none"></div>
             </div>
-            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
-                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" id="btn-salvar-visitante" onclick="salvarVisitanteManual()">
-                    <i class="fas fa-check me-1"></i> Salvar Cadastro
-                </button>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4 d-flex justify-content-between">
+                <div>
+                    <button type="button" class="btn btn-outline-danger btn-sm rounded-pill px-3 d-none" id="btn-delete-rhid-modal" onclick="confirmarExclusaoRhidModal()">
+                        <i class="fas fa-trash-alt me-1"></i> Excluir do RHiD
+                    </button>
+                </div>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary px-3 rounded-pill" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-primary px-3 rounded-pill fw-bold" id="btn-patch-rhid-modal" onclick="executarPatchPersonModal()" title="Enviar PATCH agora para a Nuvem RHiD">
+                        <i class="fas fa-cloud-upload-alt me-1"></i> Patch RHiD
+                    </button>
+                    <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill" id="btn-salvar-visitante" onclick="salvarVisitanteManual()">
+                        <i class="fas fa-check me-1"></i> Salvar Cadastro
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1095,5 +1123,180 @@
     </div>
 </div>
 
-<script src="js/rhid-config.js?v=27"></script>
+<!-- ============================================================== -->
+<!-- MODAL: PATCH PERSON RÁPIDO (RHiD CLOUD) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-patch-rapido" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-md modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-primary text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-cloud-upload-alt me-2"></i> RHiD: Atualizar Cadastro (PATCH Person)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="patch-form-doc-id">
+                <input type="hidden" id="patch-form-rhid-id">
+
+                <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 text-primary me-3">
+                            <i class="fas fa-user-edit fs-4"></i>
+                        </div>
+                        <div>
+                            <h6 class="fw-bold mb-0 text-dark" id="patch-display-nome">Carregando...</h6>
+                            <small class="text-muted" id="patch-display-info">ID RHiD: -- | CPF: --</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-bold small text-secondary mb-1">Nome Completo</label>
+                        <input type="text" id="patch-form-nome" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary mb-1">Matrícula / Registration</label>
+                        <input type="text" id="patch-form-codigo" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary mb-1">Código REP / PIS</label>
+                        <input type="text" id="patch-form-pis" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary mb-1">CPF</label>
+                        <input type="text" id="patch-form-cpf" class="form-control shadow-sm">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label fw-bold small text-secondary mb-1">Status no RHiD</label>
+                        <select id="patch-form-status" class="form-select shadow-sm">
+                            <option value="0">0 - Ativo (Liberado)</option>
+                            <option value="1">1 - Inativo (Bloqueado)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="patch-form-feedback" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-outline-secondary px-3 rounded-pill" data-bs-dismiss="modal">Fechar</button>
+                <button type="button" class="btn btn-primary px-4 fw-bold rounded-pill shadow-sm" id="btn-executar-patch-rapido" onclick="salvarPatchPersonRapido()">
+                    <i class="fas fa-paper-plane me-1"></i> Aplicar PATCH no RHiD
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: CONFIRMAÇÃO DE EXCLUSÃO (DELETE PERSON) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-confirmar-exclusao" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-danger text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-exclamation-triangle me-2"></i> Exclusão de Cadastro / Colaborador
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <input type="hidden" id="exclusao-form-doc-id">
+                <input type="hidden" id="exclusao-form-rhid-id">
+                <input type="hidden" id="exclusao-form-nome">
+
+                <div class="alert alert-warning border-0 shadow-sm mb-3">
+                    Você está prestes a remover o cadastro de <strong id="exclusao-display-nome">--</strong>.
+                    <div class="small mt-1 text-muted" id="exclusao-display-info">Código: -- | CPF: -- | ID RHiD: --</div>
+                </div>
+
+                <p class="small text-secondary mb-3">Como deseja proceder com esta exclusão?</p>
+
+                <div class="d-grid gap-2">
+                    <button class="btn btn-outline-secondary text-start p-3 rounded-3 border shadow-sm d-flex align-items-center" onclick="executarConfirmacaoExclusao(false)">
+                        <div class="rounded-circle bg-secondary bg-opacity-10 p-2 me-3 text-secondary">
+                            <i class="fas fa-eye-slash fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-dark">1. Remover apenas do Monitoramento Nexter</div>
+                            <small class="text-muted">Mantém o cadastro intacto na nuvem RHiD e nos relógios de ponto.</small>
+                        </div>
+                    </button>
+
+                    <button class="btn btn-outline-danger text-start p-3 rounded-3 border shadow-sm d-flex align-items-center" onclick="executarConfirmacaoExclusao(true)">
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-2 me-3 text-danger">
+                            <i class="fas fa-trash-alt fs-5"></i>
+                        </div>
+                        <div>
+                            <div class="fw-bold text-danger">2. Excluir Definitivamente do RHiD (DELETE Person)</div>
+                            <small class="text-muted">Remove permanentemente o colaborador da nuvem Control iD RHiD e do Nexter.</small>
+                        </div>
+                    </button>
+                </div>
+
+                <div id="exclusao-form-feedback" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL: AÇÕES EM LOTE NO RHID (PATCH & DELETE EM LOTE) -->
+<!-- ============================================================== -->
+<div class="modal fade" id="modal-rhid-acoes-lote" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg rounded-4">
+            <div class="modal-header bg-dark text-white border-0 py-3 rounded-top-4">
+                <h5 class="modal-title fw-bold">
+                    <i class="fas fa-tasks text-warning me-2"></i> Gerenciamento em Lote RHiD (PATCH & DELETE)
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body p-4 bg-light">
+                <div class="alert alert-info border-0 shadow-sm py-2 mb-3">
+                    <i class="fas fa-users me-2"></i> Pessoas selecionadas: <strong id="lote-total-selecionados">0</strong> colaborador(es).
+                </div>
+
+                <div class="card border-0 shadow-sm p-3 mb-3 bg-white">
+                    <h6 class="fw-bold text-primary mb-2"><i class="fas fa-cloud-upload-alt me-1"></i> Ação 1: Atualização em Lote (PATCH Person)</h6>
+                    <p class="small text-muted mb-2">Altere o status de todos os colaboradores selecionados na nuvem RHiD de uma só vez:</p>
+                    <div class="d-flex flex-wrap gap-2">
+                        <button class="btn btn-success btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="executarAcaoEmLoteRhid('ativar')">
+                            <i class="fas fa-user-check me-1"></i> Ativar Selecionados no RHiD (PATCH status: 0)
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold" onclick="executarAcaoEmLoteRhid('inativar')">
+                            <i class="fas fa-user-slash me-1"></i> Inativar Selecionados no RHiD (PATCH status: 1)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card border-0 shadow-sm p-3 bg-white border-start border-4 border-danger">
+                    <h6 class="fw-bold text-danger mb-2"><i class="fas fa-trash-alt me-1"></i> Ação 2: Exclusão em Lote (DELETE Person)</h6>
+                    <p class="small text-muted mb-2">Exclui definitivamente todos os selecionados na nuvem RHiD e do Nexter:</p>
+                    <button class="btn btn-danger btn-sm rounded-pill px-3 fw-bold shadow-sm" onclick="executarAcaoEmLoteRhid('excluir')">
+                        <i class="fas fa-exclamation-triangle me-1"></i> Excluir Selecionados da Nuvem RHiD
+                    </button>
+                </div>
+
+                <div id="lote-form-progress" class="mt-3 d-none">
+                    <div class="progress" style="height: 8px;">
+                        <div id="lote-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" style="width: 0%;"></div>
+                    </div>
+                    <div class="small text-muted mt-1" id="lote-progress-text">Processando...</div>
+                </div>
+
+                <div id="lote-form-feedback" class="mt-3 d-none"></div>
+            </div>
+            <div class="modal-footer bg-white border-0 py-3 rounded-bottom-4">
+                <button type="button" class="btn btn-outline-secondary px-4 rounded-pill" data-bs-dismiss="modal">Fechar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/rhid-config.js?v=28"></script>
 
