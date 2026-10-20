@@ -204,6 +204,41 @@ const nexterAITools = {
                     }
                 }
             }
+        },
+        {
+            name: "consultarProcessosJuridicos",
+            description: "Consulta a relação de processos trabalhistas e cíveis cadastrados na empresa. Pode filtrar por status ('Ativo', 'Finalizado', 'Arquivado', 'Suspenso'), tipo de ação ('Trabalhista', 'Cível') ou termo de busca.",
+            parameters: {
+                type: "object",
+                properties: {
+                    status: {
+                        type: "string",
+                        description: "Status do processo ('Ativo', 'Finalizado', 'Arquivado', 'Suspenso')."
+                    },
+                    tipoAcao: {
+                        type: "string",
+                        description: "Tipo de ação ('Trabalhista', 'Cível', 'Tributário', 'Consumidor', etc.)."
+                    },
+                    termoBusca: {
+                        type: "string",
+                        description: "Nome do autor/reclamante ou número do processo."
+                    }
+                }
+            }
+        },
+        {
+            name: "analisarRiscoProcessoJuridico",
+            description: "Analisa o risco trabalhista e financeiro de um processo, avaliando as verbas pleiteadas (Saldo de Salário, Aviso Prévio, Férias, 13º, Multa 477, FGTS, Horas Extras, etc.) contra as provas da empresa (ponto, testemunhas, documentos) e sugere proposta de acordo.",
+            parameters: {
+                type: "object",
+                properties: {
+                    termoBusca: {
+                        type: "string",
+                        description: "Número do processo ou nome do reclamante/autor."
+                    }
+                },
+                required: ["termoBusca"]
+            }
         }
     ],
 
@@ -1226,6 +1261,126 @@ const nexterAITools = {
             } catch (error) {
                 console.error("Erro no consultarAtestados:", error);
                 return JSON.stringify({ erro: "Erro ao consultar atestados médicos: " + error.message });
+            }
+        },
+
+        consultarProcessosJuridicos: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                let query = db.collection('processos_juridicos');
+                if (args.status) query = query.where('status', '==', args.status);
+                if (args.tipoAcao) query = query.where('tipoAcao', '==', args.tipoAcao);
+                
+                const snap = await query.get();
+                if (snap.empty) {
+                    return JSON.stringify({ status: "sucesso", total: 0, mensagem: "Nenhum processo encontrado com os filtros informados." });
+                }
+
+                let lista = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                if (args.termoBusca) {
+                    const termo = args.termoBusca.toLowerCase().trim();
+                    lista = lista.filter(p => 
+                        (p.numeroProcesso || '').toLowerCase().includes(termo) ||
+                        (p.funcionarioNome || p.cliente || p.autor || '').toLowerCase().includes(termo)
+                    );
+                }
+
+                let totalCausa = 0;
+                let porStatus = { Ativo: 0, Finalizado: 0, Arquivado: 0, Suspenso: 0 };
+                let porRisco = { Alto: 0, Médio: 0, Baixo: 0 };
+
+                const resumoProcessos = lista.map(p => {
+                    totalCausa += (p.valorCausa || 0);
+                    if (porStatus[p.status] !== undefined) porStatus[p.status]++;
+                    if (porRisco[p.riscoGeral] !== undefined) porRisco[p.riscoGeral]++;
+
+                    return {
+                        id: p.id,
+                        numeroProcesso: p.numeroProcesso || 'S/N',
+                        autor: p.funcionarioNome || p.cliente || p.autor || 'Não informado',
+                        tipoAcao: p.tipoAcao || 'Trabalhista',
+                        status: p.status || 'Ativo',
+                        riscoGeral: p.riscoGeral || 'Médio',
+                        valorCausa: (p.valorCausa || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                        totalPedidos: (p.pedidos || []).length
+                    };
+                });
+
+                return JSON.stringify({
+                    status: "sucesso",
+                    total_processos: lista.length,
+                    valor_total_causa: totalCausa.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                    distribuicao_status: porStatus,
+                    distribuicao_risco: porRisco,
+                    processos: resumoProcessos.slice(0, 10)
+                });
+            } catch (err) {
+                console.error("Erro em consultarProcessosJuridicos:", err);
+                return JSON.stringify({ erro: err.message });
+            }
+        },
+
+        analisarRiscoProcessoJuridico: async (args) => {
+            try {
+                if (!window.db) throw new Error("Banco de dados indisponível.");
+                const snap = await db.collection('processos_juridicos').get();
+                const termo = (args.termoBusca || '').toLowerCase().trim();
+                
+                const procDoc = snap.docs.find(d => {
+                    const p = d.data();
+                    return (p.numeroProcesso || '').toLowerCase().includes(termo) ||
+                           (p.funcionarioNome || p.cliente || p.autor || '').toLowerCase().includes(termo);
+                });
+
+                if (!procDoc) {
+                    return JSON.stringify({ erro: `Nenhum processo encontrado com o termo '${args.termoBusca}'.` });
+                }
+
+                const proc = procDoc.data();
+                const pedidos = proc.pedidos || [];
+                let valorTotal = proc.valorCausa || 0;
+                let valorAltoRisco = 0;
+                let valorMedioRisco = 0;
+                let valorBaixoRisco = 0;
+
+                pedidos.forEach(p => {
+                    const v = p.valor || 0;
+                    if (p.risco === 'Alto') valorAltoRisco += v;
+                    else if (p.risco === 'Médio') valorMedioRisco += v;
+                    else valorBaixoRisco += v;
+                });
+
+                const perdaEstimada = (valorAltoRisco * 0.85) + (valorMedioRisco * 0.45) + (valorBaixoRisco * 0.15);
+                const tetoAcordoSugerido = perdaEstimada * 0.75;
+
+                return JSON.stringify({
+                    status: "sucesso",
+                    processo: proc.numeroProcesso || 'S/N',
+                    autor: proc.funcionarioNome || proc.cliente || proc.autor || 'N/A',
+                    tipoAcao: proc.tipoAcao || 'Trabalhista',
+                    valorCausa: valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                    riscoGeral: proc.riscoGeral || 'Médio',
+                    quantidade_pedidos: pedidos.length,
+                    detalhe_pedidos: pedidos.map(p => ({
+                        verba: p.pedido,
+                        valor: (p.valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                        risco: p.risco || 'Médio',
+                        prova: p.avaliacaoProva || 'Media'
+                    })),
+                    situacao_provas: {
+                        controles_ponto: proc.analise?.pontos || 'Não avaliado',
+                        testemunhas: proc.analise?.testemunhas || 'Não avaliado',
+                        documentos: proc.analise?.documentos || 'Não avaliado'
+                    },
+                    calculo_jarvis: {
+                        perda_provavel_estimada: perdaEstimada.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                        teto_acordo_recomendado: tetoAcordoSugerido.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                        economia_potencial: (valorTotal - tetoAcordoSugerido).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                    }
+                });
+            } catch (err) {
+                console.error("Erro em analisarRiscoProcessoJuridico:", err);
+                return JSON.stringify({ erro: err.message });
             }
         }
     }

@@ -3,12 +3,75 @@
 // ========================================
 
 const PEDIDOS_POR_TIPO_ACAO = {
-    'Trabalhista': ['Horas Extras', 'Insalubridade', 'Periculosidade', 'Desvio de função', 'Assédio', 'Dano Moral', 'Verbas Rescisórias', 'Salário por Fora', 'Honorários Advocatícios', 'Depósito de fgts em atraso', 'Outros'],
-    'Cível': ['Indenização por Danos Materiais', 'Obrigação de Fazer', 'Revisão de Contrato', 'Busca e Apreensão'],
-    'Consumidor': ['Produto com Defeito', 'Cobrança Indevida', 'Publicidade Enganosa', 'Direito de Arrependimento'],
-    'Tributário': ['Repetição de Indébito', 'Mandado de Segurança', 'Execução Fiscal'],
-    // Adicione outros tipos de ação e seus pedidos aqui
+    'Trabalhista': [
+        'Saldo de Salário',
+        'Aviso Prévio',
+        'Férias Proporcionais',
+        '13º Salário Proporcional',
+        'Multa 40%',
+        'Seguro Desemprego Substitutivo',
+        'Férias Vencidas',
+        '13º Salário Vencido',
+        'Multa Artigo 477',
+        'FGTS em Atraso',
+        'Consignado em Atraso',
+        'Horas Extras',
+        'Insalubridade',
+        'Periculosidade',
+        'Desvio de Função',
+        'Assédio Moral',
+        'Dano Moral',
+        'Verbas Rescisórias',
+        'Salário por Fora',
+        'Honorários Advocatícios',
+        'Outros'
+    ],
+    'Cível': [
+        'Indenização por Danos Materiais',
+        'Indenização por Danos Morais',
+        'Obrigação de Fazer',
+        'Revisão de Contrato',
+        'Busca e Apreensão',
+        'Cobrança / Execução',
+        'Outros'
+    ],
+    'Consumidor': [
+        'Produto com Defeito',
+        'Cobrança Indevida',
+        'Publicidade Enganosa',
+        'Direito de Arrependimento',
+        'Danos Morais',
+        'Outros'
+    ],
+    'Tributário': [
+        'Repetição de Indébito',
+        'Mandado de Segurança',
+        'Execução Fiscal',
+        'Anulação de Débito Fiscal',
+        'Outros'
+    ]
 };
+
+function gerarIdPedido(pedido) {
+    if (!pedido) return 'ped_' + Math.random().toString(36).substr(2, 6);
+    return 'ped_' + String(pedido)
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9]/g, '_')
+        .toLowerCase();
+}
+
+function parseValorMonetario(val) {
+    if (val === null || val === undefined) return 0;
+    if (typeof val === 'number') return isNaN(val) ? 0 : val;
+    let s = String(val).trim();
+    if (!s) return 0;
+    s = s.replace(/R\$\s?/gi, '').trim();
+    if (s.includes(',')) {
+        s = s.replace(/\./g, '').replace(',', '.');
+    }
+    const n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+}
 
 // Instâncias dos gráficos
 let chartEvolucao = null;
@@ -84,62 +147,270 @@ function toggleValoresEncerramento() {
 }
 
 function atualizarPedidosDoProcesso() {
-    const tipoAcao = document.getElementById('jur-tipo-acao').value;
+    const tipoAcao = document.getElementById('jur-tipo-acao')?.value || '';
     const container = document.getElementById('jur-pedidos-container');
+    if (!container) return;
+
     const pedidos = PEDIDOS_POR_TIPO_ACAO[tipoAcao] || [];
 
     if (pedidos.length === 0) {
-        container.innerHTML = '<p class="text-muted">Nenhum pedido pré-definido para este tipo de ação.</p>';
-        document.getElementById('jur-valor-causa').value = ''; // Limpa o valor da causa
+        container.innerHTML = '<div class="alert alert-light border text-center text-muted py-3">Selecione um "Tipo de Ação" para carregar as opções de pedidos e análise de risco.</div>';
+        const valorCausaEl = document.getElementById('jur-valor-causa');
+        if (valorCausaEl) valorCausaEl.value = '';
         return;
     }
 
-    container.innerHTML = pedidos.map(pedido => `
-        <div class="row g-3 align-items-center mb-3 border-bottom pb-3">
-            <div class="col-lg-3 col-md-12">
-                <div class="form-check">
-                    <input class="form-check-input pedido-checkbox" type="checkbox" value="${pedido}" id="pedido-${pedido.replace(/\s+/g, '')}">
-                    <label class="form-check-label" for="pedido-${pedido.replace(/\s+/g, '')}">${pedido}</label>
+    let html = `
+        <div class="card border-0 bg-light mb-3 p-3 shadow-sm rounded-3">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
+                <div class="d-flex align-items-center gap-3 flex-wrap">
+                    <div>
+                        <span class="text-muted small d-block">Soma Total dos Pedidos:</span>
+                        <span class="fs-5 fw-bold text-success" id="jur-pedidos-soma-display">R$ 0,00</span>
+                    </div>
+                    <div class="border-start ps-3">
+                        <span class="text-muted small d-block">Pedidos Ativos:</span>
+                        <span class="badge bg-primary fs-6" id="jur-pedidos-qtd-badge">0 verba(s)</span>
+                    </div>
+                    <div class="border-start ps-3">
+                        <span class="text-muted small d-block">Risco Consolidado:</span>
+                        <span class="badge bg-secondary fs-6" id="jur-pedidos-risco-badge">Baixo</span>
+                    </div>
                 </div>
-            </div>
-            <div class="col-lg-3 col-md-4">
-                <div class="input-group input-group-sm">
-                    <span class="input-group-text">R$</span>
-                    <input type="text" inputmode="decimal" class="form-control valor-pedido" id="valor-${pedido.replace(/\s+/g, '')}" placeholder="Valor">
+                <div class="d-flex gap-1">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="marcarTodosPedidos(true)" title="Selecionar todos">
+                        <i class="far fa-check-square me-1"></i> Todos
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" onclick="marcarTodosPedidos(false)" title="Limpar seleção">
+                        <i class="far fa-square me-1"></i> Limpar
+                    </button>
                 </div>
-            </div>
-            <div class="col-lg-3 col-md-4">
-                <select class="form-select form-select-sm risco-pedido" id="risco-${pedido.replace(/\s+/g, '')}">
-                    <option value="Baixo">Risco Baixo</option>
-                    <option value="Médio" selected>Risco Médio</option>
-                    <option value="Alto">Risco Alto</option>
-                </select>
-            </div>
-            <div class="col-lg-3 col-md-4">
-                <select class="form-select form-select-sm avaliacao-prova" id="avaliacao-${pedido.replace(/\s+/g, '')}" title="Avaliação da Prova">
-                    <option value="Ruim">Prova Ruim</option>
-                    <option value="Media" selected>Prova Média</option>
-                    <option value="Boa">Prova Boa</option>
-                </select>
             </div>
         </div>
-    `).join('');
 
-    calcularValorCausaAutomatico(); // Calcula o valor inicial ao carregar os pedidos
+        <div class="table-responsive border rounded-3 bg-white" style="max-height: 480px; overflow-y: auto;">
+            <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                <thead class="table-light sticky-top shadow-sm" style="z-index: 2;">
+                    <tr>
+                        <th style="width: 34%;">Verba / Pedido Reclamado</th>
+                        <th style="width: 26%;">Valor Estimado / Pleiteado</th>
+                        <th style="width: 20%;">Risco de Perda</th>
+                        <th style="width: 20%;">Robustez da Prova</th>
+                    </tr>
+                </thead>
+                <tbody id="jur-pedidos-tbody">
+    `;
+
+    pedidos.forEach(pedido => {
+        const id = gerarIdPedido(pedido);
+        html += `
+            <tr id="row-${id}" class="pedido-row transition-all">
+                <td>
+                    <div class="form-check m-0">
+                        <input class="form-check-input pedido-checkbox" type="checkbox" value="${pedido}" id="pedido-${id}" onchange="aoAlternarCheckboxPedido('${id}')">
+                        <label class="form-check-label fw-semibold text-dark user-select-none cursor-pointer" for="pedido-${id}">
+                            ${pedido}
+                        </label>
+                    </div>
+                </td>
+                <td>
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light text-muted">R$</span>
+                        <input type="text" inputmode="decimal" class="form-control valor-pedido" id="valor-${id}" placeholder="0,00" oninput="aoDigitarValorPedido('${id}')">
+                    </div>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm risco-pedido" id="risco-${id}" onchange="calcularValorCausaAutomatico()">
+                        <option value="Baixo">Baixo (Remoto)</option>
+                        <option value="Médio" selected>Médio (Possível)</option>
+                        <option value="Alto">Alto (Provável)</option>
+                    </select>
+                </td>
+                <td>
+                    <select class="form-select form-select-sm avaliacao-prova" id="avaliacao-${id}" title="Avaliação da Prova pela Empresa" onchange="calcularValorCausaAutomatico()">
+                        <option value="Ruim">Prova Fraca / Ruim</option>
+                        <option value="Media" selected>Prova Razoável</option>
+                        <option value="Boa">Prova Robusta / Boa</option>
+                    </select>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-2 px-1">
+            <small class="text-muted"><i class="fas fa-info-circle me-1"></i> Digitar um valor marca automaticamente o pedido correspondente.</small>
+            <button type="button" class="btn btn-sm btn-link text-decoration-none" onclick="solicitarAdicionarPedidoCustomizado()">
+                <i class="fas fa-plus me-1"></i> Adicionar outra verba
+            </button>
+        </div>
+    `;
+
+    container.innerHTML = html;
+    calcularValorCausaAutomatico();
+}
+
+function aoAlternarCheckboxPedido(id) {
+    const chk = document.getElementById(`pedido-${id}`);
+    const row = document.getElementById(`row-${id}`);
+    const valorInput = document.getElementById(`valor-${id}`);
+    if (chk && row) {
+        if (chk.checked) {
+            row.style.backgroundColor = '#f0fdf4';
+            if (valorInput && !valorInput.value) {
+                valorInput.focus();
+            }
+        } else {
+            row.style.backgroundColor = '';
+        }
+    }
+    calcularValorCausaAutomatico();
+}
+
+function aoDigitarValorPedido(id) {
+    const chk = document.getElementById(`pedido-${id}`);
+    const row = document.getElementById(`row-${id}`);
+    const valorInput = document.getElementById(`valor-${id}`);
+    if (valorInput && valorInput.value.trim() !== '') {
+        const val = parseValorMonetario(valorInput.value);
+        if (val > 0 && chk && !chk.checked) {
+            chk.checked = true;
+            if (row) row.style.backgroundColor = '#f0fdf4';
+        }
+    }
+    calcularValorCausaAutomatico();
+}
+
+function marcarTodosPedidos(marcar) {
+    const container = document.getElementById('jur-pedidos-container');
+    if (!container) return;
+    container.querySelectorAll('.pedido-checkbox').forEach(chk => {
+        chk.checked = marcar;
+        const row = chk.closest('tr');
+        if (row) row.style.backgroundColor = marcar ? '#f0fdf4' : '';
+    });
+    calcularValorCausaAutomatico();
+}
+
+function solicitarAdicionarPedidoCustomizado() {
+    const nome = prompt("Digite o nome da verba ou pedido a ser incluído:");
+    if (!nome || !nome.trim()) return;
+    adicionarLinhaPedidoCustomizado(nome.trim(), true);
+}
+
+function adicionarLinhaPedidoCustomizado(pedidoNome, focar = false) {
+    const tbody = document.getElementById('jur-pedidos-tbody');
+    if (!tbody) return;
+    const id = gerarIdPedido(pedidoNome);
+    if (document.getElementById(`pedido-${id}`)) return;
+
+    const tr = document.createElement('tr');
+    tr.id = `row-${id}`;
+    tr.className = 'pedido-row transition-all';
+    tr.style.backgroundColor = '#f0fdf4';
+    tr.innerHTML = `
+        <td>
+            <div class="form-check m-0">
+                <input class="form-check-input pedido-checkbox" type="checkbox" value="${pedidoNome}" id="pedido-${id}" checked onchange="aoAlternarCheckboxPedido('${id}')">
+                <label class="form-check-label fw-semibold text-primary user-select-none cursor-pointer" for="pedido-${id}">
+                    ${pedidoNome} <span class="badge bg-light text-secondary border small">Personalizado</span>
+                </label>
+            </div>
+        </td>
+        <td>
+            <div class="input-group input-group-sm">
+                <span class="input-group-text bg-light text-muted">R$</span>
+                <input type="text" inputmode="decimal" class="form-control valor-pedido" id="valor-${id}" placeholder="0,00" oninput="aoDigitarValorPedido('${id}')">
+            </div>
+        </td>
+        <td>
+            <select class="form-select form-select-sm risco-pedido" id="risco-${id}" onchange="calcularValorCausaAutomatico()">
+                <option value="Baixo">Baixo (Remoto)</option>
+                <option value="Médio" selected>Médio (Possível)</option>
+                <option value="Alto">Alto (Provável)</option>
+            </select>
+        </td>
+        <td>
+            <select class="form-select form-select-sm avaliacao-prova" id="avaliacao-${id}" title="Avaliação da Prova pela Empresa" onchange="calcularValorCausaAutomatico()">
+                <option value="Ruim">Prova Fraca / Ruim</option>
+                <option value="Media" selected>Prova Razoável</option>
+                <option value="Boa">Prova Robusta / Boa</option>
+            </select>
+        </td>
+    `;
+    tbody.appendChild(tr);
+    calcularValorCausaAutomatico();
+    if (focar) {
+        document.getElementById(`valor-${id}`)?.focus();
+    }
 }
 
 function calcularValorCausaAutomatico() {
     const container = document.getElementById('jur-pedidos-container');
+    if (!container) return;
+    
     let valorTotal = 0;
-    container.querySelectorAll('.pedido-checkbox:checked').forEach(checkbox => {
-        const pedidoId = checkbox.value.replace(/\s+/g, '');
-        const valorInput = document.getElementById(`valor-${pedidoId}`);
-        if (valorInput && valorInput.value) {
-            valorTotal += parseFloat(valorInput.value.replace(',', '.')) || 0;
+    let qtdSelecionados = 0;
+    let temRiscoAlto = false;
+    let temRiscoMedio = false;
+
+    container.querySelectorAll('.pedido-checkbox').forEach(chk => {
+        const id = chk.id.replace('pedido-', '');
+        const row = document.getElementById(`row-${id}`);
+        const valorInput = document.getElementById(`valor-${id}`);
+        const riscoSelect = document.getElementById(`risco-${id}`);
+        const avaliacaoSelect = document.getElementById(`avaliacao-${id}`);
+
+        if (chk.checked) {
+            qtdSelecionados++;
+            if (row) row.style.backgroundColor = '#f0fdf4';
+            if (valorInput && valorInput.value) {
+                const val = parseValorMonetario(valorInput.value);
+                valorTotal += val;
+            }
+            const risco = riscoSelect?.value || 'Médio';
+            const prova = avaliacaoSelect?.value || 'Media';
+            if (risco === 'Alto' || (risco === 'Médio' && prova === 'Ruim')) {
+                temRiscoAlto = true;
+            } else if (risco === 'Médio') {
+                temRiscoMedio = true;
+            }
+        } else {
+            if (row) row.style.backgroundColor = '';
         }
     });
 
-    document.getElementById('jur-valor-causa').value = valorTotal > 0 ? valorTotal.toFixed(2) : '';
+    const valorCausaEl = document.getElementById('jur-valor-causa');
+    if (valorCausaEl) {
+        valorCausaEl.value = valorTotal > 0 ? valorTotal.toFixed(2) : '';
+    }
+
+    const somaDisplay = document.getElementById('jur-pedidos-soma-display');
+    if (somaDisplay) {
+        somaDisplay.textContent = valorTotal.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    }
+
+    const qtdBadge = document.getElementById('jur-pedidos-qtd-badge');
+    if (qtdBadge) {
+        qtdBadge.textContent = `${qtdSelecionados} verba(s)`;
+    }
+
+    const riscoBadge = document.getElementById('jur-pedidos-risco-badge');
+    if (riscoBadge) {
+        if (temRiscoAlto) {
+            riscoBadge.textContent = 'Alto';
+            riscoBadge.className = 'badge bg-danger fs-6';
+        } else if (temRiscoMedio) {
+            riscoBadge.textContent = 'Médio';
+            riscoBadge.className = 'badge bg-warning text-dark fs-6';
+        } else {
+            riscoBadge.textContent = 'Baixo';
+            riscoBadge.className = 'badge bg-success fs-6';
+        }
+    }
 }
 
 async function carregarProcessosJuridicos() {
@@ -480,19 +751,26 @@ async function abrirModalProcesso(processoId = null) {
             atualizarPedidosDoProcesso();
             if (data.pedidos && Array.isArray(data.pedidos)) {
                 data.pedidos.forEach(p => {
-                    const pedidoId = p.pedido.replace(/\s+/g, '');
-                    const chk = document.getElementById(`pedido-${pedidoId}`);
-                    const val = document.getElementById(`valor-${pedidoId}`);
-                    const rsk = document.getElementById(`risco-${pedidoId}`);
-                    const avl = document.getElementById(`avaliacao-${pedidoId}`); // Carrega avaliação da prova
-                    if (avl && p.avaliacaoProva) {
-                        avl.value = p.avaliacaoProva;
+                    if (!p.pedido) return;
+                    let id = gerarIdPedido(p.pedido);
+                    let chk = document.getElementById(`pedido-${id}`);
+                    if (!chk) {
+                        adicionarLinhaPedidoCustomizado(p.pedido);
+                        id = gerarIdPedido(p.pedido);
+                        chk = document.getElementById(`pedido-${id}`);
                     }
                     if (chk) chk.checked = true;
-                    if (val) val.value = p.valor;
-                    if (rsk) rsk.value = p.risco;
+                    const val = document.getElementById(`valor-${id}`);
+                    if (val && p.valor !== undefined && p.valor !== null && p.valor !== '') {
+                        val.value = Number(p.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    }
+                    const rsk = document.getElementById(`risco-${id}`);
+                    if (rsk && p.risco) rsk.value = p.risco;
+                    const avl = document.getElementById(`avaliacao-${id}`);
+                    if (avl && p.avaliacaoProva) avl.value = p.avaliacaoProva;
                 });
             }
+            calcularValorCausaAutomatico();
 
             // Carrega o histórico
             carregarHistoricoProcesso(processoId);
@@ -521,14 +799,17 @@ async function salvarProcessoJuridico() {
     // Coletar pedidos
     const pedidos = [];
     const container = document.getElementById('jur-pedidos-container');
-    container.querySelectorAll('.form-check-input:checked').forEach(chk => {
-        const pedidoId = chk.value.replace(/\s+/g, '');
-        const valorInput = document.getElementById(`valor-${pedidoId}`);
+    container.querySelectorAll('.pedido-checkbox:checked').forEach(chk => {
+        const pedidoNome = chk.value;
+        const id = gerarIdPedido(pedidoNome);
+        const valorInput = document.getElementById(`valor-${id}`);
+        const riscoSelect = document.getElementById(`risco-${id}`);
+        const avaliacaoSelect = document.getElementById(`avaliacao-${id}`);
         pedidos.push({
-            pedido: chk.value,
-            valor: parseFloat(valorInput.value.replace(',', '.')) || 0,
-            risco: document.getElementById(`risco-${pedidoId}`).value,
-            avaliacaoProva: document.getElementById(`avaliacao-${pedidoId}`).value
+            pedido: pedidoNome,
+            valor: parseValorMonetario(valorInput?.value),
+            risco: riscoSelect?.value || 'Médio',
+            avaliacaoProva: avaliacaoSelect?.value || 'Media'
         });
     });
 
@@ -775,61 +1056,315 @@ function formatarDataParaInput(timestamp, comTempo = false) {
 }
 
 async function abrirModalAnaliseRiscoIA(processoId) {
+    try {
+        const modalEl = document.getElementById('analiseRiscoModal');
+        const modalBody = document.getElementById('analise-risco-modal-body');
+        const modal = new bootstrap.Modal(modalEl);
+        
+        modalBody.innerHTML = `
+            <div class="text-center p-5">
+                <i class="fas fa-robot fa-bounce fa-3x mb-3 text-primary"></i>
+                <h5 class="fw-bold text-dark">Jarvis está analisando o processo...</h5>
+                <p class="text-muted">Examinando os pedidos, cruzando verbas com a robustez probatória e aplicando diretrizes da CLT/TST.</p>
+            </div>`;
+        modal.show();
+
+        const processoDoc = await db.collection('processos_juridicos').doc(processoId).get();
+        if (!processoDoc.exists) {
+            modalBody.innerHTML = '<div class="alert alert-danger">Processo não encontrado.</div>';
+            return;
+        }
+        const proc = processoDoc.data();
+        await executarParecerJarvis(proc, modalBody);
+    } catch (error) {
+        console.error("Erro ao abrir análise de risco do Jarvis:", error);
+        mostrarMensagem("Falha ao abrir análise do Jarvis.", "error");
+    }
+}
+
+function solicitarAnaliseJarvisRapida() {
+    const container = document.getElementById('jur-pedidos-container');
+    if (!container) return;
+
+    const pedidos = [];
+    container.querySelectorAll('.pedido-checkbox:checked').forEach(chk => {
+        const pedidoNome = chk.value;
+        const id = gerarIdPedido(pedidoNome);
+        const valorInput = document.getElementById(`valor-${id}`);
+        const riscoSelect = document.getElementById(`risco-${id}`);
+        const avaliacaoSelect = document.getElementById(`avaliacao-${id}`);
+        pedidos.push({
+            pedido: pedidoNome,
+            valor: parseValorMonetario(valorInput?.value),
+            risco: riscoSelect?.value || 'Médio',
+            avaliacaoProva: avaliacaoSelect?.value || 'Media'
+        });
+    });
+
+    if (pedidos.length === 0) {
+        mostrarMensagem("Marque pelo menos um pedido ou verba para o Jarvis analisar.", "warning");
+        return;
+    }
+
     const modalEl = document.getElementById('analiseRiscoModal');
     const modalBody = document.getElementById('analise-risco-modal-body');
     const modal = new bootstrap.Modal(modalEl);
-    
-    // Reset para o estado de loading
+
     modalBody.innerHTML = `
         <div class="text-center p-5">
-            <i class="fas fa-spinner fa-spin fa-3x mb-3"></i>
-            <p>Aguarde, a IA está analisando os documentos e o histórico do processo...</p>
+            <i class="fas fa-robot fa-bounce fa-3x mb-3 text-primary"></i>
+            <h5 class="fw-bold text-dark">Jarvis examinando pedidos em tempo real...</h5>
+            <p class="text-muted">Calculando probabilidade de condenação e recomendação financeira.</p>
         </div>`;
     modal.show();
 
-    try {
-        const processoDoc = await db.collection('processos_juridicos').doc(processoId).get();
-        if (!processoDoc.exists) {
-            modalBody.innerHTML = '<p class="text-danger">Processo não encontrado.</p>';
-            return;
+    const dadosAtuais = {
+        numeroProcesso: document.getElementById('jur-numero-processo')?.value || 'Novo Processo (Em Cadastro)',
+        funcionarioNome: (document.getElementById('jur-tipo-acao')?.value === 'Trabalhista' ? document.getElementById('jur-funcionario')?.value : document.getElementById('jur-autor-texto')?.value) || 'Autor / Reclamante',
+        tipoAcao: document.getElementById('jur-tipo-acao')?.value || 'Trabalhista',
+        valorCausa: parseFloat(document.getElementById('jur-valor-causa')?.value) || 0,
+        pedidos: pedidos,
+        analise: {
+            pontos: document.getElementById('jur-analise-pontos')?.value || '',
+            testemunhas: document.getElementById('jur-analise-testemunhas')?.value || '',
+            documentos: document.getElementById('jur-analise-documentos')?.value || ''
         }
-        const processo = processoDoc.data();
+    };
 
-        // Simulação de chamada de IA e processamento
-        setTimeout(() => {
-            // O resultado da IA seria injetado aqui.
-            // Agora, usamos os dados reais que o usuário inseriu.
-            let pontosFortesHTML = processo.analise?.pontos ? `<li class="list-group-item">${processo.analise.pontos}</li>` : '<li class="list-group-item text-muted">Nenhuma análise sobre controles de ponto informada.</li>';
-            let testemunhasHTML = processo.analise?.testemunhas ? `<li class="list-group-item">${processo.analise.testemunhas}</li>` : '<li class="list-group-item text-muted">Nenhuma análise sobre testemunhas informada.</li>';
-            let documentosHTML = processo.analise?.documentos ? `<li class="list-group-item">${processo.analise.documentos}</li>` : '<li class="list-group-item text-muted">Nenhuma análise sobre documentos informada.</li>';
+    executarParecerJarvis(dadosAtuais, modalBody);
+}
 
-            modalBody.innerHTML = `
-                <h5><i class="fas fa-balance-scale-right text-danger"></i> Matriz de Risco (Exemplo)</h5>
-                <table class="table table-bordered table-sm">
-                    <thead><tr class="table-light"><th>Pedido</th><th>Probabilidade de Perda</th><th>Impacto Financeiro</th><th>Classificação</th></tr></thead>
+async function executarParecerJarvis(dadosProcesso, modalBody) {
+    const pedidos = dadosProcesso.pedidos || [];
+    let valorTotal = dadosProcesso.valorCausa || 0;
+    if (valorTotal === 0 && pedidos.length > 0) {
+        valorTotal = pedidos.reduce((acc, p) => acc + (p.valor || 0), 0);
+    }
+
+    let valorAlto = 0, valorMedio = 0, valorBaixo = 0;
+    pedidos.forEach(p => {
+        const v = p.valor || 0;
+        if (p.risco === 'Alto') valorAlto += v;
+        else if (p.risco === 'Médio') valorMedio += v;
+        else valorBaixo += v;
+    });
+
+    // Ponderação com robustez da prova
+    let perdaProvavel = (valorAlto * 0.85) + (valorMedio * 0.45) + (valorBaixo * 0.15);
+    const provaPontos = (dadosProcesso.analise?.pontos || '').toLowerCase();
+    if (provaPontos.includes('britanico') || provaPontos.includes('britânico') || provaPontos.includes('sem assinatura') || provaPontos.includes('falha')) {
+        perdaProvavel += (valorTotal * 0.10); // Risco agravado por falha em cartões de ponto (Súmula 338 TST)
+    }
+
+    if (perdaProvavel > valorTotal) perdaProvavel = valorTotal;
+    const tetoAcordo = Math.max(perdaProvavel * 0.70, valorTotal * 0.20);
+    const propostaInicial = tetoAcordo * 0.60;
+    const economiaPotencial = Math.max(0, valorTotal - tetoAcordo);
+
+    // Tentar chamada com IA Gemini / Nexter AI
+    let textoAnaliseIA = null;
+    try {
+        const promptIA = `Você é o Jarvis, assistente executivo sênior de Direito do Trabalho e Gestão de Passivo Trabalhista do Sistema Nexter.
+Analise detalhadamente o processo abaixo e gere um parecer estratégico executivo em Markdown:
+
+DADOS DO PROCESSO:
+- Nº do Processo: ${dadosProcesso.numeroProcesso || 'Não informado'}
+- Reclamante / Autor: ${dadosProcesso.funcionarioNome || dadosProcesso.cliente || 'Não informado'}
+- Tipo de Ação: ${dadosProcesso.tipoAcao || 'Trabalhista'}
+- Valor Total Reclamado: R$ ${valorTotal.toFixed(2)}
+
+PEDIDOS / VERBAS RECLAMADAS:
+${pedidos.map(p => `- ${p.pedido}: R$ ${(p.valor || 0).toFixed(2)} | Risco da Empresa: ${p.risco} | Prova da Empresa: ${p.avaliacaoProva}`).join('\n')}
+
+SITUAÇÃO DAS PROVAS:
+- Controles de Ponto: ${dadosProcesso.analise?.pontos || 'Nenhuma ressalva anotada'}
+- Testemunhas: ${dadosProcesso.analise?.testemunhas || 'Nenhuma ressalva anotada'}
+- Documentos e Recibos: ${dadosProcesso.analise?.documentos || 'Nenhuma ressalva anotada'}
+
+ESTRUTURE SUA RESPOSTA EM:
+1. DIAGNÓSTICO GERAL DE RISCO (Classificação e vulnerabilidades principais).
+2. ANÁLISE CRÍTICA DAS VERBAS MAIS SENSÍVEIS (Horas extras, verbas rescisórias, multas 477/467, FGTS, etc. e como as provas afetam cada uma).
+3. ESTRATÉGIA RECOMENDADA PARA AUDIÊNCIA & NEGOCIAÇÃO DE ACORDO (Valor de entrada, teto limite sugerido e argumentos táticos).`;
+
+        const resp = await fetch('/api/nexter-ai', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                messages: [{ role: 'user', content: promptIA }],
+                tools: [],
+                userContext: "Módulo Jurídico Nexter - Jarvis AI"
+            })
+        });
+
+        if (resp.ok) {
+            const data = await resp.json();
+            if (data.type === 'text' && data.content) {
+                textoAnaliseIA = data.content;
+            }
+        }
+    } catch (e) {
+        console.warn("Jarvis API externa indisponível, usando motor preditivo interno:", e);
+    }
+
+    // Se o backend de IA respondeu com texto, formatamos
+    let blocoIAFormatado = '';
+    if (textoAnaliseIA) {
+        let formatado = textoAnaliseIA
+            .replace(/### (.*?)\n/g, '<h6 class="fw-bold text-dark mt-3 mb-2"><i class="fas fa-chevron-right text-primary me-2"></i>$1</h6>')
+            .replace(/## (.*?)\n/g, '<h5 class="fw-bold text-primary border-bottom pb-2 mt-4 mb-3"><i class="fas fa-gavel me-2"></i>$1</h5>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n\n/g, '<p class="mb-2">')
+            .replace(/\n- /g, '<br>&bull; ');
+        blocoIAFormatado = `
+            <div class="card border-0 shadow-sm p-4 mb-4 rounded-3 bg-white border-start border-4 border-primary">
+                <div class="d-flex align-items-center mb-3">
+                    <span class="badge bg-primary me-2"><i class="fas fa-brain"></i> Inteligência Generativa</span>
+                    <span class="text-muted small">Parecer emitido em tempo real</span>
+                </div>
+                <div class="text-secondary" style="line-height: 1.6;">
+                    ${formatado}
+                </div>
+            </div>
+        `;
+    }
+
+    // Monta o relatório executivo completo do Jarvis
+    modalBody.innerHTML = `
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 bg-primary bg-opacity-10 text-primary p-3 rounded-3 h-100 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="small text-muted fw-bold d-block text-uppercase">Causa Pleiteada</span>
+                            <span class="fs-4 fw-bold">R$ ${valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <i class="fas fa-file-invoice-dollar fs-3 opacity-50"></i>
+                    </div>
+                    <small class="text-muted mt-2 d-block">${pedidos.length} verba(s) reclamada(s)</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-danger bg-opacity-10 text-danger p-3 rounded-3 h-100 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="small text-muted fw-bold d-block text-uppercase">Perda Provável</span>
+                            <span class="fs-4 fw-bold">R$ ${perdaProvavel.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <i class="fas fa-exclamation-triangle fs-3 opacity-50"></i>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Provisão contábil recomendada</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-success bg-opacity-10 text-success p-3 rounded-3 h-100 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="small text-muted fw-bold d-block text-uppercase">Teto Sugerido Acordo</span>
+                            <span class="fs-4 fw-bold">R$ ${tetoAcordo.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <i class="fas fa-handshake fs-3 opacity-50"></i>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Proposta inicial: R$ ${propostaInicial.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</small>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card border-0 bg-info bg-opacity-10 text-info p-3 rounded-3 h-100 shadow-sm">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <span class="small text-muted fw-bold d-block text-uppercase">Economia Estimada</span>
+                            <span class="fs-4 fw-bold">R$ ${economiaPotencial.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                        </div>
+                        <i class="fas fa-piggy-bank fs-3 opacity-50"></i>
+                    </div>
+                    <small class="text-muted mt-2 d-block">Caso feche no teto recomendado</small>
+                </div>
+            </div>
+        </div>
+
+        ${blocoIAFormatado}
+
+        <!-- Matriz de Risco das Verbas -->
+        <div class="card border-0 shadow-sm mb-4 rounded-3 overflow-hidden">
+            <div class="card-header bg-white py-3 border-0 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0 fw-bold text-dark"><i class="fas fa-table-list text-primary me-2"></i>Matriz de Verbas e Probabilidade de Perda</h6>
+                <span class="badge bg-light text-dark border">${pedidos.length} itens avaliados</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0" style="font-size: 0.88rem;">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Verba Pleiteada</th>
+                            <th>Valor Reclamado</th>
+                            <th>Risco Declarado</th>
+                            <th>Avaliação de Prova</th>
+                            <th>Parecer Tático do Jarvis</th>
+                        </tr>
+                    </thead>
                     <tbody>
-                        ${processo.pedidos?.map(p => `<tr><td>${p.pedido}</td><td>${p.risco}</td><td>R$ ${(p.valor || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</td><td><span class="badge bg-warning text-dark">${p.risco}</span></td></tr>`).join('') || '<tr><td colspan="4">Nenhum pedido informado.</td></tr>'}
+                        ${pedidos.map(p => {
+                            let badgeRisco = 'bg-secondary';
+                            if (p.risco === 'Alto') badgeRisco = 'bg-danger';
+                            else if (p.risco === 'Médio') badgeRisco = 'bg-warning text-dark';
+                            else if (p.risco === 'Baixo') badgeRisco = 'bg-success';
+
+                            let badgeProva = 'bg-light text-secondary border';
+                            if (p.avaliacaoProva === 'Boa') badgeProva = 'bg-success bg-opacity-10 text-success border-success';
+                            else if (p.avaliacaoProva === 'Ruim') badgeProva = 'bg-danger bg-opacity-10 text-danger border-danger';
+
+                            // Análise heurística tática do Jarvis para cada verba
+                            let conselho = 'Avaliar na instrução.';
+                            const pedLower = p.pedido.toLowerCase();
+                            if (pedLower.includes('saldo de sal')) conselho = 'Verba incontroversa. Quitar no TRCT para evitar multa art. 467 CLT.';
+                            else if (pedLower.includes('aviso')) conselho = 'Verificar se houve dispensa imotivada e se o cumprimento foi trabalhado/indenizado.';
+                            else if (pedLower.includes('ferias') || pedLower.includes('férias')) conselho = 'Juntar comprovantes de gozo e recibos com assinatura prévia (art. 145 CLT).';
+                            else if (pedLower.includes('13')) conselho = 'Comprovar quitação com folha de pagamento de novembro e dezembro.';
+                            else if (pedLower.includes('477')) conselho = 'Inaplicável se rescisão paga até o 10º dia do término (art. 477 §6º CLT).';
+                            else if (pedLower.includes('fgts')) conselho = 'Emitir extrato analítico da CEF comprovando depósitos regulares.';
+                            else if (pedLower.includes('horas extra')) conselho = p.avaliacaoProva === 'Ruim' ? 'Atenção máxima: Cartões falhos geram presunção de veracidade (Súmula 338 TST).' : 'Apresentar espelhos de ponto válidos e demonstrativo de compensação.';
+                            else if (pedLower.includes('insalubridade') || pedLower.includes('periculosidade')) conselho = 'Imprescindível LTCAT/PPRA e fichas de entrega de EPI com CA válido.';
+                            else if (pedLower.includes('consignado')) conselho = 'Conferir se os descontos em folha foram repassados à instituição bancária.';
+
+                            return `
+                                <tr>
+                                    <td class="fw-semibold text-dark">${p.pedido}</td>
+                                    <td class="fw-bold">R$ ${(p.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                                    <td><span class="badge ${badgeRisco}">${p.risco}</span></td>
+                                    <td><span class="badge ${badgeProva}">${p.avaliacaoProva === 'Boa' ? 'Robusta' : (p.avaliacaoProva === 'Ruim' ? 'Fraca' : 'Razoável')}</span></td>
+                                    <td><small class="text-muted"><i class="fas fa-lightbulb text-warning me-1"></i>${conselho}</small></td>
+                                </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
+            </div>
+        </div>
 
-                <h5 class="mt-4"><i class="fas fa-file-alt text-primary"></i> Análise de Provas (Informado pelo Advogado)</h5>
-                <ul class="list-group mb-4">
-                    <li class="list-group-item list-group-item-secondary"><strong>Controles de Ponto:</strong></li>
-                    ${pontosFortesHTML}
-                    <li class="list-group-item list-group-item-secondary"><strong>Testemunhas:</strong></li>
-                    ${testemunhasHTML}
-                    <li class="list-group-item list-group-item-secondary"><strong>Documentos e E-mails:</strong></li>
-                    ${documentosHTML}
-                </ul>
-
-                <h5 class="mt-4"><i class="fas fa-search-dollar text-primary"></i> Estimativa Consolidada (Exemplo)</h5>
-                <p>A estimativa de perda total para este processo é de <strong>R$ ${(processo.valorCausa || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</strong>, com um risco geral de <strong>${processo.riscoGeral}</strong>.</p>
-            `;
-        }, 1500); // Simula o tempo de processamento da IA
-    } catch (error) {
-        console.error("Erro ao carregar dados para análise de risco:", error);
-        modalBody.innerHTML = '<p class="text-danger">Ocorreu um erro ao carregar os dados do processo.</p>';
-    }
+        <!-- Diagnóstico das Provas Cadastradas -->
+        <div class="card border-0 shadow-sm p-4 rounded-3 bg-white mb-3">
+            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-folder-open text-primary me-2"></i>Status das Provas da Empresa</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-clock text-info me-1"></i> Controles de Ponto:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.pontos ? dadosProcesso.analise.pontos : 'Não informado pelo advogado/RH.'}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-users text-warning me-1"></i> Testemunhas:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.testemunhas ? dadosProcesso.analise.testemunhas : 'Não informado pelo advogado/RH.'}</p>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="p-3 border rounded-3 bg-light h-100">
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-file-contract text-success me-1"></i> Documentos & Recibos:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.documentos ? dadosProcesso.analise.documentos : 'Não informado pelo advogado/RH.'}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
 }
 
 /**
@@ -911,7 +1446,37 @@ async function visualizarProcessoCompacto(processoId) {
 }
 
 function imprimirAnaliseRisco() {
-    mostrarMensagem("Funcionalidade de impressão do relatório de análise será implementada em breve.", "info");
+    const conteudo = document.getElementById('analise-risco-modal-body')?.innerHTML;
+    if (!conteudo) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Relatório de Análise de Risco - Jarvis AI</title>
+            <meta charset="utf-8">
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+            <style>
+                body { padding: 30px; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #fff; }
+                @media print { .no-print { display: none !important; } }
+            </style>
+        </head>
+        <body>
+            <div class="mb-4 text-center border-bottom pb-3">
+                <h3 class="fw-bold">Nexter AI &bull; Parecer de Risco Trabalhista e Prevenção de Passivo</h3>
+                <p class="text-muted small mb-0">Emitido pelo Jarvis em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}</p>
+            </div>
+            ${conteudo}
+            <script>
+                window.onload = function() {
+                    setTimeout(function() { window.print(); }, 500);
+                };
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
 }
 
 window.atualizarCampoAutorPorTipoAcao = atualizarCampoAutorPorTipoAcao;
@@ -919,3 +1484,11 @@ window.abrirModalProcesso = abrirModalProcesso;
 window.salvarProcessoJuridico = salvarProcessoJuridico;
 window.excluirProcessoJuridico = excluirProcessoJuridico;
 window.carregarProcessosJuridicos = carregarProcessosJuridicos;
+window.abrirModalAnaliseRiscoIA = abrirModalAnaliseRiscoIA;
+window.solicitarAnaliseJarvisRapida = solicitarAnaliseJarvisRapida;
+window.calcularValorCausaAutomatico = calcularValorCausaAutomatico;
+window.aoAlternarCheckboxPedido = aoAlternarCheckboxPedido;
+window.aoDigitarValorPedido = aoDigitarValorPedido;
+window.marcarTodosPedidos = marcarTodosPedidos;
+window.solicitarAdicionarPedidoCustomizado = solicitarAdicionarPedidoCustomizado;
+window.imprimirAnaliseRisco = imprimirAnaliseRisco;
