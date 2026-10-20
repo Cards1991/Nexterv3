@@ -2355,56 +2355,286 @@ async function removerBiometria(funcionarioId, dedo) {
     }
 }
 
-async function exportarFuncionariosExcel() {
+// --- Utilitário de Data para Exportação ---
+function formatarDataExport(val) {
+    if (!val) return '';
+    let d = null;
+    if (typeof val.toDate === 'function') d = val.toDate();
+    else if (val.seconds !== undefined) d = new Date(val.seconds * 1000);
+    else if (val instanceof Date) d = val;
+    else if (typeof val === 'number') d = new Date(val);
+    else if (typeof val === 'string' && val.trim() !== '') {
+        const str = val.trim();
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+            return str.split(' ')[0];
+        }
+        if (/^\d{4}-\d{2}-\d{2}/.test(str)) {
+            const [ano, mes, dia] = str.split('T')[0].split('-').map(Number);
+            return `${String(dia).padStart(2, '0')}/${String(mes).padStart(2, '0')}/${ano}`;
+        }
+        d = new Date(str);
+    }
+    if (d && !isNaN(d.getTime())) {
+        const dia = String(d.getDate()).padStart(2, '0');
+        const mes = String(d.getMonth() + 1).padStart(2, '0');
+        const ano = d.getFullYear();
+        return `${dia}/${mes}/${ano}`;
+    }
+    return '';
+}
+
+// Abrir modal para escolha do escopo da exportação (Todos vs Somente Ativos)
+async function abrirModalExportarFuncionarios() {
+    if (!funcionarios || funcionarios.length === 0) {
+        mostrarMensagem("Carregando colaboradores...", "info");
+        try {
+            const snap = await db.collection('funcionarios').orderBy('nome').get();
+            funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+            console.error("Erro ao carregar colaboradores:", e);
+            mostrarMensagem("Erro ao carregar colaboradores.", "error");
+            return;
+        }
+    }
+
+    const optAtivos = document.getElementById('export-opt-ativos');
+    if (optAtivos) optAtivos.checked = true;
+
+    atualizarContadorExportacao();
+
+    const modalEl = document.getElementById('modalExportarFuncionarios');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+// Atualizar contador em tempo real dentro do modal de exportação
+function atualizarContadorExportacao() {
+    const isAtivos = document.getElementById('export-opt-ativos')?.checked ?? true;
+    const cardAtivos = document.getElementById('card-export-ativos');
+    const cardTodos = document.getElementById('card-export-todos');
+
+    if (cardAtivos && cardTodos) {
+        if (isAtivos) {
+            cardAtivos.style.borderColor = '#198754';
+            cardAtivos.style.backgroundColor = '#f0fdf4';
+            cardTodos.style.borderColor = '#e2e8f0';
+            cardTodos.style.backgroundColor = '#ffffff';
+        } else {
+            cardTodos.style.borderColor = '#0d6efd';
+            cardTodos.style.backgroundColor = '#eff6ff';
+            cardAtivos.style.borderColor = '#e2e8f0';
+            cardAtivos.style.backgroundColor = '#ffffff';
+        }
+    }
+
+    let lista = funcionarios || [];
+    if (isAtivos) {
+        lista = lista.filter(f => {
+            const s = String(f.status || 'Ativo').trim().toUpperCase();
+            return s !== 'INATIVO' && s !== 'DEMITIDO';
+        });
+    }
+
+    const respeitarTela = document.getElementById('export-filtrar-tela')?.checked;
+    if (respeitarTela) {
+        const filtroEmpresaId = document.getElementById('filtro-empresa-funcionarios')?.value;
+        const filtroSetor = document.getElementById('filtro-setor-funcionarios')?.value;
+        const filtroNome = document.getElementById('filtro-nome-funcionarios')?.value?.toLowerCase().trim();
+        const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios')?.checked;
+
+        if (filtroEmpresaId) lista = lista.filter(f => f.empresaId === filtroEmpresaId);
+        if (filtroSetor) lista = lista.filter(f => f.setor === filtroSetor);
+        if (filtroNome) lista = lista.filter(f => (f.nome && f.nome.toLowerCase().includes(filtroNome)) || (f.cpf && f.cpf.includes(filtroNome)));
+        if (filtroSemSetor) lista = lista.filter(f => !f.setor || (typeof f.setor === 'string' && f.setor.trim() === ''));
+    }
+
+    const countEl = document.getElementById('export-total-count');
+    if (countEl) {
+        countEl.textContent = `${lista.length} colaborador(es)`;
+    }
+}
+
+// Confirmar e iniciar exportação vinda do modal
+async function confirmarExportacaoFuncionarios() {
+    const escopo = document.querySelector('input[name="exportStatusOption"]:checked')?.value || 'ativos';
+    const respeitarTela = document.getElementById('export-filtrar-tela')?.checked ?? true;
+
+    const modalEl = document.getElementById('modalExportarFuncionarios');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getInstance(modalEl);
+        if (modal) modal.hide();
+    }
+
+    await executarExportacaoCompleta(escopo, respeitarTela);
+}
+
+// Executar a exportação completa com todas as colunas
+async function executarExportacaoCompleta(escopo = 'ativos', respeitarFiltrosTela = true) {
     if (typeof XLSX === 'undefined') {
         const script = document.createElement('script');
         script.src = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.0/xlsx.full.min.js";
-        script.onload = () => exportarFuncionariosExcel();
+        script.onload = () => executarExportacaoCompleta(escopo, respeitarFiltrosTela);
         document.head.appendChild(script);
         return;
     }
 
     if (!funcionarios || funcionarios.length === 0) {
-        mostrarMensagem("Nenhum funcionário carregado para exportar.", "warning");
-        return;
+        mostrarMensagem("Carregando colaboradores...", "info");
+        try {
+            const snap = await db.collection('funcionarios').orderBy('nome').get();
+            funcionarios = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        } catch (e) {
+            mostrarMensagem("Nenhum funcionário carregado para exportar.", "warning");
+            return;
+        }
     }
 
     try {
+        mostrarMensagem("Gerando arquivo Excel...", "info");
+
+        // 1. Filtrar pelo escopo selecionado (Somente Ativos vs Todos)
+        let lista = [...funcionarios];
+        if (escopo === 'ativos') {
+            lista = lista.filter(f => {
+                const s = String(f.status || 'Ativo').trim().toUpperCase();
+                return s !== 'INATIVO' && s !== 'DEMITIDO';
+            });
+        }
+
+        // 2. Respeitar filtros da tela caso solicitado
+        if (respeitarFiltrosTela) {
+            const filtroEmpresaId = document.getElementById('filtro-empresa-funcionarios')?.value;
+            const filtroSetor = document.getElementById('filtro-setor-funcionarios')?.value;
+            const filtroNome = document.getElementById('filtro-nome-funcionarios')?.value?.toLowerCase().trim();
+            const filtroSemSetor = document.getElementById('filtro-sem-setor-funcionarios')?.checked;
+
+            if (filtroEmpresaId) lista = lista.filter(f => f.empresaId === filtroEmpresaId);
+            if (filtroSetor) lista = lista.filter(f => f.setor === filtroSetor);
+            if (filtroNome) lista = lista.filter(f => (f.nome && f.nome.toLowerCase().includes(filtroNome)) || (f.cpf && f.cpf.includes(filtroNome)));
+            if (filtroSemSetor) lista = lista.filter(f => !f.setor || (typeof f.setor === 'string' && f.setor.trim() === ''));
+        }
+
+        if (lista.length === 0) {
+            mostrarMensagem("Nenhum funcionário corresponde aos critérios selecionados para exportação.", "warning");
+            return;
+        }
+
+        // 3. Mapeamento auxiliar de empresas e líderes
         const empresasSnap = await db.collection('empresas').get();
         const empresasMap = {};
         empresasSnap.forEach(doc => {
             empresasMap[doc.id] = doc.data().nome;
         });
 
-        const dadosExportacao = funcionarios.map(f => {
-            const admissao = f.dataAdmissao ? (f.dataAdmissao.toDate ? f.dataAdmissao.toDate() : new Date(f.dataAdmissao)) : null;
-            const nascimento = f.dataNascimento ? (f.dataNascimento.toDate ? f.dataNascimento.toDate() : new Date(f.dataNascimento)) : null;
+        const lideresMap = {};
+        funcionarios.forEach(f => {
+            if (f.id && f.nome) lideresMap[f.id] = f.nome;
+        });
+
+        // 4. Mapeamento completo de todas as colunas
+        const dadosExportacao = lista.map(f => {
+            const admissao = formatarDataExport(f.dataAdmissao);
+            const demissao = formatarDataExport(f.dataRescisao || f.dataDesligamento || f.dataDemissao || null);
+            const nascimento = formatarDataExport(f.dataNascimento);
+            const statusFormatado = f.status || 'Ativo';
 
             return {
-                "Nome": f.nome,
-                "CPF": f.cpf,
+                "Nome": f.nome || '',
+                "CPF": f.cpf || '',
+                "RG": f.rg || '',
                 "Matrícula": f.matricula || '',
-                "Empresa": empresasMap[f.empresaId] || 'N/A',
+                "Cód. RHiD": f.rhid || f.rhId || '',
+                "Empresa": empresasMap[f.empresaId] || f.empresa || 'N/A',
                 "Setor": f.setor || '',
                 "Cargo": f.cargo || '',
-                "Salário": f.salario || 0,
-                "Admissão": admissao ? admissao.toLocaleDateString('pt-BR') : '',
-                "Nascimento": nascimento ? nascimento.toLocaleDateString('pt-BR') : '',
-                "Email": f.email || '',
+                "Líder Imediato": lideresMap[f.liderId] || f.lider || '',
+                "Salário (Folha)": parseFloat(f.salario) || 0,
+                "Bônus / Por Fora": parseFloat(f.salarioPorFora) || 0,
+                "Custo Total": parseFloat(f.custoTotal) || (parseFloat(f.salario) || 0),
+                "Status": statusFormatado,
+                "Condição Atual": f.condicao || 'Normal',
+                "Tipo de Contrato": f.tipoContrato || '',
+                "Regime de Trabalho": f.regimeTrabalho || '',
+                "Jornada (h/sem)": f.jornada || '',
+                "Data de Admissão": admissao,
+                "Data de Rescisão / Desligamento": demissao,
+                "Motivo do Desligamento": f.motivoDesligamento || f.tipoDemissao || '',
+                "Data de Nascimento": nascimento,
+                "Sexo": f.sexo || '',
+                "Escolaridade": f.escolaridade || '',
+                "E-mail": f.email || '',
                 "Telefone": f.telefone || '',
-                "Status": f.status || 'Ativo'
+                "CEP": f.endereco?.cep || '',
+                "Logradouro": f.endereco?.logradouro || '',
+                "Número": f.endereco?.numero || '',
+                "Bairro": f.endereco?.bairro || '',
+                "Cidade": f.endereco?.cidade || '',
+                "UF": f.endereco?.estado || ''
             };
         });
 
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(dadosExportacao);
+
+        // Largura ideal de colunas
+        ws['!cols'] = [
+            { wch: 35 }, // Nome
+            { wch: 15 }, // CPF
+            { wch: 15 }, // RG
+            { wch: 12 }, // Matrícula
+            { wch: 12 }, // Cód RHiD
+            { wch: 25 }, // Empresa
+            { wch: 22 }, // Setor
+            { wch: 22 }, // Cargo
+            { wch: 25 }, // Líder
+            { wch: 15 }, // Salário
+            { wch: 16 }, // Bônus
+            { wch: 15 }, // Custo Total
+            { wch: 12 }, // Status
+            { wch: 16 }, // Condição
+            { wch: 16 }, // Tipo de Contrato
+            { wch: 16 }, // Regime
+            { wch: 12 }, // Jornada
+            { wch: 16 }, // Admissão
+            { wch: 22 }, // Data de Rescisão
+            { wch: 26 }, // Motivo do Desligamento
+            { wch: 16 }, // Nascimento
+            { wch: 12 }, // Sexo
+            { wch: 20 }, // Escolaridade
+            { wch: 25 }, // Email
+            { wch: 16 }, // Telefone
+            { wch: 12 }, // CEP
+            { wch: 30 }, // Logradouro
+            { wch: 10 }, // Número
+            { wch: 20 }, // Bairro
+            { wch: 20 }, // Cidade
+            { wch: 6 }   // UF
+        ];
+
+        const nomeArquivo = escopo === 'todos' 
+            ? "Cadastro_Funcionarios_Todos_Completo.xlsx" 
+            : "Cadastro_Funcionarios_Ativos_Completo.xlsx";
+
         XLSX.utils.book_append_sheet(wb, ws, "Funcionários");
-        XLSX.writeFile(wb, "Cadastro_Funcionarios.xlsx");
+        XLSX.writeFile(wb, nomeArquivo);
+
+        mostrarMensagem(`Planilha (${escopo === 'todos' ? 'Todos os Colaboradores' : 'Somente Ativos'}) exportada com sucesso!`, "success");
 
     } catch (error) {
-        console.error("Erro ao exportar excel:", error);
+        console.error("Erro ao exportar excel completo:", error);
         mostrarMensagem("Erro ao exportar para Excel.", "error");
     }
+}
+
+// Wrapper padrão chamado pelo menu ou código existente
+async function exportarFuncionariosExcel(escopo = null, respeitarFiltrosTela = null) {
+    if (!escopo) {
+        await abrirModalExportarFuncionarios();
+        return;
+    }
+    await executarExportacaoCompleta(escopo, respeitarFiltrosTela ?? false);
 }
 
 async function exportarFuncionariosSimplesExcel() {
@@ -2555,6 +2785,10 @@ async function reprocessarCustosFuncionarios() {
 window.abrirModalAumentoColetivo = abrirModalAumentoColetivo;
 window.aplicarAumentoColetivo = aplicarAumentoColetivo;
 window.desfazerUltimoAumentoMassa = desfazerUltimoAumentoMassa;
+window.abrirModalExportarFuncionarios = abrirModalExportarFuncionarios;
+window.confirmarExportacaoFuncionarios = confirmarExportacaoFuncionarios;
+window.atualizarContadorExportacao = atualizarContadorExportacao;
+window.executarExportacaoCompleta = executarExportacaoCompleta;
 window.exportarFuncionariosExcel = exportarFuncionariosExcel;
 window.exportarFuncionariosSimplesExcel = exportarFuncionariosSimplesExcel;
 window.reprocessarCustosFuncionarios = reprocessarCustosFuncionarios;

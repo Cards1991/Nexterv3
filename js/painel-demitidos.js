@@ -4,6 +4,74 @@
 
 let dadosDemitidosExportacao = [];
 
+// --- Utilitários de Data para Rescisão ---
+function extrairDataRescisao(val) {
+    if (!val) return null;
+    
+    // Firestore Timestamp
+    if (typeof val.toDate === 'function') {
+        const d = val.toDate();
+        if (!isNaN(d.getTime())) return d;
+    }
+    if (val.seconds !== undefined) {
+        const d = new Date(val.seconds * 1000);
+        if (!isNaN(d.getTime())) return d;
+    }
+    
+    if (val instanceof Date) {
+        if (!isNaN(val.getTime())) return val;
+    }
+    
+    if (typeof val === 'number') {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) return d;
+    }
+    
+    if (typeof val === 'string') {
+        const str = val.trim();
+        if (!str) return null;
+        
+        // Formato DD/MM/YYYY ou DD/MM/YYYY HH:mm:ss
+        if (/^\d{2}\/\d{2}\/\d{4}/.test(str)) {
+            const [dataPart, horaPart] = str.split(' ');
+            const [dia, mes, ano] = dataPart.split('/').map(Number);
+            if (horaPart) {
+                const [h, m, s] = horaPart.split(':').map(Number);
+                return new Date(ano, mes - 1, dia, h || 0, m || 0, s || 0);
+            }
+            return new Date(ano, mes - 1, dia, 12, 0, 0);
+        }
+        
+        // Formato YYYY-MM-DD
+        if (/^\d{4}-\d{2}-\d{2}$/.test(str)) {
+            const [ano, mes, dia] = str.split('-').map(Number);
+            return new Date(ano, mes - 1, dia, 12, 0, 0);
+        }
+        
+        // Formato ISO ou string com data e hora
+        const parsed = new Date(str);
+        if (!isNaN(parsed.getTime())) return parsed;
+    }
+    
+    return null;
+}
+
+function formatarDataISO(data) {
+    if (!data || isNaN(data.getTime())) return '';
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${ano}-${mes}-${dia}`;
+}
+
+function formatarDataBR(data) {
+    if (!data || isNaN(data.getTime())) return '-';
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    return `${dia}/${mes}/${ano}`;
+}
+
 async function inicializarPainelDemitidos() {
     
     
@@ -77,31 +145,37 @@ async function carregarPainelDemitidos() {
             empresasMap[doc.id] = doc.data().nome;
         });
 
-        // Mapeamento de Demissões (para pegar data e motivo se faltar no cadastro)
+        // Mapeamento de Demissões/Rescisões (para pegar data e motivo se faltar no cadastro)
         const demissoesMap = {};
         movimentacoesSnap.forEach(doc => {
             const mov = doc.data();
             if (mov.funcionarioId) {
-                const dataMov = mov.data ? (mov.data.toDate ? mov.data.toDate() : new Date(mov.data)) : new Date(0);
+                const dataMov = extrairDataRescisao(mov.data || mov.dataRescisao || mov.dataDemissao);
                 // Se houver múltiplas, pega a mais recente
-                if (!demissoesMap[mov.funcionarioId] || dataMov > demissoesMap[mov.funcionarioId].dataObj) {
+                if (dataMov && (!demissoesMap[mov.funcionarioId] || dataMov > demissoesMap[mov.funcionarioId].dataObj)) {
                     demissoesMap[mov.funcionarioId] = {
                         dataObj: dataMov,
                         motivo: mov.motivo || mov.tipoDemissao,
                         motivoDetalhado: mov.motivoDetalhado || '-',
-                        dataStr: dataMov.toLocaleDateString('pt-BR'),
-                        dataISO: dataMov.toISOString().split('T')[0]
+                        dataStr: formatarDataBR(dataMov),
+                        dataISO: formatarDataISO(dataMov)
                     };
                 }
             }
         });
 
-        // Mapeamento de Custos Lançados (FuncionarioID -> Valor Total)
+        // Mapeamento de Custos Lançados e Data de Rescisão Financeira
         const custosMap = {};
+        const rescisoesFinanceirasMap = {};
         financeirosSnap.forEach(doc => {
             const fin = doc.data();
             if (fin.funcionarioId) {
                 custosMap[fin.funcionarioId] = (custosMap[fin.funcionarioId] || 0) + (parseFloat(fin.valor) || 0);
+
+                const dataFin = extrairDataRescisao(fin.dataVencimento || fin.data || fin.dataEnvio);
+                if (dataFin && (!rescisoesFinanceirasMap[fin.funcionarioId] || dataFin > rescisoesFinanceirasMap[fin.funcionarioId])) {
+                    rescisoesFinanceirasMap[fin.funcionarioId] = dataFin;
+                }
             }
         });
 
@@ -117,24 +191,25 @@ async function carregarPainelDemitidos() {
             // Resolução de Dados
             const empresaNome = empresasMap[f.empresaId] || f.empresa || '-';
             
-            let dataDemissao = '-';
-            let dataDemissaoISO = '';
             let tipoDemissao = f.tipoDemissao || f.motivoDesligamento || '-';
 
-            // Tenta obter data de desligamento de vários campos possíveis
-            let dataObj = null;
-            if (f.dataDesligamento) dataObj = f.dataDesligamento.toDate ? f.dataDesligamento.toDate() : new Date(f.dataDesligamento);
-            else if (f.dataDemissao) dataObj = f.dataDemissao.toDate ? f.dataDemissao.toDate() : new Date(f.dataDemissao);
-            else if (f.ultimaMovimentacao) dataObj = f.ultimaMovimentacao.toDate ? f.ultimaMovimentacao.toDate() : new Date(f.ultimaMovimentacao);
+            // Resolução da Data de Rescisão (Ordem de prioridade para rescisão contratual)
+            let dataRescisaoObj = extrairDataRescisao(f.dataRescisao || f.data_rescisao || f.rescisaoData);
 
-            if (dataObj && !isNaN(dataObj.getTime())) {
-                dataDemissao = dataObj.toLocaleDateString('pt-BR');
-                dataDemissaoISO = dataObj.toISOString().split('T')[0];
-            } else if (demissoesMap[doc.id]) {
-                // Fallback para dados da movimentação se não estiver no funcionário
-                dataDemissao = demissoesMap[doc.id].dataStr;
-                dataDemissaoISO = demissoesMap[doc.id].dataISO;
+            if (!dataRescisaoObj && demissoesMap[doc.id]?.dataObj) {
+                dataRescisaoObj = demissoesMap[doc.id].dataObj;
             }
+
+            if (!dataRescisaoObj && rescisoesFinanceirasMap[doc.id]) {
+                dataRescisaoObj = rescisoesFinanceirasMap[doc.id];
+            }
+
+            if (!dataRescisaoObj) {
+                dataRescisaoObj = extrairDataRescisao(f.dataDesligamento || f.dataDemissao || f.demissaoData || f.ultimaMovimentacao);
+            }
+
+            const dataRescisaoStr = dataRescisaoObj ? formatarDataBR(dataRescisaoObj) : '-';
+            const dataRescisaoISO = dataRescisaoObj ? formatarDataISO(dataRescisaoObj) : '';
 
             // O TIPO e MOTIVO DEVEM sempre ser validados contra o histórico se estiverem em branco
             if ((tipoDemissao === '-' || !tipoDemissao) && demissoesMap[doc.id]) {
@@ -146,11 +221,11 @@ async function carregarPainelDemitidos() {
                 motivoDetalhado = demissoesMap[doc.id].motivoDetalhado || '-';
             }
 
-            // Aplica filtro de data em memória
-            if (dataInicioFiltro && (!dataDemissaoISO || dataDemissaoISO < dataInicioFiltro)) {
+            // Aplica filtro de Data de Rescisão em memória
+            if (dataInicioFiltro && (!dataRescisaoISO || dataRescisaoISO < dataInicioFiltro)) {
                 return;
             }
-            if (dataFimFiltro && (!dataDemissaoISO || dataDemissaoISO > dataFimFiltro)) {
+            if (dataFimFiltro && (!dataRescisaoISO || dataRescisaoISO > dataFimFiltro)) {
                 return;
             }
 
@@ -159,7 +234,8 @@ async function carregarPainelDemitidos() {
                 cpf: f.cpf || '',
                 empresa: empresaNome,
                 setor: f.setor || '-',
-                dataDemissao: dataDemissao,
+                dataRescisao: dataRescisaoStr,
+                dataDemissao: dataRescisaoStr,
                 tipoDemissao: tipoDemissao,
                 motivo: motivoDetalhado
             });
@@ -186,7 +262,7 @@ async function carregarPainelDemitidos() {
                 `;
             } else {
                 btnAcao = `
-                    <button class="btn btn-sm btn-outline-success text-nowrap" onclick="abrirModalCustoRescisao('${doc.id}', '${nomeEscapado}', '${dataDemissaoISO}')" title="Lançar Custo Rescisório">
+                    <button class="btn btn-sm btn-outline-success text-nowrap" onclick="abrirModalCustoRescisao('${doc.id}', '${nomeEscapado}', '${dataRescisaoISO}')" title="Lançar Custo Rescisório">
                         <i class="fas fa-dollar-sign"></i> Lançar Custo
                     </button>
                 `;
@@ -217,7 +293,7 @@ async function carregarPainelDemitidos() {
                     </td>
                     <td>${empresaNome}</td>
                     <td>${f.setor || '-'}</td>
-                    <td>${dataDemissao}</td>
+                    <td>${dataRescisaoStr}</td>
                     <td>${tipoDemissao}</td>
                     <td class="text-end">
                         <div class="d-inline-flex align-items-center justify-content-end">
@@ -470,28 +546,44 @@ async function abrirModalEditarDemissao(funcId, nome) {
             .limit(1)
             .get();
 
-        if (movSnap.empty) {
-            alert('Registro de demissão não encontrado na tabela de movimentações. Verifique se o registro existe.');
-            return;
+        let movDoc = null;
+        let mov = {};
+        if (!movSnap.empty) {
+            movDoc = movSnap.docs[0];
+            mov = movDoc.data();
         }
 
-        const movDoc = movSnap.docs[0];
-        const mov = movDoc.data();
+        // Busca dados cadastrais do funcionário para complementar
+        const funcDoc = await db.collection('funcionarios').doc(funcId).get();
+        const f = funcDoc.exists ? funcDoc.data() : {};
 
         // Preenche o modal
         document.getElementById('edit-demissao-func-id').value = funcId;
-        document.getElementById('edit-demissao-mov-id').value = movDoc.id;
-        document.getElementById('edit-demissao-nome').value = nome;
+        document.getElementById('edit-demissao-mov-id').value = movDoc ? movDoc.id : '';
+        document.getElementById('edit-demissao-nome').value = nome || f.nome || '';
         
+        let dataObj = null;
         if (mov.data) {
-            const dataObj = mov.data.toDate ? mov.data.toDate() : new Date(mov.data);
-            document.getElementById('edit-demissao-data').value = dataObj.toISOString().split('T')[0];
+            dataObj = extrairDataRescisao(mov.data);
+        } else {
+            dataObj = extrairDataRescisao(f.dataRescisao || f.dataDesligamento || f.dataDemissao || f.ultimaMovimentacao);
         }
 
-        document.getElementById('edit-demissao-tipo').value = mov.motivo || ''; // O campo 'motivo' armazena o TIPO da demissão
-        document.getElementById('edit-demissao-motivo').value = mov.motivoDetalhado || ''; // O campo 'motivoDetalhado' armazena o MOTIVO real
+        if (dataObj) {
+            document.getElementById('edit-demissao-data').value = formatarDataISO(dataObj);
+        } else {
+            document.getElementById('edit-demissao-data').value = '';
+        }
+
+        document.getElementById('edit-demissao-tipo').value = mov.motivo || f.tipoDemissao || ''; // O campo 'motivo' armazena o TIPO da demissão
+        document.getElementById('edit-demissao-motivo').value = mov.motivoDetalhado || f.motivoDesligamento || ''; // O campo 'motivoDetalhado' armazena o MOTIVO real
         document.getElementById('edit-demissao-aviso').value = mov.avisoPrevio || '';
-        document.getElementById('edit-demissao-obs').value = mov.detalhes || '';
+        document.getElementById('edit-demissao-obs').value = mov.detalhes || f.observacoesHistorico || '';
+        
+        const blockRehireEl = document.getElementById('edit-demissao-bloquear-readmissao');
+        if (blockRehireEl) {
+            blockRehireEl.checked = !!f.bloquearReadmissao;
+        }
 
         // Carregar valor rescisão atual (soma de lancamentos_financeiros)
         const financeirosSnap = await db.collection('lancamentos_financeiros')
@@ -507,10 +599,9 @@ async function abrirModalEditarDemissao(funcId, nome) {
 
         new bootstrap.Modal(document.getElementById('modalEditarDemissao')).show();
 
-
     } catch (error) {
         console.error("Erro ao carregar demissão para edição:", error);
-        alert("Erro ao carregar dados.");
+        alert("Erro ao carregar dados da rescisão.");
     }
 }
 
@@ -522,37 +613,53 @@ async function salvarEdicaoDemissao() {
     const motivo = document.getElementById('edit-demissao-motivo').value;
     const aviso = document.getElementById('edit-demissao-aviso').value;
     const obs = document.getElementById('edit-demissao-obs').value;
-    const blockRehire = document.getElementById('edit-demissao-bloquear-readmissao').checked;
+    const blockRehire = document.getElementById('edit-demissao-bloquear-readmissao')?.checked || false;
 
-    if (!movId || !funcId || !data || !tipo) {
+    if (!funcId || !data || !tipo) {
         alert("Preencha os campos obrigatórios (Data e Tipo).");
         return;
     }
 
     try {
-        const dataObj = new Date(data + 'T00:00:00');
+        const dataObj = new Date(data + 'T12:00:00');
         const timestamp = firebase.firestore.Timestamp.fromDate(dataObj);
 
         const batch = db.batch();
 
-        // 1. Atualizar Movimentação
-        const movRef = db.collection('movimentacoes').doc(movId);
-        batch.update(movRef, {
-            data: timestamp,
-            motivo: tipo, // Armazena o tipo de demissão
-            motivoDetalhado: motivo,
-            avisoPrevio: aviso,
-            detalhes: obs
-        });
+        // 1. Atualizar ou Criar Movimentação
+        if (movId) {
+            const movRef = db.collection('movimentacoes').doc(movId);
+            batch.update(movRef, {
+                data: timestamp,
+                motivo: tipo, // Armazena o tipo de demissão
+                motivoDetalhado: motivo,
+                avisoPrevio: aviso,
+                detalhes: obs
+            });
+        } else {
+            const movRef = db.collection('movimentacoes').doc();
+            batch.set(movRef, {
+                funcionarioId: funcId,
+                tipo: 'demissao',
+                data: timestamp,
+                motivo: tipo,
+                motivoDetalhado: motivo,
+                avisoPrevio: aviso,
+                detalhes: obs,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
 
-        // 2. Atualizar Funcionário (para manter consistência nos dados redundantes)
+        // 2. Atualizar Funcionário (mantendo dataRescisao, dataDesligamento e dataDemissao sincronizadas)
         const funcRef = db.collection('funcionarios').doc(funcId);
         batch.update(funcRef, {
+            dataRescisao: timestamp,
             dataDesligamento: timestamp,
             dataDemissao: timestamp,
             motivoDesligamento: motivo,
             tipoDemissao: tipo,
-            ultimaMovimentacao: timestamp
+            ultimaMovimentacao: timestamp,
+            bloquearReadmissao: blockRehire
         });
 
         // 3. Atualizar/criar lançamento financeiro de rescisão
@@ -760,7 +867,7 @@ async function exportarPainelDemitidosExcel() {
         'CPF': item.cpf,
         'Empresa': item.empresa,
         'Setor': item.setor,
-        'Data da Demissão': item.dataDemissao,
+        'Data da Rescisão': item.dataRescisao || item.dataDemissao || '-',
         'Tipo de Demissão': item.tipoDemissao,
         'Motivo': item.motivo
     }));
@@ -922,6 +1029,8 @@ window.salvarRegistroLivre = async function() {
             cargo: cargo,
             dataAdmissao: admissaoDate,
             dataDemissao: demissaoDate,
+            dataRescisao: demissaoDate,
+            dataDesligamento: demissaoDate,
             motivoDesligamento: motivo,
             observacoesHistorico: obs,
             status: 'Inativo',

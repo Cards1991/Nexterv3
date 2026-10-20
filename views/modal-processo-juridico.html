@@ -33,24 +33,30 @@
                                 <div class="col-md-6"><label class="form-label">Nº do Processo</label><input type="text"
                                         class="form-control" id="jur-numero-processo" required></div>
                                 <div class="col-md-6"><label class="form-label">Data de Distribuição</label><input type="date" class="form-control" id="jur-data-distribuicao" required></div>
-                                <div class="col-md-6"><label class="form-label">Funcionário / Ex-Func.</label>
-                                    <select class="form-select" id="jur-funcionario" required>
+                                <div class="col-md-6">
+                                    <label class="form-label">Tipo de Ação <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="jur-tipo-acao" required onchange="atualizarCampoAutorPorTipoAcao(); atualizarPedidosDoProcesso();">
+                                        <option value="">Selecione...</option>
+                                        <option value="Trabalhista" selected>Trabalhista</option>
+                                        <option value="Cível">Cível</option>
+                                        <option value="Tributário">Tributário</option>
+                                        <option value="Consumidor">Consumidor</option>
+                                        <option value="Penal">Penal</option>
+                                        <option value="Outro">Outro</option>
+                                    </select>
+                                </div>
+                                <!-- Campo Dinâmico: Seleção de Funcionário se Trabalhista, Texto Livre se Não-Trabalhista -->
+                                <div class="col-md-6" id="container-jur-funcionario-select">
+                                    <label class="form-label" id="label-jur-funcionario">Funcionário Autor / Reclamante <span class="text-danger">*</span></label>
+                                    <select class="form-select" id="jur-funcionario">
                                         <option value="">Carregando...</option>
                                     </select>
                                 </div>
-                                <div class="col-md-6"><label class="form-label">Escritório Terceirizado / Advogado</label><input type="text" class="form-control" id="jur-escritorio" required></div>
-                                <div class="col-md-6">
-                                    <label class="form-label">Tipo de Ação</label>
-                                    <select class="form-select" id="jur-tipo-acao" required>
-                                        <option value="">Selecione...</option>
-                                        <option>Trabalhista</option>
-                                        <option>Cível</option>
-                                        <option>Tributário</option>
-                                        <option>Consumidor</option>
-                                        <option>Penal</option>
-                                        <option>Outro</option>
-                                    </select>
+                                <div class="col-md-6" id="container-jur-autor-texto" style="display: none;">
+                                    <label class="form-label" id="label-jur-autor-texto">Autor / Requerente <span class="text-danger">*</span></label>
+                                    <input type="text" class="form-control" id="jur-autor-texto" placeholder="Informe o nome do autor / requerente">
                                 </div>
+                                <div class="col-md-6"><label class="form-label">Escritório Terceirizado / Advogado</label><input type="text" class="form-control" id="jur-escritorio" required></div>
                                 <div class="col-md-6">
                                     <label class="form-label">Status do Processo</label>
                                     <select class="form-select" id="jur-status" required>

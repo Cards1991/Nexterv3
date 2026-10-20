@@ -17,13 +17,50 @@ let chartStatus = null;
 
 async function inicializarGestaoProcessos() {
     await carregarProcessosJuridicos();
-    document.getElementById('jur-tipo-acao')?.addEventListener('change', atualizarPedidosDoProcesso);
+    document.getElementById('jur-tipo-acao')?.addEventListener('change', () => {
+        atualizarCampoAutorPorTipoAcao();
+        atualizarPedidosDoProcesso();
+    });
     document.getElementById('btn-filtrar-processos')?.addEventListener('click', carregarProcessosJuridicos);
+    document.getElementById('jur-busca-processo')?.addEventListener('input', carregarProcessosJuridicos);
     document.getElementById('jur-pedidos-container')?.addEventListener('input', calcularValorCausaAutomatico);
     document.getElementById('jur-pedidos-container')?.addEventListener('change', calcularValorCausaAutomatico);
     
     document.getElementById('jur-status')?.addEventListener('change', toggleAbaEncerramento);
     document.getElementById('jur-resultado-processo')?.addEventListener('change', toggleValoresEncerramento);
+}
+
+function atualizarCampoAutorPorTipoAcao() {
+    const tipoAcao = document.getElementById('jur-tipo-acao')?.value || '';
+    const containerSelect = document.getElementById('container-jur-funcionario-select');
+    const containerTexto = document.getElementById('container-jur-autor-texto');
+    const selectFunc = document.getElementById('jur-funcionario');
+    const inputTexto = document.getElementById('jur-autor-texto');
+
+    const isTrabalhista = (tipoAcao === 'Trabalhista');
+
+    if (isTrabalhista) {
+        if (containerSelect) containerSelect.style.display = 'block';
+        if (containerTexto) containerTexto.style.display = 'none';
+        if (selectFunc) selectFunc.required = true;
+        if (inputTexto) {
+            inputTexto.required = false;
+            if (inputTexto.value && selectFunc && !selectFunc.value) {
+                const optMatch = Array.from(selectFunc.options).find(opt => opt.value.toLowerCase() === inputTexto.value.toLowerCase());
+                if (optMatch) selectFunc.value = optMatch.value;
+            }
+        }
+    } else {
+        if (containerSelect) containerSelect.style.display = 'none';
+        if (containerTexto) containerTexto.style.display = 'block';
+        if (selectFunc) selectFunc.required = false;
+        if (inputTexto) {
+            inputTexto.required = true;
+            if (selectFunc && selectFunc.value && !inputTexto.value) {
+                inputTexto.value = selectFunc.value;
+            }
+        }
+    }
 }
 
 function toggleAbaEncerramento() {
@@ -130,7 +167,16 @@ async function carregarProcessosJuridicos() {
         }
 
         const processos = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        const processosFiltrados = processos;
+        const termoBusca = (document.getElementById('jur-busca-processo')?.value || '').toLowerCase().trim();
+        let processosFiltrados = processos;
+        if (termoBusca) {
+            processosFiltrados = processos.filter(proc => {
+                const num = (proc.numeroProcesso || '').toLowerCase();
+                const autor = (proc.funcionarioNome || proc.cliente || proc.autor || '').toLowerCase();
+                const esc = (proc.escritorio || proc.parteContraria || '').toLowerCase();
+                return num.includes(termoBusca) || autor.includes(termoBusca) || esc.includes(termoBusca);
+            });
+        }
         
         tbody.innerHTML = '';
         // Renderiza os gráficos antes de popular a tabela
@@ -177,7 +223,7 @@ async function carregarProcessosJuridicos() {
                         <span class="badge bg-light text-dark border">${proc.tipoAcao || '-'}</span>
                     </td>
                     <td>
-                        <div class="fw-bold">${proc.funcionarioNome || proc.cliente || '-'}</div>
+                        <div class="fw-bold">${proc.funcionarioNome || proc.cliente || proc.autor || '-'}</div>
                     </td>
                     <td>
                         <div class="fw-bold"><span class="badge ${statusClass}">${proc.status || '-'}</span></div>
@@ -353,6 +399,10 @@ async function abrirModalProcesso(processoId = null) {
     document.getElementById('jur-pedidos-container').innerHTML = '<p class="text-muted">Selecione um "Tipo de Ação" para ver os pedidos.</p>';
     document.getElementById('jur-historico-container').innerHTML = '<p class="text-muted">Nenhuma alteração registrada.</p>';
 
+    // Limpar campo de autor em texto livre
+    const inputTexto = document.getElementById('jur-autor-texto');
+    if (inputTexto) inputTexto.value = '';
+
     // Resetar e popular select de funcionários (com cache e concatenação rápida)
     const funcionarioSelect = document.getElementById('jur-funcionario');
     if (!__cacheFuncionariosHTML) {
@@ -383,23 +433,32 @@ async function abrirModalProcesso(processoId = null) {
             const data = doc.data();
             window.__processo_original = data; // Salva os dados originais para o log
 
-            document.getElementById('jur-numero-processo').value = data.numeroProcesso;
+            document.getElementById('jur-numero-processo').value = data.numeroProcesso || '';
             document.getElementById('jur-data-distribuicao').value = formatarDataParaInput(data.dataDistribuicao);
             
+            const tipoAcao = data.tipoAcao || 'Trabalhista';
+            document.getElementById('jur-tipo-acao').value = tipoAcao;
+            atualizarCampoAutorPorTipoAcao();
+
             // Tratamento para garantir compatibilidade com registros antigos
-            let funcNome = data.funcionarioNome || data.cliente || '';
-            const funcSelect = document.getElementById('jur-funcionario');
+            let autorNome = data.funcionarioNome || data.cliente || data.autor || '';
             
-            // Se o nome não existir no select (mesmo com cache), adiciona ele
-            if (funcNome && !__cacheFuncionariosHTML.includes(`value="${funcNome}"`)) {
-                funcSelect.innerHTML += `<option value="${funcNome}">${funcNome} (Histórico)</option>`;
+            if (tipoAcao === 'Trabalhista') {
+                const funcSelect = document.getElementById('jur-funcionario');
+                // Se o nome não existir no select (mesmo com cache), adiciona ele
+                if (autorNome && !__cacheFuncionariosHTML.includes(`value="${autorNome}"`)) {
+                    funcSelect.innerHTML += `<option value="${autorNome}">${autorNome} (Histórico)</option>`;
+                }
+                funcSelect.value = autorNome;
+                if (inputTexto) inputTexto.value = '';
+            } else {
+                if (inputTexto) inputTexto.value = autorNome;
+                if (funcionarioSelect) funcionarioSelect.value = '';
             }
-            funcSelect.value = funcNome;
             document.getElementById('jur-escritorio').value = data.escritorio || data.parteContraria || '';
             
-            document.getElementById('jur-tipo-acao').value = data.tipoAcao;
-            document.getElementById('jur-status').value = data.status;
-            document.getElementById('jur-descricao').value = data.descricao;
+            document.getElementById('jur-status').value = data.status || 'Ativo';
+            document.getElementById('jur-descricao').value = data.descricao || '';
             document.getElementById('jur-valor-causa').value = data.valorCausa || '';
             document.getElementById('jur-data-conciliacao').value = data.dataConciliacao ? formatarDataParaInput(data.dataConciliacao, true) : '';
             document.getElementById('jur-data-instrucao').value = data.dataInstrucao ? formatarDataParaInput(data.dataInstrucao, true) : '';
@@ -441,6 +500,9 @@ async function abrirModalProcesso(processoId = null) {
     } else {
         modalTitle.textContent = 'Novo Processo';
         window.__processo_original = null;
+        document.getElementById('jur-tipo-acao').value = 'Trabalhista';
+        atualizarCampoAutorPorTipoAcao();
+        atualizarPedidosDoProcesso();
     }
 
     // Atualizar visibilidade das abas de acordo e status
@@ -476,14 +538,21 @@ async function salvarProcessoJuridico() {
     if (pedidos.some(p => p.risco === 'Alto' || (p.risco === 'Médio' && p.avaliacaoProva === 'Ruim'))) riscoGeral = 'Alto';
     else if (pedidos.some(p => p.risco === 'Médio')) riscoGeral = 'Médio';
 
+    // Determina o nome do autor (selecionado do dropdown se Trabalhista, ou texto livre se Cível/Outro)
+    const tipoAcao = document.getElementById('jur-tipo-acao')?.value || '';
+    const autorNome = (tipoAcao === 'Trabalhista' 
+        ? document.getElementById('jur-funcionario')?.value 
+        : document.getElementById('jur-autor-texto')?.value) || '';
+
     const dados = {
-        numeroProcesso: document.getElementById('jur-numero-processo').value,
+        numeroProcesso: document.getElementById('jur-numero-processo').value.trim(),
         dataDistribuicao: new Date(document.getElementById('jur-data-distribuicao').value.replace(/-/g, '\/')),
-        funcionarioNome: document.getElementById('jur-funcionario').value,
-        cliente: document.getElementById('jur-funcionario').value, // Compatibilidade com dados antigos
-        escritorio: document.getElementById('jur-escritorio').value,
-        parteContraria: document.getElementById('jur-escritorio').value, // Compatibilidade
-        tipoAcao: document.getElementById('jur-tipo-acao').value,
+        funcionarioNome: autorNome.trim(),
+        cliente: autorNome.trim(), // Compatibilidade com dados antigos
+        autor: autorNome.trim(),
+        escritorio: document.getElementById('jur-escritorio').value.trim(),
+        parteContraria: document.getElementById('jur-escritorio').value.trim(), // Compatibilidade
+        tipoAcao: tipoAcao,
         status: document.getElementById('jur-status').value,
         descricao: document.getElementById('jur-descricao').value.trim(),
         valorCausa: parseFloat(document.getElementById('jur-valor-causa').value.replace(',', '.')) || 0,
@@ -506,8 +575,16 @@ async function salvarProcessoJuridico() {
         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
     };
 
-    if (!dados.numeroProcesso || !dados.funcionarioNome || !dados.tipoAcao) {
-        mostrarMensagem("Preencha os campos obrigatórios.", "warning");
+    if (!dados.numeroProcesso) {
+        mostrarMensagem("Informe o número do processo.", "warning");
+        return;
+    }
+    if (!dados.tipoAcao) {
+        mostrarMensagem("Selecione o tipo de ação.", "warning");
+        return;
+    }
+    if (!dados.funcionarioNome) {
+        mostrarMensagem(tipoAcao === 'Trabalhista' ? "Selecione o funcionário autor / reclamante." : "Informe o nome do autor / requerente.", "warning");
         return;
     }
 
@@ -617,7 +694,9 @@ function gerarLogDeAlteracoes(dadosAntigos, dadosNovos) {
         riscoGeral: 'Risco geral',
         valorCausa: 'Valor da causa',
         descricao: 'Objeto da ação',
-        parteContraria: 'Parte contrária'
+        parteContraria: 'Parte contrária',
+        funcionarioNome: 'Reclamante / Autor',
+        tipoAcao: 'Tipo de ação'
     };
 
     // Compara campos simples (string, number)
@@ -795,7 +874,7 @@ async function visualizarProcessoCompacto(processoId) {
                 </div>
             </div>
             <div class="row">
-                <div class="col-md-6 mb-3"><small class="text-muted">Reclamante / Autor</small><p>${proc.funcionarioNome || proc.cliente || 'N/A'}</p></div>
+                <div class="col-md-6 mb-3"><small class="text-muted">Reclamante / Autor</small><p>${proc.funcionarioNome || proc.cliente || proc.autor || 'N/A'}</p></div>
                 <div class="col-md-6 mb-3"><small class="text-muted">Escritório / Advogado</small><p>${proc.escritorio || proc.parteContraria || 'N/A'}</p></div>
             </div>
             <div class="row">
@@ -834,3 +913,9 @@ async function visualizarProcessoCompacto(processoId) {
 function imprimirAnaliseRisco() {
     mostrarMensagem("Funcionalidade de impressão do relatório de análise será implementada em breve.", "info");
 }
+
+window.atualizarCampoAutorPorTipoAcao = atualizarCampoAutorPorTipoAcao;
+window.abrirModalProcesso = abrirModalProcesso;
+window.salvarProcessoJuridico = salvarProcessoJuridico;
+window.excluirProcessoJuridico = excluirProcessoJuridico;
+window.carregarProcessosJuridicos = carregarProcessosJuridicos;
