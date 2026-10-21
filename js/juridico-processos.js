@@ -73,6 +73,103 @@ function parseValorMonetario(val) {
     return isNaN(n) ? 0 : n;
 }
 
+// Converte valores variados (Timestamp Firestore, { seconds }, Date, string) com segurança para Date
+function converterParaDate(valor) {
+    if (!valor) return null;
+    if (valor instanceof Date) return isNaN(valor.getTime()) ? null : valor;
+    if (typeof valor.toDate === 'function') {
+        try {
+            const d = valor.toDate();
+            if (d instanceof Date && !isNaN(d.getTime())) return d;
+        } catch (e) {}
+    }
+    if (valor.seconds !== undefined && typeof valor.seconds === 'number') {
+        return new Date(valor.seconds * 1000);
+    }
+    if (typeof valor === 'string' || typeof valor === 'number') {
+        try {
+            const d = new Date(valor);
+            return isNaN(d.getTime()) ? null : d;
+        } catch (e) {
+            return null;
+        }
+    }
+    return null;
+}
+
+// Formata data e hora no padrão brasileiro (DD/MM/AAAA às HH:MM ou apenas DD/MM/AAAA)
+function formatarDataHoraBR(valor) {
+    const d = converterParaDate(valor);
+    if (!d) return '-';
+    const dataStr = d.toLocaleDateString('pt-BR');
+    const horas = String(d.getHours()).padStart(2, '0');
+    const minutos = String(d.getMinutes()).padStart(2, '0');
+    if (horas !== '00' || minutos !== '00') {
+        return `${dataStr} às ${horas}:${minutos}`;
+    }
+    return dataStr;
+}
+
+// Gera o HTML da coluna "Próx. Audiência/Prazo" com suporte a Conciliação e Instrução
+function formatarPrazoAudienciaTabela(proc) {
+    const dConc = converterParaDate(proc.dataConciliacao);
+    const dInst = converterParaDate(proc.dataInstrucao);
+    const dAud = converterParaDate(proc.dataAudiencia);
+
+    if (!dConc && !dInst && !dAud) {
+        return `<span class="badge border border-secondary text-secondary bg-white"><i class="far fa-calendar-alt me-1"></i> Sem prazo</span>`;
+    }
+
+    const agora = new Date();
+    const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0);
+
+    // Se possui tanto Conciliação quanto Instrução
+    if (dConc && dInst) {
+        const concPassou = dConc < hoje;
+        const instPassou = dInst < hoje;
+        return `
+            <div class="d-flex flex-column gap-1" style="min-width: 175px;">
+                <span class="badge ${concPassou ? 'bg-light text-muted border text-decoration-line-through' : 'border border-primary text-primary bg-white'} text-start" title="Audiência de Conciliação ${concPassou ? '(Realizada)' : '(Agendada)'}">
+                    <i class="fas fa-handshake me-1 ${concPassou ? 'text-muted' : 'text-primary'}"></i> Conc: ${formatarDataHoraBR(dConc)}
+                </span>
+                <span class="badge ${instPassou ? 'bg-light text-muted border text-decoration-line-through' : 'bg-primary text-white shadow-sm'} text-start" title="Audiência de Instrução ${instPassou ? '(Realizada)' : '(Agendada)'}">
+                    <i class="fas fa-gavel me-1 ${instPassou ? 'text-muted' : 'text-warning'}"></i> Inst: ${formatarDataHoraBR(dInst)}
+                </span>
+            </div>
+        `;
+    }
+
+    // Se possui apenas Audiência de Instrução
+    if (dInst) {
+        const instPassou = dInst < hoje;
+        return `
+            <span class="badge ${instPassou ? 'bg-light text-muted border text-decoration-line-through' : 'bg-primary text-white shadow-sm'}" title="Audiência de Instrução ${instPassou ? '(Realizada)' : '(Agendada)'}">
+                <i class="fas fa-gavel me-1 ${instPassou ? 'text-muted' : 'text-warning'}"></i> Inst: ${formatarDataHoraBR(dInst)}
+            </span>
+        `;
+    }
+
+    // Se possui apenas Audiência de Conciliação
+    if (dConc) {
+        const concPassou = dConc < hoje;
+        return `
+            <span class="badge ${concPassou ? 'bg-light text-muted border text-decoration-line-through' : 'border border-primary text-primary bg-white'}" title="Audiência de Conciliação ${concPassou ? '(Realizada)' : '(Agendada)'}">
+                <i class="fas fa-handshake me-1 ${concPassou ? 'text-muted' : 'text-primary'}"></i> Conc: ${formatarDataHoraBR(dConc)}
+            </span>
+        `;
+    }
+
+    // Fallback para audiência legada
+    if (dAud) {
+        const audPassou = dAud < hoje;
+        return `
+            <span class="badge ${audPassou ? 'bg-light text-muted border' : 'bg-info text-dark shadow-sm'}" title="Audiência ${audPassou ? '(Realizada)' : '(Agendada)'}">
+                <i class="far fa-calendar-alt me-1"></i> ${formatarDataHoraBR(dAud)}
+            </span>
+        `;
+    }
+}
+
 // Instâncias dos gráficos
 let chartEvolucao = null;
 let chartFinanceiro = null;
@@ -505,7 +602,7 @@ async function carregarProcessosJuridicos() {
                         <small class="text-muted">${valorExibir}</small>
                     </td>
                     <td>
-                        <span class="badge border border-secondary text-secondary bg-white"><i class="far fa-calendar-alt"></i> ${proc.dataConciliacao ? formatarData(proc.dataConciliacao.toDate()) : 'Sem prazo'}</span>
+                        ${formatarPrazoAudienciaTabela(proc)}
                     </td>
                     <td class="text-end">
                         <button class="btn btn-sm btn-light border" onclick="visualizarProcessoCompacto('${proc.id}')" title="Visualizar Resumo"><i class="fas fa-eye text-primary"></i></button>
@@ -669,6 +766,30 @@ async function abrirModalProcesso(processoId = null) {
     document.getElementById('jur-processo-id').value = processoId || '';
     document.getElementById('jur-pedidos-container').innerHTML = '<p class="text-muted">Selecione um "Tipo de Ação" para ver os pedidos.</p>';
     document.getElementById('jur-historico-container').innerHTML = '<p class="text-muted">Nenhuma alteração registrada.</p>';
+
+    // Limpar explicitamente campos das abas que ficam fora do form-processo-juridico
+    const elDataConc = document.getElementById('jur-data-conciliacao');
+    if (elDataConc) elDataConc.value = '';
+    const elDataInst = document.getElementById('jur-data-instrucao');
+    if (elDataInst) elDataInst.value = '';
+
+    const elAnalisePontos = document.getElementById('jur-analise-pontos');
+    if (elAnalisePontos) elAnalisePontos.value = '';
+    const elAnaliseTestemunhas = document.getElementById('jur-analise-testemunhas');
+    if (elAnaliseTestemunhas) elAnaliseTestemunhas.value = '';
+    const elAnaliseDocumentos = document.getElementById('jur-analise-documentos');
+    if (elAnaliseDocumentos) elAnaliseDocumentos.value = '';
+
+    const elResultado = document.getElementById('jur-resultado-processo');
+    if (elResultado) elResultado.value = '';
+    const elValorPedido = document.getElementById('jur-valor-pedido-acordo');
+    if (elValorPedido) elValorPedido.value = '';
+    const elValorTeto = document.getElementById('jur-valor-teto-acordo');
+    if (elValorTeto) elValorTeto.value = '';
+    const elValorFinal = document.getElementById('jur-valor-final-acordo');
+    if (elValorFinal) elValorFinal.value = '';
+    const elObs = document.getElementById('jur-obs-encerramento');
+    if (elObs) elObs.value = '';
 
     // Limpar campo de autor em texto livre
     const inputTexto = document.getElementById('jur-autor-texto');
@@ -882,7 +1003,8 @@ async function salvarProcessoJuridico() {
             dados.createdAt = firebase.firestore.FieldValue.serverTimestamp();
             const docRef = await db.collection('processos_juridicos').add(dados);
             mostrarMensagem("Processo cadastrado com sucesso!", "success");
-            const log = { alteracao: 'Processo criado.', usuario: firebase.auth().currentUser.email, data: new Date() };
+            const usuarioEmail = firebase.auth().currentUser?.email || 'Sistema';
+            const log = { alteracao: 'Processo criado.', usuario: usuarioEmail, data: new Date() };
             await db.collection('processos_juridicos').doc(docRef.id).collection('historico').add(log);
             await syncAgendaJuridica(docRef.id, dados);
         }
@@ -922,8 +1044,9 @@ async function excluirProcessoJuridico(processoId) {
 
 async function syncAgendaJuridica(processoId, dadosProcesso) {
     try {
-        const userId = firebase.auth().currentUser.uid;
-        const userNome = firebase.auth().currentUser.displayName || firebase.auth().currentUser.email;
+        const user = firebase.auth().currentUser;
+        const userId = user ? user.uid : 'sistema';
+        const userNome = user ? (user.displayName || user.email || 'Sistema') : 'Sistema';
         
         const syncEvento = async (tipo, dataEvento) => {
             const snap = await db.collection('agenda_atividades')
@@ -993,9 +1116,11 @@ function gerarLogDeAlteracoes(dadosAntigos, dadosNovos) {
         dataInstrucao: 'Data de instrução'
     };
     for (const campo in camposData) {
-        const dataAntiga = dadosAntigos[campo] ? dadosAntigos[campo].seconds : null;
-        const dataNova = dadosNovos[campo] ? new Date(dadosNovos[campo]).getTime() / 1000 : null;
-        if (dataAntiga !== dataNova) {
+        const dAntiga = converterParaDate(dadosAntigos[campo]);
+        const dNova = converterParaDate(dadosNovos[campo]);
+        const tAntiga = dAntiga ? Math.floor(dAntiga.getTime() / 1000) : null;
+        const tNova = dNova ? Math.floor(dNova.getTime() / 1000) : null;
+        if (tAntiga !== tNova) {
             alteracoes.push(`${camposData[campo]} alterada.`);
         }
     }
@@ -1043,7 +1168,8 @@ async function carregarHistoricoProcesso(processoId) {
 
 function formatarDataParaInput(timestamp, comTempo = false) {
     if (!timestamp) return '';
-    const data = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const data = converterParaDate(timestamp);
+    if (!data) return '';
     const ano = data.getFullYear();
     const mes = String(data.getMonth() + 1).padStart(2, '0');
     const dia = String(data.getDate()).padStart(2, '0');
@@ -1416,6 +1542,16 @@ async function visualizarProcessoCompacto(processoId) {
                 <div class="col-md-6 mb-3"><small class="text-muted">Tipo de Ação</small><p><span class="badge bg-info text-dark">${proc.tipoAcao || 'N/A'}</span></p></div>
                 <div class="col-md-6 mb-3"><small class="text-muted">Risco Geral</small><p><span class="badge ${getRiskClass(proc.riscoGeral)}">${proc.riscoGeral || 'N/A'}</span></p></div>
             </div>
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <small class="text-muted"><i class="fas fa-handshake me-1 text-primary"></i> Audiência de Conciliação</small>
+                    <p class="fw-bold mb-0">${proc.dataConciliacao ? formatarDataHoraBR(proc.dataConciliacao) : '<span class="text-muted fw-normal">Não agendada</span>'}</p>
+                </div>
+                <div class="col-md-6 mb-3">
+                    <small class="text-muted"><i class="fas fa-gavel me-1 text-warning"></i> Audiência de Instrução</small>
+                    <p class="fw-bold mb-0">${proc.dataInstrucao ? formatarDataHoraBR(proc.dataInstrucao) : '<span class="text-muted fw-normal">Não agendada</span>'}</p>
+                </div>
+            </div>
             <hr>
             <h6>Objeto da Ação</h6>
             <p>${proc.descricao || 'Não informado'}</p>
@@ -1492,3 +1628,6 @@ window.aoDigitarValorPedido = aoDigitarValorPedido;
 window.marcarTodosPedidos = marcarTodosPedidos;
 window.solicitarAdicionarPedidoCustomizado = solicitarAdicionarPedidoCustomizado;
 window.imprimirAnaliseRisco = imprimirAnaliseRisco;
+window.converterParaDate = converterParaDate;
+window.formatarDataHoraBR = formatarDataHoraBR;
+window.formatarPrazoAudienciaTabela = formatarPrazoAudienciaTabela;

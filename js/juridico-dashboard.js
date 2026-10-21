@@ -31,15 +31,34 @@ async function inicializarDashboardJuridico() {
                 riscoFinanceiroTotal += parseFloat(p.valorCausa || 0);
             }
             
-            // Verifica audiências (dataAudiencia ou dataConciliacao)
+            // Verifica audiências (dataAudiencia, dataConciliacao ou dataInstrucao)
             let temAudiencia = false;
-            let dataMaisProxima = null;
+            let proximaDataFutura = null;
+            let menorDataGeral = null;
             
-            const verificarData = (dataStr) => {
-                if (dataStr) {
-                    const d = dataStr.toDate ? dataStr.toDate() : new Date(dataStr);
-                    if (d >= hoje && d <= trintaDias) temAudiencia = true;
-                    if (!dataMaisProxima || d < dataMaisProxima) dataMaisProxima = d;
+            const verificarData = (dataVal) => {
+                if (dataVal) {
+                    let d = null;
+                    if (dataVal instanceof Date) d = dataVal;
+                    else if (typeof dataVal.toDate === 'function') {
+                        try { d = dataVal.toDate(); } catch(e) {}
+                    } else if (dataVal.seconds !== undefined) {
+                        d = new Date(dataVal.seconds * 1000);
+                    } else {
+                        d = new Date(dataVal);
+                    }
+
+                    if (d && !isNaN(d.getTime())) {
+                        if (d >= hoje && d <= trintaDias) temAudiencia = true;
+                        if (d >= hoje) {
+                            if (!proximaDataFutura || d < proximaDataFutura) {
+                                proximaDataFutura = d;
+                            }
+                        }
+                        if (!menorDataGeral || d < menorDataGeral) {
+                            menorDataGeral = d;
+                        }
+                    }
                 }
             };
             
@@ -49,9 +68,10 @@ async function inicializarDashboardJuridico() {
             
             if (temAudiencia) audienciasMes++;
             
-            // Tabela de Próximos Prazos / Audiências (priorizando quem tem data próxima)
-            if (dataMaisProxima && dataMaisProxima >= hoje) {
-                criticos.push({ ...p, proximaData: dataMaisProxima });
+            // Tabela de Próximos Prazos / Audiências (priorizando a próxima data futura)
+            const dataFinalProxima = proximaDataFutura || (menorDataGeral && menorDataGeral >= hoje ? menorDataGeral : null);
+            if (dataFinalProxima) {
+                criticos.push({ ...p, proximaData: dataFinalProxima });
             }
         });
         

@@ -1294,6 +1294,12 @@ const nexterAITools = {
                     if (porStatus[p.status] !== undefined) porStatus[p.status]++;
                     if (porRisco[p.riscoGeral] !== undefined) porRisco[p.riscoGeral]++;
 
+                    const fmtData = (val) => {
+                        if (!val) return null;
+                        const d = (typeof val.toDate === 'function') ? val.toDate() : (val.seconds ? new Date(val.seconds * 1000) : new Date(val));
+                        return (!isNaN(d?.getTime())) ? d.toLocaleString('pt-BR') : null;
+                    };
+
                     return {
                         id: p.id,
                         numeroProcesso: p.numeroProcesso || 'S/N',
@@ -1302,7 +1308,9 @@ const nexterAITools = {
                         status: p.status || 'Ativo',
                         riscoGeral: p.riscoGeral || 'Médio',
                         valorCausa: (p.valorCausa || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-                        totalPedidos: (p.pedidos || []).length
+                        totalPedidos: (p.pedidos || []).length,
+                        audienciaConciliacao: fmtData(p.dataConciliacao),
+                        audienciaInstrucao: fmtData(p.dataInstrucao)
                     };
                 });
 

@@ -102,14 +102,20 @@
 
                     <!-- Aba Prazos e Andamentos -->
                     <div class="tab-pane fade" id="tab-processo-prazos" role="tabpanel">
+                        <div class="p-3 bg-light rounded-3 mb-3 border">
+                            <h6 class="fw-bold text-dark mb-1"><i class="far fa-calendar-check text-primary me-2"></i>Audiências e Prazos Judiciais</h6>
+                            <p class="text-muted small mb-0">Preencha as datas das audiências agendadas na Justiça. O sistema exibirá esses prazos na relação de processos e sincronizará automaticamente com a agenda interna.</p>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <label class="form-label">Data da Audiência de Conciliação</label>
+                                <label class="form-label fw-bold"><i class="fas fa-handshake text-primary me-1"></i> Data da Audiência de Conciliação</label>
                                 <input type="datetime-local" class="form-control" id="jur-data-conciliacao">
+                                <small class="text-muted">Primeira audiência / tentativa de acordo.</small>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label">Data da Audiência de Instrução</label>
+                                <label class="form-label fw-bold"><i class="fas fa-gavel text-warning me-1"></i> Data da Audiência de Instrução</label>
                                 <input type="datetime-local" class="form-control" id="jur-data-instrucao">
+                                <small class="text-muted">Audiência de instrução e depoimento de testemunhas.</small>
                             </div>
                             <!-- Outros prazos podem ser adicionados aqui -->
                         </div>
