@@ -1310,7 +1310,13 @@ const nexterAITools = {
                         valorCausa: (p.valorCausa || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
                         totalPedidos: (p.pedidos || []).length,
                         audienciaConciliacao: fmtData(p.dataConciliacao),
-                        audienciaInstrucao: fmtData(p.dataInstrucao)
+                        audienciaInstrucao: fmtData(p.dataInstrucao),
+                        andamentos: (p.andamentos || []).map(a => ({
+                            tipo: a.tipo,
+                            data: fmtData(a.data),
+                            status: a.status || 'Pendente',
+                            descricao: a.descricao || ''
+                        }))
                     };
                 });
 

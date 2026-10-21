@@ -102,23 +102,70 @@
 
                     <!-- Aba Prazos e Andamentos -->
                     <div class="tab-pane fade" id="tab-processo-prazos" role="tabpanel">
-                        <div class="p-3 bg-light rounded-3 mb-3 border">
-                            <h6 class="fw-bold text-dark mb-1"><i class="far fa-calendar-check text-primary me-2"></i>Audiências e Prazos Judiciais</h6>
-                            <p class="text-muted small mb-0">Preencha as datas das audiências agendadas na Justiça. O sistema exibirá esses prazos na relação de processos e sincronizará automaticamente com a agenda interna.</p>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold"><i class="fas fa-handshake text-primary me-1"></i> Data da Audiência de Conciliação</label>
-                                <input type="datetime-local" class="form-control" id="jur-data-conciliacao">
-                                <small class="text-muted">Primeira audiência / tentativa de acordo.</small>
+                        <!-- Card de Inclusão de Novo Andamento -->
+                        <div class="card border-0 bg-light p-3 mb-3 shadow-sm" style="border-radius: 10px;">
+                            <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+                                <h6 class="fw-bold text-dark mb-0">
+                                    <i class="fas fa-plus-circle text-primary me-2"></i>Incluir Novo Andamento / Prazo
+                                </h6>
+                                <small class="text-muted">Selecione o tipo, data e detalhes do andamento processual</small>
                             </div>
-                            <div class="col-md-6">
-                                <label class="form-label fw-bold"><i class="fas fa-gavel text-warning me-1"></i> Data da Audiência de Instrução</label>
-                                <input type="datetime-local" class="form-control" id="jur-data-instrucao">
-                                <small class="text-muted">Audiência de instrução e depoimento de testemunhas.</small>
+                            <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold mb-1">Tipo de Andamento <span class="text-danger">*</span></label>
+                                    <select class="form-select form-select-sm" id="jur-novo-andamento-tipo">
+                                        <option value="Notificação">Notificação</option>
+                                        <option value="Conciliação" selected>Conciliação</option>
+                                        <option value="Instrução">Instrução</option>
+                                        <option value="Perícia">Perícia</option>
+                                        <option value="Recurso Empresa">Recurso Empresa</option>
+                                        <option value="Recurso Reclamante">Recurso Reclamante</option>
+                                        <option value="Outros">Outros</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label small fw-bold mb-1">Data e Hora <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control form-control-sm" id="jur-novo-andamento-data">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label small fw-bold mb-1">Descrição / Detalhes</label>
+                                    <input type="text" class="form-control form-control-sm" id="jur-novo-andamento-desc" placeholder="Ex: Vara, prazo fatal, quesitos, laudo...">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-primary btn-sm w-100 shadow-sm" onclick="adicionarAndamentoAoProcesso()">
+                                        <i class="fas fa-plus me-1"></i> Incluir
+                                    </button>
+                                </div>
                             </div>
-                            <!-- Outros prazos podem ser adicionados aqui -->
                         </div>
+
+                        <!-- Tabela / Lista de Andamentos Registrados -->
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="fw-bold text-dark mb-0">
+                                <i class="fas fa-list-check text-primary me-2"></i>Andamentos e Prazos do Processo
+                            </h6>
+                            <span class="badge bg-secondary" id="jur-andamentos-count">0 andamentos</span>
+                        </div>
+                        <div class="table-responsive border rounded bg-white shadow-sm" style="max-height: 280px; overflow-y: auto;">
+                            <table class="table table-sm table-hover align-middle mb-0" style="font-size: 0.875rem;">
+                                <thead class="table-light sticky-top" style="font-size: 0.75rem; text-transform: uppercase;">
+                                    <tr>
+                                        <th style="width: 25%;">Tipo</th>
+                                        <th style="width: 25%;">Data / Hora</th>
+                                        <th style="width: 32%;">Descrição / Detalhes</th>
+                                        <th style="width: 10%; text-align: center;">Status</th>
+                                        <th style="width: 8%; text-align: end;">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="jur-tabela-andamentos">
+                                    <!-- Linhas de andamentos via JS -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <!-- Inputs Ocultos para retrocompatibilidade -->
+                        <input type="hidden" id="jur-data-conciliacao">
+                        <input type="hidden" id="jur-data-instrucao">
                     </div>
 
                     <!-- Aba Análise de Provas -->

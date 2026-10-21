@@ -110,8 +110,69 @@ function formatarDataHoraBR(valor) {
     return dataStr;
 }
 
-// Gera o HTML da coluna "Próx. Audiência/Prazo" com suporte a Conciliação e Instrução
+// Mapeamento e configuração visual de tipos de andamento
+function obterConfigAndamento(tipo) {
+    const t = String(tipo || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+    if (t.includes('notificacao')) {
+        return { badgeClass: 'bg-info text-dark shadow-sm', icon: 'fas fa-bell text-dark' };
+    }
+    if (t.includes('conciliacao')) {
+        return { badgeClass: 'border border-primary text-primary bg-white shadow-sm', icon: 'fas fa-handshake text-primary' };
+    }
+    if (t.includes('instrucao')) {
+        return { badgeClass: 'bg-warning text-dark shadow-sm', icon: 'fas fa-gavel text-dark' };
+    }
+    if (t.includes('pericia')) {
+        return { badgeClass: 'text-white shadow-sm', style: 'background-color: #6f42c1;', icon: 'fas fa-microscope text-white' };
+    }
+    if (t.includes('empresa')) {
+        return { badgeClass: 'bg-success text-white shadow-sm', icon: 'fas fa-file-upload text-white' };
+    }
+    if (t.includes('reclamante')) {
+        return { badgeClass: 'bg-danger text-white shadow-sm', icon: 'fas fa-file-download text-white' };
+    }
+    return { badgeClass: 'bg-secondary text-white shadow-sm', icon: 'fas fa-calendar-alt text-white' };
+}
+
+// Gera o HTML da coluna "Próx. Audiência/Prazo" com suporte a Andamentos Dinâmicos
 function formatarPrazoAudienciaTabela(proc) {
+    const agora = new Date();
+    const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0);
+
+    // 1. Se possui lista dinâmica de andamentos
+    if (proc.andamentos && Array.isArray(proc.andamentos) && proc.andamentos.length > 0) {
+        const andamentosComData = proc.andamentos
+            .map(a => ({ ...a, dataObj: converterParaDate(a.data) }))
+            .filter(a => a.dataObj !== null)
+            .sort((a, b) => a.dataObj - b.dataObj);
+
+        if (andamentosComData.length > 0) {
+            // Próximos pendentes futuros
+            const futuros = andamentosComData.filter(a => a.dataObj >= hoje && a.status !== 'Concluído');
+            const listaExibir = futuros.length > 0 ? futuros : andamentosComData.slice(-2);
+
+            const badgesHtml = listaExibir.slice(0, 2).map(a => {
+                const passou = a.dataObj < hoje || a.status === 'Concluído';
+                const conf = obterConfigAndamento(a.tipo);
+                return `
+                    <span class="badge ${passou ? 'bg-light text-muted border text-decoration-line-through' : conf.badgeClass} text-start text-truncate" 
+                          style="${passou ? '' : (conf.style || '')}; max-width: 200px;" 
+                          title="${a.tipo}: ${formatarDataHoraBR(a.dataObj)}${a.descricao ? ' (' + a.descricao + ')' : ''} - Status: ${a.status || 'Pendente'}">
+                        <i class="${conf.icon} me-1 ${passou ? 'text-muted' : ''}"></i> ${a.tipo}: ${formatarDataHoraBR(a.dataObj)}
+                    </span>
+                `;
+            }).join('');
+
+            return `
+                <div class="d-flex flex-column gap-1" style="min-width: 175px;">
+                    ${badgesHtml}
+                    ${listaExibir.length > 2 ? `<small class="text-muted" style="font-size: 0.7rem;">+${listaExibir.length - 2} prazo(s)</small>` : ''}
+                </div>
+            `;
+        }
+    }
+
+    // 2. Fallback para processos que possuem dataConciliacao, dataInstrucao ou dataAudiencia
     const dConc = converterParaDate(proc.dataConciliacao);
     const dInst = converterParaDate(proc.dataInstrucao);
     const dAud = converterParaDate(proc.dataAudiencia);
@@ -119,9 +180,6 @@ function formatarPrazoAudienciaTabela(proc) {
     if (!dConc && !dInst && !dAud) {
         return `<span class="badge border border-secondary text-secondary bg-white"><i class="far fa-calendar-alt me-1"></i> Sem prazo</span>`;
     }
-
-    const agora = new Date();
-    const hoje = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate(), 0, 0, 0);
 
     // Se possui tanto Conciliação quanto Instrução
     if (dConc && dInst) {
@@ -757,6 +815,143 @@ function renderizarGraficosProcessos(processos) {
 }
 
 let __cacheFuncionariosHTML = null;
+let __andamentosProcessoAtual = [];
+
+// Renderiza a tabela de andamentos no modal de processos
+function renderizarTabelaAndamentos() {
+    const tbody = document.getElementById('jur-tabela-andamentos');
+    const badgeCount = document.getElementById('jur-andamentos-count');
+    if (!tbody) return;
+
+    if (badgeCount) {
+        badgeCount.textContent = `${__andamentosProcessoAtual.length} andamento${__andamentosProcessoAtual.length === 1 ? '' : 's'}`;
+    }
+
+    if (__andamentosProcessoAtual.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    <i class="far fa-calendar-times d-block fs-4 mb-1 text-secondary opacity-50"></i>
+                    Nenhum andamento ou prazo cadastrado ainda.
+                </td>
+            </tr>
+        `;
+        const elConc = document.getElementById('jur-data-conciliacao');
+        if (elConc) elConc.value = '';
+        const elInst = document.getElementById('jur-data-instrucao');
+        if (elInst) elInst.value = '';
+        return;
+    }
+
+    // Ordena cronologicamente por data
+    __andamentosProcessoAtual.sort((a, b) => {
+        const dA = converterParaDate(a.data) || new Date(0);
+        const dB = converterParaDate(b.data) || new Date(0);
+        return dA - dB;
+    });
+
+    let html = '';
+    __andamentosProcessoAtual.forEach(item => {
+        const conf = obterConfigAndamento(item.tipo);
+        const dataObj = converterParaDate(item.data);
+        const dataFmt = dataObj ? formatarDataHoraBR(dataObj) : (item.data || '-');
+        const concluido = item.status === 'Concluído';
+
+        html += `
+            <tr class="${concluido ? 'bg-light text-muted' : ''}">
+                <td>
+                    <span class="badge ${conf.badgeClass}" style="${conf.style || ''}">
+                        <i class="${conf.icon} me-1"></i> ${item.tipo}
+                    </span>
+                </td>
+                <td>
+                    <span class="${concluido ? 'text-decoration-line-through text-muted' : 'fw-bold text-dark'}">
+                        ${dataFmt}
+                    </span>
+                </td>
+                <td>
+                    <span class="small ${concluido ? 'text-muted' : 'text-secondary'}">
+                        ${item.descricao || '-'}
+                    </span>
+                </td>
+                <td class="text-center">
+                    <button type="button" class="btn btn-xs ${concluido ? 'btn-success' : 'btn-outline-warning'} shadow-sm py-0 px-2" 
+                            style="font-size: 0.75rem; border-radius: 20px;"
+                            onclick="alternarStatusAndamento('${item.id}')" 
+                            title="Clique para alternar entre Pendente e Concluído">
+                        <i class="fas ${concluido ? 'fa-check-circle' : 'fa-clock'} me-1"></i>
+                        ${concluido ? 'Concluído' : 'Pendente'}
+                    </button>
+                </td>
+                <td class="text-end">
+                    <button type="button" class="btn btn-sm btn-light text-danger border-0 p-1" 
+                            onclick="removerAndamentoDoProcesso('${item.id}')" 
+                            title="Excluir este andamento">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+
+    // Sincroniza campos ocultos legados
+    const conc = __andamentosProcessoAtual.find(a => a.tipo === 'Conciliação');
+    const elConc = document.getElementById('jur-data-conciliacao');
+    if (elConc) elConc.value = conc ? formatarDataParaInput(conc.data, true) : '';
+
+    const inst = __andamentosProcessoAtual.find(a => a.tipo === 'Instrução');
+    const elInst = document.getElementById('jur-data-instrucao');
+    if (elInst) elInst.value = inst ? formatarDataParaInput(inst.data, true) : '';
+}
+
+function adicionarAndamentoAoProcesso() {
+    const tipo = document.getElementById('jur-novo-andamento-tipo')?.value || '';
+    const dataVal = document.getElementById('jur-novo-andamento-data')?.value || '';
+    const desc = document.getElementById('jur-novo-andamento-desc')?.value.trim() || '';
+
+    if (!tipo) {
+        mostrarMensagem("Selecione o tipo de andamento.", "warning");
+        return;
+    }
+    if (!dataVal) {
+        mostrarMensagem("Informe a data e horário do andamento.", "warning");
+        return;
+    }
+
+    const novo = {
+        id: 'and_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+        tipo: tipo,
+        data: dataVal,
+        descricao: desc,
+        status: 'Pendente',
+        createdAt: new Date().toISOString()
+    };
+
+    __andamentosProcessoAtual.push(novo);
+    renderizarTabelaAndamentos();
+
+    const inputData = document.getElementById('jur-novo-andamento-data');
+    if (inputData) inputData.value = '';
+    const inputDesc = document.getElementById('jur-novo-andamento-desc');
+    if (inputDesc) inputDesc.value = '';
+
+    mostrarMensagem(`Andamento "${tipo}" incluído com sucesso!`, "success");
+}
+
+function removerAndamentoDoProcesso(id) {
+    __andamentosProcessoAtual = __andamentosProcessoAtual.filter(a => a.id !== id);
+    renderizarTabelaAndamentos();
+}
+
+function alternarStatusAndamento(id) {
+    const item = __andamentosProcessoAtual.find(a => a.id === id);
+    if (item) {
+        item.status = item.status === 'Concluído' ? 'Pendente' : 'Concluído';
+        renderizarTabelaAndamentos();
+    }
+}
 
 async function abrirModalProcesso(processoId = null) {
     const modalEl = document.getElementById('processoJuridicoModal');
@@ -772,6 +967,13 @@ async function abrirModalProcesso(processoId = null) {
     if (elDataConc) elDataConc.value = '';
     const elDataInst = document.getElementById('jur-data-instrucao');
     if (elDataInst) elDataInst.value = '';
+
+    const inputAndamentoData = document.getElementById('jur-novo-andamento-data');
+    if (inputAndamentoData) inputAndamentoData.value = '';
+    const inputAndamentoDesc = document.getElementById('jur-novo-andamento-desc');
+    if (inputAndamentoDesc) inputAndamentoDesc.value = '';
+    const selectAndamentoTipo = document.getElementById('jur-novo-andamento-tipo');
+    if (selectAndamentoTipo) selectAndamentoTipo.value = 'Conciliação';
 
     const elAnalisePontos = document.getElementById('jur-analise-pontos');
     if (elAnalisePontos) elAnalisePontos.value = '';
@@ -855,6 +1057,34 @@ async function abrirModalProcesso(processoId = null) {
             document.getElementById('jur-data-conciliacao').value = data.dataConciliacao ? formatarDataParaInput(data.dataConciliacao, true) : '';
             document.getElementById('jur-data-instrucao').value = data.dataInstrucao ? formatarDataParaInput(data.dataInstrucao, true) : '';
 
+            // Carrega e inicializa a lista de andamentos
+            if (data.andamentos && Array.isArray(data.andamentos) && data.andamentos.length > 0) {
+                __andamentosProcessoAtual = JSON.parse(JSON.stringify(data.andamentos));
+            } else {
+                __andamentosProcessoAtual = [];
+                if (data.dataConciliacao) {
+                    __andamentosProcessoAtual.push({
+                        id: 'and_' + Date.now() + '_1',
+                        tipo: 'Conciliação',
+                        data: formatarDataParaInput(data.dataConciliacao, true),
+                        descricao: 'Audiência de Conciliação',
+                        status: 'Pendente',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+                if (data.dataInstrucao) {
+                    __andamentosProcessoAtual.push({
+                        id: 'and_' + Date.now() + '_2',
+                        tipo: 'Instrução',
+                        data: formatarDataParaInput(data.dataInstrucao, true),
+                        descricao: 'Audiência de Instrução',
+                        status: 'Pendente',
+                        createdAt: new Date().toISOString()
+                    });
+                }
+            }
+            renderizarTabelaAndamentos();
+
             // Preenche a nova aba de Análise
             document.getElementById('jur-analise-pontos').value = data.analise?.pontos || '';
             document.getElementById('jur-analise-testemunhas').value = data.analise?.testemunhas || '';
@@ -899,6 +1129,8 @@ async function abrirModalProcesso(processoId = null) {
     } else {
         modalTitle.textContent = 'Novo Processo';
         window.__processo_original = null;
+        __andamentosProcessoAtual = [];
+        renderizarTabelaAndamentos();
         document.getElementById('jur-tipo-acao').value = 'Trabalhista';
         atualizarCampoAutorPorTipoAcao();
         atualizarPedidosDoProcesso();
@@ -958,8 +1190,9 @@ async function salvarProcessoJuridico() {
         status: document.getElementById('jur-status').value,
         descricao: document.getElementById('jur-descricao').value.trim(),
         valorCausa: parseFloat(document.getElementById('jur-valor-causa').value.replace(',', '.')) || 0,
-        dataConciliacao: document.getElementById('jur-data-conciliacao').value ? new Date(document.getElementById('jur-data-conciliacao').value) : null,
-        dataInstrucao: document.getElementById('jur-data-instrucao').value ? new Date(document.getElementById('jur-data-instrucao').value) : null,
+        andamentos: __andamentosProcessoAtual,
+        dataConciliacao: __andamentosProcessoAtual.find(a => a.tipo === 'Conciliação')?.data ? new Date(__andamentosProcessoAtual.find(a => a.tipo === 'Conciliação').data) : (document.getElementById('jur-data-conciliacao').value ? new Date(document.getElementById('jur-data-conciliacao').value) : null),
+        dataInstrucao: __andamentosProcessoAtual.find(a => a.tipo === 'Instrução')?.data ? new Date(__andamentosProcessoAtual.find(a => a.tipo === 'Instrução').data) : (document.getElementById('jur-data-instrucao').value ? new Date(document.getElementById('jur-data-instrucao').value) : null),
         pedidos: pedidos,
         riscoGeral: riscoGeral,
         analise: {
@@ -1085,6 +1318,15 @@ async function syncAgendaJuridica(processoId, dadosProcesso) {
         await syncEvento('Audiência Conciliação', dadosProcesso.dataConciliacao);
         await syncEvento('Audiência Instrução', dadosProcesso.dataInstrucao);
         
+        if (dadosProcesso.andamentos && Array.isArray(dadosProcesso.andamentos)) {
+            for (const a of dadosProcesso.andamentos) {
+                if (a.tipo !== 'Conciliação' && a.tipo !== 'Instrução' && a.data && a.status !== 'Concluído') {
+                    const dt = converterParaDate(a.data);
+                    if (dt) await syncEvento(a.tipo, dt);
+                }
+            }
+        }
+        
     } catch (error) {
         console.error("Erro ao sincronizar com agenda:", error);
     }
@@ -1123,6 +1365,13 @@ function gerarLogDeAlteracoes(dadosAntigos, dadosNovos) {
         if (tAntiga !== tNova) {
             alteracoes.push(`${camposData[campo]} alterada.`);
         }
+    }
+
+    // Compara andamentos
+    const antAnd = (dadosAntigos.andamentos || []).length;
+    const novAnd = (dadosNovos.andamentos || []).length;
+    if (antAnd !== novAnd || JSON.stringify(dadosAntigos.andamentos) !== JSON.stringify(dadosNovos.andamentos)) {
+        alteracoes.push(`Andamentos/Prazos atualizados (${novAnd} registro(s)).`);
     }
 
     // Compara pedidos (uma forma simplificada, apenas detecta se houve mudança)
@@ -1552,6 +1801,27 @@ async function visualizarProcessoCompacto(processoId) {
                     <p class="fw-bold mb-0">${proc.dataInstrucao ? formatarDataHoraBR(proc.dataInstrucao) : '<span class="text-muted fw-normal">Não agendada</span>'}</p>
                 </div>
             </div>
+            ${proc.andamentos && proc.andamentos.length > 0 ? `
+                <div class="mb-3">
+                    <h6 class="fw-bold text-dark mb-2"><i class="fas fa-tasks text-primary me-2"></i>Andamentos e Prazos (${proc.andamentos.length})</h6>
+                    <div class="list-group list-group-flush border rounded">
+                        ${proc.andamentos.map(a => {
+                            const conf = obterConfigAndamento(a.tipo);
+                            const concluido = a.status === 'Concluído';
+                            return `
+                                <div class="list-group-item d-flex justify-content-between align-items-center py-2 ${concluido ? 'bg-light text-muted' : ''}">
+                                    <div>
+                                        <span class="badge ${conf.badgeClass}" style="${conf.style || ''}"><i class="${conf.icon} me-1"></i>${a.tipo}</span>
+                                        <span class="ms-2 small ${concluido ? 'text-decoration-line-through text-muted' : 'fw-bold'}">${formatarDataHoraBR(a.data)}</span>
+                                        ${a.descricao ? `<small class="text-muted d-block ms-1">&bull; ${a.descricao}</small>` : ''}
+                                    </div>
+                                    <span class="badge ${concluido ? 'bg-success' : 'bg-warning text-dark'}">${a.status || 'Pendente'}</span>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </div>
+            ` : ''}
             <hr>
             <h6>Objeto da Ação</h6>
             <p>${proc.descricao || 'Não informado'}</p>
@@ -1631,3 +1901,8 @@ window.imprimirAnaliseRisco = imprimirAnaliseRisco;
 window.converterParaDate = converterParaDate;
 window.formatarDataHoraBR = formatarDataHoraBR;
 window.formatarPrazoAudienciaTabela = formatarPrazoAudienciaTabela;
+window.obterConfigAndamento = obterConfigAndamento;
+window.renderizarTabelaAndamentos = renderizarTabelaAndamentos;
+window.adicionarAndamentoAoProcesso = adicionarAndamentoAoProcesso;
+window.removerAndamentoDoProcesso = removerAndamentoDoProcesso;
+window.alternarStatusAndamento = alternarStatusAndamento;

@@ -65,6 +65,11 @@ async function inicializarDashboardJuridico() {
             verificarData(p.dataAudiencia);
             verificarData(p.dataConciliacao);
             verificarData(p.dataInstrucao);
+            if (p.andamentos && Array.isArray(p.andamentos)) {
+                p.andamentos.forEach(a => {
+                    if (a.status !== 'Concluído') verificarData(a.data);
+                });
+            }
             
             if (temAudiencia) audienciasMes++;
             
