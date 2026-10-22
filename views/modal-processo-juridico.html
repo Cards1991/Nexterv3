@@ -168,27 +168,108 @@
                         <input type="hidden" id="jur-data-instrucao">
                     </div>
 
-                    <!-- Aba Análise de Provas -->
+                    <!-- Aba Análise e Provas -->
                     <div class="tab-pane fade" id="tab-processo-analise" role="tabpanel">
-                        <div class="d-flex justify-content-between align-items-center mt-3 mb-2 flex-wrap gap-2">
-                            <p class="text-muted mb-0 small">Registre a análise prévia das provas da empresa. Essas informações são processadas pelo Jarvis para avaliar o risco real.</p>
-                            <button type="button" class="btn btn-primary btn-sm shadow-sm" onclick="solicitarAnaliseJarvisRapida()">
+                        <div class="d-flex justify-content-between align-items-center mt-3 mb-3 flex-wrap gap-2">
+                            <div>
+                                <h6 class="fw-bold text-dark mb-0"><i class="fas fa-file-contract text-primary me-2"></i>Análise Estratégica, Defesa e Perícia</h6>
+                                <small class="text-muted">Informe os fatos sob a ótica da empresa, linha de defesa, contestação e conclusões periciais.</small>
+                            </div>
+                            <button type="button" class="btn btn-outline-primary btn-sm shadow-sm" onclick="solicitarAnaliseJarvisRapida()">
                                 <i class="fas fa-robot me-1"></i> Gerar Parecer com Jarvis
                             </button>
                         </div>
-                        <div class="row g-3">
-                            <div class="col-12"><label class="form-label">Análise dos Controles de Ponto</label>
-                                <textarea class="form-control" id="jur-analise-pontos" rows="3"
-                                    placeholder="Ex: Controles de ponto britânicos, sem assinatura, com rasuras..."></textarea>
+
+                        <!-- 1. Breve Análise (Histórico) por parte da Empresa -->
+                        <div class="card border-0 bg-light p-3 mb-3 shadow-sm rounded-3">
+                            <label class="form-label fw-bold text-dark mb-1">
+                                <i class="fas fa-building text-primary me-2"></i>Breve Análise (Histórico) por parte da Empresa
+                            </label>
+                            <small class="text-muted d-block mb-2">Relate a cronologia dos fatos, contexto da contratação/desligamento e esclarecimentos institucionais.</small>
+                            <textarea class="form-control" id="jur-analise-historico-empresa" rows="3"
+                                placeholder="Ex: O colaborador exerceu as funções de operador no setor de montagem. Cumpria jornada regular com registro biométrico. O desligamento ocorreu sem justa causa com quitação integral de todas as verbas rescisórias no prazo legal..."></textarea>
+                        </div>
+
+                        <!-- 2. Defesa e Contestação (Lado a Lado) -->
+                        <div class="row g-3 mb-3">
+                            <!-- Defesa -->
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light p-3 h-100 shadow-sm rounded-3">
+                                    <label class="form-label fw-bold text-dark mb-1">
+                                        <i class="fas fa-shield-alt text-success me-2"></i>Defesa (Teses e Estratégia Jurídica)
+                                    </label>
+                                    <small class="text-muted d-block mb-2">Principais teses de mérito, preliminares, prescrição e jurisprudência aplicável.</small>
+                                    <textarea class="form-control" id="jur-analise-defesa" rows="4"
+                                        placeholder="Ex: Tese de inexistência de horas extras habituais face ao acordo de compensação válido. Impugnação dos pedidos com base na Súmula 338/TST e comprovação documental regular..."></textarea>
+                                </div>
                             </div>
-                            <div class="col-12"><label class="form-label">Análise das Testemunhas</label>
-                                <textarea class="form-control" id="jur-analise-testemunhas" rows="3"
-                                    placeholder="Ex: Testemunha da empresa é o líder direto, testemunha do reclamante parece instruída..."></textarea>
+
+                            <!-- Contestação -->
+                            <div class="col-md-6">
+                                <div class="card border-0 bg-light p-3 h-100 shadow-sm rounded-3">
+                                    <label class="form-label fw-bold text-dark mb-1">
+                                        <i class="fas fa-file-signature text-info me-2"></i>Contestação (Pontos Principais & Impugnações)
+                                    </label>
+                                    <small class="text-muted d-block mb-2">Resumo da contestação protocolada, impugnação aos pedidos e documentos anexados.</small>
+                                    <textarea class="form-control" id="jur-analise-contestacao" rows="4"
+                                        placeholder="Ex: Contestação protocolada com impugnação aos pleitos de rescisão indireta e danos morais. Juntados holerites e comprovantes de quitação bancária tempestivos..."></textarea>
+                                </div>
                             </div>
-                            <div class="col-12"><label class="form-label">Análise de Documentos (E-mails, Contratos,
-                                    etc.)</label>
-                                <textarea class="form-control" id="jur-analise-documentos" rows="3"
-                                    placeholder="Ex: E-mails indicam jornada extraordinária não registrada, contrato de trabalho sem cláusula de confidencialidade..."></textarea>
+                        </div>
+
+                        <!-- 3. Em caso de Perícia: Parecer Técnico do Perito -->
+                        <div class="card border-0 shadow-sm rounded-3 mb-3" style="background-color: #fffdf5; border-left: 4px solid #f59e0b !important;">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="jur-check-pericia" onchange="toggleSecaoPericia()">
+                                        <label class="form-check-label fw-bold text-dark" for="jur-check-pericia" style="cursor: pointer;">
+                                            <i class="fas fa-microscope text-warning me-1"></i> Este processo envolve Perícia Técnica? (Médica / Insalubridade / Periculosidade / Ergonômica)
+                                        </label>
+                                    </div>
+                                    <span class="badge bg-warning bg-opacity-25 text-dark border border-warning border-opacity-50 small">Opcional / Se houver perícia</span>
+                                </div>
+
+                                <div id="container-parecer-perito" class="mt-3" style="display: none;">
+                                    <label class="form-label fw-bold text-dark mb-1">
+                                        <i class="fas fa-user-md text-danger me-2"></i>Parecer Técnico do Perito (Laudo Pericial)
+                                    </label>
+                                    <small class="text-muted d-block mb-2">Informe a conclusão do perito judicial, quesitos essenciais respondidos, eventual grau apurado e manifestação técnica.</small>
+                                    <textarea class="form-control border-warning" id="jur-analise-parecer-perito" rows="3"
+                                        placeholder="Ex: Laudo pericial médico concluiu pela inexistência de nexo causal entre a patologia alegada e as atividades exercidas na empresa. Perito confirmou ergonomia adequada do posto e EPIs em conformidade com as NRs..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 4. Seção Complementar: Provas Adicionais (Ponto, Testemunhas, Documentos) -->
+                        <div class="accordion border-0 shadow-sm rounded-3" id="accordionProvasAdicionais">
+                            <div class="accordion-item border-0 rounded-3">
+                                <h2 class="accordion-header" id="headingProvasAdicionais">
+                                    <button class="accordion-button collapsed py-2 px-3 bg-light text-muted small fw-semibold rounded-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseProvasAdicionais">
+                                        <i class="fas fa-folder-open text-secondary me-2"></i> Detalhes Probatórios Complementares (Ponto, Testemunhas e Documentos)
+                                    </button>
+                                </h2>
+                                <div id="collapseProvasAdicionais" class="accordion-collapse collapse" data-bs-parent="#accordionProvasAdicionais">
+                                    <div class="accordion-body p-3 bg-white">
+                                        <div class="row g-3">
+                                            <div class="col-12">
+                                                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-clock text-info me-1"></i> Análise dos Controles de Ponto</label>
+                                                <textarea class="form-control form-control-sm" id="jur-analise-pontos" rows="2"
+                                                    placeholder="Ex: Controles de ponto britânicos, sem assinatura, com rasuras..."></textarea>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-users text-warning me-1"></i> Análise das Testemunhas</label>
+                                                <textarea class="form-control form-control-sm" id="jur-analise-testemunhas" rows="2"
+                                                    placeholder="Ex: Testemunha da empresa é o líder direto, testemunha do reclamante parece instruída..."></textarea>
+                                            </div>
+                                            <div class="col-12">
+                                                <label class="form-label small fw-bold text-muted mb-1"><i class="fas fa-file-contract text-success me-1"></i> Análise de Documentos (E-mails, Contratos, etc.)</label>
+                                                <textarea class="form-control form-control-sm" id="jur-analise-documentos" rows="2"
+                                                    placeholder="Ex: E-mails indicam jornada extraordinária não registrada, contrato de trabalho sem cláusula de confidencialidade..."></textarea>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

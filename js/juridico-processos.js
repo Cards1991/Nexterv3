@@ -932,6 +932,14 @@ function adicionarAndamentoAoProcesso() {
     __andamentosProcessoAtual.push(novo);
     renderizarTabelaAndamentos();
 
+    if (tipo === 'Perícia') {
+        const chk = document.getElementById('jur-check-pericia');
+        if (chk && !chk.checked) {
+            chk.checked = true;
+            toggleSecaoPericia();
+        }
+    }
+
     const inputData = document.getElementById('jur-novo-andamento-data');
     if (inputData) inputData.value = '';
     const inputDesc = document.getElementById('jur-novo-andamento-desc');
@@ -950,6 +958,18 @@ function alternarStatusAndamento(id) {
     if (item) {
         item.status = item.status === 'Concluído' ? 'Pendente' : 'Concluído';
         renderizarTabelaAndamentos();
+    }
+}
+
+function toggleSecaoPericia() {
+    const chk = document.getElementById('jur-check-pericia');
+    const container = document.getElementById('container-parecer-perito');
+    if (!container) return;
+    if (chk && chk.checked) {
+        container.style.display = 'block';
+        document.getElementById('jur-analise-parecer-perito')?.focus();
+    } else {
+        container.style.display = 'none';
     }
 }
 
@@ -974,6 +994,19 @@ async function abrirModalProcesso(processoId = null) {
     if (inputAndamentoDesc) inputAndamentoDesc.value = '';
     const selectAndamentoTipo = document.getElementById('jur-novo-andamento-tipo');
     if (selectAndamentoTipo) selectAndamentoTipo.value = 'Conciliação';
+
+    const elHistEmp = document.getElementById('jur-analise-historico-empresa');
+    if (elHistEmp) elHistEmp.value = '';
+    const elDef = document.getElementById('jur-analise-defesa');
+    if (elDef) elDef.value = '';
+    const elCont = document.getElementById('jur-analise-contestacao');
+    if (elCont) elCont.value = '';
+    const elChkPer = document.getElementById('jur-check-pericia');
+    if (elChkPer) elChkPer.checked = false;
+    const elParPer = document.getElementById('jur-analise-parecer-perito');
+    if (elParPer) elParPer.value = '';
+    const containerPerito = document.getElementById('container-parecer-perito');
+    if (containerPerito) containerPerito.style.display = 'none';
 
     const elAnalisePontos = document.getElementById('jur-analise-pontos');
     if (elAnalisePontos) elAnalisePontos.value = '';
@@ -1085,10 +1118,27 @@ async function abrirModalProcesso(processoId = null) {
             }
             renderizarTabelaAndamentos();
 
-            // Preenche a nova aba de Análise
-            document.getElementById('jur-analise-pontos').value = data.analise?.pontos || '';
-            document.getElementById('jur-analise-testemunhas').value = data.analise?.testemunhas || '';
-            document.getElementById('jur-analise-documentos').value = data.analise?.documentos || '';
+            // Preenche a aba de Análise Estratégica, Defesa e Perícia
+            const inputHistEmp = document.getElementById('jur-analise-historico-empresa');
+            if (inputHistEmp) inputHistEmp.value = data.analise?.historicoEmpresa || data.analise?.historico || '';
+            const inputDefesa = document.getElementById('jur-analise-defesa');
+            if (inputDefesa) inputDefesa.value = data.analise?.defesa || '';
+            const inputContest = document.getElementById('jur-analise-contestacao');
+            if (inputContest) inputContest.value = data.analise?.contestacao || '';
+
+            const temPericia = !!(data.analise?.houvePericia || (data.analise?.parecerPerito && data.analise.parecerPerito.trim() !== '') || (__andamentosProcessoAtual && __andamentosProcessoAtual.some(a => a.tipo === 'Perícia')));
+            const chkPericia = document.getElementById('jur-check-pericia');
+            if (chkPericia) chkPericia.checked = temPericia;
+            const boxPericia = document.getElementById('container-parecer-perito');
+            if (boxPericia) boxPericia.style.display = temPericia ? 'block' : 'none';
+
+            const inputParecerPerito = document.getElementById('jur-analise-parecer-perito');
+            if (inputParecerPerito) inputParecerPerito.value = data.analise?.parecerPerito || '';
+
+            // Provas complementares
+            if (document.getElementById('jur-analise-pontos')) document.getElementById('jur-analise-pontos').value = data.analise?.pontos || '';
+            if (document.getElementById('jur-analise-testemunhas')) document.getElementById('jur-analise-testemunhas').value = data.analise?.testemunhas || '';
+            if (document.getElementById('jur-analise-documentos')) document.getElementById('jur-analise-documentos').value = data.analise?.documentos || '';
             
             // Preenche a aba Encerramento
             document.getElementById('jur-resultado-processo').value = data.encerramento?.resultado || '';
@@ -1196,9 +1246,14 @@ async function salvarProcessoJuridico() {
         pedidos: pedidos,
         riscoGeral: riscoGeral,
         analise: {
-            pontos: document.getElementById('jur-analise-pontos').value.trim(),
-            testemunhas: document.getElementById('jur-analise-testemunhas').value.trim(),
-            documentos: document.getElementById('jur-analise-documentos').value.trim()
+            historicoEmpresa: document.getElementById('jur-analise-historico-empresa')?.value.trim() || '',
+            defesa: document.getElementById('jur-analise-defesa')?.value.trim() || '',
+            contestacao: document.getElementById('jur-analise-contestacao')?.value.trim() || '',
+            houvePericia: document.getElementById('jur-check-pericia')?.checked || false,
+            parecerPerito: document.getElementById('jur-analise-parecer-perito')?.value.trim() || '',
+            pontos: document.getElementById('jur-analise-pontos')?.value.trim() || '',
+            testemunhas: document.getElementById('jur-analise-testemunhas')?.value.trim() || '',
+            documentos: document.getElementById('jur-analise-documentos')?.value.trim() || ''
         },
         encerramento: {
             resultado: document.getElementById('jur-resultado-processo').value,
@@ -1381,6 +1436,9 @@ function gerarLogDeAlteracoes(dadosAntigos, dadosNovos) {
         alteracoes.push('Pedidos da ação foram alterados.');
     }
     
+    if (JSON.stringify(dadosAntigos.analise || {}) !== JSON.stringify(dadosNovos.analise || {})) {
+        alteracoes.push('Análise probatória / defesa / laudo pericial atualizados.');
+    }
     if (dadosAntigos.status !== dadosNovos.status) {
         alteracoes.push(`Status alterado de "${dadosAntigos.status}" para "${dadosNovos.status}".`);
     }
@@ -1500,6 +1558,11 @@ function solicitarAnaliseJarvisRapida() {
         valorCausa: parseFloat(document.getElementById('jur-valor-causa')?.value) || 0,
         pedidos: pedidos,
         analise: {
+            historicoEmpresa: document.getElementById('jur-analise-historico-empresa')?.value || '',
+            defesa: document.getElementById('jur-analise-defesa')?.value || '',
+            contestacao: document.getElementById('jur-analise-contestacao')?.value || '',
+            houvePericia: document.getElementById('jur-check-pericia')?.checked || false,
+            parecerPerito: document.getElementById('jur-analise-parecer-perito')?.value || '',
             pontos: document.getElementById('jur-analise-pontos')?.value || '',
             testemunhas: document.getElementById('jur-analise-testemunhas')?.value || '',
             documentos: document.getElementById('jur-analise-documentos')?.value || ''
@@ -1551,7 +1614,11 @@ DADOS DO PROCESSO:
 PEDIDOS / VERBAS RECLAMADAS:
 ${pedidos.map(p => `- ${p.pedido}: R$ ${(p.valor || 0).toFixed(2)} | Risco da Empresa: ${p.risco} | Prova da Empresa: ${p.avaliacaoProva}`).join('\n')}
 
-SITUAÇÃO DAS PROVAS:
+SITUAÇÃO DAS PROVAS & ESTRATÉGIA DEFENSIVA:
+- Breve Análise / Histórico da Empresa: ${dadosProcesso.analise?.historicoEmpresa || dadosProcesso.analise?.historico || 'Nenhum histórico informado'}
+- Linha de Defesa da Empresa: ${dadosProcesso.analise?.defesa || 'Não informada'}
+- Contestação / Impugnações: ${dadosProcesso.analise?.contestacao || 'Não informada'}
+- Perícia Técnica / Parecer do Perito: ${dadosProcesso.analise?.houvePericia ? (dadosProcesso.analise?.parecerPerito || 'Perícia em andamento / laudo pendente') : 'Sem perícia registrada'}
 - Controles de Ponto: ${dadosProcesso.analise?.pontos || 'Nenhuma ressalva anotada'}
 - Testemunhas: ${dadosProcesso.analise?.testemunhas || 'Nenhuma ressalva anotada'}
 - Documentos e Recibos: ${dadosProcesso.analise?.documentos || 'Nenhuma ressalva anotada'}
@@ -1715,26 +1782,32 @@ ESTRUTURE SUA RESPOSTA EM:
             </div>
         </div>
 
-        <!-- Diagnóstico das Provas Cadastradas -->
+        <!-- Diagnóstico das Provas, Defesa e Perícia -->
         <div class="card border-0 shadow-sm p-4 rounded-3 bg-white mb-3">
-            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-folder-open text-primary me-2"></i>Status das Provas da Empresa</h6>
+            <h6 class="fw-bold text-dark mb-3"><i class="fas fa-balance-scale text-primary me-2"></i>Estratégia Defensiva & Provas Registradas</h6>
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="p-3 border rounded-3 bg-light h-100">
-                        <strong class="text-dark small d-block mb-1"><i class="fas fa-clock text-info me-1"></i> Controles de Ponto:</strong>
-                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.pontos ? dadosProcesso.analise.pontos : 'Não informado pelo advogado/RH.'}</p>
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-building text-primary me-1"></i> Histórico da Empresa:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.historicoEmpresa || dadosProcesso.analise?.historico || 'Não informado pelo RH.'}</p>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="p-3 border rounded-3 bg-light h-100">
-                        <strong class="text-dark small d-block mb-1"><i class="fas fa-users text-warning me-1"></i> Testemunhas:</strong>
-                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.testemunhas ? dadosProcesso.analise.testemunhas : 'Não informado pelo advogado/RH.'}</p>
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-shield-alt text-success me-1"></i> Linha de Defesa:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.defesa || 'Não informada pelo advogado.'}</p>
                     </div>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-6">
                     <div class="p-3 border rounded-3 bg-light h-100">
-                        <strong class="text-dark small d-block mb-1"><i class="fas fa-file-contract text-success me-1"></i> Documentos & Recibos:</strong>
-                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.documentos ? dadosProcesso.analise.documentos : 'Não informado pelo advogado/RH.'}</p>
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-file-signature text-info me-1"></i> Contestação:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.contestacao || 'Não informada pelo advogado.'}</p>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="p-3 border rounded-3 h-100 ${dadosProcesso.analise?.houvePericia || dadosProcesso.analise?.parecerPerito ? 'bg-warning bg-opacity-10 border border-warning border-opacity-50' : 'bg-light'}">
+                        <strong class="text-dark small d-block mb-1"><i class="fas fa-user-md text-danger me-1"></i> Parecer Técnico do Perito:</strong>
+                        <p class="mb-0 text-muted small">${dadosProcesso.analise?.parecerPerito ? dadosProcesso.analise.parecerPerito : (dadosProcesso.analise?.houvePericia ? 'Perícia indicada, aguardando laudo pericial.' : 'Não houve perícia registrada neste processo.')}</p>
                     </div>
                 </div>
             </div>
@@ -1843,6 +1916,17 @@ async function visualizarProcessoCompacto(processoId) {
 
         corpoModal += `<h6 class="mt-3">Valor Total da Causa</h6><p class="fs-5 fw-bold text-success">R$ ${(proc.valorCausa || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>`;
 
+        if (proc.analise && (proc.analise.historicoEmpresa || proc.analise.historico || proc.analise.defesa || proc.analise.contestacao || proc.analise.parecerPerito)) {
+            corpoModal += `
+                <hr>
+                <h6 class="fw-bold text-dark mb-2"><i class="fas fa-balance-scale text-primary me-2"></i>Análise Estratégica, Defesa e Perícia</h6>
+                ${proc.analise.historicoEmpresa || proc.analise.historico ? `<div class="mb-2"><strong class="small text-muted d-block"><i class="fas fa-building text-primary me-1"></i> Breve Análise / Histórico da Empresa:</strong><p class="small mb-2 bg-light p-2 rounded">${proc.analise.historicoEmpresa || proc.analise.historico}</p></div>` : ''}
+                ${proc.analise.defesa ? `<div class="mb-2"><strong class="small text-muted d-block"><i class="fas fa-shield-alt text-success me-1"></i> Defesa:</strong><p class="small mb-2 bg-light p-2 rounded">${proc.analise.defesa}</p></div>` : ''}
+                ${proc.analise.contestacao ? `<div class="mb-2"><strong class="small text-muted d-block"><i class="fas fa-file-signature text-info me-1"></i> Contestação:</strong><p class="small mb-2 bg-light p-2 rounded">${proc.analise.contestacao}</p></div>` : ''}
+                ${proc.analise.parecerPerito ? `<div class="mb-2"><strong class="small text-danger d-block"><i class="fas fa-user-md me-1"></i> Parecer Técnico do Perito:</strong><p class="small mb-2 bg-warning bg-opacity-10 border border-warning border-opacity-25 p-2 rounded">${proc.analise.parecerPerito}</p></div>` : ''}
+            `;
+        }
+
         abrirModalGenerico(`Resumo do Processo: ${proc.numeroProcesso}`, corpoModal);
 
     } catch (error) {
@@ -1906,3 +1990,4 @@ window.renderizarTabelaAndamentos = renderizarTabelaAndamentos;
 window.adicionarAndamentoAoProcesso = adicionarAndamentoAoProcesso;
 window.removerAndamentoDoProcesso = removerAndamentoDoProcesso;
 window.alternarStatusAndamento = alternarStatusAndamento;
+window.toggleSecaoPericia = toggleSecaoPericia;
