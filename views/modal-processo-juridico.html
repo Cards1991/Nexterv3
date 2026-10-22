@@ -17,8 +17,8 @@
                     <li class="nav-item" role="presentation"><button class="nav-link" id="processo-analise-tab"
                             data-bs-toggle="tab" data-bs-target="#tab-processo-analise" type="button">Provas e
                             Análise</button></li>
-                    <li class="nav-item" role="presentation" id="nav-item-encerramento" style="display: none;"><button class="nav-link text-success fw-bold" id="processo-encerramento-tab"
-                            data-bs-toggle="tab" data-bs-target="#tab-processo-encerramento" type="button"><i class="fas fa-flag-checkered me-1"></i> Encerramento</button></li>
+                    <li class="nav-item" role="presentation" id="nav-item-encerramento"><button class="nav-link text-success fw-bold" id="processo-encerramento-tab"
+                            data-bs-toggle="tab" data-bs-target="#tab-processo-encerramento" type="button"><i class="fas fa-flag-checkered me-1"></i> Encerramento <span id="badge-tab-encerramento" class="badge bg-secondary bg-opacity-50 text-dark ms-1" style="font-size: 0.65rem;">Pendente</span></button></li>
                     <li class="nav-item" role="presentation"><button class="nav-link" id="processo-historico-tab"
                             data-bs-toggle="tab" data-bs-target="#tab-processo-historico"
                             type="button">Histórico</button></li>
@@ -60,10 +60,10 @@
                                 <div class="col-md-6">
                                     <label class="form-label">Status do Processo</label>
                                     <select class="form-select" id="jur-status" required>
-                                        <option>Ativo</option>
-                                        <option>Suspenso</option>
-                                        <option>Arquivado</option>
-                                        <option>Finalizado</option>
+                                        <option value="Ativo">Ativo</option>
+                                        <option value="Suspenso">Suspenso</option>
+                                        <option value="Arquivado">Arquivado</option>
+                                        <option value="Finalizado">Encerrado / Finalizado</option>
                                     </select>
                                 </div>
                                 <div class="col-12"><label class="form-label">Objeto da Ação /
@@ -274,26 +274,35 @@
                         </div>
                     </div>
 
-                    <!-- Aba Encerramento (Exibida Apenas Quando Status = Finalizado) -->
+                    <!-- Aba Encerramento -->
                     <div class="tab-pane fade" id="tab-processo-encerramento" role="tabpanel">
-                        <div class="alert alert-success mt-3" role="alert">
-                            <h6 class="alert-heading"><i class="fas fa-check-circle me-1"></i> Dados de Encerramento</h6>
-                            <p class="mb-0 text-muted small">Preencha os valores acordados ou sentenciados para calcular o impacto financeiro.</p>
+                        <div class="card border-0 bg-success bg-opacity-10 p-3 mt-3 mb-3 rounded-3 shadow-sm">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div>
+                                    <h6 class="text-success fw-bold mb-1">
+                                        <i class="fas fa-flag-checkered me-2"></i>Status do Processo: <span id="label-status-encerramento" class="badge bg-primary">Ativo (Em Andamento)</span>
+                                    </h6>
+                                    <p class="mb-0 text-muted small">Defina o resultado final para encerrar este processo e registrar o impacto financeiro.</p>
+                                </div>
+                                <button type="button" class="btn btn-sm btn-success shadow-sm" onclick="marcarComoEncerrado()">
+                                    <i class="fas fa-check-circle me-1"></i> Marcar como Encerrado
+                                </button>
+                            </div>
                         </div>
                         <div class="row g-3">
                             <div class="col-md-12">
-                                <label class="form-label fw-bold">Resultado do Processo</label>
-                                <select class="form-select border-success" id="jur-resultado-processo">
-                                    <option value="">Selecione o resultado...</option>
-                                    <option value="Acordo">Acordo entre as partes</option>
-                                    <option value="Vitoria">Vitória da Empresa (Improcedente)</option>
-                                    <option value="Derrota">Derrota da Empresa (Procedente)</option>
+                                <label class="form-label fw-bold">Resultado do Processo <span class="text-danger">*</span></label>
+                                <select class="form-select border-success" id="jur-resultado-processo" onchange="toggleValoresEncerramento(); sincronizarStatusEncerramento();">
+                                    <option value="">Selecione o resultado do encerramento...</option>
+                                    <option value="Acordo">Acordo entre as partes (Homologado)</option>
+                                    <option value="Vitoria">Vitória da Empresa (Totalmente Improcedente)</option>
+                                    <option value="Derrota">Derrota da Empresa (Procedente / Procedente em Parte)</option>
                                 </select>
                             </div>
                             
                             <!-- Bloco de Valores (Geralmente Acordo) -->
                             <div class="col-12" id="bloco-valores-encerramento" style="display: none;">
-                                <div class="card bg-light border-0">
+                                <div class="card bg-light border-0 shadow-sm rounded-3">
                                     <div class="card-body row g-3">
                                         <div class="col-md-4">
                                             <label class="form-label text-danger small fw-bold">1. Valor Pedido (Proposta Autora)</label>
@@ -321,8 +330,8 @@
                             </div>
                             
                             <div class="col-12">
-                                <label class="form-label">Observações Finais do Encerramento</label>
-                                <textarea class="form-control" id="jur-obs-encerramento" rows="2" placeholder="Detalhes sobre a sentença ou condições do acordo..."></textarea>
+                                <label class="form-label fw-bold">Observações Finais do Encerramento</label>
+                                <textarea class="form-control" id="jur-obs-encerramento" rows="2" placeholder="Detalhes sobre a sentença, condições de pagamento do acordo ou motivos da baixa..."></textarea>
                             </div>
                         </div>
                     </div>
@@ -335,10 +344,14 @@
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                <button type="button" class="btn btn-primary" onclick="salvarProcessoJuridico()">Salvar
-                    Processo</button>
+            <div class="modal-footer d-flex justify-content-between align-items-center">
+                <button type="button" class="btn btn-outline-success" id="btn-atalho-encerrar" onclick="irParaAbaEncerramento()">
+                    <i class="fas fa-flag-checkered me-1"></i> Encerrar Processo
+                </button>
+                <div>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="salvarProcessoJuridico()">Salvar Processo</button>
+                </div>
             </div>
         </div>
     </div>

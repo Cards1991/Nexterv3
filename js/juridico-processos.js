@@ -282,13 +282,85 @@ function atualizarCampoAutorPorTipoAcao() {
 }
 
 function toggleAbaEncerramento() {
-    const status = document.getElementById('jur-status').value;
-    const navItem = document.getElementById('nav-item-encerramento');
+    const status = document.getElementById('jur-status')?.value;
+    const badge = document.getElementById('badge-tab-encerramento');
+    const labelStatus = document.getElementById('label-status-encerramento');
+    const btnAtalho = document.getElementById('btn-atalho-encerrar');
+
     if (status === 'Finalizado') {
-        navItem.style.display = 'block';
+        if (badge) {
+            badge.className = 'badge bg-success ms-1';
+            badge.textContent = 'Encerrado';
+        }
+        if (labelStatus) {
+            labelStatus.className = 'badge bg-success';
+            labelStatus.textContent = 'Encerrado / Finalizado';
+        }
+        if (btnAtalho) {
+            btnAtalho.className = 'btn btn-success';
+            btnAtalho.innerHTML = '<i class="fas fa-check-circle me-1"></i> Processo Encerrado';
+        }
     } else {
-        navItem.style.display = 'none';
+        if (badge) {
+            badge.className = 'badge bg-secondary bg-opacity-50 text-dark ms-1';
+            badge.textContent = 'Pendente';
+        }
+        if (labelStatus) {
+            labelStatus.className = 'badge bg-primary';
+            labelStatus.textContent = status || 'Ativo (Em Andamento)';
+        }
+        if (btnAtalho) {
+            btnAtalho.className = 'btn btn-outline-success';
+            btnAtalho.innerHTML = '<i class="fas fa-flag-checkered me-1"></i> Encerrar Processo';
+        }
     }
+}
+
+function sincronizarStatusEncerramento() {
+    const resultado = document.getElementById('jur-resultado-processo')?.value;
+    if (resultado) {
+        const selectStatus = document.getElementById('jur-status');
+        if (selectStatus && selectStatus.value !== 'Finalizado') {
+            selectStatus.value = 'Finalizado';
+            toggleAbaEncerramento();
+        }
+    }
+}
+
+function marcarComoEncerrado() {
+    const selectStatus = document.getElementById('jur-status');
+    if (selectStatus) {
+        selectStatus.value = 'Finalizado';
+        toggleAbaEncerramento();
+        mostrarMensagem("Status alterado para Encerrado/Finalizado.", "info");
+    }
+    const selectResultado = document.getElementById('jur-resultado-processo');
+    if (selectResultado && !selectResultado.value) {
+        selectResultado.focus();
+    }
+}
+
+function irParaAbaEncerramento() {
+    const tabBtn = document.getElementById('processo-encerramento-tab');
+    if (tabBtn) {
+        new bootstrap.Tab(tabBtn).show();
+    }
+    const selectStatus = document.getElementById('jur-status');
+    if (selectStatus && selectStatus.value !== 'Finalizado') {
+        selectStatus.value = 'Finalizado';
+        toggleAbaEncerramento();
+    }
+    document.getElementById('jur-resultado-processo')?.focus();
+}
+
+async function abrirModalEncerramento(processoId) {
+    await abrirModalProcesso(processoId, 'processo-encerramento-tab');
+    const selectStatus = document.getElementById('jur-status');
+    if (selectStatus && selectStatus.value !== 'Finalizado') {
+        selectStatus.value = 'Finalizado';
+        toggleAbaEncerramento();
+    }
+    document.getElementById('jur-resultado-processo')?.focus();
 }
 
 function toggleValoresEncerramento() {
@@ -665,6 +737,7 @@ async function carregarProcessosJuridicos() {
                     <td class="text-end">
                         <button class="btn btn-sm btn-light border" onclick="visualizarProcessoCompacto('${proc.id}')" title="Visualizar Resumo"><i class="fas fa-eye text-primary"></i></button>
                         <button class="btn btn-sm btn-light border" onclick="abrirModalAnaliseRiscoIA('${proc.id}')" title="Análise de Risco (IA)"><i class="fas fa-brain text-info"></i></button>
+                        ${proc.status !== 'Finalizado' ? `<button class="btn btn-sm btn-light border text-success" onclick="abrirModalEncerramento('${proc.id}')" title="Encerrar Processo"><i class="fas fa-flag-checkered"></i></button>` : ''}
                         <button class="btn btn-sm btn-light border" onclick="abrirModalProcesso('${proc.id}')" title="Editar"><i class="fas fa-edit text-secondary"></i></button>
                         <button class="btn btn-sm btn-light border" onclick="excluirProcessoJuridico('${proc.id}')" title="Excluir"><i class="fas fa-trash text-danger"></i></button>
                     </td>
@@ -973,7 +1046,7 @@ function toggleSecaoPericia() {
     }
 }
 
-async function abrirModalProcesso(processoId = null) {
+async function abrirModalProcesso(processoId = null, abaInicial = 'processo-dados-tab') {
     const modalEl = document.getElementById('processoJuridicoModal');
     const modalTitle = document.getElementById('processoJuridicoModalTitle');
     const form = document.getElementById('form-processo-juridico');
@@ -1190,8 +1263,9 @@ async function abrirModalProcesso(processoId = null) {
     toggleAbaEncerramento();
     toggleValoresEncerramento();
 
-    // Garante que a primeira aba esteja ativa
-    new bootstrap.Tab(document.getElementById('processo-dados-tab')).show();
+    // Garante que a aba indicada esteja ativa
+    const tabEl = document.getElementById(abaInicial) || document.getElementById('processo-dados-tab');
+    if (tabEl) new bootstrap.Tab(tabEl).show();
     const modal = new bootstrap.Modal(modalEl);
     modal.show();
 }
@@ -1228,7 +1302,13 @@ async function salvarProcessoJuridico() {
         ? document.getElementById('jur-funcionario')?.value 
         : document.getElementById('jur-autor-texto')?.value) || '';
 
-    const dados = {
+        const resultadoEncerramento = document.getElementById('jur-resultado-processo')?.value;
+        let statusCalculado = document.getElementById('jur-status').value;
+        if (resultadoEncerramento && statusCalculado !== 'Finalizado') {
+            statusCalculado = 'Finalizado';
+        }
+
+        const dados = {
         numeroProcesso: document.getElementById('jur-numero-processo').value.trim(),
         dataDistribuicao: new Date(document.getElementById('jur-data-distribuicao').value.replace(/-/g, '\/')),
         funcionarioNome: autorNome.trim(),
@@ -1237,7 +1317,7 @@ async function salvarProcessoJuridico() {
         escritorio: document.getElementById('jur-escritorio').value.trim(),
         parteContraria: document.getElementById('jur-escritorio').value.trim(), // Compatibilidade
         tipoAcao: tipoAcao,
-        status: document.getElementById('jur-status').value,
+        status: statusCalculado,
         descricao: document.getElementById('jur-descricao').value.trim(),
         valorCausa: parseFloat(document.getElementById('jur-valor-causa').value.replace(',', '.')) || 0,
         andamentos: __andamentosProcessoAtual,
@@ -1991,3 +2071,7 @@ window.adicionarAndamentoAoProcesso = adicionarAndamentoAoProcesso;
 window.removerAndamentoDoProcesso = removerAndamentoDoProcesso;
 window.alternarStatusAndamento = alternarStatusAndamento;
 window.toggleSecaoPericia = toggleSecaoPericia;
+window.marcarComoEncerrado = marcarComoEncerrado;
+window.irParaAbaEncerramento = irParaAbaEncerramento;
+window.abrirModalEncerramento = abrirModalEncerramento;
+window.sincronizarStatusEncerramento = sincronizarStatusEncerramento;
