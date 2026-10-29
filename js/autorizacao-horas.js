@@ -315,7 +315,9 @@ async function carregarSolicitacoes() {
                 // Adiciona o setor macro
                 data.setorMacro = obterNomeMacroSetor(data.setor);
 
-                const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap);
+                const percentualHE = Number(data.percentualHE || data.overtimeType || 50);
+                data.percentualHE = percentualHE;
+                const valorAtual = await calcularValorEstimado(data.start.toDate(), data.end.toDate(), data.employeeId, salariosMap, percentualHE);
                 
                 // Tratamento robusto para valorOriginalSolicitado (pode vir como string do banco)
                 let valorOriginal = data.valorOriginalSolicitado;
@@ -423,6 +425,7 @@ function renderizarTabela(solicitacoes, container) {
                 <td>${s.setor || 'N/A'}</td>
                 <td>
                     <small>${start.toLocaleDateString('pt-BR')} das ${start.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})} às ${end.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</small>
+                    <span class="badge ${Number(s.percentualHE || s.overtimeType || 50) === 100 ? 'bg-danger' : 'bg-secondary'} ms-1">${Number(s.percentualHE || s.overtimeType || 50)}%</span>
                 </td>
                 <td class="text-end fw-bold">R$ ${s.valorEstimado.toFixed(2).replace('.', ',')}</td>
                 <td class="text-center"><span class="badge ${statusConfig.class}">${statusConfig.text}</span></td>
@@ -471,7 +474,9 @@ async function aprovarSolicitacao(id) {
 
         const salarioBase = parseFloat(funcionario.salario) || 0;
         const valorHora = salarioBase / 220;
-        const taxaHoraExtra = valorHora * 1.5;
+        const percentualHE = Number(solicitacao.percentualHE || solicitacao.overtimeType || 50);
+        const multiplicador = percentualHE === 100 ? 2.0 : 1.5;
+        const taxaHoraExtra = valorHora * multiplicador;
         const valorTotalHoras = totalHorasReais * taxaHoraExtra;
 
         const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
@@ -491,6 +496,8 @@ async function aprovarSolicitacao(id) {
             createdAt: new Date(),
             source: 'solicitacao',
             solicitacaoId: id,
+            overtimeType: percentualHE,
+            percentualHE: percentualHE,
             formaPagamento: solicitacao.formaPagamento || 'por-fora'
         };
 
@@ -650,6 +657,14 @@ async function abrirModalAjuste(id, readOnly = false) {
     const formaPagamentoSelect = getElement('ajuste-forma-pagamento');
     if (formaPagamentoSelect) {
         formaPagamentoSelect.value = data.formaPagamento || 'por-fora';
+        formaPagamentoSelect.disabled = readOnly;
+    }
+
+    // Preenche % da hora extra (50% ou 100%)
+    const percentualSelect = getElement('ajuste-percentual-he');
+    if (percentualSelect) {
+        percentualSelect.value = String(data.percentualHE || data.overtimeType || 50);
+        percentualSelect.disabled = readOnly;
     }
 
     // Adiciona listener para atualizar setor quando mudar o funcionário
@@ -714,13 +729,16 @@ async function salvarAjusteSolicitacao() {
         }
 
         const dadosOriginais = docOriginal.data();
-        const valorEstimado = await calcularValorEstimado(start, end, employeeId);
+        const percentualHE = parseInt(document.getElementById('ajuste-percentual-he')?.value || '50', 10);
+        const valorEstimado = await calcularValorEstimado(start, end, employeeId, null, percentualHE);
         
         const updateData = {
             start: firebase.firestore.Timestamp.fromDate(start),
             end: firebase.firestore.Timestamp.fromDate(end),
             reason: reason,
             formaPagamento: document.getElementById('ajuste-forma-pagamento').value || 'por-fora',
+            percentualHE: percentualHE,
+            overtimeType: percentualHE,
             valorEstimado: valorEstimado, // O valor atualizado/aprovado
             employeeId: employeeId,
             employeeName: employeeName,
@@ -737,6 +755,10 @@ async function salvarAjusteSolicitacao() {
 
         await db.collection('solicitacoes_horas').doc(id).update(updateData);
 
+        if (dadosOriginais.status === 'aprovado') {
+            await reprocessarUmaSolicitacao(id);
+        }
+
         bootstrap.Modal.getInstance(document.getElementById('ajusteSolicitacaoModal')).hide();
         mostrarMensagem("Ajustes salvos com sucesso!", "success");
         // A UI será atualizada automaticamente pelo listener onSnapshot.
@@ -747,7 +769,7 @@ async function salvarAjusteSolicitacao() {
     }
 }
 
-async function calcularValorEstimado(start, end, employeeId, salariosMap = null) {
+async function calcularValorEstimado(start, end, employeeId, salariosMap = null, percentual = 50) {
     try {
         const duracaoMinutos = (end - start) / (1000 * 60);
         if (duracaoMinutos <= 0) {
@@ -771,7 +793,8 @@ async function calcularValorEstimado(start, end, employeeId, salariosMap = null)
         const valorHora = salario / 220;
         const totalHorasReais = duracaoMinutos / 60;
         const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
-        const valorExtra = totalHorasReais * (valorHora * 1.5);
+        const multiplicador = Number(percentual) === 100 ? 2.0 : 1.5;
+        const valorExtra = totalHorasReais * (valorHora * multiplicador);
         const dsr = valorExtra / 6; // DSR simplificado
 
         return parseFloat((valorExtra + dsr).toFixed(2));
@@ -1294,7 +1317,9 @@ async function imprimirHoleritesHE() {
         const valorHora = salario / 220;
         const totalHorasReais = duracaoMinutos / 60;
         const horasFakeDecimais = trueDecimalToFakeDecimal(totalHorasReais);
-        const valorExtra = Number((totalHorasReais * (valorHora * 1.5)).toFixed(2));
+        const percentualHE = Number(s.percentualHE || s.overtimeType || 50);
+        const multiplicadorHE = percentualHE === 100 ? 2.0 : 1.5;
+        const valorExtra = Number((totalHorasReais * (valorHora * multiplicadorHE)).toFixed(2));
         const dsr = Number((valorExtra / 6).toFixed(2));
         const totalItem = Number((valorExtra + dsr).toFixed(2));
 
@@ -1738,7 +1763,8 @@ async function reprocessarUmaSolicitacao(id) {
         const end = s.end.toDate();
         
         // 1. Recalcular valor estimado usando a lógica atualizada
-        const valorEstimado = await calcularValorEstimado(start, end, s.employeeId);
+        const percentualHE = Number(s.percentualHE || s.overtimeType || 50);
+        const valorEstimado = await calcularValorEstimado(start, end, s.employeeId, null, percentualHE);
 
         // 2. Preparar dados de atualização (Reprocessamento)
         const updateData = {
@@ -1779,7 +1805,9 @@ async function reprocessarUmaSolicitacao(id) {
                 
                 const salarioBase = parseFloat(func.salario) || 0;
                 const valorHora = salarioBase / 220;
-                const taxaHoraExtra = valorHora * 1.5;
+                // percentualHE já definido acima no escopo da função
+        const multiplicador = percentualHE === 100 ? 2.0 : 1.5;
+        const taxaHoraExtra = valorHora * multiplicador;
                 const valorTotalHoras = totalHorasReais * taxaHoraExtra;
                 
                 const diasNoMes = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
@@ -1794,6 +1822,8 @@ async function reprocessarUmaSolicitacao(id) {
                     overtimePay: parseFloat(valorTotalHoras.toFixed(2)),
                     dsr: parseFloat(dsr.toFixed(2)),
                     formaPagamento: s.formaPagamento || updateData.formaPagamento,
+                    overtimeType: percentualHE,
+                    percentualHE: percentualHE,
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
             }

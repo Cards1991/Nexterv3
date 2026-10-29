@@ -39,12 +39,21 @@
                         <label class="form-label">Motivo / Observações</label>
                         <textarea id="ajuste-reason" class="form-control" rows="3"></textarea>
                     </div>
-                    <div class="mb-3 mt-3">
-                        <label class="form-label">Forma de Pagamento</label>
-                        <select id="ajuste-forma-pagamento" class="form-select">
-                            <option value="por-fora">Por Fora</option>
-                            <option value="folha">Folha</option>
-                        </select>
+                    <div class="row g-3 mt-1 mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Forma de Pagamento</label>
+                            <select id="ajuste-forma-pagamento" class="form-select">
+                                <option value="por-fora">Por Fora</option>
+                                <option value="folha">Folha</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">% da Hora Extra</label>
+                            <select id="ajuste-percentual-he" class="form-select">
+                                <option value="50">50%</option>
+                                <option value="100">100%</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer"><button type="button" class="btn btn-secondary"

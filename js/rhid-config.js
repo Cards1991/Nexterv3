@@ -563,7 +563,7 @@ async function verificarFaltasHoje() {
         container.classList.remove('d-none');
 
         // Pega todos ativos, afastados ou em férias para montar o relatório completo
-        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO', 'Afastado', 'Férias']).get();
+        const funcSnap = await window.db.collection('funcionarios').where('status', 'in', ['Ativo', 'ATIVO', 'Afastado', 'AFASTADO', 'Férias', 'FERIAS', 'Ferias', 'ferias']).get();
         if (funcSnap.empty) {
             container.innerHTML = '<div class="alert alert-warning mb-0">Nenhum funcionário ativo.</div>';
             return;
@@ -599,6 +599,29 @@ async function verificarFaltasHoje() {
         const d = String(hojeObj.getDate()).padStart(2, '0');
         const hoje = `${y}-${m}-${d}`;
 
+        const parseDateLocal = (val) => {
+            if (!val) return null;
+            if (val.toDate && typeof val.toDate === 'function') {
+                const dt = val.toDate();
+                return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            }
+            if (val instanceof Date) {
+                return new Date(val.getFullYear(), val.getMonth(), val.getDate());
+            }
+            if (typeof val === 'string') {
+                const cleanStr = val.includes('T') ? val.split('T')[0] : val;
+                const parts = cleanStr.split('-');
+                if (parts.length === 3) {
+                    return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+                }
+                const dt = new Date(val);
+                if (!isNaN(dt.getTime())) return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+            }
+            return null;
+        };
+
+        const todayObjClean = new Date(hojeObj.getFullYear(), hojeObj.getMonth(), hojeObj.getDate());
+
         // Busca atestados ativos
         const atestadosSnap = await window.db.collection('atestados').get();
         const mapAtestadosValidos = new Map();
@@ -606,17 +629,34 @@ async function verificarFaltasHoje() {
         atestadosSnap.forEach(adoc => {
             const a = adoc.data();
             if (!a.data_atestado || !a.dias) return;
-            let start = a.data_atestado.toDate ? a.data_atestado.toDate() : new Date(a.data_atestado);
-            // Corrige fuso (considerando que foi salvo em local time ou ajusta)
-            start = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            let start = parseDateLocal(a.data_atestado);
+            if (!start) return;
             
             let end = new Date(start);
             end.setDate(start.getDate() + (parseInt(a.dias, 10) - 1));
             
-            let today = new Date(hojeObj.getFullYear(), hojeObj.getMonth(), hojeObj.getDate());
-            
-            if (today >= start && today <= end) {
-                mapAtestadosValidos.set(a.funcionarioId, a);
+            if (todayObjClean >= start && todayObjClean <= end) {
+                if (a.funcionarioId) mapAtestadosValidos.set(String(a.funcionarioId), a);
+                if (a.cpf) mapAtestadosValidos.set(String(a.cpf).replace(/\D/g, ''), a);
+            }
+        });
+
+        // Busca férias ativas (tendo como base o menu Cálculo de Férias - coleção 'ferias')
+        const feriasSnap = await window.db.collection('ferias').get();
+        const mapFeriasValidas = new Map();
+
+        feriasSnap.forEach(fdoc => {
+            const f = fdoc.data();
+            if (!f.funcionarioId || !f.dataInicio || !f.dataFim) return;
+            if (f.status && f.status.toLowerCase() === 'cancelada') return;
+
+            const start = parseDateLocal(f.dataInicio);
+            const end = parseDateLocal(f.dataFim);
+
+            if (start && end && todayObjClean >= start && todayObjClean <= end) {
+                const info = { id: fdoc.id, ...f };
+                if (f.funcionarioId) mapFeriasValidas.set(String(f.funcionarioId), info);
+                if (f.cpf) mapFeriasValidas.set(String(f.cpf).replace(/\D/g, ''), info);
             }
         });
 
@@ -661,10 +701,15 @@ async function verificarFaltasHoje() {
 
                 const condicao = func.condicao || 'Normal';
                 
-                // Primeiro, verifica as condições e atestados do funcionário (independente se o RHiD abonou ou não)
+                // Primeiro, verifica as condições, férias e atestados do funcionário (independente se o RHiD abonou ou não)
                 const condLower = condicao.toLowerCase();
+                const feriasInfo = mapFeriasValidas.get(String(func.id)) || (func.cpf ? mapFeriasValidas.get(String(func.cpf).replace(/\D/g, '')) : null);
+                const atestadoInfo = mapAtestadosValidos.get(String(func.id)) || (func.cpf ? mapAtestadosValidos.get(String(func.cpf).replace(/\D/g, '')) : null);
                 
-                if (condLower === 'férias' || condLower === 'ferias') {
+                if (feriasInfo) {
+                    func.feriasInfo = feriasInfo;
+                    catFerias.push(func);
+                } else if (condLower === 'férias' || condLower === 'ferias') {
                     catFerias.push(func);
                 } else if (condLower.includes('externo')) {
                     catExterno.push(func);
@@ -674,8 +719,8 @@ async function verificarFaltasHoje() {
                     catSumidos.push(func);
                 } else if (condLower.includes('afastado') || condLower.includes('inss')) {
                     catAfastado.push(func);
-                } else if (mapAtestadosValidos.has(func.id)) {
-                    func.atestadoInfo = mapAtestadosValidos.get(func.id);
+                } else if (atestadoInfo) {
+                    func.atestadoInfo = atestadoInfo;
                     catAtestado.push(func);
                 } else {
                     // Se não tem justificativa no nosso sistema, verifica as batidas
@@ -733,6 +778,26 @@ async function verificarFaltasHoje() {
                 let extra = '';
                 if (f.atestadoInfo) {
                     extra = `<br><span class="text-success small fw-bold extra-info"><i class="fas fa-notes-medical"></i> Atestado de ${f.atestadoInfo.dias} dias (${f.atestadoInfo.tipo || 'Motivo N/I'})</span>`;
+                } else if (f.feriasInfo) {
+                    const fmtDt = (dVal) => {
+                        if (!dVal) return '-';
+                        if (typeof dVal === 'string') {
+                            const clean = dVal.includes('T') ? dVal.split('T')[0] : dVal;
+                            const p = clean.split('-');
+                            if (p.length === 3) return `${p[2]}/${p[1]}/${p[0]}`;
+                        }
+                        const d = dVal.toDate ? dVal.toDate() : new Date(dVal);
+                        if (!isNaN(d.getTime())) {
+                            const dd = String(d.getDate()).padStart(2, '0');
+                            const mm = String(d.getMonth() + 1).padStart(2, '0');
+                            return `${dd}/${mm}/${d.getFullYear()}`;
+                        }
+                        return String(dVal);
+                    };
+                    const dIni = fmtDt(f.feriasInfo.dataInicio);
+                    const dFim = fmtDt(f.feriasInfo.dataFim);
+                    const tipoDesc = f.feriasInfo.tipo || 'Férias';
+                    extra = `<br><span class="text-primary small fw-bold extra-info"><i class="fas fa-umbrella-beach"></i> ${tipoDesc} (${dIni} até ${dFim})</span>`;
                 } else if (f.condicao && f.condicao !== 'Normal') {
                     extra = `<br><span class="text-muted small extra-info">${f.condicao}</span>`;
                 }

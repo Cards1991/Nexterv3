@@ -1118,19 +1118,26 @@ window.handleFormaPagamentoChange = handleFormaPagamentoChange;
  * Calcula o valor estimado de uma solicitação de horas extras.
  * (Função adicionada para estar disponível neste módulo)
  */
-async function calcularValorEstimado(start, end, employeeId) {
+async function calcularValorEstimado(start, end, employeeId, salariosMap = null, percentual = 50) {
     try {
         const duracaoMinutos = (end - start) / (1000 * 60);
         if (duracaoMinutos <= 0) return 0;
 
-        const funcDoc = await db.collection('funcionarios').doc(employeeId).get();
-        if (!funcDoc.exists) return 0;
+        let salario = 0;
+        if (salariosMap && salariosMap.has(employeeId)) {
+            salario = salariosMap.get(employeeId);
+        } else {
+            const funcDoc = await db.collection('funcionarios').doc(employeeId).get();
+            if (funcDoc.exists) salario = parseFloat(funcDoc.data().salario || 0);
+        }
 
-        const salario = parseFloat(funcDoc.data().salario || 0);
+
+
         if (salario <= 0) return 0;
 
         const valorHora = salario / 220;
-        const valorExtra = (duracaoMinutos / 60) * (valorHora * 1.5); // Assumindo 50%
+        const multiplicador = Number(percentual) === 100 ? 2.0 : 1.5;
+        const valorExtra = (duracaoMinutos / 60) * (valorHora * multiplicador);
         const dsr = valorExtra / 6; // DSR simplificado
 
         return parseFloat((valorExtra + dsr).toFixed(2));
